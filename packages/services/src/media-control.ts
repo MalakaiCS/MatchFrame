@@ -23,6 +23,7 @@ import { compositorToken } from './overlays';
 import { enqueueOutbox } from './outbox';
 import { destinationUrl, hlsPrefix, idleRoom, inputIdentity, ACTIVE_SESSION_STATES } from './streams';
 import { keys } from './storage';
+import { recordUsage } from './usage';
 
 export interface MediaControlDeps {
   db: Db; // worker role
@@ -254,7 +255,11 @@ async function finishStop(d: MediaControlDeps, t: Tx, s: typeof broadcastSession
       await t.update(providerResources).set({ state: 'ended', updatedAt: new Date() }).where(eq(providerResources.id, eg.id));
       await t.update(recordingParts).set({ state: st?.state === 'complete' ? 'READY' : 'PARTIAL', durationMs: st?.file?.durationMs ?? null, endedAt: new Date(now(d)) }).where(eq(recordingParts.egressId, eg.providerId));
     }
-    if (!['STOPPED', 'FAILED'].includes(x.state) && !pending) await t.update(outputSessions).set({ state: 'STOPPED', endedAt: new Date(now(d)), updatedAt: new Date() }).where(eq(outputSessions.id, x.id));
+    if (!['STOPPED', 'FAILED'].includes(x.state) && !pending) {
+      const end = new Date(now(d));
+      await t.update(outputSessions).set({ state: 'STOPPED', endedAt: end, updatedAt: new Date() }).where(eq(outputSessions.id, x.id));
+      if (x.liveAt) await recordUsage(t, { organisationId: s.organisationId, module: 'streaming', sessionRef: x.id, quantity: Math.round((end.getTime() - x.liveAt.getTime()) / 1000), unit: 'output_seconds', start: x.liveAt, end, dedupKey: `output:${x.id}`, details: { broadcastSessionId: s.id, preset: x.preset, demo: s.demo } });
+    }
   }
   if (pending) return 'STOPPING';
   // recordings: READY when every part completed, PARTIAL if any part was interrupted

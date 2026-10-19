@@ -3,7 +3,7 @@
 import { Worker } from 'bullmq';
 import { getConfig } from '@bs/config';
 import { createDb } from '@bs/db';
-import { createQueues, createStorage, library, mediaJobs, QUEUE, redisConnection, type MediaJob } from '@bs/services';
+import { createQueues, createStorage, library, mediaJobs, QUEUE, redisConnection, usageSvc, type MediaJob } from '@bs/services';
 
 const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_WORKER_URL, { max: 8, application_name: 'bs-media-worker' });
@@ -28,6 +28,7 @@ const every = (name: string, ms: number, fn: () => Promise<unknown>) => {
 every('highlights', 2000, () => library.processHighlights(db, storage, queues));
 every('recording-sizes', 30_000, () => mediaJobs.finaliseRecordingSizes(d));
 every('retention', 3600_000, () => library.runRetention(db, storage));
+every('storage-usage', 3600_000, () => usageSvc.snapshotStorage(db));
 // jobs whose queue message was lost (Redis restart) are re-enqueued from the durable table
 every('requeue', 60_000, async () => {
   const { exportJobs } = await import('@bs/db');

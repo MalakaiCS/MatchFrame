@@ -10,6 +10,7 @@ import { registerProcessedAsset } from './assets';
 import { createStorage } from './storage';
 import { demoMark } from './png';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -64,6 +65,18 @@ export function seedHooks(config: AppConfig): SeedHook[] {
         await sponsorsSvc.setCreativeApproval(sctx, cr.id, 'approved');
         ids.push(cr.id);
       }
+      // a short sponsor video (synthetic colour field + tone) for full-frame placements, if FFmpeg is available
+      if (b === brands[0]) {
+        const vp = path.join(dir, `video-${brand.id}.mp4`);
+        try {
+          execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', `color=c=${b.bg.replace('#', '0x')}:s=1920x1080:r=30`, '-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=48000', '-t', '6', '-vf', `drawbox=x=760:y=340:w=400:h=400:color=${b.fg.replace('#', '0x')}:t=fill`, '-af', 'volume=0.4', '-ac', '2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', vp]);
+          const asset = await withTenant(ctx.db, { organisationId: ctx.actor.organisationId, userId: ctx.actor.userId }, (t) => registerProcessedAsset(sctx, t, { kind: 'video', name: `${b.name} 6s spot`, original: { path: vp, mime: 'video/mp4', width: 1920, height: 1080, durationMs: 6000 }, tags: ['sponsor', 'demo'] }));
+          const cr = await sponsorsSvc.addCreative(sctx, { creativeSetId: brand.creativeSetId, assetId: asset.id, name: `${b.name} 6s spot` });
+          await sponsorsSvc.setCreativeApproval(sctx, cr.id, 'approved');
+        } catch (e) {
+          console.warn('[seed] sponsor video skipped:', (e as Error).message.split('\n')[0]);
+        }
+      }
       await sponsorsSvc.saveCampaign(sctx, {
         brandId: brand.id,
         creativeSetId: brand.creativeSetId,
@@ -71,7 +84,7 @@ export function seedHooks(config: AppConfig): SeedHook[] {
         startsAt: new Date(Date.now() - 86400_000).toISOString(),
         endsAt: new Date(Date.now() + 180 * 86400_000).toISOString(),
         minSpacingSeconds: 30,
-        allocations: ['scorebug_logo', 'detached_logo', 'lower_third_banner', 'full_frame_image', 'event_partner'].map((placement) => ({ scopeType: 'organisation' as const, placement: placement as never })),
+        allocations: ['scorebug_logo', 'detached_logo', 'lower_third_banner', 'full_frame_image', 'full_frame_video', 'event_partner'].map((placement) => ({ scopeType: 'organisation' as const, placement: placement as never })),
       });
     }
     fs.rmSync(dir, { recursive: true, force: true });

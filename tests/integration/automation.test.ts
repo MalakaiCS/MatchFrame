@@ -121,6 +121,23 @@ describe('automation runtime', () => {
     expect(s.layers.lower).toMatchObject({ templateKey: 'builtin:lower_third', source: 'automation', variables: { heading: 'GOAL', subtitle: 'home' } });
   });
 
+  it('correcting a goal withdraws its pending/on-air automation (A12)', async () => {
+    const x = await newMatch();
+    await phase(x, 'first_half');
+    await pump();
+    const g = await goal(x, 'home');
+    await automationSvc.onFactAccepted(W(), A.org.id, x.m.id, g.event.eventId);
+    await pump();
+    expect((await state(x.ov.id)).layers.lower).toBeTruthy();
+    await x.send('CORRECT_FACT', { factId: g.event.eventId, reason: 'was the away side', changes: { side: 'away' } });
+    expect(await automationSvc.onFactCorrected(W(), A.org.id, g.event.eventId, 2)).toBe(1);
+    await pump();
+    const run = (await runs(x.ov.id)).find((r) => r.playlistId === 'goal')!;
+    expect(run).toMatchObject({ state: 'cancelled' });
+    expect(run.reason).toMatch(/corrected/);
+    expect((await state(x.ov.id)).layers.lower?.outAt).toBeTruthy(); // taken out, not left celebrating
+  });
+
   it('a high-priority goal preempts a promotional sponsor loop; the scorebug stays (A24)', async () => {
     const x = await newMatch();
     await phase(x, 'first_half');

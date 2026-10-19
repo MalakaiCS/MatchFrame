@@ -6,14 +6,14 @@ Source of truth: `MVP_SPEC.md`. P0 = complete first usable release; P1 = backlog
 
 | Milestone | Scope | Status |
 | --- | --- | --- |
-| M0 Media spike | LiveKit RTMP → room → template → HLS/RTMP/MP4 → clip | Done (single session) — see MEDIA_SPIKE.md |
-| M1 Tenant foundation | Auth, orgs/roles/grants, RLS, catalog, fixtures + CSV import | In progress |
-| M2 Scoring & realtime | Sport adapters, clock, facts/corrections, lease, idempotency, realtime, scorer PWA + offline outbox | In progress |
-| M3 Graphics & desk | Shared renderer, 3 themes, overlays, production URLs, control room, designer | Not started |
-| M4 Automation & sponsors | Durable game plans, priorities, rehearsal, sponsor allocation + evidence reports | Not started |
-| M5 Streaming ops | Inputs/destinations/outputs, sessions lifecycle, HLS gateway, health, multiview | Not started |
-| M6 Media library | Recording reconciliation, timeline mapping, highlights, editor, exports, retention, shares | Not started |
-| M7 Verification | Section 3 demo, acceptance matrix, soak, restore drill, runbooks | Not started |
+| M0 Media spike | LiveKit RTMP → room → template → HLS/RTMP/MP4 → clip | Done — `MEDIA_SPIKE.md` |
+| M1 Tenant foundation | Auth (verify/reset/MFA), orgs/roles/grants, RLS, catalog, fixtures + CSV import | Done |
+| M2 Scoring & realtime | Sport adapters, anchored clocks, facts/corrections, fenced lease, idempotency, realtime, offline scorer PWA | Done (browser e2e A13–A15) |
+| M3 Graphics & desk | Shared renderer, 3 themes, overlays, capability URLs, control room, constrained designer | Done |
+| M4 Automation & sponsors | Durable game plans, priorities, rehearsal, sponsor allocation, render-verified evidence, reports | Done |
+| M5 Streaming ops | Inputs/outputs/destinations, session lifecycle, authorised HLS, health, multiview, recovery | Done; capacity limited by host (see A51) |
+| M6 Media library | Uploads, recordings, timeline mapping, live highlights, editor/exports, compilations, retention, shares | Done |
+| M7 Verification | Acceptance matrix, e2e, real-media checks, resilience, soak, restore drill, secret scan, runbooks | Done — `ACCEPTANCE_RESULTS.md` |
 
 ## Architecture decisions
 
@@ -37,7 +37,7 @@ Each A-ID in `MVP_SPEC.md §26` has a row in `ACCEPTANCE_RESULTS.md` with the te
 
 ## P1 backlog (visible, not implemented)
 1. More sport adapters (netball, rugby, AFL, cricket, tennis, hockey).
-2. Native SRT ingest, programme WebRTC monitoring, adaptive bitrate.
+2. Native SRT ingest, programme WebRTC monitoring, adaptive bitrate; RTMPS ingest termination.
 3. Independent language/territory programmes.
 4. Rive import/runtime with typed bindings.
 5. Licensed data-provider adapters.
@@ -46,3 +46,17 @@ Each A-ID in `MVP_SPEC.md §26` has a row in `ACCEPTANCE_RESULTS.md` with the te
 8. Advanced timeline editing, audio tracks, automatic compilations.
 9. Stripe billing.
 10. Autoscaling, regional failover, managed operations.
+
+## Known P0 gaps and deviations (reported, not hidden)
+* **Two simultaneous 720p programmes** (§2.2/§22) were attempted on the only available host (4 vCPU); see A51
+  for the measured result. A larger media node is needed to claim the target.
+* **One-click "Run demonstration"** workflow (§24) is not a single button: the seed creates labelled demo fixtures
+  with automation and sponsors, and `pnpm demo:start` starts the stack; the synthetic fact timeline is available
+  as rehearsal, not as a live demo driver.
+* **Metrics endpoint** (§22 observability) is not implemented; the signals are queryable from tables/logs
+  (see `docs/operations.md`).
+* **Usage ledger** records streaming output-seconds, media job-seconds and daily storage bytes. Graphics-active
+  time is not yet metered.
+* **Performance targets** (§22) — see the measured latencies section in `ACCEPTANCE_RESULTS.md`; targets not
+  listed there were not measured.
+* **RTMP ingest** is plain RTMP (labelled unencrypted in the UI).

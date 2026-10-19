@@ -28,3 +28,4 @@ export * as streamsSvc from './streams';
 export * as mediaControl from './media-control';
 export * as library from './library';
 export * as mediaJobs from './media-jobs';
+export * as usageSvc from './usage';

@@ -1,7 +1,7 @@
 // Media library: uploads, recordings, highlights, clips, exports, compilations, shares and public share access.
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AppError, library, type Storage } from '@bs/services';
+import { AppError, library, usageSvc, type Storage } from '@bs/services';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
@@ -24,6 +24,7 @@ export function registerMediaRoutes(b: AppBundle) {
   const { app, ctxFor, deps } = b;
 
   app.get('/api/v1/usage', async (req) => library.usageSummary(await ctxFor(req)));
+  app.get('/api/v1/usage/ledger', async (req) => usageSvc.usageReport(await ctxFor(req), req.query as never));
   app.post('/api/v1/assets/uploads', async (req, reply) => reply.code(201).send(await library.createUpload(await ctxFor(req), req.body as never)));
   app.post('/api/v1/assets/:id/complete', async (req) => library.completeUpload(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/assets/:id/preview', async (req, reply) => streamObject(deps.storage, req, reply, await library.assetPreview(await ctxFor(req), P(id, req.params).id, (req.query as { purpose?: string }).purpose === 'broadcast' ? 'broadcast' : 'thumbnail')));

@@ -10,6 +10,7 @@ import { assetDerivatives, clips, creatives, exportJobs, highlightRequests, medi
 import { ASPECTS, cropFor, type Aspect } from '@bs/domain';
 import { keys, type Storage } from './storage';
 import { enqueueOutbox } from './outbox';
+import { recordUsage } from './usage';
 
 export interface MediaJobDeps {
   db: Db; // worker role
@@ -129,6 +130,9 @@ export async function processJob(d: MediaJobDeps, jobId: string) {
     await notify(d, job, cancelled ? 'CANCELLED' : 'FAILED');
     return cancelled ? 'cancelled' : 'failed';
   } finally {
+    const end = new Date();
+    const start = job.startedAt ?? end;
+    await recordUsage(d.db, { organisationId: job.organisationId, module: 'media_jobs', sessionRef: job.id, quantity: Math.round((end.getTime() - start.getTime()) / 1000), unit: 'job_seconds', start, end, dedupKey: `job:${job.id}:${job.attempts}`, details: { kind: job.kind } }).catch(() => undefined);
     fs.rmSync(tmp, { recursive: true, force: true }); // own temp dir only
   }
 }

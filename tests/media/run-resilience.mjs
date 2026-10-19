@@ -46,9 +46,9 @@ async function until(label, fn, ms = 120_000) {
   }
 }
 const results = {};
-let stack = null;
+
 const startStack = () => {
-  stack = spawn('node', ['scripts/dev.mjs'], { env: { ...process.env, DEV_ONLY: 'api,worker,media' }, stdio: ['ignore', fs.openSync('.data/logs/dev.log', 'a'), fs.openSync('.data/logs/dev.log', 'a')], detached: true });
+  spawn('node', ['scripts/dev.mjs'], { env: { ...process.env, DEV_ONLY: 'api,worker,media' }, stdio: ['ignore', fs.openSync('.data/logs/dev.log', 'a'), fs.openSync('.data/logs/dev.log', 'a')], detached: true });
 };
 const killStack = () => {
   // kill every api/worker/media-worker process (whoever started them), never other sessions' processes
