@@ -83,7 +83,12 @@ export function useOutput(publicId: string, token: string | null, opts: { apiBas
           if (p.themeChanged) void load();
           return;
         }
-        setSnap({ ...cur, state: p as unknown as OverlayPublicState });
+        const st = p as unknown as OverlayPublicState;
+        setSnap({ ...cur, state: st });
+        // a newly referenced creative or media asset needs fresh signed URLs
+        const ids = [...Object.values(st.layers).flatMap((c) => [c?.sponsor?.creativeId, c?.variables?.creative as string | undefined]), ...Object.values(st.slots ?? {}).map((x) => x?.creativeId)].filter((x): x is string => !!x);
+        const imgs = Object.values(st.layers).map((c) => c?.variables?.image).filter((x): x is string => typeof x === 'string');
+        if (ids.some((i) => !cur.data.creatives[i]) || imgs.some((i) => !cur.data.assets[i])) void load();
       } else if (e.topic === 'overlay.slots.updated') {
         void load();
       } else if (e.topic === 'match.state.updated') {

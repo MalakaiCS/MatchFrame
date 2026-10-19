@@ -263,7 +263,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
     <Tabs defaultValue="commands">
       <TabList><Tab value="commands">Commands</Tab><Tab value="automation">Automation queue & history</Tab><Tab value="diagnostics">Diagnostics</Tab></TabList>
       <TabPanel value="commands" className="py-2"><CommandLog pending={c.pending} /></TabPanel>
-      <TabPanel value="automation" className="py-2"><AutomationPanel overlayId={overlayId} /></TabPanel>
+      <TabPanel value="automation" className="py-2"><AutomationPanel overlayId={overlayId} gamePlanVersionId={d.overlay.gamePlanVersionId} sport={data.match.sport} canOperate={d.canOperate} onChanged={() => void c.reload?.()} /></TabPanel>
       <TabPanel value="diagnostics" className="py-2 text-xs text-muted">
         <ul className="space-y-1">
           <li>Renderers: {d.renderers.map((r) => `${r.purpose}${r.reporting ? ' (reporting)' : ''} rev ${r.displayedRevision}`).join(', ') || 'none connected'}</li>

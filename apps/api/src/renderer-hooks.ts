@@ -1,4 +1,4 @@
-import { overlaysSvc } from '@bs/services';
+import { overlaysSvc, sponsorsSvc } from '@bs/services';
 import type { AppBundle } from './app';
 import type { RendererHooks } from './realtime';
 
@@ -15,6 +15,9 @@ export function rendererHooks(b: AppBundle): RendererHooks {
     async onDisplayed(socket, payload) {
       const rev = Number((payload as { revision?: number })?.revision);
       if (socket.data.rendererSessionId) await overlaysSvc.rendererDisplayed(db, socket.data.scope, socket.data.rendererSessionId, rev);
+    },
+    async onExposure(socket, payload) {
+      if (socket.data.rendererSessionId) await sponsorsSvc.recordExposure(db, socket.data.scope, socket.data.rendererSessionId, payload);
     },
     async onDisconnect(socket) {
       if (socket.data.rendererSessionId) await overlaysSvc.rendererDisconnected(db, socket.data.scope, socket.data.rendererSessionId);

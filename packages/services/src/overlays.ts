@@ -351,7 +351,7 @@ export function verifyAssetSignature(cfg: AppConfig, organisationId: string, ass
 }
 
 /** Explicit render snapshot for one overlay: public display data only (no roster directory, no private fields). */
-export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererScope, extra?: (t: Tx, data: RenderData, state: OverlayPublicState) => Promise<void>) {
+export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererScope, extra?: (t: Tx, data: RenderData, state: OverlayPublicState, scope: RendererScope) => Promise<void>) {
   return withTenant(db, { organisationId: scope.organisationId }, async (t) => {
     const [o] = await t.select().from(overlays).where(eq(overlays.id, scope.overlayId));
     const [s] = await t.select().from(overlayState).where(eq(overlayState.overlayId, scope.overlayId));
@@ -398,7 +398,7 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
       theme: { ...theme.config, logoUrl: url(theme.logoAssetId) },
       customTemplates: custom.map((c) => ({ key: c.key, scene: c.scene })),
     };
-    if (extra) await extra(t, data, pruned.state);
+    if (extra) await extra(t, data, pruned.state, scope);
     return { overlay: { id: o!.id, name: o!.name, purpose: scope.purpose, matchId: m!.id }, state: pruned.state, data, serverNow: now };
   });
 }

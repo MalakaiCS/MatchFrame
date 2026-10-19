@@ -25,7 +25,7 @@ async function validateFor(t: Tx, organisationId: string, draft: unknown) {
     .from(creatives)
     .innerJoin(mediaAssets, eq(mediaAssets.id, creatives.assetId))
     .where(and(eq(creatives.organisationId, organisationId), eq(creatives.approvalStatus, 'approved'), eq(mediaAssets.state, 'READY')));
-  const eventTypes = getAdapter(sport).eventTypes({} as never).map((e) => e.type);
+  const eventTypes = getAdapter(sport).eventTypes(getAdapter(sport).defaultConfig as never).map((e) => e.type);
   return validateGamePlan(draft, { templateKeys: Object.keys(layers), templateLayers: layers, eventTypes, creativeIds: approved.map((c) => c.id) });
 }
 
