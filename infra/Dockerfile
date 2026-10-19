@@ -1,0 +1,32 @@
+# Application image for api, worker, media-worker and web (compose profile "app").
+# Build from the repository root:  docker build -f infra/Dockerfile -t broadcast-studio-app:local .
+# NEXT_PUBLIC_* values are baked into the web bundle at build time: pass the public URLs as build args.
+# syntax=docker/dockerfile:1
+FROM node:22.22.0-bookworm-slim AS build
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Optional: behind a TLS-intercepting proxy, pass --secret id=extra_ca,src=<bundle> and HTTPS_PROXY build args.
+RUN --mount=type=secret,id=extra_ca,required=false \
+  if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
+  corepack enable && corepack prepare pnpm@10.28.0 --activate
+WORKDIR /app
+COPY . .
+ARG PUBLIC_REALTIME_URL=http://localhost:4000
+ARG PUBLIC_LIVEKIT_URL=ws://localhost:7880
+ARG PUBLIC_RTMP_URL=rtmp://localhost:1935/live
+ENV PUBLIC_REALTIME_URL=$PUBLIC_REALTIME_URL PUBLIC_LIVEKIT_URL=$PUBLIC_LIVEKIT_URL PUBLIC_RTMP_URL=$PUBLIC_RTMP_URL
+RUN --mount=type=secret,id=extra_ca,required=false \
+  if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
+  rm -f .env && pnpm install --frozen-lockfile && pnpm -r --filter "./apps/*" run build
+
+FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
+
+FROM node:22.22.0-bookworm-slim
+# static FFmpeg/ffprobe (no distro package mirror needed at build time)
+COPY --from=ffmpeg /ffmpeg /ffprobe /usr/local/bin/
+RUN groupadd -r bs && useradd -r -g bs -d /app bs
+WORKDIR /app
+COPY --from=build --chown=bs:bs /app /app
+USER bs
+ENV NODE_ENV=production
+# migrations: docker compose run --rm api pnpm db:migrate  (uses DATABASE_ADMIN_URL)
+CMD ["node", "apps/api/dist/main.js"]

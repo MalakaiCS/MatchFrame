@@ -66,6 +66,6 @@ export function publicId(prefix: string, bytes = 9): string {
 export function redact(s: string): string {
   return s
     .replace(/(rtmps?:\/\/[^\s/]+\/[^\s/]+\/)[^\s?]+/gi, '$1[redacted]')
-    .replace(/([?&](?:token|key|access_token|pass|password|secret|bootstrap|sig)=)[^&\s]+/gi, '$1[redacted]')
+    .replace(/([?&](?:t|bt|s|token|key|access_token|pass|password|secret|bootstrap|sig)=)[^&\s]+/gi, '$1[redacted]')
     .replace(/(\/overlay\/)[A-Za-z0-9_-]{20,}/g, '$1[redacted]');
 }

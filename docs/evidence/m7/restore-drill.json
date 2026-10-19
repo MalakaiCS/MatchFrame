@@ -1,0 +1,50 @@
+{
+  "startedAt": "2026-10-19T20:04:41.703Z",
+  "dumpBytes": 617408,
+  "restoredTables": 67,
+  "mirror": {
+    "objects": 3089,
+    "bytes": 4541007645
+  },
+  "ownerLogin": 200,
+  "matchesVisible": 40,
+  "matchesWithHistory": 25,
+  "factsVisible": 39,
+  "recordings": 36,
+  "recordingRange": {
+    "status": 206,
+    "bytes": 1048576,
+    "contentRange": "bytes 0-1048575/28599847"
+  },
+  "recordingProbe": {
+    "programs": [],
+    "streams": [
+      {
+        "codec_name": "aac",
+        "codec_type": "audio"
+      },
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1280,
+        "height": 720
+      }
+    ],
+    "format": {
+      "duration": "71.740333"
+    }
+  },
+  "anonymousMatches": 401,
+  "rlsRowsOfAVisibleToA": 36,
+  "rlsRowsOfAVisibleToB": 0,
+  "durationSeconds": 136,
+  "checks": {
+    "restoredWithRls": true,
+    "objectsMirrored": true,
+    "ownerLogin": true,
+    "historyOpens": true,
+    "recordingPlays": true,
+    "tenantIsolation": true,
+    "anonymousDenied": true
+  }
+}

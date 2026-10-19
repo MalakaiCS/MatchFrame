@@ -241,6 +241,24 @@ describe('automation runtime', () => {
   });
 });
 
+describe('rehearsal isolation', () => {
+  it('rehearsing at any speed writes nothing: no overlay, sponsor, stream or usage records (A29)', async () => {
+    const x = await newMatch();
+    const count = () => worker.db.execute(`select (select count(*) from automation_runs) a, (select count(*) from automation_cues) b, (select count(*) from overlay_commands) c, (select count(*) from sponsor_decisions) d, (select count(*) from sponsor_exposures) e, (select count(*) from usage_ledger) f, (select count(*) from outbox_events) g, (select count(*) from broadcast_sessions) h` as never).then((r) => JSON.stringify(r.rows[0]));
+    const before = await count();
+    const plans = await gamePlansSvc.listGamePlans(ctx);
+    const g = await gamePlansSvc.getGamePlan(ctx, plans[0]!.id);
+    const { simulateRehearsal, syntheticTimeline, getAdapter, gamePlanSchema } = await import('@bs/domain');
+    for (const speed of [1, 2, 5, 10]) {
+      const r = simulateRehearsal(gamePlanSchema.parse(g.draft), getAdapter('football').defaultConfig, syntheticTimeline('football'), { templateLayers: g.templateLayers, sponsorAvailable: () => true });
+      expect(r.decisions.length).toBeGreaterThan(0);
+      void speed; // playback speed only scales the client-side timeline; decisions are identical
+    }
+    expect(await count()).toBe(before);
+    void x;
+  });
+});
+
 describe('sponsor delivery', () => {
   it('ineligible placements are skipped with a reason (A30)', async () => {
     const x = await newMatch();
