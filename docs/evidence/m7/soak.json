@@ -1,0 +1,893 @@
+{
+  "minutes": 30,
+  "host": {
+    "cpus": 4,
+    "memGb": 16
+  },
+  "transitions": [
+    [
+      {
+        "t": 30,
+        "v": "LIVE/LIVE/active"
+      },
+      {
+        "t": 128,
+        "v": "undefined/undefined/undefined"
+      },
+      {
+        "t": 199,
+        "v": "LIVE/LIVE/active"
+      }
+    ],
+    [
+      {
+        "t": 30,
+        "v": "LIVE/LIVE/active"
+      },
+      {
+        "t": 128,
+        "v": "undefined/undefined/undefined"
+      },
+      {
+        "t": 200,
+        "v": "LIVE/LIVE/active"
+      }
+    ]
+  ],
+  "samples": [
+    {
+      "t": 33,
+      "load1": 29.58,
+      "memFreeMb": 11311,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 157.17% 1.671GiB / 4GiB",
+        "ingress-1 130.52% 309.1MiB / 15.72GiB",
+        "livekit-1 4.58% 93.63MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 66,
+      "load1": 37.62,
+      "memFreeMb": 11576,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 152.95% 1.669GiB / 4GiB",
+        "ingress-1 174.96% 328.9MiB / 15.72GiB",
+        "livekit-1 4.95% 93.9MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 98,
+      "load1": 41.01,
+      "memFreeMb": 11646,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 121.99% 1.706GiB / 4GiB",
+        "ingress-1 183.13% 338.1MiB / 15.72GiB",
+        "livekit-1 8.14% 101.9MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 133,
+      "load1": 46.48,
+      "memFreeMb": 11199,
+      "states": [
+        "undefined/undefined/undefined",
+        "undefined/undefined/undefined"
+      ],
+      "stats": [
+        "egress-1 216.20% 1.697GiB / 4GiB",
+        "ingress-1 91.65% 344.4MiB / 15.72GiB",
+        "livekit-1 3.25% 104.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 167,
+      "load1": 66.63,
+      "memFreeMb": 10606,
+      "states": [
+        "undefined/undefined/undefined",
+        "undefined/undefined/undefined"
+      ],
+      "stats": [
+        "egress-1 170.08% 1.699GiB / 4GiB",
+        "ingress-1 139.43% 355.1MiB / 15.72GiB",
+        "livekit-1 7.27% 105.2MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 205,
+      "load1": 75.99,
+      "memFreeMb": 9810,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 145.86% 1.732GiB / 4GiB",
+        "ingress-1 163.54% 367MiB / 15.72GiB",
+        "livekit-1 6.04% 105.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 240,
+      "load1": 71.17,
+      "memFreeMb": 9356,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 163.31% 1.728GiB / 4GiB",
+        "ingress-1 118.54% 382.2MiB / 15.72GiB",
+        "livekit-1 7.05% 108.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 274,
+      "load1": 72.2,
+      "memFreeMb": 9424,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 192.34% 1.72GiB / 4GiB",
+        "ingress-1 107.79% 389.2MiB / 15.72GiB",
+        "livekit-1 4.91% 108.1MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 310,
+      "load1": 69.65,
+      "memFreeMb": 9411,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 129.78% 1.704GiB / 4GiB",
+        "ingress-1 145.12% 397MiB / 15.72GiB",
+        "livekit-1 5.08% 109.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 346,
+      "load1": 66.1,
+      "memFreeMb": 9291,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 141.14% 1.727GiB / 4GiB",
+        "ingress-1 160.24% 411.6MiB / 15.72GiB",
+        "livekit-1 3.86% 110.1MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 380,
+      "load1": 61.91,
+      "memFreeMb": 9272,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 155.95% 1.734GiB / 4GiB",
+        "ingress-1 176.60% 420.2MiB / 15.72GiB",
+        "livekit-1 3.81% 109.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 413,
+      "load1": 58.01,
+      "memFreeMb": 9005,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 194.70% 1.718GiB / 4GiB",
+        "ingress-1 121.88% 433.7MiB / 15.72GiB",
+        "livekit-1 4.65% 110.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 447,
+      "load1": 55.65,
+      "memFreeMb": 8658,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 175.57% 1.729GiB / 4GiB",
+        "ingress-1 139.98% 440.2MiB / 15.72GiB",
+        "livekit-1 4.44% 112.5MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 480,
+      "load1": 54.66,
+      "memFreeMb": 11338,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 223.76% 1.753GiB / 4GiB",
+        "ingress-1 121.96% 448.1MiB / 15.72GiB",
+        "livekit-1 5.81% 112.2MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 512,
+      "load1": 49.14,
+      "memFreeMb": 11323,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 219.46% 1.746GiB / 4GiB",
+        "ingress-1 118.08% 455.6MiB / 15.72GiB",
+        "livekit-1 5.05% 112.7MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 544,
+      "load1": 47.56,
+      "memFreeMb": 11324,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 170.68% 1.737GiB / 4GiB",
+        "ingress-1 176.61% 460.5MiB / 15.72GiB",
+        "livekit-1 5.37% 115.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 577,
+      "load1": 45.93,
+      "memFreeMb": 11279,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 243.34% 1.758GiB / 4GiB",
+        "ingress-1 111.65% 468.4MiB / 15.72GiB",
+        "livekit-1 7.79% 114.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 609,
+      "load1": 45.82,
+      "memFreeMb": 11301,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 171.84% 1.768GiB / 4GiB",
+        "ingress-1 174.20% 479.6MiB / 15.72GiB",
+        "livekit-1 3.57% 114.9MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 642,
+      "load1": 44.04,
+      "memFreeMb": 11272,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 226.95% 1.782GiB / 4GiB",
+        "ingress-1 111.68% 490MiB / 15.72GiB",
+        "livekit-1 6.33% 115.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 675,
+      "load1": 45.38,
+      "memFreeMb": 11265,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 291.77% 1.773GiB / 4GiB",
+        "ingress-1 70.63% 492.5MiB / 15.72GiB",
+        "livekit-1 5.06% 115.9MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 707,
+      "load1": 42.41,
+      "memFreeMb": 11304,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 197.31% 1.789GiB / 4GiB",
+        "ingress-1 145.30% 500.5MiB / 15.72GiB",
+        "livekit-1 4.07% 115.7MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 740,
+      "load1": 42.3,
+      "memFreeMb": 11224,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 185.12% 1.812GiB / 4GiB",
+        "ingress-1 109.38% 505.8MiB / 15.72GiB",
+        "livekit-1 4.31% 116.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 772,
+      "load1": 44.16,
+      "memFreeMb": 11280,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 176.66% 1.813GiB / 4GiB",
+        "ingress-1 104.75% 513.3MiB / 15.72GiB",
+        "livekit-1 7.58% 116.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 805,
+      "load1": 41.85,
+      "memFreeMb": 11279,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 129.01% 1.798GiB / 4GiB",
+        "ingress-1 219.10% 520.6MiB / 15.72GiB",
+        "livekit-1 9.03% 116.1MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 837,
+      "load1": 41.91,
+      "memFreeMb": 11314,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 251.77% 1.785GiB / 4GiB",
+        "ingress-1 101.80% 527.4MiB / 15.72GiB",
+        "livekit-1 5.54% 116.4MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 870,
+      "load1": 41.18,
+      "memFreeMb": 11296,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 179.57% 1.797GiB / 4GiB",
+        "ingress-1 173.57% 538.4MiB / 15.72GiB",
+        "livekit-1 7.90% 116.5MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 903,
+      "load1": 42.89,
+      "memFreeMb": 11310,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 186.99% 1.793GiB / 4GiB",
+        "ingress-1 166.17% 542.5MiB / 15.72GiB",
+        "livekit-1 5.45% 117.2MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 935,
+      "load1": 41.55,
+      "memFreeMb": 11325,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 167.93% 1.758GiB / 4GiB",
+        "ingress-1 179.64% 543.8MiB / 15.72GiB",
+        "livekit-1 4.46% 118.1MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 967,
+      "load1": 41.58,
+      "memFreeMb": 11312,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 155.06% 1.774GiB / 4GiB",
+        "ingress-1 214.70% 553.3MiB / 15.72GiB",
+        "livekit-1 5.28% 118.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1000,
+      "load1": 42.59,
+      "memFreeMb": 11274,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 167.97% 1.791GiB / 4GiB",
+        "ingress-1 177.33% 561MiB / 15.72GiB",
+        "livekit-1 7.86% 118.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1032,
+      "load1": 41.79,
+      "memFreeMb": 11268,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 177.40% 1.8GiB / 4GiB",
+        "ingress-1 164.67% 571.2MiB / 15.72GiB",
+        "livekit-1 4.35% 118.2MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1066,
+      "load1": 43.48,
+      "memFreeMb": 11268,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 271.68% 1.799GiB / 4GiB",
+        "ingress-1 82.61% 568.5MiB / 15.72GiB",
+        "livekit-1 2.88% 118.5MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1098,
+      "load1": 42.92,
+      "memFreeMb": 11329,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 187.94% 1.802GiB / 4GiB",
+        "ingress-1 171.57% 572.5MiB / 15.72GiB",
+        "livekit-1 9.08% 118.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1131,
+      "load1": 42.15,
+      "memFreeMb": 11349,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 183.08% 1.789GiB / 4GiB",
+        "ingress-1 165.16% 578.2MiB / 15.72GiB",
+        "livekit-1 6.37% 119MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1164,
+      "load1": 41.23,
+      "memFreeMb": 11319,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 148.99% 1.801GiB / 4GiB",
+        "ingress-1 208.66% 580.9MiB / 15.72GiB",
+        "livekit-1 7.91% 119.5MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1196,
+      "load1": 39.73,
+      "memFreeMb": 11302,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 174.03% 1.785GiB / 4GiB",
+        "ingress-1 179.53% 587.9MiB / 15.72GiB",
+        "livekit-1 6.65% 119.5MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1229,
+      "load1": 42.73,
+      "memFreeMb": 11308,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 210.63% 1.784GiB / 4GiB",
+        "ingress-1 151.54% 592.5MiB / 15.72GiB",
+        "livekit-1 9.27% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1261,
+      "load1": 43.15,
+      "memFreeMb": 11289,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 186.65% 1.796GiB / 4GiB",
+        "ingress-1 182.90% 601.9MiB / 15.72GiB",
+        "livekit-1 4.24% 119.7MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1293,
+      "load1": 39.97,
+      "memFreeMb": 11297,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 194.23% 1.783GiB / 4GiB",
+        "ingress-1 158.27% 606.6MiB / 15.72GiB",
+        "livekit-1 7.51% 120MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1326,
+      "load1": 41.5,
+      "memFreeMb": 11277,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 213.89% 1.802GiB / 4GiB",
+        "ingress-1 146.59% 614.7MiB / 15.72GiB",
+        "livekit-1 6.03% 119.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1358,
+      "load1": 43.83,
+      "memFreeMb": 11255,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 213.57% 1.795GiB / 4GiB",
+        "ingress-1 158.94% 622.4MiB / 15.72GiB",
+        "livekit-1 12.04% 119.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1390,
+      "load1": 44.32,
+      "memFreeMb": 11264,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 157.07% 1.808GiB / 4GiB",
+        "ingress-1 189.03% 628.1MiB / 15.72GiB",
+        "livekit-1 6.62% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1423,
+      "load1": 42.64,
+      "memFreeMb": 11248,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 164.63% 1.811GiB / 4GiB",
+        "ingress-1 195.62% 632.7MiB / 15.72GiB",
+        "livekit-1 7.58% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1456,
+      "load1": 43.79,
+      "memFreeMb": 11263,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 183.97% 1.8GiB / 4GiB",
+        "ingress-1 176.80% 635.6MiB / 15.72GiB",
+        "livekit-1 4.12% 119.4MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1488,
+      "load1": 41.7,
+      "memFreeMb": 11259,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 196.93% 1.807GiB / 4GiB",
+        "ingress-1 149.89% 640.9MiB / 15.72GiB",
+        "livekit-1 5.51% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1521,
+      "load1": 41.28,
+      "memFreeMb": 11252,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 165.45% 1.801GiB / 4GiB",
+        "ingress-1 172.18% 650.2MiB / 15.72GiB",
+        "livekit-1 6.86% 119.9MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1554,
+      "load1": 41.71,
+      "memFreeMb": 11267,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 183.12% 1.8GiB / 4GiB",
+        "ingress-1 170.77% 655.6MiB / 15.72GiB",
+        "livekit-1 3.11% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1586,
+      "load1": 41.22,
+      "memFreeMb": 11267,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 243.33% 1.806GiB / 4GiB",
+        "ingress-1 103.35% 665.2MiB / 15.72GiB",
+        "livekit-1 5.53% 119.3MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1619,
+      "load1": 39.94,
+      "memFreeMb": 11266,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 200.86% 1.796GiB / 4GiB",
+        "ingress-1 151.62% 668.8MiB / 15.72GiB",
+        "livekit-1 5.81% 119.6MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1651,
+      "load1": 40.19,
+      "memFreeMb": 11258,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 184.38% 1.802GiB / 4GiB",
+        "ingress-1 123.63% 673.6MiB / 15.72GiB",
+        "livekit-1 6.85% 119.7MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1683,
+      "load1": 39.93,
+      "memFreeMb": 11237,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 180.24% 1.817GiB / 4GiB",
+        "ingress-1 157.16% 680.8MiB / 15.72GiB",
+        "livekit-1 7.65% 119.7MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1716,
+      "load1": 41.06,
+      "memFreeMb": 11232,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 205.69% 1.823GiB / 4GiB",
+        "ingress-1 147.92% 687.2MiB / 15.72GiB",
+        "livekit-1 5.63% 120.1MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1748,
+      "load1": 43.81,
+      "memFreeMb": 11236,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 185.28% 1.816GiB / 4GiB",
+        "ingress-1 156.45% 689.8MiB / 15.72GiB",
+        "livekit-1 8.75% 119.8MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1781,
+      "load1": 42.09,
+      "memFreeMb": 11234,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 234.00% 1.806GiB / 4GiB",
+        "ingress-1 99.96% 703.4MiB / 15.72GiB",
+        "livekit-1 8.67% 120.4MiB / 15.72GiB"
+      ]
+    },
+    {
+      "t": 1813,
+      "load1": 41.65,
+      "memFreeMb": 11209,
+      "states": [
+        "LIVE/LIVE/active",
+        "LIVE/LIVE/active"
+      ],
+      "stats": [
+        "egress-1 189.92% 1.818GiB / 4GiB",
+        "ingress-1 169.42% 707MiB / 15.72GiB",
+        "livekit-1 6.78% 120.9MiB / 15.72GiB"
+      ]
+    }
+  ],
+  "analysis": [
+    {
+      "match": "football",
+      "receiverParts": 42,
+      "recordedSeconds": 1745,
+      "expectedSeconds": 1800,
+      "markers": [
+        {
+          "label": "start",
+          "atS": 30,
+          "flashes": 1,
+          "beeps": 37,
+          "pairs": 0,
+          "skew": null,
+          "driftMs": null
+        },
+        {
+          "label": "middle",
+          "atS": 873,
+          "flashes": 21,
+          "beeps": 4,
+          "pairs": 0,
+          "skew": null,
+          "driftMs": null
+        },
+        {
+          "label": "end",
+          "atS": 1655,
+          "flashes": 21,
+          "beeps": 3,
+          "pairs": 1,
+          "skew": {
+            "mean": 245,
+            "median": 245,
+            "min": 245,
+            "max": 245,
+            "stdev": 0
+          },
+          "driftMs": 0
+        }
+      ]
+    },
+    {
+      "match": "basketball",
+      "receiverParts": 47,
+      "recordedSeconds": 1739,
+      "expectedSeconds": 1800,
+      "markers": [
+        {
+          "label": "start",
+          "atS": 30,
+          "flashes": 1,
+          "beeps": 39,
+          "pairs": 1,
+          "skew": {
+            "mean": -160,
+            "median": -160,
+            "min": -160,
+            "max": -160,
+            "stdev": 0
+          },
+          "driftMs": 0
+        },
+        {
+          "label": "middle",
+          "atS": 869,
+          "flashes": 25,
+          "beeps": 5,
+          "pairs": 0,
+          "skew": null,
+          "driftMs": null
+        },
+        {
+          "label": "end",
+          "atS": 1649,
+          "flashes": 14,
+          "beeps": 3,
+          "pairs": 0,
+          "skew": null,
+          "driftMs": null
+        }
+      ]
+    }
+  ]
+}

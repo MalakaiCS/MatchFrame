@@ -14,16 +14,16 @@
       ]
     ]
   ],
-  "liveObservedAt": 1792435635294,
-  "slateWindowMs": 8260,
+  "liveObservedAt": 1792443307565,
+  "slateWindowMs": 8143,
   "hls": {
     "playlist": 200,
     "segment": 200,
-    "segmentBytes": 835096,
+    "segmentBytes": 849008,
     "anonymousSegment": 401,
     "anonymousPlaylist": 401
   },
-  "sourceLostAt": 1792435658881,
+  "sourceLostAt": 1792443331443,
   "sourceLoss": {
     "statesObserved": [
       "LIVE",
@@ -50,7 +50,7 @@
   },
   "receiverParts": {
     "programme": 1,
-    "clean": 3
+    "clean": 1
   },
   "analysisWindowSeconds": 23,
   "programme": {
@@ -61,21 +61,21 @@
     "lumaPerSecond": [
       124,
       124,
+      122,
       124,
       124,
       124,
-      123,
+      122,
       124,
       124,
       124,
-      123,
+      122,
       124,
       124,
       124,
-      123,
+      122,
       124,
-      41,
-      39,
+      124,
       39,
       39,
       39,
@@ -83,7 +83,7 @@
       39,
       39
     ],
-    "maxVolumeDb": -5.1
+    "maxVolumeDb": -5
   },
   "clean": {
     "probe": [
@@ -92,19 +92,20 @@
     ],
     "lumaPerSecond": [
       124,
-      231,
       124,
-      231,
-      231,
-      231,
+      123,
+      124,
+      124,
+      124,
+      124,
       124,
       124,
       124,
       123,
-      125,
-      125,
-      125,
-      231,
+      124,
+      124,
+      124,
+      123,
       124,
       124,
       124,
@@ -112,12 +113,11 @@
       124,
       124,
       124,
-      124,
-      124
+      123
     ],
-    "maxVolumeDb": -4.9
+    "maxVolumeDb": -5
   },
-  "programmeDarkSeconds": 8,
+  "programmeDarkSeconds": 6,
   "cleanDarkSeconds": 0,
   "final": {
     "session": "STOPPED",

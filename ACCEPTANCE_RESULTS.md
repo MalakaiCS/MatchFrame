@@ -68,14 +68,38 @@ running stack, 4 specs), and the real-media scripts in `tests/media/` (LiveKit +
 | A48 | Unsafe upload, template code, private destination | PASS | `media-library.test.ts` (SVG/HTML rejected by content sniffing), `graphics.test.ts` (scene validation rejects code-like values), `streams.test.ts` (SSRF: loopback, RFC1918, link-local, IPv6 loopback, DNS-to-private, credentials in URL). |
 | A49 | Interrupt Redis/outbox then restore | PASS | `tests/media/run-resilience.mjs` → `docs/evidence/m7/resilience.json`: goal accepted while Redis down, no false *displayed* ack, outbox drained after restore, one automation run, no dead letters. |
 | A50 | Restart API/media orchestration during live session | PASS | Same script: API + workers killed for ~15 s mid-stream; provider egress kept streaming; after restart same session LIVE, no duplicate egress, match/clock unchanged. |
-| A51 | Two 720p sessions for 30 minutes | see below | `tests/media/run-soak.mjs` → `docs/evidence/m7/soak.json`. |
+| A51 | Two 720p sessions for 30 minutes | FAIL (on this host) | `tests/media/run-soak.mjs` → `docs/evidence/m7/soak.json`. Both sessions stayed LIVE for 30 min with no crash or unbounded queue, but the 4 vCPU host was oversubscribed (load avg 46, peak 76), receivers saw 42/47 RTMP reconnects and the flash/beep markers could not be paired — A/V sync cannot be shown. Needs a larger media node. |
 | A52 | Restore DB + objects to a clean environment | PASS | `tests/media/run-restore-drill.mjs` → `docs/evidence/m7/restore-drill.json`: fresh PostgreSQL + MinIO, 67 RLS tables, 3,089 objects (4.5 GB), owner login, history of 25 matches, RLS isolation (36 vs 0 rows), restored recording plays via byte ranges (H.264/AAC 1280×720). |
 | A53 | Secrets after secret operations | PASS | `scripts/secret-scan.mjs` → `docs/evidence/m7/secret-scan.json`: 31 secret values (env + decrypted stream keys) absent from 61 client files, logs, 96 API responses, outbox/socket payloads and audit rows. The scan first **found share tokens in API request logs**; fixed in `redact()` (unit test) and re-run clean. |
 | A54 | Inspect claimed test completion | PASS | This document: every PASS cites an executed test or script with stored output; partial/blocked items are labelled. |
 
 ## A51 and measured capacity
 
-Filled in from `docs/evidence/m7/soak.json` after the run; see the section appended below.
+| Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
+| --- | --- |
+| 1 session, programme only (M0, highlight e2e, audio policy) | Stable; LIVE in 8–14 s; A/V skew in M0 median +79 ms (stdev 138 ms, outliers to ±400 ms — not a strict pass of ≤150 ms) |
+| 1 session, programme + clean (smoke) | Works for minutes; egress ≈250 % CPU, ingress ≈105 %, load 15–20; receiver reconnects observed on clean |
+| 2 sessions, programme each, 30 min (soak) | Both LIVE throughout (one 70 s control-plane restart during the run did not interrupt egress), but host oversubscribed (load avg 46, max 76), 42/47 receiver reconnects per output, 1,745/1,800 s recorded, marker pairing failed → **FAIL** |
+
+The installation default `MAX_CONCURRENT_PROGRAMMES=2` (outputs) reflects "one session with programme + clean" on
+this host, and even that saturates it. The §2.2 target of two simultaneous 720p programmes is **not demonstrated**
+here; re-run `tests/media/run-soak.mjs` on a media node with more cores before raising the limit.
+
+## Measured latencies (§22)
+
+`tests/media/run-latency.mjs` → `docs/evidence/m7/latency.json`. Client, API, database and renderer on the same
+host (no WAN); these are server-path numbers, not field measurements.
+
+| Measure | Target | Measured |
+| --- | --- | --- |
+| Accepted scoring command at 10 commands/s across 5 matches (round trip incl. HTTP) | p95 ≤300 ms | p50 27 ms, p95 36.5 ms (n=600) |
+| Data → overlay: commit → production renderer DOM shows new score | p95 ≤500 ms | p50 25 ms, p95 40 ms (n=20) |
+| Operator take → renderer displayed acknowledgement (incl. 5 ms polling) | p95 ≤500 ms | p50 72 ms, p95 93 ms (n=60) |
+| Live clip readiness after post-roll available (20 s clip) | ≤30 s | 27 s from the goal incl. 8 s post-roll + 2 s segment ⇒ ≈17 s after post-roll |
+| Clock consistency between clients | ≤250 ms | Unit-level (offset model, `clock.test.ts`); browser refresh e2e within 1.5 s incl. page load. Not measured across two live devices. |
+| Audio/video residual skew | ≤150 ms | M0 single session: median +79 ms but stdev 138 ms with ±400 ms outliers → not met strictly; 2-session soak: not measurable (see A51) |
+| Highlight marker error after calibration | ≤2 s | Not measured with a dedicated marker test (mapping logic unit/integration tested) |
+| Resume/recovery without duplicate takes | — | A28, A49, A50 |
 
 ## Section 3 demonstration coverage
 
