@@ -12,3 +12,4 @@ playwright-report/
 .turbo/
 *.tsbuildinfo
 tests/media/fixtures/*.mp4
+docs/evidence/**/*.mp4

@@ -57,6 +57,8 @@ export interface OutputStatus {
   file?: { key: string; durationMs?: number; bytes?: number } | null;
   startedAt?: number | null;
   endedAt?: number | null;
+  /** template URL without capabilities (contains our os= correlation id) */
+  templateUrl?: string | null;
 }
 
 export interface ProviderWebhookEvent {

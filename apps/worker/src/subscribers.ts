@@ -2,6 +2,7 @@ import type { AppConfig } from '@bs/config';
 import type { Db } from '@bs/db';
 import type { Redis } from 'ioredis';
 import { automationSvc, type RelayOptions } from '@bs/services';
+import { startMedia } from './media';
 
 export interface WorkerCtx {
   db: Db;
@@ -71,9 +72,11 @@ function loop(name: string, everyMs: number, fn: () => Promise<unknown>) {
 export async function startBackground(ctx: WorkerCtx) {
   const d = { db: ctx.db, config: ctx.config, workerId: ctx.workerId };
   const stops = [loop('automation', 150, () => automationSvc.automationTick(d)), loop('housekeeping', 250, () => automationSvc.housekeepingTick(d))];
+  const media = await startMedia(ctx);
   return {
     stop: async () => {
       for (const s of stops) s();
+      await media.stop();
       await automationSvc.releaseLease(ctx.db, ctx.workerId).catch(() => undefined);
     },
   };

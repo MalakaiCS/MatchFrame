@@ -24,3 +24,5 @@ export * as gamePlansSvc from './gameplans';
 export * as automationSvc from './automation';
 export * as sponsorsSvc from './sponsors';
 export * as assetsSvc from './assets';
+export * as streamsSvc from './streams';
+export * as mediaControl from './media-control';

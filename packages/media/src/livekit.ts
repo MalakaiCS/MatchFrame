@@ -66,12 +66,25 @@ export function egressToStatus(e: EgressInfo): OutputStatus {
     file: file ? { key: file.location || file.filename, durationMs: ns(file.duration) ?? undefined, bytes: Number(file.size ?? 0) } : null,
     startedAt: ns(e.startedAt),
     endedAt: ns(e.endedAt),
+    templateUrl: e.request.case === 'egress' && e.request.value.source.case === 'template' ? redactTemplate(e.request.value.source.value.customBaseUrl) : null,
   };
+}
+
+/** Keep our correlation params, drop capabilities. */
+function redactTemplate(u: string) {
+  try {
+    const url = new URL(u);
+    for (const k of [...url.searchParams.keys()]) if (!['os', 'mode'].includes(k)) url.searchParams.delete(k);
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 export function createLiveKitProvider(cfg: LiveKitConfig): MediaProvider {
   const ingress = new IngressClient(cfg.httpUrl, cfg.apiKey, cfg.apiSecret);
-  const egress = new EgressClient(cfg.httpUrl, cfg.apiKey, cfg.apiSecret);
+  // StartEgress returns only after the egress accepted the request (browser launch): allow a long timeout
+  const egress = new EgressClient(cfg.httpUrl, cfg.apiKey, cfg.apiSecret, { requestTimeout: 90_000 });
   const rooms = new RoomServiceClient(cfg.httpUrl, cfg.apiKey, cfg.apiSecret);
   const receiver = new WebhookReceiver(cfg.apiKey, cfg.apiSecret);
 

@@ -1,0 +1,109 @@
+{
+  "secondsToLive": 10,
+  "destinations": [
+    [
+      "CLEAN",
+      [
+        "active"
+      ]
+    ],
+    [
+      "PROGRAMME",
+      [
+        "active"
+      ]
+    ]
+  ],
+  "slateWindowMs": 8112,
+  "hls": {
+    "playlist": 200,
+    "segment": 200,
+    "segmentBytes": 511548,
+    "anonymousSegment": 401,
+    "anonymousPlaylist": 401
+  },
+  "programme": {
+    "probe": [
+      "video:h264:1280x720",
+      "audio:aac"
+    ],
+    "saturationPerSecond": [
+      10,
+      101,
+      101,
+      101,
+      96,
+      101,
+      102,
+      101,
+      96,
+      101,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      10,
+      102,
+      101,
+      90,
+      102,
+      102,
+      101
+    ],
+    "maxVolumeDb": -5.1
+  },
+  "clean": {
+    "probe": [
+      "video:h264:1280x720",
+      "audio:aac"
+    ],
+    "saturationPerSecond": [
+      92,
+      103,
+      103,
+      103,
+      96,
+      103,
+      103,
+      103,
+      99,
+      103,
+      103,
+      103,
+      96,
+      103,
+      103,
+      103,
+      95,
+      103,
+      103,
+      103,
+      100,
+      103,
+      103
+    ],
+    "maxVolumeDb": -5.4
+  },
+  "programmeMinSat": 10,
+  "cleanMinSat": 92,
+  "final": {
+    "session": "STOPPED",
+    "recordings": [
+      [
+        "CLEAN",
+        [
+          "READY"
+        ]
+      ],
+      [
+        "PROGRAMME",
+        [
+          "READY"
+        ]
+      ]
+    ]
+  }
+}

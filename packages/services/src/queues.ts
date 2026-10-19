@@ -12,7 +12,7 @@ export type ControlJob =
   | { kind: 'session.start'; organisationId: string; broadcastSessionId: string; scheduleVersion: number }
   | { kind: 'session.stop'; organisationId: string; broadcastSessionId: string; reason: string }
   | { kind: 'session.reconcile'; organisationId: string; broadcastSessionId: string }
-  | { kind: 'provider.webhook'; eventId: string }
+  | { kind: 'provider.webhook'; eventId: string; event: import('@bs/media').ProviderWebhookEvent }
   | { kind: 'highlight.map'; organisationId: string; highlightRequestId: string };
 
 export type MediaJob = { kind: 'export'; organisationId: string; exportJobId: string };

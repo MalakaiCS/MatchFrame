@@ -27,7 +27,9 @@ export function createFakeProvider(): MediaProvider & { controls: FakeControls }
     },
     setOutputState(id, state, error) {
       const o = controls.outputs.get(id);
-      if (o) Object.assign(o, { state, error: error ?? null });
+      if (!o) return;
+      Object.assign(o, { state, error: error ?? null });
+      if (state === 'active') for (const st of o.streams) if (st.status === 'starting') st.status = 'active';
     },
     failStream(id, url) {
       const o = controls.outputs.get(id);
@@ -74,6 +76,7 @@ export function createFakeProvider(): MediaProvider & { controls: FakeControls }
         playlist: req.hls ? { key: `${req.hls.prefix}index.m3u8` } : null,
         file: req.file ? { key: req.file.key } : null,
         startedAt: Date.now(),
+        templateUrl: req.templateUrl.replace(/([?&])(bt|token|url)=[^&]*/g, '$1'),
       });
       return { providerId: id };
     },

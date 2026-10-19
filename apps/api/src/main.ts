@@ -1,7 +1,7 @@
 import { getConfig } from '@bs/config';
 import { createDb } from '@bs/db';
-import { createFakeProvider, createLiveKitProvider, type MediaProvider } from '@bs/media';
-import { createMailer, createQueues, createStorage } from '@bs/services';
+import type { MediaProvider } from '@bs/media';
+import { createMailer, createQueues, createStorage, mediaControl } from '@bs/services';
 import { buildApp } from './app';
 import { registerRoutes } from './routes';
 import { attachRealtime } from './realtime';
@@ -11,10 +11,7 @@ const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_URL, { max: 20, application_name: 'bs-api' });
 const storage = createStorage(config);
 const queues = createQueues(config.REDIS_URL);
-const media: MediaProvider =
-  config.MEDIA_PROVIDER === 'fake'
-    ? createFakeProvider()
-    : createLiveKitProvider({ httpUrl: config.INTERNAL_LIVEKIT_HTTP, apiKey: config.LIVEKIT_API_KEY, apiSecret: config.LIVEKIT_API_SECRET, rtmpBaseUrl: config.PUBLIC_RTMP_URL });
+const media: MediaProvider = mediaControl.createMediaProvider(config);
 
 const bundle = await buildApp({
   db,

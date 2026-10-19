@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
   agentRules: false,
   devIndicators: false,
   poweredByHeader: false,
+  // capability tokens travel in renderer/egress URLs: never write those requests to logs
+  logging: { incomingRequests: { ignore: [/^\/render\//, /^\/overlay\//, /^\/embed\//, /^\/watch\//] } },
   transpilePackages: ['@bs/domain', '@bs/graphics', '@bs/ui'],
   env: {
     NEXT_PUBLIC_REALTIME_URL: process.env.PUBLIC_REALTIME_URL ?? 'http://localhost:4000',
