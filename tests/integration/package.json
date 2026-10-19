@@ -1,0 +1,14 @@
+{
+  "name": "@bs/integration-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@bs/config": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "@bs/services": "workspace:*",
+    "@bs/media": "workspace:*",
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.1"
+  }
+}

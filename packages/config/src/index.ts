@@ -1,0 +1,119 @@
+// Server-side configuration. Loads the repository .env (with ${VAR} interpolation) without overriding
+// variables already present in the process environment, then validates with zod.
+import fs from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
+
+function findRoot(start: string): string {
+  let dir = start;
+  for (let i = 0; i < 8; i++) {
+    if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return start;
+}
+
+export function parseEnvText(text: string, base: Record<string, string | undefined> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const i = line.indexOf('=');
+    if (i < 0) continue;
+    const key = line.slice(0, i).trim();
+    let val = line.slice(i + 1).trim();
+    if (!/^["']/.test(val)) val = val.replace(/\s+#.*$/, '');
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    out[key] = val.replace(/\$\{([A-Z0-9_]+)\}/g, (_, k: string) => base[k] ?? out[k] ?? '');
+  }
+  return out;
+}
+
+let loaded = false;
+export function loadDotEnv(): void {
+  if (loaded) return;
+  loaded = true;
+  const root = findRoot(process.cwd());
+  const file = process.env.BS_ENV_FILE ?? path.join(root, '.env');
+  if (!fs.existsSync(file)) return;
+  const parsed = parseEnvText(fs.readFileSync(file, 'utf8'), process.env);
+  for (const [k, v] of Object.entries(parsed)) if (process.env[k] === undefined) process.env[k] = v;
+}
+
+const bool = z.union([z.boolean(), z.string()]).transform((v) => v === true || v === 'true' || v === '1');
+const int = (d: number) => z.coerce.number().int().default(d);
+
+export const configSchema = z.object({
+  NODE_ENV: z.string().default('development'),
+  PRODUCT_NAME: z.string().default('Broadcast Studio'),
+  PRODUCT_SHORT_NAME: z.string().default('Studio'),
+  DEFAULT_LOCALE: z.string().default('en-AU'),
+  DEFAULT_TIMEZONE: z.string().default('Australia/Brisbane'),
+  PUBLIC_WEB_URL: z.string().url(),
+  PUBLIC_API_URL: z.string().url(),
+  PUBLIC_REALTIME_URL: z.string().url(),
+  PUBLIC_LIVEKIT_URL: z.string(),
+  PUBLIC_RTMP_URL: z.string(),
+  INTERNAL_API_URL: z.string().url(),
+  INTERNAL_RENDER_BASE_URL: z.string().url(),
+  INTERNAL_LIVEKIT_HTTP: z.string().url(),
+  INTERNAL_LIVEKIT_WS: z.string(),
+  API_PORT: int(4000),
+  TRUSTED_ORIGINS: z.string().default(''),
+  DATABASE_URL: z.string(),
+  DATABASE_WORKER_URL: z.string(),
+  DATABASE_ADMIN_URL: z.string().optional(),
+  DB_APP_PASSWORD: z.string().optional(),
+  DB_WORKER_PASSWORD: z.string().optional(),
+  REDIS_URL: z.string(),
+  BETTER_AUTH_SECRET: z.string().min(16),
+  SESSION_MAX_AGE_DAYS: int(14),
+  AUTH_LOG_EMAIL_LINKS: bool.default(false),
+  SMTP_HOST: z.string().default('127.0.0.1'),
+  SMTP_PORT: int(1025),
+  SMTP_SECURE: bool.default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default('Broadcast Studio <no-reply@studio.localhost>'),
+  S3_ENDPOINT: z.string().url(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string(),
+  S3_ACCESS_KEY: z.string(),
+  S3_SECRET_KEY: z.string(),
+  S3_FORCE_PATH_STYLE: bool.default(true),
+  ENCRYPTION_KEY: z.string().min(40),
+  MEDIA_TOKEN_SECRET: z.string().min(16),
+  LIVEKIT_API_KEY: z.string(),
+  LIVEKIT_API_SECRET: z.string(),
+  MEDIA_PROVIDER: z.enum(['livekit', 'fake']).default('livekit'),
+  MAX_CONCURRENT_PROGRAMMES: int(1),
+  MAX_DESTINATIONS_PER_OUTPUT: int(3),
+  ENABLE_1080P_PRESETS: bool.default(false),
+  INPUT_WAIT_TIMEOUT_SECONDS: int(120),
+  UPLOAD_MAX_BYTES: int(524_288_000),
+  UPLOAD_MAX_IMAGE_PIXELS: int(25_000_000),
+  UPLOAD_MAX_VIDEO_SECONDS: int(600),
+  RECORDING_RETENTION_DAYS: int(90),
+  EXPORT_RETENTION_DAYS: int(30),
+  LIVE_EVENT_FRESHNESS_MS: int(10_000),
+  DEV_DESTINATION_ALLOWLIST: z.string().default(''),
+  RTMP_SINK_PASSWORD: z.string().optional(),
+  MEDIA_TMP_DIR: z.string().optional(),
+});
+
+export type AppConfig = z.infer<typeof configSchema>;
+
+let cached: AppConfig | null = null;
+export function getConfig(): AppConfig {
+  if (cached) return cached;
+  loadDotEnv();
+  const r = configSchema.safeParse(process.env);
+  if (!r.success) {
+    const fields = r.error.issues.map((i) => i.path.join('.')).join(', ');
+    throw new Error(`Invalid configuration (${fields}). Run \`pnpm setup\` or check .env`);
+  }
+  cached = r.data;
+  return cached;
+}
+
+export const isProduction = () => process.env.NODE_ENV === 'production';

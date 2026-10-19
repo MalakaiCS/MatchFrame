@@ -1,0 +1,18 @@
+api_key: ${LIVEKIT_API_KEY}
+api_secret: ${LIVEKIT_API_SECRET}
+ws_url: ${INTERNAL_LIVEKIT_WS}
+insecure: true
+redis:
+  address: 127.0.0.1:${REDIS_PORT}
+  password: ${REDIS_PASSWORD}
+  db: 1
+health_port: 9193
+prometheus_port: 9194
+log_level: info
+s3:
+  access_key: ${S3_ACCESS_KEY}
+  secret: ${S3_SECRET_KEY}
+  region: ${S3_REGION}
+  endpoint: ${S3_ENDPOINT}
+  bucket: ${S3_BUCKET}
+  force_path_style: true

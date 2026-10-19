@@ -6,10 +6,46 @@
   "engines": {
     "node": ">=22.12 <23"
   },
-  "scripts": {},
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "build": "pnpm -r run build",
+    "db:generate": "pnpm --filter @bs/db generate",
+    "db:migrate": "pnpm --filter @bs/db migrate",
+    "db:seed": "pnpm --filter @bs/db seed",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "test:e2e": "pnpm --filter @bs/e2e test",
+    "test:media": "node tests/media/run-media-smoke.mjs",
+    "demo:start": "node scripts/demo.mjs start",
+    "demo:stop": "node scripts/demo.mjs stop",
+    "services:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
+    "services:down": "docker compose -f infra/docker-compose.yml --env-file .env down"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "typescript-eslint": "8.71.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12",
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "@bs/config": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/services": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.1"
   }
 }
