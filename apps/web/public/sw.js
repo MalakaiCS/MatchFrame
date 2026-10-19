@@ -1,7 +1,7 @@
 // Scorer shell service worker. Navigations under /score are network-first with a cached fallback;
 // hashed static assets are cache-first. API traffic is never cached here (IndexedDB holds scorer data).
-const SHELL = 'bs-scorer-shell-v1';
-const STATIC = 'bs-static-v1';
+const SHELL = 'bs-scorer-shell-v2';
+const STATIC = 'bs-static-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(['/score']).catch(() => undefined)));
@@ -41,4 +41,16 @@ self.addEventListener('fetch', (e) => {
         .catch(async () => (await caches.match(e.request)) || (await caches.match('/score')) || new Response('Offline', { status: 503 })),
     );
   }
+});
+
+// The page reports what it already loaded before this worker took control (first visit), so a later
+// offline refresh can still boot: the navigation document plus its same-origin chunks, styles and fonts.
+self.addEventListener('message', (e) => {
+  const d = e.data || {};
+  if (d.type !== 'precache' || !Array.isArray(d.urls)) return;
+  const own = d.urls.filter((u) => { try { return new URL(u, self.location.origin).origin === self.location.origin; } catch { return false; } });
+  e.waitUntil(Promise.all([
+    caches.open(STATIC).then((c) => Promise.all(own.filter((u) => /\/_next\/static\/|\/fonts\//.test(u)).map((u) => c.match(u).then((hit) => hit || c.add(u).catch(() => undefined))))),
+    caches.open(SHELL).then((c) => Promise.all(own.filter((u) => new URL(u, self.location.origin).pathname.startsWith('/score')).map((u) => c.add(u).catch(() => undefined)))),
+  ]));
 });

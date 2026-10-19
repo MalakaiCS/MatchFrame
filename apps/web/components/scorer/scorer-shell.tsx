@@ -12,12 +12,19 @@ export function ScorerShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   useEffect(() => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);
-  }, []);
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);
+    // hand the worker everything this page already loaded so an offline refresh can boot the shell
+    void navigator.serviceWorker.ready.then((reg) => {
+      const urls = [location.href, ...performance.getEntriesByType('resource').map((r) => r.name)];
+      reg.active?.postMessage({ type: 'precache', urls });
+    });
+  }, [path]);
   useEffect(() => {
     if (!me.isLoading && me.data === null && navigator.onLine) router.replace(`/login?next=${encodeURIComponent(path)}`);
   }, [me.isLoading, me.data, router, path]);
-  if (me.isLoading) return <div className="grid min-h-screen place-items-center"><Spinner /></div>;
+  // offline: never block the scorer on the account request; local data and the outbox are enough
+  if (me.isLoading && (typeof navigator === 'undefined' || navigator.onLine)) return <div className="grid min-h-screen place-items-center"><Spinner /></div>;
   return (
     <div className="min-h-screen">
       <header className="flex h-12 items-center justify-between border-b border-border px-3 text-sm">

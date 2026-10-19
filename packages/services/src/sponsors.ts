@@ -6,6 +6,7 @@ import {
   campaigns,
   creativeSets,
   creatives,
+  destinations,
   matches,
   mediaAssets,
   overlays,
@@ -241,11 +242,20 @@ export async function recordExposure(db: Db, scope: RendererScope, rendererSessi
     const [ov] = await t.select().from(overlays).where(eq(overlays.id, scope.overlayId));
     const key = `${scope.overlayId}:${e.cueId}:${e.creativeId}:${e.placement}:${rendererSessionId}`;
     const [cur] = await t.select().from(sponsorExposures).where(eq(sponsorExposures.intervalKey, key));
+    // cloud programme: label the occurrence with each destination's status (no audience numbers)
+    const destStatuses = async () => {
+      if (!ov?.outputId) return [];
+      const ds = await t.select().from(destinations).where(eq(destinations.outputId, ov.outputId));
+      return ds.map((d) => ({ destinationId: d.id, name: d.name, platform: d.platform, enabled: d.enabled, status: (d.lastStatus as { status?: string }).status ?? 'unknown' }));
+    };
     if (e.visible) {
       if (!cur) {
-        await t.insert(sponsorExposures).values({ organisationId: scope.organisationId, matchId: ov!.matchId, overlayId: scope.overlayId, decisionId: e.decisionId ?? null, campaignId: e.campaignId ?? null, creativeId: e.creativeId, placement: e.placement, cueId: e.cueId, revision: e.revision, evidenceType: scope.purpose === 'compositor' ? 'compositor' : 'renderer', rendererSessionId, intervalKey: key, firstVisibleAt: new Date(now), lastConfirmedAt: new Date(now), visibleArea: e.area ?? null }).onConflictDoNothing();
+        await t.insert(sponsorExposures).values({ destinationStatuses: (await destStatuses()) as never, organisationId: scope.organisationId, matchId: ov!.matchId, overlayId: scope.overlayId, decisionId: e.decisionId ?? null, campaignId: e.campaignId ?? null, creativeId: e.creativeId, placement: e.placement, cueId: e.cueId, revision: e.revision, evidenceType: scope.purpose === 'compositor' ? 'compositor' : 'renderer', rendererSessionId, intervalKey: key, firstVisibleAt: new Date(now), lastConfirmedAt: new Date(now), visibleArea: e.area ?? null }).onConflictDoNothing();
       } else if (!cur.closedAt) {
-        await t.update(sponsorExposures).set({ lastConfirmedAt: new Date(now) }).where(eq(sponsorExposures.id, cur.id));
+        // keep the worst status seen per destination during the interval
+        const prev = (cur.destinationStatuses ?? []) as { destinationId: string; status: string }[];
+        const merged = (await destStatuses()).map((d) => (prev.find((p) => p.destinationId === d.destinationId)?.status === 'failed' ? { ...d, status: 'failed' } : d));
+        await t.update(sponsorExposures).set({ lastConfirmedAt: new Date(now), destinationStatuses: merged as never }).where(eq(sponsorExposures.id, cur.id));
       }
       return { counted: true };
     }
@@ -362,8 +372,8 @@ export async function sponsorReport(ctx: Ctx, query: z.input<typeof reportQuery>
 
 export function sponsorReportCsv(r: Awaited<ReturnType<typeof sponsorReport>>) {
   return toCsv(
-    ['first_visible_at', 'match', 'output', 'brand', 'campaign', 'creative', 'placement', 'evidence_type', 'confirmed_seconds', 'close_reason', 'uncertainty_seconds'],
-    r.occurrences.map((o) => [o.firstVisibleAt, o.matchLabel, o.output, o.brand, o.campaign, o.creative, o.placement, o.evidenceType, o.confirmedSeconds, o.closeReason, o.uncertaintySeconds]),
+    ['first_visible_at', 'match', 'output', 'brand', 'campaign', 'creative', 'placement', 'evidence_type', 'confirmed_seconds', 'close_reason', 'uncertainty_seconds', 'destination_statuses'],
+    r.occurrences.map((o) => [o.firstVisibleAt, o.matchLabel, o.output, o.brand, o.campaign, o.creative, o.placement, o.evidenceType, o.confirmedSeconds, o.closeReason, o.uncertaintySeconds, ((o.destinationStatuses ?? []) as { name?: string; status?: string }[]).map((d) => `${d.name}: ${d.status}`).join('; ')]),
   );
 }
 

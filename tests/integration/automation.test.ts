@@ -2,8 +2,9 @@
 import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { automationCues, automationRuns, createDb, mediaAssets, withTenant } from '@bs/db';
-import { automationSvc, catalog, gamePlansSvc, matchesSvc, overlaysSvc, scoring, sponsorsSvc, type Ctx } from '@bs/services';
+import { automationCues, automationRuns, createDb, destinations, mediaAssets, withTenant } from '@bs/db';
+import { createFakeProvider } from '@bs/media';
+import { automationSvc, catalog, gamePlansSvc, matchesSvc, overlaysSvc, scoring, sponsorsSvc, streamsSvc, type Ctx } from '@bs/services';
 import type { GamePlan } from '@bs/domain';
 import { makeOrg, testDeps } from '../helpers';
 
@@ -284,6 +285,32 @@ describe('sponsor delivery', () => {
     const csv = sponsorsSvc.sponsorReportCsv(rep);
     expect(csv).toContain(`"'=HYPERLINK(""http://evil.example"") Coffee"`);
     expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
+  });
+
+  it('programme to three destinations: occurrence labelled with destination status, no audience views (A33)', async () => {
+    const x = await newMatch();
+    const sctx = { ...ctx, media: createFakeProvider() };
+    const input = await streamsSvc.createInput(sctx, { name: 'A33 cam' });
+    const prog = await streamsSvc.saveOutput(sctx, x.m.id, { mode: 'PROGRAMME', inputId: input.id });
+    const ds = [];
+    for (const n of ['YouTube', 'Facebook', 'Venue screen']) ds.push(await streamsSvc.addDestination(sctx, prog.id, { name: n, serverUrl: 'rtmp://127.0.0.1:1936/live', streamKey: n }));
+    await worker.db.update(destinations).set({ lastStatus: { status: 'active' } }).where(eq(destinations.outputId, prog.id));
+    await worker.db.update(destinations).set({ lastStatus: { status: 'failed', error: 'Connection refused' } }).where(eq(destinations.id, ds[1]!.id));
+    const scope = (await overlaysSvc.resolveRendererToken(deps.db, deps.config, overlaysSvc.compositorToken(deps.config, { organisationId: A.org.id, overlayId: prog.overlayId!, matchId: x.m.id })))!;
+    const comp = await overlaysSvc.rendererConnected(deps.db, scope, 'egress-1');
+    expect(comp.isReportingAuthority).toBe(true);
+    const t0 = Date.now();
+    const ev = { cueId: 'c33', creativeId: sponsors.logo.id, placement: 'scorebug_logo', revision: 1, visible: true };
+    await sponsorsSvc.recordExposure(deps.db, scope, comp.id, ev, t0);
+    await sponsorsSvc.recordExposure(deps.db, scope, comp.id, ev, t0 + 4000);
+    await sponsorsSvc.recordExposure(deps.db, scope, comp.id, { ...ev, visible: false }, t0 + 5000);
+    const rep = await sponsorsSvc.sponsorReport(ctx, { matchId: x.m.id });
+    const occ = rep.occurrences.filter((o) => o.overlayId === prog.overlayId);
+    expect(occ).toHaveLength(1); // one occurrence per output, not per destination
+    expect(occ[0]).toMatchObject({ evidenceType: 'compositor', confirmedSeconds: 5 });
+    expect((occ[0]!.destinationStatuses as { name: string; status: string }[]).map((d) => `${d.name}:${d.status}`).sort()).toEqual(['Facebook:failed', 'Venue screen:active', 'YouTube:active']);
+    expect(JSON.stringify({ totals: rep.totals, occurrences: rep.occurrences, byOutput: rep.byOutput })).not.toMatch(/impression|viewer|audience|cpm|reach/i);
+    expect(sponsorsSvc.sponsorReportCsv(rep)).toContain('Facebook: failed');
   });
 
   it('rotates the scorebug sponsor slot into overlay state', async () => {

@@ -57,10 +57,12 @@ export function useScorer(matchId: string, userId: string | undefined) {
   const stateRef = useRef<ServerState | null>(null);
   const leaseRef = useRef<Lease | null>(null);
   const flushing = useRef(false);
+  /** true only when the current state came from the server in this session (never from the offline cache) */
+  const freshState = useRef(false);
   stateRef.current = state;
   leaseRef.current = lease;
 
-  const online = conn === 'connected' && netOk;
+  const online = conn === 'connected' && netOk && (typeof navigator === 'undefined' || navigator.onLine);
   const holding = !!lease && lease.holderUserId === userId && lease.holderDeviceId === device.current && !!lease.expiresAt && new Date(lease.expiresAt).getTime() > Date.now();
 
   const reloadIntents = useCallback(async () => setIntents(await getIntents(matchId)), [matchId]);
@@ -79,12 +81,14 @@ export function useScorer(matchId: string, userId: string | undefined) {
       applyServerState({ stateVersion: s.stateVersion, sequence: s.sequence, phase: s.phase, projection: s.projection, clocks: s.clocks });
       setLease((cur) => cur ?? d.lease);
       setFromCache(false);
+      freshState.current = true;
       setNetOk(true);
       await cacheMatch({ matchId, detail: d, state: s, cachedAt: Date.now() });
     } catch (e) {
       const ae = e as ApiError;
       if (ae.status === 0) {
         setNetOk(false);
+        freshState.current = false;
         const c = await getCachedMatch(matchId);
         if (c) {
           setMatch(c.detail as ScorerMatch);
@@ -182,6 +186,8 @@ export function useScorer(matchId: string, userId: string | undefined) {
    * needs the scorer's review — a stale local view is never pushed over newer server state.
    */
   const reconcileOffline = useCallback(async () => {
+    // only authoritative server state may decide that nothing changed while we were offline
+    if (!freshState.current) return;
     const pending = (await getIntents(matchId)).filter((i) => i.offline && i.status === 'queued');
     if (!pending.length) return;
     const current = stateRef.current?.stateVersion;
@@ -240,16 +246,22 @@ export function useScorer(matchId: string, userId: string | undefined) {
 
   // periodic retry for network failures and a safety refresh
   useEffect(() => {
+    // every recovery path re-checks the offline chain against fresh server state before sending anything
+    const recover = () => void loadAll().then(() => reconcileOffline()).then(() => flush());
     const t = setInterval(() => {
-      if (!netOk) void loadAll().then(() => flush());
+      if (!netOk) recover();
     }, 4000);
-    const on = () => void loadAll().then(() => flush());
+    const on = recover;
+    // an established WebSocket can outlive a network drop: trust the browser's offline signal immediately
+    const off = () => setNetOk(false);
     window.addEventListener('online', on);
+    window.addEventListener('offline', off);
     return () => {
       clearInterval(t);
       window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
     };
-  }, [netOk, loadAll, flush]);
+  }, [netOk, loadAll, flush, reconcileOffline]);
 
   useRealtime('match', matchId, (e) => {
     const p = e.payload as Record<string, unknown>;
