@@ -569,6 +569,8 @@ export const overlayState = pgTable(
     inhibited: boolean('inhibited').notNull().default(false),
     scorebugVisible: boolean('scorebug_visible').notNull().default(false),
     layers: jsonb('layers').$type<Record<string, unknown>>().notNull().default({}),
+    /** sponsor slot assignments shown inside templates (e.g. scorebug_logo), rotated by automation */
+    slots: jsonb('slots').$type<Record<string, unknown>>().notNull().default({}),
     displayedRevision: integer('displayed_revision').notNull().default(0),
     displayedAt: ts('displayed_at'),
     /** fenced live owner of automation for this overlay */
@@ -692,6 +694,8 @@ export const automationRuns = pgTable(
     iteration: text('iteration').notNull(),
     executionKey: text('execution_key').notNull(),
     priority: integer('priority').notNull(),
+    playlistKind: text('playlist_kind').notNull().default('in_play'),
+    promotional: boolean('promotional').notNull().default(false),
     layers: jsonb('layers').$type<string[]>().notNull(),
     triggerContext: jsonb('trigger_context').$type<Record<string, unknown>>().notNull(),
     sourceFactId: uuid('source_fact_id'),

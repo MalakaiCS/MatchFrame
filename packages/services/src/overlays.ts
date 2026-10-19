@@ -199,6 +199,7 @@ export function publicState(s: typeof overlayState.$inferSelect, o: { themeProfi
     layers: (s.layers ?? {}) as OverlayPublicState['layers'],
     themeProfileVersionId: o.themeProfileVersionId,
     themeVersionId: o.themeVersionId,
+    slots: (s.slots ?? {}) as OverlayPublicState['slots'],
   };
 }
 

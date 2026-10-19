@@ -6,3 +6,7 @@ export * from './time';
 export * from './csv';
 export { footballAdapter, footballConfigSchema, FOOTBALL_STATS, type FootballConfig } from './sports/football';
 export { basketballAdapter, basketballConfigSchema, BASKETBALL_STATS, type BasketballConfig } from './sports/basketball';
+export * from './automation';
+export * from './sponsors';
+export * from './starter-plans';
+export * from './rehearsal';

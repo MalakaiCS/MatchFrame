@@ -25,6 +25,8 @@ export interface OverlayPublicState {
   layers: Partial<Record<Layer, Cue>>;
   themeVersionId: string | null;
   themeProfileVersionId: string | null;
+  /** sponsor slot assignments inside templates, e.g. { scorebug_logo: { creativeId, decisionId } } */
+  slots?: Record<string, { creativeId: string; decisionId: string; campaignId?: string | null } | undefined>;
 }
 
 export type OverlayCommand =
