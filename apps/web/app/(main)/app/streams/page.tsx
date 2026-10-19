@@ -6,7 +6,7 @@ import { Copy, Eye, Plus, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { Button, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { post } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
-import { isFull, useMe } from '@/lib/session';
+import { isFull, streamingOn, useMe } from '@/lib/session';
 import { HlsPlayer } from '@/components/stream/hls-player';
 import { STATE_TONE } from '@/components/match/streams-panel';
 
@@ -14,6 +14,14 @@ interface InputRow { id: string; name: string; status: string; boundSessionId: s
 interface Overview { demo: boolean; configured: boolean; capacity: { used: number; max: number }; sessions: { id: string; matchId: string; matchLabel: string; state: string; error: { message?: string } | null; demo: boolean; startedAt: string | null; outputs: { id: string; mode: string; name: string; state: string; hlsUrl: string | null }[] }[] }
 
 export default function StreamsPage() {
+  const me = useMe();
+  if (me.data && !streamingOn(me.data)) {
+    return <><PageHeader title="Streams" /><EmptyState title="Streaming is turned off on this deployment" body="This installation runs graphics only. Add the overlay's production URL to OBS (or another encoder) as a browser source and stream from there." /></>;
+  }
+  return <StreamsInner />;
+}
+
+function StreamsInner() {
   const me = useMe();
   const full = isFull(me.data?.role);
   const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';

@@ -7,6 +7,7 @@ Evidence: `ACCEPTANCE_RESULTS.md` (requirement IDs A01–A54), `MEDIA_SPIKE.md` 
 ```bash
 pnpm setup            # once: .env with generated secrets, renders .data/config/* (LiveKit/ingress/egress/MediaMTX)
 pnpm services:up      # postgres, redis, minio, mailpit, livekit, ingress, egress (docker compose, host network)
+pnpm services:up:core # same without LiveKit (graphics-only: STREAMING_ENABLED=false)
 pnpm db:migrate       # migrations as admin role; creates bs_app (RLS) / bs_worker (BYPASSRLS)
 pnpm db:seed          # two orgs, football + basketball demo data
 pnpm dev              # api :4000, worker, media-worker, web :3000

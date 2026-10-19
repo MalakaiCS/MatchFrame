@@ -11,7 +11,8 @@ const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_URL, { max: 20, application_name: 'bs-api' });
 const storage = createStorage(config);
 const queues = createQueues(config.REDIS_URL);
-const media: MediaProvider = mediaControl.createMediaProvider(config);
+// graphics-only deployments have no media provider; stream routes are not registered
+const media: MediaProvider | undefined = config.STREAMING_ENABLED ? mediaControl.createMediaProvider(config) : undefined;
 
 const bundle = await buildApp({
   db,

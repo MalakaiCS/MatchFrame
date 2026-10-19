@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button, Card, ErrorNotice, Field, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { patch, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
-import { isFull, useMe } from '@/lib/session';
+import { isFull, streamingOn, useMe } from '@/lib/session';
 import { useRealtime } from '@/lib/realtime';
 import { phaseTone } from '@/components/match-table';
 import { OverlaysPanel } from '@/components/match/overlays-panel';
@@ -42,6 +42,7 @@ function Inner({ id }: { id: string }) {
   if (m.error) return <ErrorNotice error={m.error} onRetry={() => m.refetch()} />;
   const d = m.data!;
   const full = isFull(me.data?.role);
+  const streaming = streamingOn(me.data);
   const tz = d.timezone;
   const playerName = (pid: string | null) => [...d.lineup.home, ...d.lineup.away].find((p) => p.playerId === pid)?.displayName ?? null;
 
@@ -63,7 +64,8 @@ function Inner({ id }: { id: string }) {
       <Tabs defaultValue={tab}>
         <TabList className="mb-4">
           <Tab value="overview">Overview</Tab><Tab value="lineup">Lineup</Tab><Tab value="facts">Facts ({facts.data?.filter((f) => f.category === 'event').length ?? 0})</Tab>
-          <Tab value="overlays">Overlays</Tab><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab>
+          <Tab value="overlays">Overlays</Tab>
+          {streaming ? <><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab></> : null}
         </TabList>
         <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
           <Card className="p-4">
@@ -95,8 +97,10 @@ function Inner({ id }: { id: string }) {
           </tbody></Table>
         </TabPanel>
         <TabPanel value="overlays"><OverlaysPanel matchId={d.id} sport={d.sport} canEdit={full} /></TabPanel>
-        <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel>
-        <TabPanel value="media"><MatchMediaPanel matchId={d.id} tz={tz} /></TabPanel>
+        {streaming ? <>
+          <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel>
+          <TabPanel value="media"><MatchMediaPanel matchId={d.id} tz={tz} /></TabPanel>
+        </> : null}
       </Tabs>
     </>
   );

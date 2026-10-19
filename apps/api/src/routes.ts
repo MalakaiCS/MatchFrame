@@ -9,6 +9,6 @@ export function registerRoutes(b: AppBundle) {
   registerCoreRoutes(b);
   registerGraphicsRoutes(b);
   registerAutomationRoutes(b);
-  registerStreamRoutes(b);
+  if (b.deps.config.STREAMING_ENABLED) registerStreamRoutes(b);
   registerMediaRoutes(b);
 }

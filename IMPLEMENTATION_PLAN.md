@@ -14,6 +14,7 @@ Source of truth: `MVP_SPEC.md`. P0 = complete first usable release; P1 = backlog
 | M5 Streaming ops | Inputs/outputs/destinations, session lifecycle, authorised HLS, health, multiview, recovery | Done; capacity limited by host (see A51) |
 | M6 Media library | Uploads, recordings, timeline mapping, live highlights, editor/exports, compilations, retention, shares | Done |
 | M7 Verification | Acceptance matrix, e2e, real-media checks, resilience, soak, restore drill, secret scan, runbooks | Done — `ACCEPTANCE_RESULTS.md` |
+| Hosted graphics-only edition | `STREAMING_ENABLED=false`, single-port container (`scripts/start-hosted.mjs`), Railway config, deploy guide | Done — built image run with env vars only: migrations on start, 5/5 e2e through the single port; not yet deployed to Railway |
 
 ## Architecture decisions
 

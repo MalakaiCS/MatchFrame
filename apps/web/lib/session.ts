@@ -10,6 +10,7 @@ export interface Me {
   role: Role | null;
   grants: { action: string; scopeType: string; scopeId: string | null }[];
   product: { name: string; locale: string; timezone: string };
+  features?: { streaming: boolean };
 }
 
 export function useMe() {
@@ -31,10 +32,14 @@ const FULL: Role[] = ['owner', 'admin', 'producer'];
 export const isFull = (r?: Role | null) => !!r && FULL.includes(r);
 export const isAdmin = (r?: Role | null) => r === 'owner' || r === 'admin';
 
+/** False on graphics-only deployments (STREAMING_ENABLED=false): no inputs, outputs, recordings or live highlights. */
+export const streamingOn = (me: Me | null | undefined) => me?.features?.streaming !== false;
+
 /** UI hinting only. The server enforces every permission. */
 export function canSee(me: Me | null | undefined, area: string): boolean {
   const r = me?.role;
   if (!r) return false;
+  if (area === 'streams' && !streamingOn(me)) return false;
   if (isFull(r)) return area !== 'settings.owner' || r === 'owner';
   switch (r) {
     case 'operator':

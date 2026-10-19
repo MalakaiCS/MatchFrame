@@ -185,7 +185,7 @@ export async function buildApp(deps: ApiDeps) {
       checks.database = 'unavailable';
     }
     checks.redis = deps.redisPing ? ((await deps.redisPing().catch(() => false)) ? 'ok' : 'unavailable') : 'not_configured';
-    checks.media = deps.media ? (deps.media.demo ? 'demo' : 'configured') : 'not_configured';
+    checks.media = !config.STREAMING_ENABLED ? 'disabled' : deps.media ? (deps.media.demo ? 'demo' : 'configured') : 'not_configured';
     const ok = checks.database === 'ok' && checks.redis !== 'unavailable';
     return reply.code(ok ? 200 : 503).send({ status: ok ? 'ready' : 'degraded', checks });
   });

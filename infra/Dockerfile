@@ -1,7 +1,9 @@
+# syntax=docker/dockerfile:1
 # Application image for api, worker, media-worker and web (compose profile "app").
 # Build from the repository root:  docker build -f infra/Dockerfile -t broadcast-studio-app:local .
 # NEXT_PUBLIC_* values are baked into the web bundle at build time: pass the public URLs as build args.
-# syntax=docker/dockerfile:1
+# PUBLIC_REALTIME_URL empty (the default) = Socket.IO on the page's own origin, as served by a reverse proxy or
+# by scripts/start-hosted.mjs (hosted platforms: one container, one port, migrations with MIGRATE_ON_START=true).
 FROM node:22.22.0-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 # Optional: behind a TLS-intercepting proxy, pass --secret id=extra_ca,src=<bundle> and HTTPS_PROXY build args.
@@ -10,7 +12,7 @@ RUN --mount=type=secret,id=extra_ca,required=false \
   corepack enable && corepack prepare pnpm@10.28.0 --activate
 WORKDIR /app
 COPY . .
-ARG PUBLIC_REALTIME_URL=http://localhost:4000
+ARG PUBLIC_REALTIME_URL=
 ARG PUBLIC_LIVEKIT_URL=ws://localhost:7880
 ARG PUBLIC_RTMP_URL=rtmp://localhost:1935/live
 ENV PUBLIC_REALTIME_URL=$PUBLIC_REALTIME_URL PUBLIC_LIVEKIT_URL=$PUBLIC_LIVEKIT_URL PUBLIC_RTMP_URL=$PUBLIC_RTMP_URL
@@ -29,4 +31,5 @@ COPY --from=build --chown=bs:bs /app /app
 USER bs
 ENV NODE_ENV=production
 # migrations: docker compose run --rm api pnpm db:migrate  (uses DATABASE_ADMIN_URL)
-CMD ["node", "apps/api/dist/main.js"]
+# Default: every process behind one port ($PORT). Compose overrides the command per service.
+CMD ["node", "scripts/start-hosted.mjs"]

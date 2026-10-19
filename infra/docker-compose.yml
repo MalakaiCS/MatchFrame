@@ -2,6 +2,7 @@
 # Host networking (Linux) keeps LiveKit RTC/ICE addressing predictable. Every non-public service binds to
 # 127.0.0.1; only RTMP ingest, LiveKit signalling/RTC and the reverse proxy should be exposed publicly.
 # Configs under .data/config are rendered from .env by `pnpm setup`.
+# LiveKit server/ingress/egress are in the "streaming" profile; graphics-only installs (STREAMING_ENABLED=false) omit it.
 name: broadcast-studio
 x-restart: &restart
   restart: unless-stopped
@@ -62,6 +63,7 @@ services:
       MP_UI_BIND_ADDR: 127.0.0.1:${MAILPIT_UI_PORT:-8025}
 
   livekit:
+    profiles: ["streaming"]
     <<: *restart
     image: livekit/livekit-server:v1.13.8@sha256:ad961c9b4b064298cc08d618d772671f7c783e036001388079fa813929cc357e
     network_mode: host
@@ -71,6 +73,7 @@ services:
       redis: { condition: service_healthy }
 
   ingress:
+    profiles: ["streaming"]
     <<: *restart
     image: livekit/ingress:v1.5.0@sha256:2e1d3fcf10bfaebddaea74dc8b965410cda6377ed154451361b86ab3a9ee9f99
     network_mode: host
@@ -80,6 +83,7 @@ services:
     depends_on: [livekit]
 
   egress:
+    profiles: ["streaming"]
     <<: *restart
     image: livekit/egress:v1.14.1@sha256:bf2b648b947349c3e9ff7aa8c718f00378d5c06af7624652a3653318e00333ce
     network_mode: host
@@ -107,7 +111,10 @@ services:
   api:
     profiles: ["app"]
     <<: *restart
-    build: { context: .., dockerfile: infra/Dockerfile, target: runtime }
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      args: { PUBLIC_REALTIME_URL: "${PUBLIC_REALTIME_URL:-}", PUBLIC_LIVEKIT_URL: "${PUBLIC_LIVEKIT_URL:-}", PUBLIC_RTMP_URL: "${PUBLIC_RTMP_URL:-}" }
     image: broadcast-studio-app:local
     network_mode: host
     env_file: ../.env

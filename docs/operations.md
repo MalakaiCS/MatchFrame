@@ -29,6 +29,9 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
 * **Secrets** — stream keys and destination keys are AES-GCM encrypted with `ENCRYPTION_KEY`; capability tokens
   are HMAC-derived (`MEDIA_TOKEN_SECRET`) or stored as hashes. Rotating `ENCRYPTION_KEY` requires re-entering
   destination keys and rotating input keys.
+* **Graphics-only** — `STREAMING_ENABLED=false` runs without LiveKit: stream routes are not registered, the
+  worker skips session control, and the UI hides Streams, the match Streams/Recordings tabs and stream health.
+  Single-container hosting (`scripts/start-hosted.mjs`, `railway.json`): [`deploy-hosted.md`](deploy-hosted.md).
 * **Media provider** — `MEDIA_PROVIDER=livekit` (default). `fake` is for automated tests and labelled demo mode;
   the UI and session rows show `demo` when it is active.
 

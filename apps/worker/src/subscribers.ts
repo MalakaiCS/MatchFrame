@@ -87,7 +87,7 @@ function loop(name: string, everyMs: number, fn: () => Promise<unknown>) {
 export async function startBackground(ctx: WorkerCtx) {
   const d = { db: ctx.db, config: ctx.config, workerId: ctx.workerId };
   const stops = [loop('automation', 150, () => automationSvc.automationTick(d)), loop('housekeeping', 250, () => automationSvc.housekeepingTick(d))];
-  const media = await startMedia(ctx);
+  const media = ctx.config.STREAMING_ENABLED ? await startMedia(ctx) : { stop: async () => undefined };
   return {
     stop: async () => {
       for (const s of stops) s();

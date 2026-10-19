@@ -52,12 +52,12 @@ export const configSchema = z.object({
   PUBLIC_WEB_URL: z.string().url(),
   PUBLIC_API_URL: z.string().url(),
   PUBLIC_REALTIME_URL: z.string().url(),
-  PUBLIC_LIVEKIT_URL: z.string(),
-  PUBLIC_RTMP_URL: z.string(),
-  INTERNAL_API_URL: z.string().url(),
-  INTERNAL_RENDER_BASE_URL: z.string().url(),
-  INTERNAL_LIVEKIT_HTTP: z.string().url(),
-  INTERNAL_LIVEKIT_WS: z.string(),
+  PUBLIC_LIVEKIT_URL: z.string().default(''),
+  PUBLIC_RTMP_URL: z.string().default(''),
+  INTERNAL_API_URL: z.string().url().default('http://127.0.0.1:4000'),
+  INTERNAL_RENDER_BASE_URL: z.string().url().default('http://127.0.0.1:3000'),
+  INTERNAL_LIVEKIT_HTTP: z.string().url().default('http://127.0.0.1:7880'),
+  INTERNAL_LIVEKIT_WS: z.string().default('ws://127.0.0.1:7880'),
   API_PORT: int(4000),
   TRUSTED_ORIGINS: z.string().default(''),
   DATABASE_URL: z.string(),
@@ -83,8 +83,10 @@ export const configSchema = z.object({
   S3_FORCE_PATH_STYLE: bool.default(true),
   ENCRYPTION_KEY: z.string().min(40),
   MEDIA_TOKEN_SECRET: z.string().min(16),
-  LIVEKIT_API_KEY: z.string(),
-  LIVEKIT_API_SECRET: z.string(),
+  // false = graphics-only deployment: no LiveKit, no stream inputs/outputs, recordings or live highlights.
+  STREAMING_ENABLED: bool.default(true),
+  LIVEKIT_API_KEY: z.string().default(''),
+  LIVEKIT_API_SECRET: z.string().default(''),
   MEDIA_PROVIDER: z.enum(['livekit', 'fake']).default('livekit'),
   MAX_CONCURRENT_PROGRAMMES: int(1),
   MAX_DESTINATIONS_PER_OUTPUT: int(3),
@@ -99,6 +101,9 @@ export const configSchema = z.object({
   DEV_DESTINATION_ALLOWLIST: z.string().default(''),
   RTMP_SINK_PASSWORD: z.string().optional(),
   MEDIA_TMP_DIR: z.string().optional(),
+}).superRefine((c, ctx) => {
+  if (c.STREAMING_ENABLED && c.MEDIA_PROVIDER === 'livekit' && !c.LIVEKIT_API_SECRET)
+    ctx.addIssue({ code: 'custom', path: ['LIVEKIT_API_SECRET'], message: 'required while STREAMING_ENABLED=true' });
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -107,13 +112,29 @@ let cached: AppConfig | null = null;
 export function getConfig(): AppConfig {
   if (cached) return cached;
   loadDotEnv();
-  const r = configSchema.safeParse(process.env);
+  const r = configSchema.safeParse(withDerivedDefaults(process.env));
   if (!r.success) {
     const fields = r.error.issues.map((i) => i.path.join('.')).join(', ');
     throw new Error(`Invalid configuration (${fields}). Run \`pnpm setup\` or check .env`);
   }
-  cached = r.data;
+  // the web origin is always trusted (auth CSRF checks and Socket.IO CORS)
+  const origins = new Set(r.data.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean));
+  origins.add(new URL(r.data.PUBLIC_WEB_URL).origin);
+  cached = { ...r.data, TRUSTED_ORIGINS: [...origins].join(',') };
   return cached;
+}
+
+/**
+ * Single-origin deployments (hosted platforms) only need PUBLIC_WEB_URL: the API and realtime endpoints default
+ * to the same origin. Railway and Render expose the service's public address, which seeds PUBLIC_WEB_URL.
+ */
+export function withDerivedDefaults(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const out = { ...env };
+  const platformUrl = env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : env.RENDER_EXTERNAL_URL;
+  out.PUBLIC_WEB_URL ||= platformUrl;
+  out.PUBLIC_API_URL ||= out.PUBLIC_WEB_URL;
+  out.PUBLIC_REALTIME_URL ||= out.PUBLIC_WEB_URL;
+  return out;
 }
 
 export const isProduction = () => process.env.NODE_ENV === 'production';

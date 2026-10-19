@@ -13,6 +13,10 @@ Runbooks: [`docs/operations.md`](docs/operations.md) · Guides: [`docs/operator-
 
 All clubs, players, sponsors and artwork in the seed are synthetic and generated locally.
 
+**Put it online as a website:** [`docs/deploy-hosted.md`](docs/deploy-hosted.md) deploys the graphics-only
+edition (`STREAMING_ENABLED=false`: scoring, control room, OBS overlays, automation, sponsors, media library) to
+Railway with managed Postgres/Redis and Cloudflare R2. No server to manage; OBS does the video.
+
 ## Quick start (local)
 
 Requirements: Docker with Compose v2, Node 22, pnpm 10, FFmpeg/ffprobe (for media tests), Python 3 (marker analysis).
@@ -21,6 +25,7 @@ Requirements: Docker with Compose v2, Node 22, pnpm 10, FFmpeg/ffprobe (for medi
 pnpm install
 pnpm setup                       # once: writes .env with generated secrets, renders LiveKit/egress/MediaMTX configs
 pnpm services:up                 # postgres, redis, minio, mailpit, livekit server + ingress + egress (host network)
+                                 # graphics-only (STREAMING_ENABLED=false in .env): pnpm services:up:core (no LiveKit)
 pnpm db:migrate                  # migrations as the owner role; creates bs_app (RLS) and bs_worker roles
 pnpm db:seed                     # two organisations, football + basketball, prints one-time owner passwords
 pnpm dev                         # api :4000, worker, media-worker, web :3000
@@ -53,6 +58,8 @@ The local RTMP receiver for testing destinations starts with `docker compose -f 
 | `node scripts/secret-scan.mjs` | Searches bundles, logs, API/socket payloads and audit for secret values |
 | `pnpm db:reset` | Development only: drop and recreate the database |
 | `pnpm demo:start` / `pnpm demo:stop` | Start/stop services and the app |
+| `pnpm start:hosted` | Production build: every process behind one port (`$PORT`), as on Railway/Render |
+| `node scripts/gen-secrets.mjs` | Prints fresh production secrets for a hosting platform's variables |
 
 Production images: `docker build -f infra/Dockerfile -t broadcast-studio-app:local .` then
 `docker compose -f infra/docker-compose.yml --env-file .env --profile app up -d` (see `docs/operations.md`).

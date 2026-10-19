@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { Clapperboard, Plus, Radio, Upload } from 'lucide-react';
 import { Button, Card, ErrorNotice, PageHeader, Spinner, StatusPill } from '@bs/ui';
 import { useGet } from '@/lib/hooks';
-import { isFull, useMe } from '@/lib/session';
+import { isFull, streamingOn, useMe } from '@/lib/session';
 import { MatchTable, streamTone, type MatchRow } from '@/components/match-table';
 
-interface StreamRow { id: string; matchId: string; matchLabel: string; state: string; error: { message?: string } | null; destinationFailures: number }
+interface StreamRow { id: string; matchId: string; matchLabel: string; state: string; error: { message?: string } | null }
+const UNHEALTHY = ['DEGRADED', 'WAITING_FOR_INPUT', 'FAILED'];
 
 export default function Dashboard() {
   const me = useMe();
@@ -14,8 +15,11 @@ export default function Dashboard() {
   const now = new Date();
   const live = useGet<{ items: MatchRow[] }>(['matches', 'live'], 'matches?status=live&pageSize=20', { refetchInterval: 10_000 });
   const upcoming = useGet<{ items: MatchRow[] }>(['matches', 'upcoming'], `matches?status=scheduled&from=${encodeURIComponent(new Date(now.getTime() - 3600_000).toISOString())}&pageSize=8`);
-  const streams = useGet<StreamRow[]>(['streams', 'unhealthy'], 'streams/health?unhealthy=1', { refetchInterval: 10_000 });
-  const usage = useGet<{ module: string; unit: string; quantity: number }[]>(['usage-summary'], 'reports/usage/summary');
+  const streaming = streamingOn(me.data);
+  const overview = useGet<{ sessions: StreamRow[] }>(['streams-overview'], 'streams', { refetchInterval: 10_000, enabled: !!me.data && streaming });
+  const unhealthy = overview.data?.sessions.filter((s) => UNHEALTHY.includes(s.state));
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const usage = useGet<{ totals: { module: string; unit: string; total: number }[] }>(['usage-month'], `usage/ledger?from=${encodeURIComponent(monthStart)}`);
   const full = isFull(me.data?.role);
 
   return (
@@ -34,21 +38,21 @@ export default function Dashboard() {
           {upcoming.isLoading ? <Spinner /> : <MatchTable rows={upcoming.data?.items ?? []} tz={tz} />}
         </section>
         <aside className="grid content-start gap-4">
-          <Card className="p-4">
+          {streaming ? <Card className="p-4">
             <h2 className="mb-2 font-medium">Stream health</h2>
-            {streams.error ? <p className="text-sm text-muted">Unavailable</p> : streams.isLoading ? <Spinner /> : streams.data?.length ? (
-              <ul className="grid gap-2">{streams.data.map((s) => <li key={s.id} className="text-sm"><Link href={`/app/matches/${s.matchId}?tab=streams`} className="hover:text-primary">{s.matchLabel}</Link> <StatusPill tone={streamTone(s.state)}>{s.state.toLowerCase()}</StatusPill>{s.destinationFailures ? <StatusPill className="ml-1" tone="live">{s.destinationFailures} destination(s) failing</StatusPill> : null}{s.error?.message ? <span className="block text-xs text-muted">{s.error.message}</span> : null}</li>)}</ul>
+            {overview.error ? <p className="text-sm text-muted">Unavailable</p> : overview.isLoading ? <Spinner /> : unhealthy?.length ? (
+              <ul className="grid gap-2">{unhealthy.map((s) => <li key={s.id} className="text-sm"><Link href={`/app/matches/${s.matchId}?tab=streams`} className="hover:text-primary">{s.matchLabel}</Link> <StatusPill tone={streamTone(s.state)}>{s.state.toLowerCase()}</StatusPill>{s.error?.message ? <span className="block text-xs text-muted">{s.error.message}</span> : null}</li>)}</ul>
             ) : <p className="text-sm text-healthy">All streams healthy or idle.</p>}
-          </Card>
+          </Card> : null}
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Usage this month</h2>
-            {usage.data?.length ? <ul className="text-sm">{usage.data.map((u) => <li key={u.module + u.unit} className="flex justify-between"><span className="text-muted">{u.module}</span><span className="tabular">{u.quantity.toFixed(1)} {u.unit}</span></li>)}</ul> : <p className="text-sm text-muted">No measured usage yet.</p>}
+            {usage.data?.totals.length ? <ul className="text-sm">{usage.data.totals.map((u) => <li key={u.module + u.unit} className="flex justify-between"><span className="text-muted">{u.module}</span><span className="tabular">{u.total.toFixed(1)} {u.unit}</span></li>)}</ul> : <p className="text-sm text-muted">No measured usage yet.</p>}
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Quick actions</h2>
             <div className="grid gap-2">
               <Button asChild size="sm"><Link href="/app/control-rooms"><Clapperboard className="size-4" /> Control rooms</Link></Button>
-              <Button asChild size="sm"><Link href="/app/streams">Streams</Link></Button>
+              {streaming ? <Button asChild size="sm"><Link href="/app/streams">Streams</Link></Button> : null}
               <Button asChild size="sm"><Link href="/app/media">Media library</Link></Button>
             </div>
           </Card>

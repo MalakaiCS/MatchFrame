@@ -29,6 +29,7 @@ export function registerCoreRoutes(b: AppBundle) {
       role: active ? mine.find((o) => o.id === active!.id)?.role : null,
       grants,
       product: { name: deps.config.PRODUCT_NAME, locale: deps.config.DEFAULT_LOCALE, timezone: deps.config.DEFAULT_TIMEZONE },
+      features: { streaming: deps.config.STREAMING_ENABLED },
     };
   });
 
