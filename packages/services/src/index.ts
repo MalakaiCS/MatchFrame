@@ -26,3 +26,5 @@ export * as sponsorsSvc from './sponsors';
 export * as assetsSvc from './assets';
 export * as streamsSvc from './streams';
 export * as mediaControl from './media-control';
+export * as library from './library';
+export * as mediaJobs from './media-jobs';

@@ -1,7 +1,7 @@
 import type { AppConfig } from '@bs/config';
 import type { Db } from '@bs/db';
 import type { Redis } from 'ioredis';
-import { automationSvc, type RelayOptions } from '@bs/services';
+import { automationSvc, library, type RelayOptions } from '@bs/services';
 import { startMedia } from './media';
 
 export interface WorkerCtx {
@@ -36,6 +36,21 @@ export function buildSubscribers(ctx: WorkerCtx): RelayOptions['subscribers'] {
       handle: async (e) => {
         const p = e.payload as { payload: { factId: string; toRevision: number } };
         await automationSvc.onFactCorrected(d, e.organisationId, p.payload.factId, p.payload.toRevision);
+      },
+    },
+    {
+      name: 'highlights.request',
+      topics: ['match.fact.accepted'],
+      handle: async (e) => {
+        await library.requestHighlights(ctx.db, e.organisationId, String(e.payload.eventId));
+      },
+    },
+    {
+      name: 'highlights.stale',
+      topics: ['match.fact.corrected'],
+      handle: async (e) => {
+        const p = e.payload as { payload: { factId: string; toRevision: number } };
+        await library.markFactStale(ctx.db, e.organisationId, p.payload.factId, p.payload.toRevision);
       },
     },
     {

@@ -10,3 +10,4 @@ export * from './automation';
 export * from './sponsors';
 export * from './starter-plans';
 export * from './rehearsal';
+export * from './timeline';

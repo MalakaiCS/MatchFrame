@@ -1,6 +1,6 @@
 'use client';
-// Filled in by a later milestone.
+import { MediaLibrary } from '@/components/media/media-library';
+
 export function MatchMediaPanel({ matchId, tz }: { matchId: string; tz: string }) {
-  void [matchId, tz ];
-  return <p className="text-sm text-muted">Not available yet.</p>;
+  return <MediaLibrary matchId={matchId} tz={tz} />;
 }

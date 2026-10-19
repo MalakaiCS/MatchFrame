@@ -183,13 +183,6 @@ log('checks', JSON.stringify(checks));
 fs.writeFileSync(path.join(OUT, 'smoke-checks.json'), JSON.stringify(checks, null, 2));
 process.exit(Object.values(checks).every(Boolean) ? 0 : 1);
 
-/** exit promise attached at spawn time (an early exit is never missed), with a kill deadline */
-function watchExit(p, deadlineMs = 45_000) {
-  const k = setTimeout(() => { p.kill('SIGINT'); setTimeout(() => p.kill('SIGKILL'), 5000); }, deadlineMs);
-  p.exited = new Promise((r) => p.on('exit', (code) => { clearTimeout(k); r(code); }));
-  return p;
-}
-
 function spawnSyncOut(cmd, args) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return `${r.stdout ?? ''}${r.stderr ?? ''}`;
