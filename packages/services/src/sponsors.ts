@@ -366,3 +366,27 @@ export function sponsorReportCsv(r: Awaited<ReturnType<typeof sponsorReport>>) {
     r.occurrences.map((o) => [o.firstVisibleAt, o.matchLabel, o.output, o.brand, o.campaign, o.creative, o.placement, o.evidenceType, o.confirmedSeconds, o.closeReason, o.uncertaintySeconds]),
   );
 }
+
+/** Which placements currently have an eligible creative (automation sponsor_available guard). */
+export async function availablePlacements(t: Tx, organisationId: string, matchId: string, placements: string[], now: number) {
+  const out = new Set<string>();
+  if (!placements.length) return out;
+  const d = await loadSelectionData(t, organisationId, matchId);
+  for (const placement of placements) {
+    const r = selectCreative({ placement: placement as Placement, now, scope: { competitionId: d.match.competitionId, matchId, teamIds: [d.match.homeTeamId, d.match.awayTeamId] }, campaigns: d.campaigns, allocations: d.allocations, creatives: d.creatives, totalShown: d.totalShown, matchShown: d.matchShown, lastShownAt: d.lastShownAt });
+    if (r.outcome === 'selected') out.add(placement);
+  }
+  return out;
+}
+
+/** A creative fixed in a game plan item still gets a decision record so delivery evidence links to it. */
+export async function fixedDecision(t: Tx, organisationId: string, input: { matchId: string; overlayId: string; placement: string; creativeId: string; requestKey: string }) {
+  const [c] = await t.select({ c: creatives, a: mediaAssets }).from(creatives).innerJoin(mediaAssets, eq(mediaAssets.id, creatives.assetId)).where(and(eq(creatives.id, input.creativeId), eq(creatives.organisationId, organisationId)));
+  const usable = c && c.c.approvalStatus === 'approved' && c.a.state === 'READY' && (!c.c.expiresAt || c.c.expiresAt.getTime() > Date.now());
+  const [row] = await t
+    .insert(sponsorDecisions)
+    .values({ organisationId, matchId: input.matchId, overlayId: input.overlayId, placement: input.placement, campaignId: null, creativeId: usable ? input.creativeId : null, outcome: usable ? 'selected' : 'none', reason: usable ? 'fixed creative in game plan' : 'fixed creative is not approved, expired or not ready', inputs: {}, requestKey: input.requestKey })
+    .onConflictDoNothing({ target: sponsorDecisions.requestKey })
+    .returning();
+  return row ?? (await t.select().from(sponsorDecisions).where(eq(sponsorDecisions.requestKey, input.requestKey)))[0]!;
+}

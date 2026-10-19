@@ -20,3 +20,7 @@ export * as seed from './seed';
 export * as themesSvc from './themes';
 export * as overlaysSvc from './overlays';
 export * as layoutsSvc from './layouts';
+export * as gamePlansSvc from './gameplans';
+export * as automationSvc from './automation';
+export * as sponsorsSvc from './sponsors';
+export * as assetsSvc from './assets';

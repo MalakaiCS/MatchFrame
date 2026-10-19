@@ -300,7 +300,7 @@ export async function getOverlay(ctx: Ctx, overlayId: string) {
   });
 }
 
-async function customDefs(t: Tx, organisationId: string): Promise<TemplateDef[]> {
+export async function customDefs(t: Tx, organisationId: string): Promise<TemplateDef[]> {
   const list = await publishedCustomTemplates(t, organisationId);
   return list.map(({ key, scene }) => {
     const s = scene as { name: string; category: TemplateDef['category']; sports: TemplateDef['sports']; layer: TemplateDef['layer']; variables: TemplateDef['variables']; entranceMs: number; holdMs: number | null; exitMs: number };
@@ -443,3 +443,29 @@ export async function rendererDisconnected(db: Db, scope: RendererScope, rendere
 
 export type { Actor };
 export { invalid, emptyState };
+
+/**
+ * Worker-side state mutation outside the command reducer (sponsor slot rotation, expiry sweep). Fenced like
+ * automation commands; returns null when nothing changed.
+ */
+export async function mutateOverlayStateTx(t: Tx, organisationId: string, overlayId: string, fence: CommandOpts['fence'], fn: (s: OverlayPublicState, now: number) => OverlayPublicState | null, now = Date.now()) {
+  const [row] = await t.select().from(overlayState).where(eq(overlayState.overlayId, overlayId)).for('update');
+  const [o] = await t.select().from(overlays).where(eq(overlays.id, overlayId));
+  if (!row || !o) return null;
+  if (fence) {
+    const ok = await t.execute(sql`select 1 from worker_leases where resource = ${fence.resource} and owner = ${fence.owner} and fence = ${fence.fence} and expires_at > now()`);
+    if (!ok.rows.length) throw new AppError('FENCED', 409, 'Automation ownership was lost; mutation refused');
+  }
+  const next = fn(publicState(row, o), now);
+  if (!next) return null;
+  const revision = row.revision + 1;
+  const [u] = await t
+    .update(overlayState)
+    .set({ revision, layers: next.layers as never, slots: (next.slots ?? {}) as never, scorebugVisible: next.scorebugVisible, updatedAt: new Date(now) })
+    .where(and(eq(overlayState.overlayId, overlayId), eq(overlayState.revision, row.revision)))
+    .returning();
+  if (!u) return null;
+  const st = publicState(u, o);
+  await enqueueOutbox(t, { organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: overlayId, aggregateSeq: revision, payload: { ...st, serverNow: now } as never });
+  return st;
+}
