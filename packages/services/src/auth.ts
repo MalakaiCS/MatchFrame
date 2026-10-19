@@ -1,4 +1,5 @@
 // Better Auth: email/password with verified email, reset tokens, revocable DB sessions, TOTP MFA.
+import crypto from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins';
@@ -72,7 +73,7 @@ export function createAuth({ db, config, mailer, onEmailLink }: AuthDeps) {
       useSecureCookies: config.PUBLIC_WEB_URL.startsWith('https://'),
       cookiePrefix: 'bs',
       defaultCookieAttributes: { sameSite: 'lax', httpOnly: true },
-      database: { generateId: 'uuid' },
+      database: { generateId: () => crypto.randomUUID() },
     },
     plugins: [twoFactor({ issuer: config.PRODUCT_NAME })],
   });

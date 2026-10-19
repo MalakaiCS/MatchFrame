@@ -1,0 +1,15 @@
+import type { Metadata, Viewport } from 'next';
+import '@fontsource-variable/inter';
+import './render.css';
+
+export const metadata: Metadata = { title: 'Output', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+
+// Isolated root for overlay / programme / embed renderers: transparent, no app shell, no scrollbars.
+export default function RenderRoot({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}

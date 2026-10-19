@@ -13,3 +13,7 @@ export * as catalog from './catalog';
 export * as matchesSvc from './matches';
 export * as imports from './imports';
 export * as scoring from './scoring';
+export * as apiKeysSvc from './api-keys';
+export * from './relay';
+export * as prefs from './prefs';
+export * as seed from './seed';

@@ -2,8 +2,13 @@
   "name": "@bs/services",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
-  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1146.0",
     "@aws-sdk/s3-request-presigner": "3.1146.0",
@@ -19,7 +24,11 @@
     "ioredis": "5.11.1",
     "nodemailer": "7.0.13",
     "pino": "10.4.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "pg": "8.23.1"
   },
-  "devDependencies": { "@types/nodemailer": "7.0.12" }
+  "devDependencies": {
+    "@types/nodemailer": "7.0.12",
+    "@types/pg": "8.23.1"
+  }
 }

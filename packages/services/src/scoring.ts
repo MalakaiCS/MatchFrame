@@ -390,7 +390,8 @@ export async function scorerLease(ctx: Ctx, matchId: string, input: z.input<type
     let changed = false;
     switch (d.action) {
       case 'acquire':
-        if (active && !mine) throw new AppError('LEASE_HELD_BY_OTHER', 409, 'Another scorer currently controls this match', undefined, { lease: await leaseResponse(t, matchId) });
+        // Another user's live lease blocks; the same user moving to a new tab/device takes over and fences the old one.
+        if (active && !mine && lease.holderUserId !== ctx.actor.userId) throw new AppError('LEASE_HELD_BY_OTHER', 409, 'Another scorer currently controls this match', undefined, { lease: await leaseResponse(t, matchId) });
         // re-acquire by the same device after expiry or refresh bumps the fence so stale tabs lose authority
         await t.update(scorerLeases).set({ holderUserId: ctx.actor.userId, holderDeviceId: d.deviceId, leaseVersion: sql`${scorerLeases.leaseVersion} + 1`, expiresAt: exp, takenOverFrom: null, takeoverReason: null, updatedAt: new Date(now) }).where(eq(scorerLeases.matchId, matchId));
         changed = true;

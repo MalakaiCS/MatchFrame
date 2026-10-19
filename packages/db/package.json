@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/migrate.ts",
-    "seed": "tsx src/seed/index.ts"
+    "seed": "tsx ../services/src/seed-cli.ts"
   },
   "dependencies": {
     "@bs/domain": "workspace:*",

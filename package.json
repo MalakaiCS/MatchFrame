@@ -46,6 +46,8 @@
     "@bs/services": "workspace:*",
     "@bs/domain": "workspace:*",
     "drizzle-orm": "0.45.3",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "esbuild": "0.28.2",
+    "globals": "16.4.0"
   }
 }

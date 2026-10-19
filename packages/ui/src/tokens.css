@@ -1,0 +1,17 @@
+/* Broadcast Studio design tokens (original choices; spec §6). Dark production mode is the default. */
+@theme {
+  --color-bg: #0b1220;
+  --color-panel: #131f32;
+  --color-elevated: #1c2c43;
+  --color-border: #30415b;
+  --color-primary: #3ea6ff;
+  --color-primary-strong: #1f8fef;
+  --color-text: #f3f6fb;
+  --color-muted: #a7b4c8;
+  --color-live: #ff5263;
+  --color-warning: #ffce66;
+  --color-healthy: #55d99d;
+  --color-cyan: #45d6e8;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 10px;
+}
