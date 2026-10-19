@@ -5,5 +5,6 @@
   "programmeGraphicsChangedPixels": true,
   "cleanHasNoGraphics": true,
   "audioInBoth": true,
-  "recordingsReady": true
+  "recordingsReady": true,
+  "sourceLossDegradedThenRecovered": true
 }

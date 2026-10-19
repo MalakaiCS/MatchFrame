@@ -1,5 +1,5 @@
 {
-  "secondsToLive": 10,
+  "secondsToLive": 9,
   "destinations": [
     [
       "CLEAN",
@@ -14,44 +14,74 @@
       ]
     ]
   ],
-  "slateWindowMs": 8112,
+  "liveObservedAt": 1792435635294,
+  "slateWindowMs": 8260,
   "hls": {
     "playlist": 200,
     "segment": 200,
-    "segmentBytes": 511548,
+    "segmentBytes": 835096,
     "anonymousSegment": 401,
     "anonymousPlaylist": 401
   },
+  "sourceLostAt": 1792435658881,
+  "sourceLoss": {
+    "statesObserved": [
+      "LIVE",
+      "DEGRADED:INPUT_LOST"
+    ],
+    "recoveredAfterSeconds": 14,
+    "sameSession": true,
+    "outputStates": [
+      [
+        "CLEAN",
+        "LIVE",
+        [
+          "RECORDING"
+        ]
+      ],
+      [
+        "PROGRAMME",
+        "LIVE",
+        [
+          "RECORDING"
+        ]
+      ]
+    ]
+  },
+  "receiverParts": {
+    "programme": 1,
+    "clean": 3
+  },
+  "analysisWindowSeconds": 23,
   "programme": {
     "probe": [
       "video:h264:1280x720",
       "audio:aac"
     ],
-    "saturationPerSecond": [
-      10,
-      101,
-      101,
-      101,
-      96,
-      101,
-      102,
-      101,
-      96,
-      101,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      10,
-      102,
-      101,
-      90,
-      102,
-      102,
-      101
+    "lumaPerSecond": [
+      124,
+      124,
+      124,
+      124,
+      124,
+      123,
+      124,
+      124,
+      124,
+      123,
+      124,
+      124,
+      124,
+      123,
+      124,
+      41,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39
     ],
     "maxVolumeDb": -5.1
   },
@@ -60,35 +90,35 @@
       "video:h264:1280x720",
       "audio:aac"
     ],
-    "saturationPerSecond": [
-      92,
-      103,
-      103,
-      103,
-      96,
-      103,
-      103,
-      103,
-      99,
-      103,
-      103,
-      103,
-      96,
-      103,
-      103,
-      103,
-      95,
-      103,
-      103,
-      103,
-      100,
-      103,
-      103
+    "lumaPerSecond": [
+      124,
+      231,
+      124,
+      231,
+      231,
+      231,
+      124,
+      124,
+      124,
+      123,
+      125,
+      125,
+      125,
+      231,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124
     ],
-    "maxVolumeDb": -5.4
+    "maxVolumeDb": -4.9
   },
-  "programmeMinSat": 10,
-  "cleanMinSat": 92,
+  "programmeDarkSeconds": 8,
+  "cleanDarkSeconds": 0,
   "final": {
     "session": "STOPPED",
     "recordings": [
