@@ -1,0 +1,15 @@
+{
+  "name": "broadcast-studio",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "scripts": {},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

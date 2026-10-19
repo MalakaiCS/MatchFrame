@@ -1,0 +1,9 @@
+api_key: devkey
+api_secret: devsecret_devsecret_devsecret_devsecret
+ws_url: ws://127.0.0.1:7880
+insecure: true
+redis:
+  address: 127.0.0.1:6379
+health_port: 9193
+prometheus_port: 9194
+log_level: debug

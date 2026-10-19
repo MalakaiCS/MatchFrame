@@ -1,0 +1,36 @@
+# Milestone 0 media spike. Host networking keeps LiveKit RTC/ICE simple on Linux.
+name: bs-media-spike
+services:
+  redis:
+    image: redis:7.4.6-alpine@sha256:3b73847e72874be07e6657b129a94761662b79bc0f679273757d4218573b2a98
+    network_mode: host
+    command: ["redis-server", "--port", "6379", "--bind", "127.0.0.1"]
+  livekit:
+    image: livekit/livekit-server:v1.13.8@sha256:ad961c9b4b064298cc08d618d772671f7c783e036001388079fa813929cc357e
+    network_mode: host
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes: ["./config/livekit.yaml:/etc/livekit.yaml:ro"]
+    depends_on: [redis]
+  ingress:
+    image: livekit/ingress:v1.5.0@sha256:2e1d3fcf10bfaebddaea74dc8b965410cda6377ed154451361b86ab3a9ee9f99
+    network_mode: host
+    environment:
+      INGRESS_CONFIG_FILE: /etc/ingress.yaml
+    volumes: ["./config/ingress.yaml:/etc/ingress.yaml:ro"]
+    depends_on: [livekit]
+  egress:
+    image: livekit/egress:v1.14.1@sha256:bf2b648b947349c3e9ff7aa8c718f00378d5c06af7624652a3653318e00333ce
+    network_mode: host
+    cap_add: [SYS_ADMIN]
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./config/egress.yaml:/etc/egress.yaml:ro
+      - ./out:/out
+    depends_on: [livekit]
+  sink:
+    image: bluenviron/mediamtx:1.21.2@sha256:c7540465f868a02652118bea5a0daab12a29ac0f6cb8485abd535939ecddf886
+    network_mode: host
+    volumes:
+      - ./config/mediamtx.yml:/mediamtx.yml:ro
+      - ./out/sink:/recordings
