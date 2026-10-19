@@ -1,7 +1,23 @@
+import { overlaysSvc } from '@bs/services';
 import type { AppBundle } from './app';
 import type { RendererHooks } from './realtime';
 
-/** Overlay renderer capability hooks (implemented with the overlay service in Milestone 3). */
-export function rendererHooks(_b: AppBundle): RendererHooks {
-  return { authenticate: async () => null };
+/** Overlay renderer capability hooks: authenticate scoped tokens, track sessions and displayed revisions. */
+export function rendererHooks(b: AppBundle): RendererHooks {
+  const { db, config } = b.deps;
+  return {
+    authenticate: (token) => overlaysSvc.resolveRendererToken(db, config, token),
+    async onConnect(socket, scope, instanceId) {
+      const r = await overlaysSvc.rendererConnected(db, socket.data.scope, instanceId);
+      socket.data.rendererSessionId = r.id;
+      socket.emit('session', { rendererSessionId: r.id, reportingAuthority: r.isReportingAuthority, purpose: scope.purpose });
+    },
+    async onDisplayed(socket, payload) {
+      const rev = Number((payload as { revision?: number })?.revision);
+      if (socket.data.rendererSessionId) await overlaysSvc.rendererDisplayed(db, socket.data.scope, socket.data.rendererSessionId, rev);
+    },
+    async onDisconnect(socket) {
+      if (socket.data.rendererSessionId) await overlaysSvc.rendererDisconnected(db, socket.data.scope, socket.data.rendererSessionId);
+    },
+  };
 }

@@ -17,3 +17,6 @@ export * as apiKeysSvc from './api-keys';
 export * from './relay';
 export * as prefs from './prefs';
 export * as seed from './seed';
+export * as themesSvc from './themes';
+export * as overlaysSvc from './overlays';
+export * as layoutsSvc from './layouts';

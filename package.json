@@ -23,7 +23,8 @@
     "demo:start": "node scripts/demo.mjs start",
     "demo:stop": "node scripts/demo.mjs stop",
     "services:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
-    "services:down": "docker compose -f infra/docker-compose.yml --env-file .env down"
+    "services:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
+    "db:reset": "node scripts/db-reset.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

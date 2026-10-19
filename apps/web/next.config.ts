@@ -29,6 +29,7 @@ const adminCsp = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   agentRules: false,
+  devIndicators: false,
   poweredByHeader: false,
   transpilePackages: ['@bs/domain', '@bs/graphics', '@bs/ui'],
   env: {
