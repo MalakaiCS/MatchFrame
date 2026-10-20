@@ -12,7 +12,7 @@ import {
   venues,
   type Tx,
 } from '@bs/db';
-import { getAdapter, isValidTimeZone } from '@bs/domain';
+import { getAdapter, isValidTimeZone, SPORTS } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan, assignedScopes, hasWideRead } from './authz';
 import { audit } from './audit';
@@ -26,7 +26,7 @@ const name = z.string().trim().min(1).max(100);
 export const competitionInput = z.object({
   name,
   shortName: z.string().trim().max(24).nullable().optional(),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(SPORTS),
   rulesPreset: z.string().optional(),
   rulesConfig: z.record(z.string(), z.unknown()).optional(),
   defaultTimezone: z.string().refine(isValidTimeZone, 'Unknown IANA timezone'),
@@ -34,6 +34,19 @@ export const competitionInput = z.object({
   themeProfileId: z.string().uuid().nullable().optional(),
   gamePlanVersionId: z.string().uuid().nullable().optional(),
   outputDefaults: z.record(z.string(), z.unknown()).optional(),
+  /** league table rules; omitted keys fall back to the sport's convention */
+  standingsRules: z
+    .object({
+      win: z.number().int().min(0).max(10),
+      draw: z.number().int().min(0).max(10),
+      loss: z.number().int().min(0).max(10),
+      bye: z.number().int().min(0).max(10),
+      rankBy: z.enum(['points', 'win_pct']),
+      order: z.array(z.enum(['points', 'win_pct', 'difference', 'for', 'percentage', 'wins', 'head_to_head', 'name'])).max(8),
+      unit: z.enum(['goals', 'points']),
+    })
+    .partial()
+    .optional(),
 });
 
 function resolveRules(sport: string, preset?: string, cfg?: Record<string, unknown>) {
@@ -194,7 +207,7 @@ export const teamInput = z.object({
   name,
   shortName: z.string().trim().min(1).max(24),
   abbreviation: z.string().trim().toUpperCase().min(2).max(5),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(SPORTS),
   clubId: z.string().uuid().nullable().optional(),
   logoAssetId: z.string().uuid().nullable().optional(),
   primaryColor: color.default('#3EA6FF'),
@@ -202,6 +215,14 @@ export const teamInput = z.object({
   awayPrimaryColor: color.nullable().optional(),
   awaySecondaryColor: color.nullable().optional(),
   grade: z.string().trim().max(40).nullable().optional(),
+  /** the saved starting side, applied to a match with "use the default lineup" */
+  defaultLineup: z
+    .object({
+      players: z.array(z.object({ playerId: z.string().uuid(), number: z.number().int().min(0).max(999).nullable().optional(), position: z.string().max(20).nullable().optional(), starter: z.boolean(), captain: z.boolean().optional() })).max(40),
+      formation: z.string().max(20).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export async function listTeams(ctx: Ctx, q: { sport?: string; search?: string; includeArchived?: boolean } = {}) {

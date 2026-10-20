@@ -42,6 +42,11 @@ export const organisations = pgTable('organisations', {
   logoAssetId: uuid('logo_asset_id'),
   status: text('status').notNull().default('active'), // active | deleted
   onboarding: jsonb('onboarding').$type<Record<string, unknown>>().notNull().default({}),
+  /** white-label: a host that resolves to this organisation for public pages and overlays */
+  customDomain: text('custom_domain').unique(),
+  /** white-label branding for the operator app and public pages (product name, colours, logo) */
+  branding: jsonb('branding').$type<Record<string, unknown>>().notNull().default({}),
+  requireTwoFactor: boolean('require_two_factor').notNull().default(false),
   createdBy: text('created_by').references(() => users.id),
   createdAt: created(),
   updatedAt: updated(),
@@ -137,6 +142,8 @@ export const competitions = pgTable(
     themeProfileId: uuid('theme_profile_id'),
     gamePlanVersionId: uuid('game_plan_version_id'),
     outputDefaults: jsonb('output_defaults').$type<Record<string, unknown>>().notNull().default({}),
+    /** league table rules (points per result, tie-breakers); empty = the sport's default */
+    standingsRules: jsonb('standings_rules').$type<Record<string, unknown>>().notNull().default({}),
     status: text('status').notNull().default('active'), // active | archived
     createdBy: text('created_by'),
     createdAt: created(),
@@ -145,7 +152,7 @@ export const competitions = pgTable(
   (t) => [
     unique('competitions_id_org').on(t.id, t.organisationId),
     foreignKey({ columns: [t.leagueId, t.organisationId], foreignColumns: [leagues.id, leagues.organisationId] }),
-    check('competitions_sport_chk', sql`${t.sport} in ('football','basketball')`),
+    check('competitions_sport_chk', sql`${t.sport} in ('football','basketball','netball','rugby_league','afl','hockey')`),
     index('competitions_org_idx').on(t.organisationId, t.status),
   ],
 );
@@ -159,7 +166,10 @@ export const seasons = pgTable(
     name: text('name').notNull(),
     startsOn: date('starts_on'),
     endsOn: date('ends_on'),
-    status: text('status').notNull().default('active'),
+    status: text('status').notNull().default('active'), // active | archived
+    archivedAt: ts('archived_at'),
+    /** the season this one was rolled over from (teams and rosters copied) */
+    rolledFromSeasonId: uuid('rolled_from_season_id'),
     createdAt: created(),
     updatedAt: updated(),
   },
@@ -197,6 +207,8 @@ export const teams = pgTable(
     awayPrimaryColor: text('away_primary_color'),
     awaySecondaryColor: text('away_secondary_color'),
     grade: text('grade'),
+    /** saved starting lineup: { players: [{ playerId, number, position, starter, captain }], formation } */
+    defaultLineup: jsonb('default_lineup').$type<Record<string, unknown>>(),
     status: text('status').notNull().default('active'), // active | archived
     createdAt: created(),
     updatedAt: updated(),
@@ -291,6 +303,13 @@ export const matches = pgTable(
     gamePlanVersionId: uuid('game_plan_version_id'),
     scoringSource: text('scoring_source').notNull().default('courtside'), // courtside | watching_stream
     scorerSourceDelayMs: integer('scorer_source_delay_ms').notNull().default(0),
+    attendance: integer('attendance'),
+    /** { summary, tempC, condition } */
+    weather: jsonb('weather').$type<Record<string, unknown>>(),
+    /** [{ role, name }] */
+    officials: jsonb('officials').$type<Record<string, unknown>[]>().notNull().default([]),
+    /** capability token for the public match centre and the commentator view; null = not shared */
+    publicToken: text('public_token').unique(),
     createdBy: text('created_by'),
     createdAt: created(),
     updatedAt: updated(),
@@ -541,6 +560,8 @@ export const overlays = pgTable(
     matchId: uuid('match_id').notNull(),
     name: text('name').notNull(),
     kind: text('kind').notNull().default('graphics'), // graphics (browser source) | programme (cloud output)
+    /** 16:9 (broadcast), 9:16 (vertical social) or venue (big screen, large type) */
+    format: text('format').notNull().default('16:9'),
     outputId: uuid('output_id'),
     /** pinned effective versions (snapshot at creation / explicit apply) */
     themeProfileVersionId: uuid('theme_profile_version_id'),
@@ -1438,4 +1459,119 @@ export const userPreferences = pgTable('user_preferences', {
   userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   prefs: jsonb('prefs').$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: updated(),
+});
+
+// ---------------------------------------------------------------- match-day collaboration, notifications, metering
+/** Run-sheet notes and timed comments the production team shares on a match. */
+export const matchNotes = pgTable(
+  'match_notes',
+  {
+    id: pk(),
+    organisationId: org(),
+    matchId: uuid('match_id').notNull(),
+    kind: text('kind').notNull().default('note'), // note | runsheet
+    /** run sheet timing label, e.g. "KO-10" or "HT" */
+    atLabel: text('at_label'),
+    body: text('body').notNull(),
+    done: boolean('done').notNull().default(false),
+    authorUserId: text('author_user_id'),
+    position: integer('position').notNull().default(0),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [foreignKey({ columns: [t.matchId, t.organisationId], foreignColumns: [matches.id, matches.organisationId] }).onDelete('cascade'), index('match_notes_match_idx').on(t.matchId, t.position)],
+);
+
+/** Web Push subscriptions (one per browser) for reminders. Keys are opaque to us; the endpoint is the identity. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: pk(),
+    organisationId: org(),
+    userId: text('user_id').notNull(),
+    endpoint: text('endpoint').notNull().unique(),
+    keys: jsonb('keys').$type<{ p256dh: string; auth: string }>().notNull(),
+    userAgent: text('user_agent'),
+    createdAt: created(),
+  },
+  (t) => [index('push_subs_user_idx').on(t.userId)],
+);
+
+/** Reminders already sent for a match (kick-off, left live), so each is sent once. */
+export const matchReminders = pgTable(
+  'match_reminders',
+  {
+    id: pk(),
+    organisationId: org(),
+    matchId: uuid('match_id').notNull(),
+    kind: text('kind').notNull(), // kickoff_scorer | kickoff_operator | left_live
+    sentAt: ts('sent_at').notNull().defaultNow(),
+  },
+  (t) => [unique('match_reminders_once').on(t.matchId, t.kind), foreignKey({ columns: [t.matchId, t.organisationId], foreignColumns: [matches.id, matches.organisationId] }).onDelete('cascade')],
+);
+
+/** Time on air per graphic, derived from overlay state changes (open row = still on air). */
+export const graphicAirtime = pgTable(
+  'graphic_airtime',
+  {
+    id: pk(),
+    organisationId: org(),
+    matchId: uuid('match_id').notNull(),
+    overlayId: uuid('overlay_id').notNull(),
+    cueId: text('cue_id').notNull(),
+    templateKey: text('template_key').notNull(),
+    layer: text('layer').notNull(),
+    source: text('source').notNull(), // operator | automation | api
+    sponsorCreativeId: uuid('sponsor_creative_id'),
+    startedAt: ts('started_at').notNull(),
+    endedAt: ts('ended_at'),
+    durationMs: integer('duration_ms'),
+    createdAt: created(),
+  },
+  (t) => [
+    unique('graphic_airtime_cue').on(t.overlayId, t.cueId, t.startedAt),
+    foreignKey({ columns: [t.matchId, t.organisationId], foreignColumns: [matches.id, matches.organisationId] }).onDelete('cascade'),
+    index('graphic_airtime_match_idx').on(t.matchId, t.startedAt),
+  ],
+);
+
+/** A demo match that scores itself (worker-driven), for onboarding and training. */
+export const demoRuns = pgTable(
+  'demo_runs',
+  {
+    matchId: uuid('match_id').primaryKey(),
+    organisationId: org(),
+    status: text('status').notNull().default('running'), // running | paused | finished | stopped
+    step: integer('step').notNull().default(0),
+    speed: integer('speed').notNull().default(1), // 1 = real time per scripted step, 10 = ten times faster
+    nextAt: ts('next_at').notNull().defaultNow(),
+    startedBy: text('started_by'),
+    startedAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [foreignKey({ columns: [t.matchId, t.organisationId], foreignColumns: [matches.id, matches.organisationId] }).onDelete('cascade'), index('demo_runs_due_idx').on(t.status, t.nextAt)],
+);
+
+/** Billing state per organisation (provider-agnostic; Stripe is the first adapter). */
+export const billingAccounts = pgTable('billing_accounts', {
+  organisationId: uuid('organisation_id').primaryKey().references((): AnyPgColumn => organisations.id, { onDelete: 'restrict' }),
+  provider: text('provider').notNull().default('stripe'),
+  customerId: text('customer_id'),
+  subscriptionId: text('subscription_id'),
+  plan: text('plan').notNull().default('free'),
+  status: text('status').notNull().default('none'), // none | trialing | active | past_due | cancelled
+  currentPeriodEnd: ts('current_period_end'),
+  lastEventId: text('last_event_id'),
+  updatedAt: updated(),
+});
+
+/** Database backup runs (worker-only; not tenant data). */
+export const backupRuns = pgTable('backup_runs', {
+  id: pk(),
+  status: text('status').notNull(), // running | ok | failed
+  location: text('location'),
+  bytes: bigint('bytes', { mode: 'number' }),
+  error: text('error'),
+  startedAt: created(),
+  finishedAt: ts('finished_at'),
 });

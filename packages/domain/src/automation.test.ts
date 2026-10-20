@@ -1,3 +1,4 @@
+import type { Sport } from './types';
 import { describe, expect, it } from 'vitest';
 import { clockCrossings, decidePriority, matchTriggers, planRun, resolveVariables, validateGamePlan, type GamePlan, type TriggerInput } from './automation';
 import { FOOTBALL_STARTER, BASKETBALL_STARTER } from './starter-plans';
@@ -10,7 +11,7 @@ const LAYERS: Record<string, string> = {
   'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
   'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background',
 };
-const opts = (sport: 'football' | 'basketball') => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
+const opts = (sport: Sport) => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
 const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };
 
 describe('game plan validation', () => {

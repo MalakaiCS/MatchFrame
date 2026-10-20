@@ -14,6 +14,7 @@ import {
   type Side,
 } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
+import { onField, substitutionProblem } from '../lineup';
 
 export const footballConfigSchema = z.object({
   periodMinutes: z.number().int().min(5).max(60),
@@ -77,7 +78,13 @@ const EVENTS: EventTypeDef[] = [
 
 export const FOOTBALL_STATS = ['goals', 'shots_on_target', 'shots_off_target', 'corners', 'saves', 'yellow_cards', 'red_cards', 'fouls', 'offsides', 'possession_pct'] as const;
 
+export const GOAL_TYPES = ['open_play', 'header', 'volley', 'long_range', 'counter_attack', 'set_piece', 'free_kick', 'penalty', 'own_goal'] as const;
+export const GOAL_TYPE_LABELS: Record<(typeof GOAL_TYPES)[number], string> = { open_play: 'Open play', header: 'Header', volley: 'Volley', long_range: 'Long range', counter_attack: 'Counter attack', set_piece: 'Set piece', free_kick: 'Free kick', penalty: 'Penalty', own_goal: 'Own goal' };
+const goalPayload = z.object({ assistId: z.string().uuid().nullable().optional(), goalType: z.enum(GOAL_TYPES).optional() });
 const payloadSchemas: Record<string, z.ZodType> = {
+  goal: goalPayload,
+  penalty_scored: goalPayload.extend({ goalType: z.literal('penalty').optional() }),
+  own_goal: z.object({ goalType: z.literal('own_goal').optional() }),
   substitution: z.object({ playerOutId: z.string().uuid().nullable().optional(), playerInId: z.string().uuid().nullable().optional() }),
   stat_adjust: z.object({ stat: z.enum(FOOTBALL_STATS), delta: z.number().int().min(-50).max(50) }),
   stoppage_announced: z.object({ minutes: z.number().int().min(0).max(30) }),
@@ -190,11 +197,23 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
       const e = check(f.playerId, f.side, 'playerId');
       if (e) return e;
     }
+    if ((f.type === 'goal' || f.type === 'penalty_scored') && f.side) {
+      const pl = f.payload as { assistId?: string | null };
+      if (pl.assistId) {
+        if (pl.assistId === f.playerId) return err('INVALID_ASSIST', 'The scorer cannot also be the assist', 'payload.assistId');
+        const e2 = check(pl.assistId, f.side, 'payload.assistId');
+        if (e2) return e2;
+      }
+    }
     if (f.type === 'substitution' && f.side) {
       const pl = f.payload as { playerOutId?: string; playerInId?: string };
       const e1 = check(pl.playerOutId, f.side, 'payload.playerOutId') ?? check(pl.playerInId, f.side, 'payload.playerInId');
       if (e1) return e1;
       if (pl.playerOutId && pl.playerOutId === pl.playerInId) return err('INVALID_SUBSTITUTION', 'Player in and out must differ', 'payload');
+      if (lineup) {
+        const problem = substitutionProblem(onField(lineup, p, f.side), pl.playerOutId, pl.playerInId, false);
+        if (problem) return err('INVALID_SUBSTITUTION', problem, 'payload');
+      }
     }
     return ok(f);
   },
@@ -212,11 +231,17 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
     };
     switch (e.type) {
       case 'goal':
-      case 'penalty_scored':
+      case 'penalty_scored': {
         addGoal(side!);
         if (e.playerId) tally(e.playerId)!.goals = (tally(e.playerId)!.goals ?? 0) + 1;
+        const assistId = (e.payload as { assistId?: string | null }).assistId;
+        if (assistId) {
+          tally(assistId)!.assists = (tally(assistId)!.assists ?? 0) + 1;
+          bump(p.stats[side!], 'assists');
+        }
         bump(p.counters, 'goals');
         break;
+      }
       case 'own_goal':
         // Credits the opposing team; the responsible player is preserved on the fact but gets no goal.
         addGoal(otherSide(side!));
@@ -232,12 +257,12 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
       case 'second_yellow':
         bump(p.stats[side!], 'yellow_cards');
         bump(p.stats[side!], 'red_cards');
-        if (e.playerId) Object.assign(tally(e.playerId)!, { yellow: 2, red: true });
+        if (e.playerId) Object.assign(tally(e.playerId)!, { yellow: 2, red: true, onCourt: false });
         bump(p.counters, 'cards');
         break;
       case 'red_card':
         bump(p.stats[side!], 'red_cards');
-        if (e.playerId) tally(e.playerId)!.red = true;
+        if (e.playerId) Object.assign(tally(e.playerId)!, { red: true, onCourt: false });
         bump(p.counters, 'cards');
         break;
       case 'substitution': {

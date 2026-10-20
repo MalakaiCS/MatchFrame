@@ -1,7 +1,7 @@
 // Fixture CSV import: parse/validate (dry-run) → explicit idempotent commit.
 import { and, eq, inArray } from 'drizzle-orm';
 import { competitions, matches, seasons, teams, venues } from '@bs/db';
-import { importErrorsCsv, planFixtureImport, type ImportContext, type ImportPlan } from '@bs/domain';
+import { importErrorsCsv, planFixtureImport, type ImportContext, type ImportPlan, SPORTS } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan } from './authz';
 import { audit } from './audit';
@@ -12,7 +12,7 @@ import { createMatchTx } from './matches';
 import { createTeam } from './catalog';
 
 export const importOptions = z.object({
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(SPORTS),
   mode: z.enum(['skip_duplicates', 'update_matched_future']).default('skip_duplicates'),
   createMissingTeams: z.boolean().default(false),
   teamMappings: z.record(z.string(), z.string().uuid()).default({}),

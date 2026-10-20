@@ -1,5 +1,6 @@
 // Constrained designer scene (spec §10): text, image, rectangle, group and sponsor-slot elements with
 // position/size, anchor, alignment, typography, colours, opacity, z-order and simple entrance/exit.
+import { SPORTS } from '@bs/domain';
 import { z } from 'zod';
 import { bindingSchema, validateBindingPath } from './bindings';
 import { LAYERS, variableSchema } from './catalog';
@@ -48,7 +49,7 @@ export const sceneSchema = z.object({
   name: z.string().min(1).max(60),
   category: z.enum(['Scorebug', 'Match', 'Teams', 'Events', 'Stats', 'People', 'Sponsors', 'Media']),
   layer: z.enum(LAYERS),
-  sports: z.array(z.enum(['football', 'basketball'])).min(1),
+  sports: z.array(z.enum(SPORTS)).min(1),
   entranceMs: num(0, 2000).default(300),
   holdMs: num(0, 600_000).nullable().default(null),
   exitMs: num(0, 2000).default(250),
@@ -107,7 +108,7 @@ export function validateScene(input: unknown): { ok: true; scene: Scene; warning
 }
 
 export function emptyScene(name = 'New graphic'): Scene {
-  return { version: 1, name, category: 'People', layer: 'lower', sports: ['football', 'basketball'], entranceMs: 300, holdMs: null, exitMs: 250, variables: [{ key: 'heading', label: 'Heading', type: 'text', required: true, maxLength: 48 }], elements: [
+  return { version: 1, name, category: 'People', layer: 'lower', sports: [...SPORTS], entranceMs: 300, holdMs: null, exitMs: 250, variables: [{ key: 'heading', label: 'Heading', type: 'text', required: true, maxLength: 48 }], elements: [
     { id: 'bg', name: 'Panel', type: 'rect', x: 96, y: 820, w: 900, h: 140, anchor: 'tl', opacity: 1, z: 0, fill: '#131F32', radius: 6, animation: { in: 'slide-left', out: 'fade', delayMs: 0 } },
     { id: 'title', name: 'Heading', type: 'text', x: 130, y: 850, w: 830, h: 80, anchor: 'tl', opacity: 1, z: 1, text: { binding: 'variables.heading', fallback: '' }, fontSize: 56, minFontSize: 32, fontWeight: 700, color: '#F3F6FB', align: 'left', animation: { in: 'fade', out: 'fade', delayMs: 80 } },
   ] };

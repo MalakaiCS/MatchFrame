@@ -14,6 +14,8 @@ export type Action =
   | 'stream.manage' // stream credentials & destinations
   | 'overlay.operate'
   | 'match.score'
+  | 'match.stats' // statistics only: never the score, phase or clock
+  | 'match.view' // read-only companion view of a match (spotter, commentator)
   | 'sponsor.manage'
   | 'sponsor.trigger'
   | 'sponsor.report'
@@ -51,7 +53,7 @@ export interface Target {
 
 const FULL: Action[] = [
   'org.read', 'competition.write', 'competition.read', 'team_assets.write', 'theme.write', 'theme.use', 'stream.manage',
-  'overlay.operate', 'match.score', 'sponsor.manage', 'sponsor.trigger', 'sponsor.report', 'media.edit', 'media.read', 'audit.read', 'reports.read',
+  'overlay.operate', 'match.score', 'match.stats', 'match.view', 'sponsor.manage', 'sponsor.trigger', 'sponsor.report', 'media.edit', 'media.read', 'audit.read', 'reports.read',
 ];
 
 /** Actions a role has across the whole organisation. */
@@ -70,10 +72,10 @@ const ROLE_SCOPED: Record<Role, Action[]> = {
   owner: [],
   admin: [],
   producer: [],
-  operator: ['competition.read', 'overlay.operate', 'stream.manage', 'sponsor.trigger', 'match.score', 'media.edit', 'media.read', 'audit.read'],
-  scorer: ['competition.read', 'match.score', 'audit.read'],
-  club_manager: ['competition.read', 'team_assets.write', 'media.edit', 'media.read', 'sponsor.manage'],
-  viewer: ['competition.read', 'media.read', 'sponsor.report', 'reports.read'],
+  operator: ['competition.read', 'overlay.operate', 'stream.manage', 'sponsor.trigger', 'match.score', 'match.stats', 'match.view', 'media.edit', 'media.read', 'audit.read'],
+  scorer: ['competition.read', 'match.score', 'match.stats', 'match.view', 'audit.read'],
+  club_manager: ['competition.read', 'team_assets.write', 'media.edit', 'media.read', 'sponsor.manage', 'match.view'],
+  viewer: ['competition.read', 'media.read', 'sponsor.report', 'reports.read', 'match.view'],
 };
 
 /** Reading assigned resources follows from any grant scoped to them. */

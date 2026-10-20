@@ -1,3 +1,4 @@
+import type { Sport } from '@bs/domain';
 import type { ClockState, LineupSnapshot, MatchProjection } from '@bs/domain';
 
 export interface RenderTeam {
@@ -49,7 +50,7 @@ export interface RenderCreative {
 export interface RenderData {
   match: {
     id: string;
-    sport: 'football' | 'basketball';
+    sport: Sport;
     rulesConfig: Record<string, unknown>;
     competition: { name: string; shortName: string | null; logoUrl: string | null };
     venue: string | null;

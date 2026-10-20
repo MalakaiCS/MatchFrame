@@ -1,7 +1,7 @@
 // Game plans: editable drafts, publish-time validation and immutable published versions.
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { creatives, gamePlans, gamePlanVersions, mediaAssets, overlays, type Tx } from '@bs/db';
-import { getAdapter, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue } from '@bs/domain';
+import { getAdapter, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, SPORTS } from '@bs/domain';
 import { BUILTIN_TEMPLATES } from '@bs/graphics';
 import { z } from 'zod';
 import { assertCan } from './authz';
@@ -50,13 +50,14 @@ export async function getGamePlan(ctx: Ctx, id: string) {
   });
 }
 
-export const createPlanInput = z.object({ name: z.string().trim().min(1).max(80), sport: z.enum(['football', 'basketball']), fromStarter: z.boolean().default(true) });
+export const createPlanInput = z.object({ name: z.string().trim().min(1).max(80), sport: z.enum(SPORTS), fromStarter: z.boolean().default(true) });
 
 export async function createGamePlan(ctx: Ctx, input: z.input<typeof createPlanInput>, t0?: Tx) {
   assertCan(ctx.actor, 'theme.write');
   const d = createPlanInput.parse(input);
   const run = async (t: Tx) => {
-    const draft: GamePlan = d.fromStarter ? structuredClone(STARTER_PLANS[d.sport]) : { version: 1, sport: d.sport, defaultScorebug: true, freshnessMs: 10_000, playlists: [] };
+    const starter = d.fromStarter ? STARTER_PLANS[d.sport] : undefined;
+    const draft: GamePlan = starter ? structuredClone(starter) : { version: 1, sport: d.sport, defaultScorebug: true, freshnessMs: 10_000, playlists: [] };
     const [p] = await t.insert(gamePlans).values({ organisationId: ctx.actor.organisationId, name: d.name, sport: d.sport, draft: draft as never }).returning();
     await audit(t, ctx.actor, 'game_plan.create', 'game_plan', p!.id, { after: { name: d.name, sport: d.sport } });
     return p!;

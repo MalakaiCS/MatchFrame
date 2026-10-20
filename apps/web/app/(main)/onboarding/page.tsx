@@ -1,4 +1,5 @@
 'use client';
+import type { Sport } from '@bs/domain';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,7 +24,7 @@ interface Progress {
   teamIds?: string[];
   themeProfileId?: string;
   matchId?: string;
-  sport?: 'football' | 'basketball';
+  sport?: Sport;
   done?: boolean;
 }
 
@@ -64,7 +65,7 @@ function Onboarding() {
 
   // ------------------------------------------------ step forms
   const [orgForm, setOrgForm] = useState({ name: '', timezone: 'Australia/Brisbane' });
-  const [comp, setComp] = useState({ name: '', shortName: '', sport: 'football' as 'football' | 'basketball', season: String(new Date().getFullYear()) });
+  const [comp, setComp] = useState({ name: '', shortName: '', sport: 'football' as Sport, season: String(new Date().getFullYear()) });
   const [teams, setTeams] = useState([
     { name: '', shortName: '', abbreviation: '', primaryColor: '#1F6FEB' },
     { name: '', shortName: '', abbreviation: '', primaryColor: '#E5484D' },

@@ -1,5 +1,6 @@
 // Built-in graphic catalogue (spec §9.1). Each template declares sports, typed variables, required data,
 // occupied layers, entrance/hold/exit durations, safe bounds and sponsor slots.
+import { SPORTS, type Sport } from '@bs/domain';
 import { z } from 'zod';
 
 export const LAYERS = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor'] as const;
@@ -38,7 +39,7 @@ export interface TemplateDef {
   key: string; // builtin:<name> or custom:<versionId>
   name: string;
   category: Category;
-  sports: ('football' | 'basketball')[];
+  sports: Sport[];
   layer: Layer;
   /** extra layers reserved while on air */
   reserves?: Layer[];
@@ -52,7 +53,7 @@ export interface TemplateDef {
   bounds: { x: number; y: number; w: number; h: number };
 }
 
-const both: ('football' | 'basketball')[] = ['football', 'basketball'];
+const both: Sport[] = [...SPORTS];
 
 export const BUILTIN_TEMPLATES: TemplateDef[] = [
   {

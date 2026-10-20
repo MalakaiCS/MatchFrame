@@ -4,11 +4,19 @@ import type { FactInput, LogEntry, SportAdapter } from './adapter';
 import type { LineupSnapshot, MatchProjection, Side } from './types';
 import { footballAdapter } from './sports/football';
 import { basketballAdapter } from './sports/basketball';
+import { netballAdapter } from './sports/netball';
+import { rugbyLeagueAdapter } from './sports/rugby-league';
+import { aflAdapter } from './sports/afl';
+import { hockeyAdapter } from './sports/hockey';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const adapters: Record<string, SportAdapter<any>> = {
   football: footballAdapter,
   basketball: basketballAdapter,
+  netball: netballAdapter,
+  rugby_league: rugbyLeagueAdapter,
+  afl: aflAdapter,
+  hockey: hockeyAdapter,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -36,6 +36,13 @@
       "when": 1792413931395,
       "tag": "0004_automation_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792475657280,
+      "tag": "0005_features_foundation",
+      "breakpoints": true
     }
   ]
 }

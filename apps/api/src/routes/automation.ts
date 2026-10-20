@@ -1,4 +1,5 @@
 // Game plans, rehearsal, automation log/manual triggers, sponsors and sponsor reports.
+import type { Sport } from '@bs/domain';
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { AppError, assertCan, assetsSvc, automationSvc, gamePlansSvc, overlaysSvc, sponsorsSvc } from '@bs/services';
@@ -30,7 +31,7 @@ export function registerAutomationRoutes(b: AppBundle) {
     const parsed = gamePlanSchema.safeParse(g.draft);
     if (!parsed.success) throw new AppError('VALIDATION_FAILED', 422, 'Fix the game plan errors before rehearsing');
     const plan: GamePlan = parsed.data;
-    const sport = g.sport as 'football' | 'basketball';
+    const sport = g.sport as Sport;
     const rules = getAdapter(sport).defaultConfig;
     const r = simulateRehearsal(plan, rules, body.timeline ?? syntheticTimeline(sport), { templateLayers: g.templateLayers });
     return { ...r, validation: g.validation, isRehearsal: true };

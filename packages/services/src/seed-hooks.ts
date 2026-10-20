@@ -1,3 +1,4 @@
+import { SPORT_LABELS, type Sport } from '@bs/domain';
 import { and, eq } from 'drizzle-orm';
 import type { AppConfig } from '@bs/config';
 import { competitions, matches, overlays, withTenant } from '@bs/db';
@@ -31,7 +32,7 @@ export function seedHooks(config: AppConfig): SeedHook[] {
   /** Starter game plans (published, assigned to demo overlays) and synthetic sponsors with generated artwork. */
   const automation: SeedHook = async ({ ctx, created }) => {
     for (const sport of [...new Set(created.map((c) => c.sport))]) {
-      const plan = await gamePlansSvc.createGamePlan(ctx, { name: `${sport === 'football' ? 'Football' : 'Basketball'} starter`, sport: sport as 'football' | 'basketball', fromStarter: true });
+      const plan = await gamePlansSvc.createGamePlan(ctx, { name: `${SPORT_LABELS[sport as Sport]} starter`, sport: sport as 'football' | 'basketball', fromStarter: true });
       const v = await gamePlansSvc.publishGamePlan(ctx, plan.id);
       for (const c of created.filter((x) => x.sport === sport)) {
         const ovs = await withTenant(ctx.db, { organisationId: ctx.actor.organisationId }, (t) => t.select({ id: overlays.id }).from(overlays).innerJoin(matches, eq(matches.id, overlays.matchId)).where(and(eq(matches.competitionId, c.competitionId), eq(matches.isDemo, true))));

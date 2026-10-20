@@ -101,7 +101,16 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
   return tx(ctx, async (t) => {
     const [m] = await t.select().from(matches).where(and(eq(matches.id, matchId), eq(matches.organisationId, ctx.actor.organisationId)));
     if (!m) throw notFound('Match');
-    assertCan(ctx.actor, 'match.score', { matchId: m.id, competitionId: m.competitionId }, 'You are not assigned to score this match');
+    const target = { matchId: m.id, competitionId: m.competitionId };
+    // A statistics-only scorer (match.stats) records team statistics alongside the main scorer: no score, phase,
+    // clock or corrections, and no lease — their facts are commutative and never change what is on the scorebug.
+    const statsOnly = !can(ctx.actor, 'match.score', target);
+    if (statsOnly) {
+      assertCan(ctx.actor, 'match.stats', target, 'You are not assigned to score this match');
+      if (env.type !== 'ADD_FACT') throw new AppError('STATS_ONLY', 403, 'Statistics scorers can record statistics only');
+      const def = getAdapter(m.sport).eventTypes(m.rulesConfig as never).find((e) => e.type === (env.payload as { type?: string }).type);
+      if (!def || def.group !== 'stat') throw new AppError('STATS_ONLY', 403, 'Statistics scorers can record statistics only, not scores, cards or changes');
+    }
 
     // 1. serialise on the match row (compare-and-swap on state_version below)
     const [state] = await t.select().from(matchState).where(eq(matchState.matchId, matchId)).for('update');
@@ -120,8 +129,8 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
       return { ...(prior.response as unknown as CommandResponse), replayed: true };
     }
 
-    // 3. optimistic version
-    if (env.expectedStateVersion !== state.stateVersion) {
+    // 3. optimistic version (statistics are order-independent, so a stats-only scorer is never rejected for being stale)
+    if (env.expectedStateVersion !== state.stateVersion && !statsOnly) {
       throw new AppError('STATE_VERSION_CONFLICT', 409, 'The match changed since this command was prepared', undefined, {
         currentVersion: state.stateVersion,
         currentSequence: state.sequence,
@@ -137,7 +146,7 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
       lease.leaseVersion === env.scorerLeaseVersion &&
       lease.expiresAt &&
       lease.expiresAt.getTime() > now;
-    if (!leaseOk && ctx.actor.kind !== 'system') {
+    if (!leaseOk && ctx.actor.kind !== 'system' && !statsOnly) {
       const heldByOther = lease?.holderUserId && lease.expiresAt && lease.expiresAt.getTime() > now && (lease.holderUserId !== ctx.actor.userId || lease.holderDeviceId !== env.deviceId);
       throw new AppError(heldByOther ? 'LEASE_HELD_BY_OTHER' : 'LEASE_REQUIRED', 409, heldByOther ? 'Another scorer currently controls this match' : 'Scoring authority expired. Renew the scorer lease and review pending actions.', undefined, {
         leaseVersion: lease?.leaseVersion ?? 0,

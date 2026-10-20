@@ -1,4 +1,5 @@
 'use client';
+import type { Sport } from '@bs/domain';
 import Link from 'next/link';
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -9,7 +10,6 @@ import { Button, Card, ErrorNotice, NativeSelect, PageHeader, Spinner, StatusPil
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
 import { useGet } from '@/lib/hooks';
 
-type Sport = 'football' | 'basketball';
 type Backdrop = 'pitch' | 'transparent' | 'dark';
 
 interface Theme { id: string; key: string; name: string; description: string | null; versions: { id: string; version: number; config: ThemeConfig }[] }

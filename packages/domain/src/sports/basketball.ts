@@ -3,6 +3,7 @@ import { applyClockAction, clockDisplayMs, clockExpired, createClock, formatCloc
 import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import { err, ok, type DisplayModel, type EventTypeDef, type MatchProjection, type PhaseDef, type Result, type Side } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
+import { onField, substitutionProblem } from '../lineup';
 
 export const basketballConfigSchema = z.object({
   format: z.enum(['quarters', 'halves']),
@@ -199,6 +200,10 @@ export const basketballAdapter: SportAdapter<BasketballConfig> = {
       const pl = f.payload as { playerOutId?: string; playerInId?: string };
       const e2 = inLineup(pl.playerOutId, 'payload.playerOutId') ?? inLineup(pl.playerInId, 'payload.playerInId');
       if (e2) return e2;
+      if (lineup && f.side) {
+        const problem = substitutionProblem(onField(lineup, p, f.side), pl.playerOutId, pl.playerInId, true);
+        if (problem) return err('INVALID_SUBSTITUTION', problem, 'payload');
+      }
     }
     return ok(f);
   },

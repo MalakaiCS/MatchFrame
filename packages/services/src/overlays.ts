@@ -1,4 +1,5 @@
 // Overlays: per-output graphics state, capability URLs, the shared command handler and renderer snapshots.
+import type { Sport } from '@bs/domain';
 import crypto from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
@@ -398,7 +399,7 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
     const data: RenderData = {
       match: {
         id: m!.id,
-        sport: m!.sport as 'football' | 'basketball',
+        sport: m!.sport as Sport,
         rulesConfig: m!.rulesConfig,
         competition: { name: comp!.name, shortName: comp!.shortName, logoUrl: url(comp!.logoAssetId) },
         venue: venue?.name ?? null,

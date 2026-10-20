@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, lte, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, ne, or, sql, type SQL } from 'drizzle-orm';
 import {
   broadcastSessions,
   competitions,
@@ -284,6 +284,9 @@ export const matchUpdateInput = z.object({
   scoringSource: z.enum(['courtside', 'watching_stream']).optional(),
   scorerSourceDelayMs: z.number().int().min(0).max(120_000).optional(),
   gamePlanVersionId: z.string().uuid().nullable().optional(),
+  attendance: z.number().int().min(0).max(500_000).nullable().optional(),
+  weather: z.object({ summary: z.string().trim().max(60).nullable().optional(), tempC: z.number().min(-40).max(60).nullable().optional(), condition: z.enum(['sunny', 'cloudy', 'rain', 'wind', 'storm', 'snow', 'indoor']).nullable().optional() }).nullable().optional(),
+  officials: z.array(z.object({ role: z.enum(['referee', 'assistant_1', 'assistant_2', 'fourth', 'video', 'umpire', 'touch_judge', 'other']), name: z.string().trim().min(1).max(80) })).max(12).optional(),
 });
 
 export async function updateMatch(ctx: Ctx, id: string, input: z.input<typeof matchUpdateInput>) {
@@ -301,7 +304,7 @@ export async function updateMatch(ctx: Ctx, id: string, input: z.input<typeof ma
       set.timezone = tz;
       set.scheduleVersion = m.scheduleVersion + 1; // obsolete schedule jobs carry the old version and are rejected
     }
-    for (const k of ['venueId', 'round', 'status', 'scoringSource', 'scorerSourceDelayMs', 'gamePlanVersionId'] as const) if (d[k] !== undefined) (set as Record<string, unknown>)[k] = d[k];
+    for (const k of ['venueId', 'round', 'status', 'scoringSource', 'scorerSourceDelayMs', 'gamePlanVersionId', 'attendance', 'weather', 'officials'] as const) if (d[k] !== undefined) (set as Record<string, unknown>)[k] = d[k];
     const [u] = await t.update(matches).set(set).where(eq(matches.id, id)).returning();
     if (set.scheduleVersion) {
       await t.update(streamOutputs).set({ scheduleVersion: sql`${streamOutputs.scheduleVersion} + 1` }).where(eq(streamOutputs.matchId, id));
@@ -366,11 +369,85 @@ export async function assignScorer(ctx: Ctx, matchId: string, membershipId: stri
   });
 }
 
-/** Scorer landing list: only matches this actor can score. */
+/** The lineup a match could start from: the team's last lineup in this competition, or its saved default. */
+export async function suggestLineup(ctx: Ctx, matchId: string, side: 'home' | 'away', source: 'last' | 'default') {
+  return tx(ctx, async (t) => {
+    const m = await getMatchRow(ctx, t, matchId);
+    assertCan(ctx.actor, 'competition.read', { matchId: m.id, competitionId: m.competitionId, teamIds: [m.homeTeamId, m.awayTeamId] });
+    const teamId = side === 'home' ? m.homeTeamId : m.awayTeamId;
+    const toInput = (ps: LineupPlayer[]) => ps.map((p) => ({ playerId: p.playerId, number: p.number ?? null, position: p.position ?? null, starter: p.starter, captain: p.captain ?? false }));
+    if (source === 'default') {
+      const [team] = await t.select().from(teams).where(eq(teams.id, teamId));
+      const dl = team?.defaultLineup as { players?: ReturnType<typeof toInput>; formation?: string | null } | null;
+      if (!dl?.players?.length) return { source, players: [], formation: null, from: null, reason: 'This team has no saved default lineup yet' };
+      return { source, players: dl.players, formation: dl.formation ?? null, from: null, reason: null };
+    }
+    const prev = await t
+      .select({ m: matches, snapshot: matchLineups.snapshot })
+      .from(matches)
+      .innerJoin(matchLineups, eq(matchLineups.matchId, matches.id))
+      .where(and(eq(matches.organisationId, ctx.actor.organisationId), eq(matches.competitionId, m.competitionId), or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)), lt(matches.scheduledAt, m.scheduledAt), inArray(matches.status, ['live', 'completed'])))
+      .orderBy(desc(matches.scheduledAt))
+      .limit(1);
+    const last = prev[0];
+    if (!last) return { source, players: [], formation: null, from: null, reason: 'No earlier match for this team in the competition' };
+    const snap = last.snapshot as unknown as LineupSnapshot;
+    const prevSide = last.m.homeTeamId === teamId ? 'home' : 'away';
+    return { source, players: toInput(snap[prevSide]), formation: snap.formations?.[prevSide] ?? null, from: { matchId: last.m.id, scheduledAt: last.m.scheduledAt }, reason: null };
+  });
+}
+
+/** Copy a match's production setup (plan, look, output formats) onto another match of the same competition. */
+export async function copyMatchSetup(ctx: Ctx, matchId: string, fromMatchId: string, t0?: Tx) {
+  assertCan(ctx.actor, 'competition.write');
+  const run = async (t: Tx) => {
+    const target = await getMatchRow(ctx, t, matchId);
+    const source = await getMatchRow(ctx, t, fromMatchId);
+    if (source.id === target.id) throw invalid('Choose a different match to copy from', [{ field: 'fromMatchId', message: 'Same match' }]);
+    await t.update(matches).set({ gamePlanVersionId: source.gamePlanVersionId, themeProfileVersion: source.themeProfileVersion, scoringSource: source.scoringSource, scorerSourceDelayMs: source.scorerSourceDelayMs, updatedAt: new Date() }).where(eq(matches.id, target.id));
+    const [srcOverlay] = await t.select().from(overlays).where(and(eq(overlays.matchId, source.id), eq(overlays.kind, 'graphics'))).orderBy(asc(overlays.createdAt)).limit(1);
+    const [dstOverlay] = await t.select().from(overlays).where(and(eq(overlays.matchId, target.id), eq(overlays.kind, 'graphics'))).orderBy(asc(overlays.createdAt)).limit(1);
+    if (srcOverlay && dstOverlay)
+      await t
+        .update(overlays)
+        .set({ themeProfileVersionId: srcOverlay.themeProfileVersionId, themeVersionId: srcOverlay.themeVersionId, gamePlanVersionId: srcOverlay.gamePlanVersionId, format: srcOverlay.format, updatedAt: new Date() })
+        .where(eq(overlays.id, dstOverlay.id));
+    await audit(t, ctx.actor, 'match.copy_setup', 'match', target.id, { after: { fromMatchId: source.id, overlay: !!(srcOverlay && dstOverlay) } });
+    return { ok: true, copiedOverlay: !!(srcOverlay && dstOverlay) };
+  };
+  return t0 ? run(t0) : tx(ctx, run);
+}
+
+export const bulkMatchInput = z.object({
+  competitionId: z.string().uuid(),
+  seasonId: z.string().uuid(),
+  round: z.string().trim().max(40).nullable().optional(),
+  timezone: z.string().refine(isValidTimeZone, 'Unknown IANA timezone'),
+  copySetupFromMatchId: z.string().uuid().nullable().optional(),
+  fixtures: z.array(z.object({ homeTeamId: z.string().uuid(), awayTeamId: z.string().uuid(), kickoffLocal: z.string(), venueId: z.string().uuid().nullable().optional(), round: z.string().trim().max(40).nullable().optional() })).min(1).max(60),
+});
+
+/** Create a whole round at once; every fixture gets its output, and optionally a copied production setup. */
+export async function bulkCreateMatches(ctx: Ctx, input: z.input<typeof bulkMatchInput>) {
+  assertCan(ctx.actor, 'competition.write');
+  const d = bulkMatchInput.parse(input);
+  return tx(ctx, async (t) => {
+    const created: { id: string; homeTeamId: string; awayTeamId: string; scheduledAt: Date }[] = [];
+    for (const f of d.fixtures) {
+      const m = await createMatchTx(ctx, t, { competitionId: d.competitionId, seasonId: d.seasonId, homeTeamId: f.homeTeamId, awayTeamId: f.awayTeamId, venueId: f.venueId ?? null, round: f.round ?? d.round ?? null, kickoffLocal: f.kickoffLocal, timezone: d.timezone });
+      if (d.copySetupFromMatchId) await copyMatchSetup(ctx, m.id, d.copySetupFromMatchId, t);
+      created.push({ id: m.id, homeTeamId: m.homeTeamId, awayTeamId: m.awayTeamId, scheduledAt: m.scheduledAt });
+    }
+    await audit(t, ctx.actor, 'match.bulk_create', 'season', d.seasonId, { after: { count: created.length, round: d.round ?? null, copiedFrom: d.copySetupFromMatchId ?? null } });
+    return { created };
+  });
+}
+
+/** Scorer landing list: matches this actor can score, record statistics for, or follow read-only. */
 export async function listScorableMatches(ctx: Ctx) {
   const wide = hasWideRead(ctx.actor);
   const s = assignedScopes(ctx.actor);
-  const scorable = ctx.actor.grants.filter((g) => g.action === 'match.score' && g.scopeType === 'match').map((g) => g.scopeId!);
+  const scorable = ctx.actor.grants.filter((g) => ['match.score', 'match.stats', 'match.view'].includes(g.action) && g.scopeType === 'match').map((g) => g.scopeId!);
   if (!wide && !scorable.length) return [];
   const res = await listMatches(ctx, { pageSize: 100, from: new Date(Date.now() - 2 * 86_400_000).toISOString() });
   return res.items.filter((m) => wide || scorable.includes(m.id) || s.competitionIds.includes(m.competitionId));

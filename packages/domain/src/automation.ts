@@ -1,8 +1,11 @@
 // Game-plan automation engine (spec §11). Pure and deterministic: the worker and the rehearsal simulator
 // call the same functions, so rehearsal shows exactly why production would fire, skip or preempt.
+import { SPORTS } from './types';
 import { z } from 'zod';
 
 export const LAYER_NAMES = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor'] as const;
+/** Discipline event → card graphic variant, across codes (football, hockey, rugby league). */
+export const CARD_TYPES: Record<string, string> = { yellow_card: 'yellow', second_yellow: 'second_yellow', red_card: 'red', green_card: 'green', sin_bin: 'sin_bin', send_off: 'red' };
 const layer = z.enum(LAYER_NAMES);
 
 /** Variables can be literals or references into the trigger context. */
@@ -10,7 +13,7 @@ export const varSource = z.union([
   z.string().max(200),
   z.number(),
   z.boolean(),
-  z.object({ from: z.enum(['event.side', 'event.playerId', 'event.minute', 'event.type', 'event.points', 'event.playerOutId', 'event.playerInId', 'event.cardType', 'phase.label', 'trigger.milestone']) }),
+  z.object({ from: z.enum(['event.side', 'event.playerId', 'event.minute', 'event.type', 'event.points', 'event.playerOutId', 'event.playerInId', 'event.cardType', 'event.assistId', 'event.goalType', 'phase.label', 'trigger.milestone']) }),
 ]);
 
 export const triggerSchema = z.discriminatedUnion('type', [
@@ -65,7 +68,7 @@ export type Playlist = z.infer<typeof playlistSchema>;
 
 export const gamePlanSchema = z.object({
   version: z.literal(1),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(SPORTS),
   defaultScorebug: z.boolean().default(true),
   freshnessMs: z.number().int().min(1000).max(120_000).default(10_000),
   playlists: z.array(playlistSchema).max(60),
@@ -125,7 +128,7 @@ export function validateGamePlan(input: unknown, opts: { templateKeys: string[];
 // ------------------------------------------------------------------ trigger matching
 
 export type TriggerInput =
-  | { kind: 'phase'; phaseId: string; phaseTags: string[]; phaseKind: string; at: number; occurredAt: number; seq: number }
+  | { kind: 'phase'; phaseId: string; phaseTags: string[]; phaseKind: string; phaseLabel?: string; at: number; occurredAt: number; seq: number }
   | { kind: 'event'; eventType: string; side: 'home' | 'away' | null; factId: string; factRevision: number; playerId: string | null; payload: Record<string, unknown>; clockMs: number | null; phaseId: string; phaseKind: string; occurredAt: number; at: number; historical: boolean; counters: Record<string, number>; prevCounters: Record<string, number> }
   | { kind: 'match_clock'; triggerId: string; periodId: string; thresholdMs: number; at: number; phaseKind: string }
   | { kind: 'wall_clock'; triggerId: string; at: number; phaseKind: string; occurrence: string }
@@ -186,7 +189,7 @@ export function matchTriggers(plan: GamePlan, input: TriggerInput, g: GuardConte
       if (t.type === 'phase' && input.kind === 'phase') {
         hit = t.phaseIds.includes(input.phaseId) || t.phaseTags.some((x) => input.phaseTags.includes(x));
         iteration = `phase:${input.phaseId}:${input.seq}`;
-        ctx = { phaseId: input.phaseId };
+        ctx = { phaseId: input.phaseId, phaseLabel: input.phaseLabel };
         occurredAt = input.occurredAt;
       } else if (t.type === 'event' && input.kind === 'event') {
         hit = t.eventTypes.includes(input.eventType) && (!t.sides || (input.side != null && t.sides.includes(input.side)));
@@ -280,6 +283,9 @@ export interface PlannedCue {
   layer: string | null;
 }
 
+/** "second_half_ready" → "Second half ready": the fallback when a phase label is not in the trigger context. */
+export const humanisePhase = (id: string) => (id ? id.replace(/^p(\d+)$/, 'Period $1').replace(/^et(\d+)$/, 'Extra time $1').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : undefined);
+
 export function resolveVariables(vars: PlanItem['variables'], ctx: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(vars ?? {})) {
@@ -294,7 +300,10 @@ export function resolveVariables(vars: PlanItem['variables'], ctx: Record<string
         : src === 'event.points' ? payload.points
         : src === 'event.playerOutId' ? payload.playerOutId
         : src === 'event.playerInId' ? payload.playerInId
-        : src === 'event.cardType' ? (ctx.eventType === 'yellow_card' ? 'yellow' : ctx.eventType === 'red_card' ? 'red' : ctx.eventType === 'second_yellow' ? 'second_yellow' : undefined)
+        : src === 'event.cardType' ? CARD_TYPES[String(ctx.eventType ?? '')]
+        : src === 'phase.label' ? (ctx.phaseLabel ?? humanisePhase(String(ctx.phaseId ?? '')))
+        : src === 'event.assistId' ? payload.assistId
+        : src === 'event.goalType' ? (payload.goalType ?? (ctx.eventType && ctx.eventType !== 'goal' ? ctx.eventType : undefined))
         : src === 'trigger.milestone' ? (ctx.milestone != null ? `${ctx.milestone} ${String(ctx.counter ?? '').replace(/_/g, ' ')}` : undefined)
         : undefined;
       if (val !== undefined && val !== null) out[k] = val;

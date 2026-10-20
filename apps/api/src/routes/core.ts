@@ -1,7 +1,7 @@
 // Identity, organisation, catalog, fixtures, matches and scoring routes (/api/v1).
 import { z } from 'zod';
 import { fixtureTemplateCsv } from '@bs/domain';
-import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring } from '@bs/services';
+import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring, seasonData } from '@bs/services';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
@@ -102,6 +102,12 @@ export function registerCoreRoutes(b: AppBundle) {
   app.patch('/api/v1/competitions/:id', async (req) => catalog.updateCompetition(await ctxFor(req), P(id, req.params).id, req.body as never));
   app.post('/api/v1/competitions/:id/seasons', async (req, reply) => reply.code(201).send(await catalog.createSeason(await ctxFor(req), P(id, req.params).id, req.body as never)));
   app.patch('/api/v1/seasons/:id', async (req) => catalog.updateSeason(await ctxFor(req), P(id, req.params).id, req.body as never));
+  app.get('/api/v1/competitions/:id/seasons', async (req) => seasonData.listSeasons(await ctxFor(req), P(id, req.params).id));
+  // ---------------------------------------------------------------- season data: tables, fixtures, player stats, rollover
+  app.get('/api/v1/seasons/:id/standings', async (req) => seasonData.getStandings(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/seasons/:id/fixtures', async (req) => seasonData.getFixtures(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/seasons/:id/player-stats', async (req) => seasonData.getSeasonPlayerStats(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/seasons/:id/rollover', async (req, reply) => reply.code(201).send(await seasonData.rolloverSeason(await ctxFor(req), P(id, req.params).id, req.body as never)));
 
   app.get('/api/v1/clubs', async (req) => catalog.listClubs(await ctxFor(req)));
   app.post('/api/v1/clubs', async (req, reply) => reply.code(201).send(await catalog.createClub(await ctxFor(req), req.body as never)));
@@ -143,6 +149,13 @@ export function registerCoreRoutes(b: AppBundle) {
   app.put('/api/v1/matches/:id/lineup', async (req) => matchesSvc.setLineup(await ctxFor(req), P(id, req.params).id, req.body as never));
   app.post('/api/v1/matches/:id/scorers', async (req) => matchesSvc.assignScorer(await ctxFor(req), P(id, req.params).id, P(z.object({ membershipId: z.string().uuid() }), req.body).membershipId));
   app.get('/api/v1/score/matches', async (req) => matchesSvc.listScorableMatches(await ctxFor(req)));
+  app.post('/api/v1/matches/bulk', async (req, reply) => reply.code(201).send(await matchesSvc.bulkCreateMatches(await ctxFor(req), req.body as never)));
+  app.post('/api/v1/matches/:id/copy-setup', async (req) => matchesSvc.copyMatchSetup(await ctxFor(req), P(id, req.params).id, P(z.object({ fromMatchId: z.string().uuid() }), req.body).fromMatchId));
+  app.get('/api/v1/matches/:id/lineup/suggest', async (req) => {
+    const q = P(z.object({ side: z.enum(['home', 'away']), source: z.enum(['last', 'default']).default('last') }), req.query);
+    return matchesSvc.suggestLineup(await ctxFor(req), P(id, req.params).id, q.side, q.source);
+  });
+  app.get('/api/v1/matches/:id/preview', async (req) => seasonData.getMatchPreview(await ctxFor(req), P(id, req.params).id));
 
   // ---------------------------------------------------------------- scoring
   app.get('/api/v1/matches/:id/state', async (req) => scoring.getMatchState(await ctxFor(req), P(id, req.params).id));

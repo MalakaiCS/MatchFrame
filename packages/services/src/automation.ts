@@ -296,7 +296,7 @@ export async function onPhaseChanged(d: AutomationDeps, organisationId: string, 
     return getAdapter(m!.sport).phase(m!.rulesConfig as never, phaseId);
   });
   if (!phase) return [];
-  return processTrigger(d, organisationId, matchId, { kind: 'phase', phaseId, phaseTags: phase.tags, phaseKind: phase.kind, at: now(d), occurredAt, seq });
+  return processTrigger(d, organisationId, matchId, { kind: 'phase', phaseId, phaseTags: phase.tags, phaseKind: phase.kind, phaseLabel: phase.label, at: now(d), occurredAt, seq });
 }
 
 /** A corrected or voided fact withdraws graphics that were driven by its earlier revision (never re-celebrates). */

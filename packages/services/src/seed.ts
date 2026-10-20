@@ -1,5 +1,6 @@
 // Demo seed: two organisations (isolation), football + basketball, fictional rosters, venues and fixtures.
 // Owners are created with random passwords printed once; nothing shared or hardcoded.
+import type { Sport } from '@bs/domain';
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { users, type Db } from '@bs/db';
@@ -37,7 +38,7 @@ export async function createVerifiedUser(db: Db, config: AppConfig, email: strin
   return { id: existing[0]!.id, email, password: '(unchanged — existing user)', created: false };
 }
 
-async function seedOrg(db: Db, config: AppConfig, label: string, ownerEmail: string, sports: ('football' | 'basketball')[], r: () => number, opts: { password?: string } = {}) {
+async function seedOrg(db: Db, config: AppConfig, label: string, ownerEmail: string, sports: Sport[], r: () => number, opts: { password?: string } = {}) {
   const owner = await createVerifiedUser(db, config, ownerEmail, `${label} Owner`, opts.password);
   const { organisation } = await orgs.createOrganisation({ db, config }, owner.id, { name: label, timezone: 'Australia/Brisbane' });
   const actor = (await resolveActor(db, owner.id, organisation.id))!;

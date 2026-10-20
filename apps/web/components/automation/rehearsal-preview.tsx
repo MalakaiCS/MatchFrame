@@ -1,5 +1,6 @@
 'use client';
 // Plays a rehearsal's cue list through the real graphics renderer, so a plan can be watched before match day.
+import type { Sport } from '@bs/domain';
 import { useMemo, useRef } from 'react';
 import { DEFAULT_THEMES, emptyState, type Cue, type Layer, type OverlayPublicState, type ThemeConfig } from '@bs/graphics';
 import { Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
@@ -43,7 +44,7 @@ export function stateAt(cues: RehearsalCue[], t: number, base: number): OverlayP
   return s;
 }
 
-export function RehearsalPreview({ cues, t, sport, themeKey = 'broadcast' }: { cues: RehearsalCue[]; t: number; sport: 'football' | 'basketball'; themeKey?: ThemeConfig['themeKey'] }) {
+export function RehearsalPreview({ cues, t, sport, themeKey = 'broadcast' }: { cues: RehearsalCue[]; t: number; sport: Sport; themeKey?: ThemeConfig['themeKey'] }) {
   const base = useRef(Date.now()).current;
   const data = useMemo(() => sampleData(DEFAULT_THEMES[themeKey], sport), [themeKey, sport]);
   const state = useMemo(() => stateAt(cues, t, base), [cues, t, base]);

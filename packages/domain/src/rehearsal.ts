@@ -1,5 +1,6 @@
 // Rehearsal: replay a fact timeline against a game plan with the production decision functions, in isolation.
 // Produces an explained decision log and the cue schedule for a local preview. No I/O.
+import type { Sport } from './types';
 import { clockCrossings, decidePriority, matchTriggers, phaseBoundCancellations, phaseStepCancellations, planRun, playlistLayers, type ActiveRun, type GamePlan, type TriggerInput, type TriggerMatch } from './automation';
 import { getAdapter } from './engine';
 import type { MatchProjection, Side } from './types';
@@ -36,7 +37,57 @@ export interface RehearsalCue {
   placement?: string;
 }
 
-export function syntheticTimeline(sport: 'football' | 'basketball'): TimelineEntry[] {
+/** Scoring and discipline events that read well in a rehearsal of each period sport. */
+const PERIOD_SPORT_EVENTS: Record<string, { score: { type: string; payload?: Record<string, unknown> }[]; card: string | null; change: string; stat: string }> = {
+  netball: { score: [{ type: 'goal', payload: { points: 1 } }], card: null, change: 'substitution', stat: 'intercept' },
+  rugby_league: { score: [{ type: 'try' }, { type: 'conversion' }, { type: 'penalty_goal' }], card: 'sin_bin', change: 'interchange', stat: 'line_break' },
+  afl: { score: [{ type: 'goal' }, { type: 'behind' }], card: null, change: 'interchange', stat: 'mark' },
+  hockey: { score: [{ type: 'goal', payload: { goalType: 'field' } }], card: 'green_card', change: 'substitution', stat: 'penalty_corner' },
+};
+
+/** Four quarters (or two halves) with a walk-out before each half, scores in every period, a card and a change. */
+function periodTimeline(sport: Sport): TimelineEntry[] {
+  const ev = PERIOD_SPORT_EVENTS[sport] ?? PERIOD_SPORT_EVENTS.netball!;
+  const halves = sport === 'rugby_league';
+  const periods = halves ? ['p1', 'p2'] : ['p1', 'p2', 'p3', 'p4'];
+  const out: TimelineEntry[] = [
+    { t: 0, kind: 'phase', phase: 'pre_match' },
+    { t: 30_000, kind: 'phase', phase: 'players_entering' },
+    { t: 55_000, kind: 'phase', phase: 'about_to_start' },
+  ];
+  let t = 70_000;
+  periods.forEach((phase, i) => {
+    out.push({ t, kind: 'phase', phase });
+    t += 15_000;
+    ev.score.forEach((s, j) => {
+      out.push({ t, kind: 'event', type: s.type, side: (i + j) % 2 ? 'away' : 'home', payload: s.payload ?? {} });
+      t += 12_000;
+    });
+    out.push({ t, kind: 'event', type: ev.stat, side: 'home' });
+    t += 10_000;
+    if (i === 0 && ev.card) {
+      out.push({ t, kind: 'event', type: ev.card, side: 'away' });
+      t += 12_000;
+    }
+    if (i === 1) {
+      out.push({ t, kind: 'event', type: ev.change, side: 'home', payload: {} });
+      t += 12_000;
+    }
+    const last = i === periods.length - 1;
+    const half = i === periods.length / 2 - 1;
+    if (last) out.push({ t, kind: 'phase', phase: 'full_time' });
+    else if (half) {
+      out.push({ t, kind: 'phase', phase: 'half_time' }, { t: t + 40_000, kind: 'phase', phase: 'second_half_entering' }, { t: t + 65_000, kind: 'phase', phase: 'second_half_ready' });
+      t += 80_000;
+    } else {
+      out.push({ t, kind: 'phase', phase: `break_${i + 1}` });
+      t += 25_000;
+    }
+  });
+  return out;
+}
+
+export function syntheticTimeline(sport: Sport): TimelineEntry[] {
   if (sport === 'football')
     return [
       { t: 0, kind: 'phase', phase: 'pre_match' },
@@ -58,6 +109,7 @@ export function syntheticTimeline(sport: 'football' | 'basketball'): TimelineEnt
       { t: 320_000, kind: 'event', type: 'shot_on_target', side: 'away' },
       { t: 345_000, kind: 'phase', phase: 'full_time' },
     ];
+  if (sport !== 'basketball') return periodTimeline(sport);
   const out: TimelineEntry[] = [{ t: 0, kind: 'phase', phase: 'pre_match' }, { t: 30_000, kind: 'phase', phase: 'p1' }];
   for (let i = 0; i < 14; i++) out.push({ t: 35_000 + i * 6000, kind: 'event', type: 'score', side: i % 2 ? 'away' : 'home', payload: { points: i % 3 === 0 ? 3 : 2, resetShotClock: true } });
   out.push({ t: 70_000, kind: 'event', type: 'timeout', side: 'home' }, { t: 130_000, kind: 'phase', phase: 'break_1' }, { t: 160_000, kind: 'phase', phase: 'p2' }, { t: 200_000, kind: 'phase', phase: 'half_time' });
@@ -189,7 +241,7 @@ export function simulateRehearsal(plan: GamePlan, rulesConfig: unknown, timeline
         clockBase = 0;
         lastClock = 0;
       } else clockStart = null;
-      startRuns({ kind: 'phase', phaseId: e.phase, phaseTags: def.tags, phaseKind: def.kind, at: e.t, occurredAt: e.t, seq }, e.t);
+      startRuns({ kind: 'phase', phaseId: e.phase, phaseTags: def.tags, phaseKind: def.kind, phaseLabel: def.label, at: e.t, occurredAt: e.t, seq }, e.t);
     } else if (e.kind === 'event' && e.type) {
       const prev = proj.counters;
       seq++;

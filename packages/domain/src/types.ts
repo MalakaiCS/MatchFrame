@@ -1,6 +1,22 @@
 import type { ClockState } from './clock';
 
-export type Sport = 'football' | 'basketball';
+export const SPORTS = ['football', 'basketball', 'netball', 'rugby_league', 'afl', 'hockey'] as const;
+export type Sport = (typeof SPORTS)[number];
+export const SPORT_LABELS: Record<Sport, string> = { football: 'Football', basketball: 'Basketball', netball: 'Netball', rugby_league: 'Rugby League', afl: 'Australian Football', hockey: 'Hockey' };
+export const isSport = (v: unknown): v is Sport => typeof v === 'string' && (SPORTS as readonly string[]).includes(v);
+
+/** A match official as entered by the operator (shown on straps and reports). */
+export interface MatchOfficial {
+  role: 'referee' | 'assistant_1' | 'assistant_2' | 'fourth' | 'video' | 'umpire' | 'touch_judge' | 'other';
+  name: string;
+}
+export const OFFICIAL_ROLES: Record<MatchOfficial['role'], string> = { referee: 'Referee', assistant_1: 'Assistant 1', assistant_2: 'Assistant 2', fourth: 'Fourth official', video: 'Video referee', umpire: 'Umpire', touch_judge: 'Touch judge', other: 'Official' };
+
+export interface MatchWeather {
+  summary?: string | null;
+  tempC?: number | null;
+  condition?: 'sunny' | 'cloudy' | 'rain' | 'wind' | 'storm' | 'snow' | 'indoor' | null;
+}
 export type Side = 'home' | 'away';
 export const otherSide = (s: Side): Side => (s === 'home' ? 'away' : 'home');
 
@@ -64,11 +80,15 @@ export interface TeamStats {
 
 export interface PlayerTally {
   goals?: number;
+  assists?: number;
   points?: number;
   fouls?: number;
   yellow?: number;
   red?: boolean;
+  /** explicit on/off state after a substitution or dismissal; undefined = as the lineup says */
   onCourt?: boolean;
+  /** sport-specific scoring breakdown, e.g. AFL goals/behinds or rugby tries/goals */
+  breakdown?: Record<string, number>;
 }
 
 /** Derived projection — never authoritative on its own; recomputed from facts + actions. */
@@ -118,6 +138,8 @@ export interface DisplayModel {
   stoppageText?: string | null;
   shotClockText?: string | null;
   score: { home: number; away: number };
+  /** sport-specific rendering of the score, e.g. AFL "12.7 (79)"; absent when the number says it all */
+  scoreDetail?: { home: string; away: string } | null;
   shootout?: { home: number; away: number } | null;
   fouls?: { home: number; away: number } | null;
   timeouts?: { home: number; away: number } | null;

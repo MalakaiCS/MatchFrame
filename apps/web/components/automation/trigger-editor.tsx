@@ -7,7 +7,8 @@ import type { Trigger } from '@bs/domain';
 import { Button, Dialog, Field, Input, NativeSelect } from '@bs/ui';
 import { phaseTagLabel } from '@/lib/labels';
 
-export type Sport = 'football' | 'basketball';
+import type { Sport } from '@bs/domain';
+export type { Sport };
 const cfgOf = (sport: Sport) => getAdapter(sport).defaultConfig as never;
 export const phasesFor = (sport: Sport) => getAdapter(sport).phases(cfgOf(sport)).filter((p) => p.kind !== 'terminal');
 export const eventsFor = (sport: Sport) => getAdapter(sport).eventTypes(cfgOf(sport)).filter((e) => e.type !== 'stat_adjust');

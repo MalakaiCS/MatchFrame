@@ -1,6 +1,7 @@
 'use client';
 // Edit a look (theme profile) with the graphics it affects in view: colours named by what they do, a club or
 // league logo, and a one-click copy of a team's colours.
+import type { Sport } from '@bs/domain';
 import { useMemo, useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { DEFAULT_THEMES, emptyState, findTemplate, type OverlayPublicState, type ThemeConfig } from '@bs/graphics';
@@ -10,7 +11,6 @@ import { ApiError, patch, post } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
 
-type Sport = 'football' | 'basketball';
 type Config = Partial<ThemeConfig> & { logoAssetId?: string | null; sponsorSlots?: Record<string, boolean>; controlRoomLayoutId?: string | null };
 export interface EditableProfile { id: string; name: string; competitionId: string | null; currentVersion: number; draft: { themeKey: string; config: Config } }
 interface Team { id: string; name: string; sport: string; primaryColor: string; secondaryColor: string }
