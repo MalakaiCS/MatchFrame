@@ -6,6 +6,7 @@ import { SportOptions } from '@/components/sport-options';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
 import { STARTER_PLANS, gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
+import { LOOKS, type ThemeKey } from '@bs/graphics';
 import { Button, Card, Dialog, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx, toast } from '@bs/ui';
 import { ApiError, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
@@ -298,7 +299,7 @@ function RehearsalView({ id, sport, names }: { id: string; sport: Sport; names: 
   const [speed, setSpeed] = useState(5);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [theme, setTheme] = useState<'broadcast' | 'minimal' | 'club' | 'premier'>('broadcast');
+  const [theme, setTheme] = useState<ThemeKey>('broadcast');
   const last = useRef(0);
   const run = async () => {
     setErr(null);
@@ -335,7 +336,7 @@ function RehearsalView({ id, sport, names }: { id: string; sport: Sport; names: 
         <StatusPill tone="warning">Rehearsal</StatusPill>
         <span className="text-xs text-muted">Plays the draft against a made-up {sport} match (pre-match, kick-off, a goal, a card, half time, second half, full time). Nothing goes to any output.</span>
         <div className="ml-auto flex items-center gap-2">
-          <NativeSelect aria-label="Look" className="w-auto" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}><option value="broadcast">Broadcast look</option><option value="minimal">Minimal look</option><option value="club">Club look</option><option value="premier">Premier look</option></NativeSelect>
+          <NativeSelect aria-label="Look" className="w-auto" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}>{LOOKS.map((l) => <option key={l.key} value={l.key}>{l.name} look</option>)}</NativeSelect>
           <NativeSelect aria-label="Speed" className="w-auto" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>{SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}</NativeSelect>
           {r ? <Button size="sm" variant="secondary" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause className="size-4" /> : <Play className="size-4" />}</Button> : null}
           <Button variant="primary" className="whitespace-nowrap" onClick={() => void run()}>{r ? 'Rehearse again' : 'Rehearse the draft'}</Button>

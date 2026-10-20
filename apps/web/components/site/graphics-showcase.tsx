@@ -2,19 +2,14 @@
 // Public graphics showcase: every built-in graphic for a sport, in each look and output format, drawn by the
 // same renderer the OBS page uses, with fictional sample data. Choosing a card plays it in the large preview.
 import type { Sport } from '@bs/domain';
-import { BUILTIN_TEMPLATES, DEFAULT_THEMES, emptyState, type Category, type OutputFormat, type OverlayPublicState, type TemplateDef } from '@bs/graphics';
+import { BUILTIN_TEMPLATES, DEFAULT_THEMES, LOOKS as ALL_LOOKS, emptyState, type Category, type OutputFormat, type OverlayPublicState, type TemplateDef, type ThemeKey } from '@bs/graphics';
 import { Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Play } from 'lucide-react';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
 
-type Look = 'broadcast' | 'premier' | 'club' | 'minimal';
-const LOOKS: { key: Look; label: string; note: string }[] = [
-  { key: 'broadcast', label: 'Broadcast', note: 'Clean sports-network panels on a shared slant' },
-  { key: 'premier', label: 'Premier', note: 'Top-flight football style: purple glass, angular facets, magenta and teal' },
-  { key: 'club', label: 'Club', note: 'Rounded pills with lively motion' },
-  { key: 'minimal', label: 'Minimal', note: 'Light cards and restrained type' },
-];
+type Look = ThemeKey;
+const LOOKS = ALL_LOOKS.map((l) => ({ key: l.key, label: l.name, note: l.description }));
 const SPORTS: { key: Sport; label: string }[] = [
   { key: 'football', label: 'Football' },
   { key: 'basketball', label: 'Basketball' },

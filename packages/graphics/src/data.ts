@@ -34,8 +34,26 @@ export interface RenderPlayer {
   position?: string | null;
 }
 
+/** Every built-in look, in the order the app lists them. */
+export const THEME_KEYS = ['broadcast', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister', 'club', 'minimal'] as const;
+export type ThemeKey = (typeof THEME_KEYS)[number];
+
+/** Name and one-line description of each look, for pickers and the public showcase. */
+export const LOOKS: { key: ThemeKey; name: string; description: string }[] = [
+  { key: 'broadcast', name: 'Broadcast', description: 'Clean sports-network panels on a shared slant' },
+  { key: 'premier', name: 'Premier', description: 'Top-flight English football style: purple glass, angular facets, magenta and teal' },
+  { key: 'liga', name: 'Liga', description: 'Spanish top-flight style: white rounded cards, coral red and wide geometric type' },
+  { key: 'major', name: 'Major', description: 'North American streaming style: smoked glass, team-colour tabs and clean type' },
+  { key: 'southern', name: 'Southern', description: 'Australian league style: flat black, chunky capitals and a four-colour band' },
+  { key: 'continental', name: 'Continental', description: 'European club-night style: deep navy, starfield and silver hairlines' },
+  { key: 'primetime', name: 'Primetime', description: 'US network style: brushed metal, red and condensed italic type' },
+  { key: 'meister', name: 'Meister', description: 'German top-flight style: white panels, red and slanted italic cuts' },
+  { key: 'club', name: 'Club', description: 'Rounded pills with lively motion' },
+  { key: 'minimal', name: 'Minimal', description: 'Light cards and restrained type' },
+];
+
 export interface ThemeConfig {
-  themeKey: 'minimal' | 'broadcast' | 'club' | 'premier';
+  themeKey: ThemeKey;
   primary: string;
   secondary: string;
   accent: string;
@@ -204,6 +222,13 @@ export const DEFAULT_THEMES: Record<ThemeConfig['themeKey'], ThemeConfig> = {
   club: { themeKey: 'club', primary: '#55D99D', secondary: '#0B1220', accent: '#FFFFFF', text: '#FFFFFF', panel: '#1C2C43', font: 'Inter Variable', radius: 18, motion: 'subtle', entranceMs: 280, exitMs: 240, safeArea: 0.05 },
   // top-flight football broadcast look: deep purple glass, hot magenta, electric teal, white score plates, Outfit type
   premier: { themeKey: 'premier', primary: '#E90052', secondary: '#37003C', accent: '#04F5FF', text: '#37003C', panel: '#FFFFFF', font: "'Outfit Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 10, motion: 'full', entranceMs: 360, exitMs: 280, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  // the broadcast packs (theme-pack.tsx): original designs in the style of other leagues' and networks' graphics
+  liga: { themeKey: 'liga', primary: '#FF4B44', secondary: '#141418', accent: '#FFB400', text: '#141418', panel: '#FFFFFF', font: "'Montserrat Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 18, motion: 'full', entranceMs: 340, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  major: { themeKey: 'major', primary: '#F5F5F7', secondary: '#0B0B0D', accent: '#B7FF3C', text: '#0B0B0D', panel: '#FFFFFF', font: "'Inter Variable', ui-sans-serif, sans-serif", radius: 14, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  southern: { themeKey: 'southern', primary: '#FF3D7F', secondary: '#0A0A0A', accent: '#00E0FF', text: '#0A0A0A', panel: '#FFFFFF', font: "'Archivo Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  continental: { themeKey: 'continental', primary: '#2F6BFF', secondary: '#07103A', accent: '#8FB7FF', text: '#07103A', panel: '#FFFFFF', font: "'Jost Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 4, motion: 'full', entranceMs: 420, exitMs: 300, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  primetime: { themeKey: 'primetime', primary: '#E10600', secondary: '#17191E', accent: '#FFC400', text: '#17191E', panel: '#FFFFFF', font: "'Saira Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  meister: { themeKey: 'meister', primary: '#D20515', secondary: '#16161A', accent: '#16161A', text: '#16161A', panel: '#FFFFFF', font: "'Exo 2 Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
 };
 
 export function playerIndex(lineup: LineupSnapshot, photo: (assetId: string | null | undefined) => string | null): Record<string, RenderPlayer> {

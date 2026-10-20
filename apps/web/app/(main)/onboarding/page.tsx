@@ -1,6 +1,7 @@
 'use client';
 import { SportOptions } from '@/components/sport-options';
 import type { Sport } from '@bs/domain';
+import { LOOKS } from '@bs/graphics';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,12 +13,7 @@ import { useMe } from '@/lib/session';
 
 const STEPS = ['Organisation', 'Competition', 'Teams', 'Theme', 'First match'] as const;
 const TZS = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Adelaide', 'Australia/Perth', 'Pacific/Auckland', 'Europe/London', 'America/New_York', 'UTC'];
-const THEMES = [
-  { key: 'minimal', name: 'Minimal', desc: 'Flat, quiet, high legibility.' },
-  { key: 'broadcast', name: 'Broadcast', desc: 'Angled panels and motion accents.' },
-  { key: 'club', name: 'Club', desc: 'Team colours forward, rounded badges.' },
-  { key: 'premier', name: 'Premier', desc: 'Purple glass panels with angular facets, magenta and teal; the top-flight football look.' },
-];
+const THEMES = LOOKS.map((l) => ({ key: l.key, name: l.name, desc: l.description }));
 
 interface Progress {
   step?: number;

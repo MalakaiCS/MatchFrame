@@ -3,18 +3,13 @@
 // browser on fictional teams. Nothing here talks to the server, a match or a stream. Until the page has loaded
 // (or without JavaScript) a screenshot of the same graphics stands in.
 import type { Sport } from '@bs/domain';
-import { DEFAULT_THEMES, emptyState, reduceOverlay, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
+import { DEFAULT_THEMES, LOOKS as ALL_LOOKS, emptyState, reduceOverlay, type OverlayCommand, type OverlayPublicState, type ThemeKey } from '@bs/graphics';
 import { Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SAMPLE_SLOTS, samplePlayerId, sampleData, sampleVariables } from '@/components/theme-preview';
 
-type Look = 'broadcast' | 'premier' | 'club' | 'minimal';
-const LOOKS: { key: Look; label: string }[] = [
-  { key: 'broadcast', label: 'Broadcast' },
-  { key: 'premier', label: 'Premier' },
-  { key: 'club', label: 'Club' },
-  { key: 'minimal', label: 'Minimal' },
-];
+type Look = ThemeKey;
+const LOOKS = ALL_LOOKS.map((l) => ({ key: l.key, label: l.name }));
 const BACKGROUND: Record<string, string> = {
   football: 'radial-gradient(ellipse at 50% 120%, #3c8a4b 0%, #24613a 35%, #173d2a 60%, #0f1f2c 100%)',
   basketball: 'radial-gradient(ellipse at 50% 120%, #b9773d 0%, #8c5428 35%, #4d2f1a 62%, #131722 100%)',

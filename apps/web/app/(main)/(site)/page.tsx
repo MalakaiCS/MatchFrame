@@ -146,7 +146,7 @@ export default function Home() {
           <div>
             <Eyebrow>See it moving</Eyebrow>
             <H2 className="mt-3">Every graphic, in every look</H2>
-            <Lead className="mt-4">Twenty-nine graphics in four looks (Broadcast, Premier, Club and Minimal), in widescreen, vertical and venue-screen layouts. The showcase draws each one live with the same engine that runs in OBS.</Lead>
+            <Lead className="mt-4">Twenty-nine graphics in ten looks, in the styles of top-flight English, Spanish and German football, US network sport, North American streaming, an Australian league and European club nights, in widescreen, vertical and venue-screen layouts. The showcase draws each one live with the same engine that runs in OBS.</Lead>
             <div className="mt-6 flex flex-wrap gap-3">
               <ButtonLink href="/showcase">Open the showcase</ButtonLink>
             </div>

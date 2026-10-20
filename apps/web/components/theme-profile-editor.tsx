@@ -5,7 +5,7 @@ import { SportOptions } from '@/components/sport-options';
 import type { Sport } from '@bs/domain';
 import { useMemo, useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
-import { DEFAULT_THEMES, emptyState, findTemplate, type OverlayPublicState, type ThemeConfig } from '@bs/graphics';
+import { DEFAULT_THEMES, LOOKS, emptyState, findTemplate, type OverlayPublicState, type ThemeConfig } from '@bs/graphics';
 import { Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, toast } from '@bs/ui';
 import { ApiError, patch, post } from '@/lib/api';
@@ -139,7 +139,7 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
         </div>
         <div className="grid content-start gap-3">
           <Field label="Style" htmlFor="tk" hint="Broadcast: dark angled panels. Minimal: light, quiet. Club: team colours and rounded pills.">
-            <NativeSelect id="tk" value={themeKey} onChange={(e) => setThemeKey(e.target.value as ThemeConfig['themeKey'])}><option value="broadcast">Broadcast</option><option value="minimal">Minimal</option><option value="club">Club</option><option value="premier">Premier</option></NativeSelect>
+            <NativeSelect id="tk" value={themeKey} onChange={(e) => setThemeKey(e.target.value as ThemeConfig['themeKey'])}>{LOOKS.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}</NativeSelect>
           </Field>
           <Field label="Use a team's colours" htmlFor="tt">
             <NativeSelect id="tt" value="" onChange={(e) => applyTeamColours(e.target.value)}><option value="">Choose a team…</option>{teams.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect>

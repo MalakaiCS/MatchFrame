@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { login } from './helpers';
 
-const LOOKS = ['broadcast', 'minimal', 'club', 'premier'] as const;
+const LOOKS = ['broadcast', 'minimal', 'club', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister'] as const;
 const OTHER_SPORTS = ['basketball', 'netball', 'rugby_league', 'afl', 'hockey'] as const;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 

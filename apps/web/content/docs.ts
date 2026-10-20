@@ -307,7 +307,7 @@ export const DOCS: DocArticle[] = [
     outcome: 'Put your logo and colours on the graphics.',
     body: [
       { steps: [
-        { do: 'Open **Themes** and choose one of the four looks: Broadcast, Premier, Club or Minimal.', expect: 'Every graphic previews in that look with sample teams.' },
+        { do: 'Open **Themes** and choose one of the ten looks, such as Broadcast, Premier, Liga or Primetime.', expect: 'Every graphic previews in that look with sample teams.' },
         { do: 'Set your colours, logo and team colours, and the scorebug variant and position, the clock style and any wording changes.' },
         { do: 'Publish the look, then choose it on the match (match-day checklist → **Look** → **Apply**), or as the competition default.' },
       ] },

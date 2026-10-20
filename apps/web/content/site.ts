@@ -60,7 +60,7 @@ export const CAPABILITIES: Capability[] = [
     benefit: 'Give viewers the score, the clock, the line-ups and the moments that matter, in your club or league colours.',
     points: [
       'Twenty-nine built-in graphics: the scorebug (the on-screen score and clock), line-ups, goals and cards, lower thirds (name captions near the bottom of the picture), statistics, tables and more.',
-      'Four original looks (Broadcast, Premier, Club and Minimal), retinted with your logo, colours and team colours.',
+      'Ten original looks, from Premier, Liga and Meister football styles to Primetime, Major, Southern and Continental, retinted with your logo, colours and team colours.',
       'Widescreen 16:9, vertical 9:16 for social streams, and a large-type venue screen layout.',
       'A transparent graphics page you add to OBS as a Browser Source, controlled live from the control room.',
     ],

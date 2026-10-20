@@ -23,7 +23,7 @@ export default function ShowcasePage() {
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
             <H2>Watch the graphics in action</H2>
-            <Lead className="mt-4">Your own colours, logo and team colours go on any of the four looks, and the same graphics work in a 9:16 vertical stream and on a venue screen.</Lead>
+            <Lead className="mt-4">Your own colours, logo and team colours go on any of the ten looks, and the same graphics work in a 9:16 vertical stream and on a venue screen.</Lead>
             <div className="mt-6 flex flex-wrap gap-3">
               <ButtonLink href="/register">Get started</ButtonLink>
               <ButtonLink href="/docs/graphics/themes-and-branding" variant="secondary">Looks and branding</ButtonLink>
