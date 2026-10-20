@@ -30,6 +30,25 @@
 * **Programme monitor** — for cloud outputs the control room shows the *actual* programme from HLS with its
   latency label; the local preview is labelled Preview and is not proof of what went out.
 
+### What the football starter plan does on its own
+
+The scorer's phase buttons drive the graphics, in the order a top-league broadcast runs them. Each step replaces
+the one before it, and the walk-out repeats before the second half:
+
+| Scorer presses | On air |
+| --- | --- |
+| *Pre-match* | match ident (teams, kick-off time, venue) and the sponsor slate, looping |
+| *Players entering* | home lineup, then away lineup, looping |
+| *About to start* | "About to start" banner with the score and period |
+| *1st Half* / *2nd Half* | full-frame graphics clear, scorebug in, "Kick-off" banner |
+| *Half Time* / *Full Time* | scorebug out; score, match stats and sponsor, looping |
+
+During play only **goals, yellow and red cards and substitutions** put a graphic on air (then the goal partner
+logo after a goal). Corners, shots, saves, fouls and offsides are recorded as statistics and appear on the
+half-time and full-time stats board (shots on target, shots off target, corners, fouls, offsides, yellow cards),
+not as graphics of their own. Every graphic builds in parts and animates out; the scorebug's score, period and
+added-time indicators animate when they change. Automation only acts in *Auto* mode.
+
 ## Sponsors and reports
 
 Sponsors → brands, creatives (images/videos from the asset library; approve before use), campaigns (flight,

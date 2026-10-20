@@ -60,7 +60,13 @@ export interface GraphicProps {
   creative: (placement: string, cue?: Cue) => RenderCreative | null;
   phase: 'in' | 'hold' | 'out';
   offsetMs: number;
+  /** per-renderer animation memory (see animStyle / changeStyle); absent in static thumbnails */
+  memo?: AnimMemo;
 }
+
+/** Remembers when each animation was first rendered, so its CSS delay stays constant across re-renders. */
+export type AnimMemo = Map<string, number | ChangeMemo>;
+interface ChangeMemo { v: unknown; at: number; n: number; firstAge?: number }
 
 export type ThemeComponents = Partial<Record<string, (p: GraphicProps) => ReactNode>>;
 
@@ -98,6 +104,8 @@ export function Renderer({ state, data, themes, serverNow, customDefs = [], rend
   const adapter = getAdapter(data.match.sport);
   const display = adapter.display(data.match.rulesConfig as never, data.match.projection, data.match.clocks, now);
   const measure = useRef<Measure>(canvasMeasure(data.theme.font)).current;
+  const memo = useRef<AnimMemo>(new Map()).current;
+  if (memo.size > 4000) memo.clear();
   const comps = themes[data.theme.themeKey] ?? themes.broadcast!;
   const creative = (placement: string, cue?: Cue): RenderCreative | null => {
     if (cue?.sponsor && cue.sponsor.placement === placement) return data.creatives[cue.sponsor.creativeId] ?? null;
@@ -114,7 +122,7 @@ export function Renderer({ state, data, themes, serverNow, customDefs = [], rend
     const { phase, offset } = phaseOf(cue, t, now);
     if (phase === 'out' && offset > t.exitMs) return null;
     if (phase !== 'out') visible.push(cue);
-    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset };
+    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset, memo };
     const Comp = cue.templateKey.startsWith('custom:') ? renderCustom : comps[cue.templateKey.replace('builtin:', '')];
     if (!Comp) return null;
     return (
@@ -138,23 +146,88 @@ export function Renderer({ state, data, themes, serverNow, customDefs = [], rend
   );
 }
 
-/** Entrance/exit animation that rejoins at the current timeline offset (negative delay) instead of replaying. */
-export function animStyle(p: GraphicProps, kind: 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'scale' | 'wipe', delayMs = 0): CSSProperties {
-  const dur = p.phase === 'out' ? p.t.exitMs : p.t.entranceMs;
-  if (p.phase === 'hold' || p.data.theme.motion === 'none') return {};
-  const name = `bs-${kind}-${p.phase}`;
-  return { animationName: name, animationDuration: `${dur}ms`, animationDelay: `${delayMs - p.offsetMs}ms`, animationFillMode: 'both', animationTimingFunction: p.phase === 'in' ? 'cubic-bezier(.2,.8,.2,1)' : 'ease-in' };
+export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom';
+
+/** Timeline offset when this animation was first rendered (constant afterwards). */
+function firstOffset(p: GraphicProps, key: string): number {
+  if (!p.memo) return p.offsetMs;
+  const k = `${p.cue.cueId}:${key}`;
+  const hit = p.memo.get(k);
+  if (typeof hit === 'number') return hit;
+  p.memo.set(k, p.offsetMs);
+  return p.offsetMs;
 }
 
-export const KEYFRAMES = `
-@keyframes bs-fade-in{from{opacity:0}to{opacity:1}}@keyframes bs-fade-out{from{opacity:1}to{opacity:0}}
-@keyframes bs-slide-left-in{from{opacity:0;transform:translateX(-60px)}to{opacity:1;transform:none}}@keyframes bs-slide-left-out{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-60px)}}
-@keyframes bs-slide-right-in{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}@keyframes bs-slide-right-out{from{opacity:1;transform:none}to{opacity:0;transform:translateX(60px)}}
-@keyframes bs-slide-up-in{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}@keyframes bs-slide-up-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(40px)}}
-@keyframes bs-scale-in{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}@keyframes bs-scale-out{from{opacity:1;transform:none}to{opacity:0;transform:scale(.92)}}
-@keyframes bs-wipe-in{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}@keyframes bs-wipe-out{from{clip-path:inset(0 0 0 0)}to{clip-path:inset(0 0 0 100%)}}
-@keyframes bs-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-`;
+/**
+ * Entrance/exit animation for a graphic or one of its parts. `delayMs` staggers parts after the graphic's
+ * Take In; the exit plays all parts together. A graphic joined mid-animation (refresh, late output) resumes at
+ * its timeline offset instead of replaying. The CSS delay is fixed at first render: re-deriving it every frame
+ * would advance the animation twice as fast.
+ */
+export function animStyle(p: GraphicProps, kind: AnimKind, delayMs = 0, durMs?: number): CSSProperties {
+  if (p.data.theme.motion === 'none') return {};
+  const out = p.phase === 'out';
+  // parts may take longer than the graphic's entrance, but every part exits within the graphic's exit time
+  const dur = out ? p.t.exitMs : (durMs ?? p.t.entranceMs);
+  if (!out && p.offsetMs >= delayMs + dur) return {};
+  const name = `bs-${kind}-${out ? 'out' : 'in'}`;
+  const start = firstOffset(p, `${name}:${delayMs}`);
+  return {
+    animationName: name,
+    animationDuration: `${dur}ms`,
+    animationDelay: `${out ? -start : delayMs - start}ms`,
+    animationFillMode: 'both',
+    animationTimingFunction: out ? 'cubic-bezier(.5,0,.75,0)' : kind === 'zoom' || kind === 'drop' ? 'cubic-bezier(.34,1.56,.64,1)' : 'cubic-bezier(.2,.8,.2,1)',
+  };
+}
+
+/** Staggered entrance for the i-th item of a list (rows, players, stats). */
+export const stagger = (p: GraphicProps, i: number, kind: AnimKind = 'rise', startMs = 180, stepMs = 45) => animStyle(p, kind, startMs + i * stepMs, 320);
+
+/** Short emphasis when a live value changes while the graphic is on air (score, period, clock state). */
+export function changeStyle(p: GraphicProps, id: string, value: unknown, kind: 'pop' | 'flip' = 'pop', durMs = 700): CSSProperties {
+  const still: CSSProperties = { display: 'inline-block' };
+  if (!p.memo || p.data.theme.motion === 'none') return still;
+  const k = `chg:${p.cue.cueId}:${id}`;
+  let m = p.memo.get(k) as ChangeMemo | undefined;
+  if (!m) {
+    p.memo.set(k, { v: value, at: -Infinity, n: 0 });
+    return still;
+  }
+  if (m.v !== value) {
+    m = { v: value, at: p.now, n: m.n + 1 };
+    p.memo.set(k, m);
+  }
+  const age = p.now - m.at;
+  if (age >= durMs) return still;
+  m.firstAge ??= age;
+  return { ...still, animationName: `bs-${kind}-${m.n % 2 ? 'a' : 'b'}`, animationDuration: `${durMs}ms`, animationDelay: `${-m.firstAge}ms`, animationTimingFunction: 'ease-out' };
+}
+
+const kf = (name: string, from: string, to = 'opacity:1;transform:none;clip-path:inset(0 0 0 0)') =>
+  `@keyframes bs-${name}-in{from{${from}}to{${to}}}@keyframes bs-${name}-out{from{${to}}to{${from}}}`;
+
+export const KEYFRAMES = [
+  kf('fade', 'opacity:0', 'opacity:1'),
+  kf('slide-left', 'opacity:0;transform:translateX(-60px)'),
+  kf('slide-right', 'opacity:0;transform:translateX(60px)'),
+  kf('slide-up', 'opacity:0;transform:translateY(40px)'),
+  kf('slide-down', 'opacity:0;transform:translateY(-40px)'),
+  kf('scale', 'opacity:0;transform:scale(.85)'),
+  kf('zoom', 'opacity:0;transform:scale(.4)'),
+  kf('rise', 'opacity:0;transform:translateY(18px)'),
+  kf('drop', 'opacity:0;transform:translateY(-24px) scale(1.15)'),
+  kf('flip', 'opacity:0;transform:perspective(600px) rotateX(90deg)'),
+  kf('wipe', 'clip-path:inset(0 100% 0 0)', 'clip-path:inset(0 0 0 0)'),
+  kf('wipe-up', 'clip-path:inset(100% 0 0 0)', 'clip-path:inset(0 0 0 0)'),
+  kf('grow-x', 'transform:scaleX(0)', 'transform:none'),
+  kf('grow-y', 'transform:scaleY(0)', 'transform:none'),
+  // value-change emphasis: two identical copies so back-to-back changes restart the animation
+  ...['a', 'b'].map((x) => `@keyframes bs-pop-${x}{0%{transform:scale(1)}30%{transform:scale(1.35);filter:brightness(1.6)}100%{transform:scale(1)}}`),
+  ...['a', 'b'].map((x) => `@keyframes bs-flip-${x}{0%{transform:perspective(400px) rotateX(-90deg);opacity:.2}60%{transform:perspective(400px) rotateX(10deg);opacity:1}100%{transform:none}}`),
+  '@keyframes bs-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
+  '@keyframes bs-pulse{0%,100%{opacity:1}50%{opacity:.45}}',
+].join('');
 
 export function Keyframes() {
   return <style>{KEYFRAMES}</style>;

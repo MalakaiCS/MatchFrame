@@ -113,6 +113,14 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams'], entranceMs: 300, holdMs: 7000, exitMs: 250, sponsorSlots: [], bounds: { x: 0.05, y: 0.7, w: 0.5, h: 0.16 },
   },
   {
+    key: 'builtin:period_banner', name: 'Kick-off / period banner', category: 'Match', sports: both, layer: 'lower',
+    variables: [
+      { key: 'heading', label: 'Heading', type: 'text', required: false, maxLength: 32, default: 'KICK-OFF' },
+      { key: 'period', label: 'Period (blank = current)', type: 'text', required: false, maxLength: 32 },
+    ],
+    requiredData: ['teams', 'score'], entranceMs: 400, holdMs: 5000, exitMs: 300, sponsorSlots: ['lower_third_banner'], bounds: { x: 0.2, y: 0.72, w: 0.6, h: 0.18 },
+  },
+  {
     key: 'builtin:lower_third', name: 'Lower third', category: 'People', sports: both, layer: 'lower',
     variables: [
       { key: 'heading', label: 'Heading', type: 'text', required: true, maxLength: 48 },

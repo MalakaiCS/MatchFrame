@@ -357,6 +357,20 @@ export function phaseBoundCancellations(active: ActiveRun[], newPhaseKind: strin
   return active.filter((r) => r.kind && !allowed.includes(r.kind)).map((r) => ({ runId: r.runId, reason: `phase changed to ${newPhaseKind}` }));
 }
 
+/**
+ * Phase-step playlists (every trigger is a phase trigger) belong to the phase that started them: when the match
+ * moves to a phase none of their triggers match, they stop, so "Players entering" never runs into "About to start".
+ */
+export function phaseStepCancellations(plan: GamePlan, active: ActiveRun[], input: { phaseId: string; phaseTags: string[] }): { runId: string; reason: string }[] {
+  return active
+    .filter((r) => {
+      const pl = plan.playlists.find((x) => x.id === r.playlistId);
+      if (!pl || !pl.triggers.every((t) => t.type === 'phase')) return false;
+      return !pl.triggers.some((t) => t.type === 'phase' && (t.phaseIds.includes(input.phaseId) || t.phaseTags.some((x) => input.phaseTags.includes(x))));
+    })
+    .map((r) => ({ runId: r.runId, reason: `phase moved on to ${input.phaseId}` }));
+}
+
 export type PriorityDecision = { action: 'start'; preempt: { runId: string; reason: string }[] } | { action: 'queue'; behind: string[]; reason: string } | { action: 'skip'; reason: string };
 
 /**

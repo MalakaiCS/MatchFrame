@@ -1,6 +1,6 @@
 // Rehearsal: replay a fact timeline against a game plan with the production decision functions, in isolation.
 // Produces an explained decision log and the cue schedule for a local preview. No I/O.
-import { clockCrossings, decidePriority, matchTriggers, phaseBoundCancellations, planRun, playlistLayers, type ActiveRun, type GamePlan, type TriggerInput, type TriggerMatch } from './automation';
+import { clockCrossings, decidePriority, matchTriggers, phaseBoundCancellations, phaseStepCancellations, planRun, playlistLayers, type ActiveRun, type GamePlan, type TriggerInput, type TriggerMatch } from './automation';
 import { getAdapter } from './engine';
 import type { MatchProjection, Side } from './types';
 
@@ -40,15 +40,23 @@ export function syntheticTimeline(sport: 'football' | 'basketball'): TimelineEnt
   if (sport === 'football')
     return [
       { t: 0, kind: 'phase', phase: 'pre_match' },
-      { t: 40_000, kind: 'phase', phase: 'first_half' },
-      { t: 70_000, kind: 'event', type: 'goal', side: 'home' },
-      { t: 76_000, kind: 'event', type: 'yellow_card', side: 'away' },
-      { t: 110_000, kind: 'event', type: 'substitution', side: 'home', payload: {} },
-      { t: 140_000, kind: 'phase', phase: 'half_time' },
-      { t: 200_000, kind: 'phase', phase: 'second_half' },
-      { t: 230_000, kind: 'event', type: 'goal', side: 'away', lateByMs: 45_000 },
-      { t: 250_000, kind: 'event', type: 'penalty_scored', side: 'home' },
-      { t: 300_000, kind: 'phase', phase: 'full_time' },
+      { t: 30_000, kind: 'phase', phase: 'players_entering' },
+      { t: 55_000, kind: 'phase', phase: 'about_to_start' },
+      { t: 70_000, kind: 'phase', phase: 'first_half' },
+      { t: 85_000, kind: 'event', type: 'offside', side: 'away' },
+      { t: 100_000, kind: 'event', type: 'goal', side: 'home' },
+      { t: 112_000, kind: 'event', type: 'yellow_card', side: 'away' },
+      { t: 125_000, kind: 'event', type: 'corner', side: 'home' },
+      { t: 140_000, kind: 'event', type: 'substitution', side: 'home', payload: {} },
+      { t: 160_000, kind: 'phase', phase: 'half_time' },
+      { t: 215_000, kind: 'phase', phase: 'second_half_entering' },
+      { t: 240_000, kind: 'phase', phase: 'second_half_ready' },
+      { t: 255_000, kind: 'phase', phase: 'second_half' },
+      { t: 270_000, kind: 'event', type: 'foul', side: 'home' },
+      { t: 285_000, kind: 'event', type: 'goal', side: 'away', lateByMs: 45_000 },
+      { t: 300_000, kind: 'event', type: 'penalty_scored', side: 'home' },
+      { t: 320_000, kind: 'event', type: 'shot_on_target', side: 'away' },
+      { t: 345_000, kind: 'phase', phase: 'full_time' },
     ];
   const out: TimelineEntry[] = [{ t: 0, kind: 'phase', phase: 'pre_match' }, { t: 30_000, kind: 'phase', phase: 'p1' }];
   for (let i = 0; i < 14; i++) out.push({ t: 35_000 + i * 6000, kind: 'event', type: 'score', side: i % 2 ? 'away' : 'home', payload: { points: i % 3 === 0 ? 3 : 2, resetShotClock: true } });
@@ -127,7 +135,10 @@ export function simulateRehearsal(plan: GamePlan, rulesConfig: unknown, timeline
   const startRuns = (input: TriggerInput, now: number) => {
     guard.now = now;
     advance(now);
-    if (input.kind === 'phase') for (const c of phaseBoundCancellations(active, input.phaseKind)) cancelRun(c.runId, now, c.reason);
+    if (input.kind === 'phase') {
+      for (const c of phaseBoundCancellations(active, input.phaseKind)) cancelRun(c.runId, now, c.reason);
+      for (const c of phaseStepCancellations(plan, active, input)) cancelRun(c.runId, now, c.reason);
+    }
     const { matches, skipped } = matchTriggers(plan, input, guard);
     for (const s of skipped) decisions.push({ t: now, playlistId: s.playlistId, triggerId: s.triggerId, outcome: 'skipped', reason: s.reason });
     for (const m of matches) {

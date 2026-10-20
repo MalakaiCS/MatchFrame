@@ -8,7 +8,7 @@ import { basketballAdapter } from './sports/basketball';
 
 const LAYERS: Record<string, string> = {
   'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
-  'builtin:lower_third': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background',
+  'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background',
 };
 const opts = (sport: 'football' | 'basketball') => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
 const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };
@@ -20,8 +20,9 @@ describe('game plan validation', () => {
   });
   it('rejects unknown templates, overlaps, infinite loops and unknown events', () => {
     const bad: GamePlan = structuredClone(FOOTBALL_STARTER);
-    bad.playlists[2]!.items.push({ id: 'x', action: 'show', templateKey: 'builtin:nope', offsetMs: 0, durationMs: 1000 });
-    bad.playlists[3]!.items.push({ id: 'y', action: 'show', templateKey: 'builtin:goal', offsetMs: 1000, durationMs: 1000 }); // overlaps card on event layer
+    const by = (id: string) => bad.playlists.find((p) => p.id === id)!;
+    by('goal').items.push({ id: 'x', action: 'show', templateKey: 'builtin:nope', offsetMs: 0, durationMs: 1000 });
+    by('card').items.push({ id: 'y', action: 'show', templateKey: 'builtin:goal', offsetMs: 1000, durationMs: 1000 }); // overlaps card on event layer
     bad.playlists.push({ id: 'spin', name: 'spin', kind: 'in_play', priority: 4, promotional: false, cooldownMs: 0, triggers: [{ id: 'tt', type: 'event', eventTypes: ['dunk'] }], guards: [], repeat: { mode: 'loop', gapMs: 0, maxIterations: 5 }, items: [{ id: 'w', action: 'scorebug_show', offsetMs: 0 }] });
     const r = validateGamePlan(bad, opts('football'));
     expect(r.ok).toBe(false);
@@ -62,7 +63,7 @@ describe('triggers', () => {
 
   it('guards skip with reasons', () => {
     const p: GamePlan = structuredClone(FOOTBALL_STARTER);
-    p.playlists[2]!.guards = [{ type: 'min_data', require: ['player'] }, { type: 'freshness', maxAgeMs: 5000 }];
+    p.playlists.find((x) => x.id === 'goal')!.guards = [{ type: 'min_data', require: ['player'] }, { type: 'freshness', maxAgeMs: 5000 }];
     expect(matchTriggers(p, ev(), guard).skipped[0]!.reason).toMatch(/no player/);
     expect(matchTriggers(p, ev({ playerId: 'p', occurredAt: 0 }), { ...guard, now: 9000 }).skipped[0]!.reason).toMatch(/stale/);
   });
@@ -149,8 +150,13 @@ describe('rehearsal (A29: pure, explained)', () => {
   it('replays a synthetic match and explains every decision', () => {
     const r = simulateRehearsal(FOOTBALL_STARTER, footballAdapter.defaultConfig, syntheticTimeline('football'), { templateLayers: LAYERS });
     const fired = r.decisions.filter((d) => d.outcome === 'fired').map((d) => d.playlistId);
-    expect(fired).toEqual(expect.arrayContaining(['pre_game', 'kickoff', 'goal', 'card', 'half_time', 'full_time']));
-    expect(r.decisions.find((d) => d.outcome === 'cancelled' && /phase changed/.test(d.reason))).toBeTruthy(); // pre-game loop ends at kick-off
+    expect(fired).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'about_to_start_1', 'kickoff', 'goal', 'card', 'half_time', 'about_to_start_2', 'full_time']));
+    expect(r.decisions.find((d) => d.outcome === 'cancelled' && /phase changed/.test(d.reason))).toBeTruthy(); // "about to start" loop ends at kick-off
+    // the walk-out plays before both halves; each phase step replaces the one before it
+    expect(fired.filter((id) => id === 'players_entering')).toHaveLength(2);
+    expect(fired.filter((id) => id === 'kickoff')).toHaveLength(2);
+    const movedOn = r.decisions.filter((d) => d.outcome === 'cancelled' && /phase moved on/.test(d.reason)).map((d) => d.playlistId);
+    expect(movedOn).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'half_time']));
     expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'queued')).toBeTruthy(); // equal priority: waits for the goal sequence
     expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'fired')).toBeTruthy();
     expect(r.decisions.some((d) => d.outcome === 'skipped' && /historical|freshness/.test(d.reason))).toBe(true); // the late goal

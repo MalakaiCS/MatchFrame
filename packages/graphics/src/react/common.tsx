@@ -129,3 +129,10 @@ export function kickoffCountdown(p: GraphicProps): string | null {
   const s = Math.floor((ms % 60000) / 1000);
   return m > 99 ? null : `${m}:${String(s).padStart(2, '0')}`;
 }
+
+/** Heading and period for the kick-off / period banner. */
+export function periodBanner(p: GraphicProps): { heading: string; period: string } {
+  const heading = typeof p.cue.variables.heading === 'string' && p.cue.variables.heading ? p.cue.variables.heading : 'KICK-OFF';
+  const period = typeof p.cue.variables.period === 'string' && p.cue.variables.period ? p.cue.variables.period : p.display.periodLabel;
+  return { heading: heading.toUpperCase(), period };
+}

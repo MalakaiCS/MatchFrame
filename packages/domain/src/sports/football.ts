@@ -40,6 +40,9 @@ const PHASES: PhaseDef[] = [
   { id: 'about_to_start', label: 'About to start', short: 'KO', kind: 'pre', tags: ['about_to_start'] },
   { id: 'first_half', label: '1st Half', short: '1H', kind: 'play', tags: ['period_start', 'first_period'] },
   { id: 'half_time', label: 'Half Time', short: 'HT', kind: 'break', tags: ['half_time', 'interval'] },
+  // between halves the walk-out repeats: tagged like the pre-match steps so the same playlists play again
+  { id: 'second_half_entering', label: 'Players entering (2nd half)', short: 'ENT', kind: 'break', tags: ['players_entering', 'second_half_entering'] },
+  { id: 'second_half_ready', label: 'About to start (2nd half)', short: 'KO', kind: 'break', tags: ['about_to_start', 'second_half_ready'] },
   { id: 'second_half', label: '2nd Half', short: '2H', kind: 'play', tags: ['period_start'] },
   { id: 'extra_time_break', label: 'Before Extra Time', short: 'ET', kind: 'break', tags: ['extra_time_interval', 'interval'] },
   { id: 'et_first_half', label: 'Extra Time 1st', short: 'ET1', kind: 'play', tags: ['period_start', 'extra_time'] },
@@ -65,6 +68,8 @@ const EVENTS: EventTypeDef[] = [
   { type: 'shot_on_target', label: 'Shot on target', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'shot_off_target', label: 'Shot off target', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'save', label: 'Save', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
+  { type: 'offside', label: 'Offside', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
+  { type: 'foul', label: 'Foul', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
   { type: 'stoppage_announced', label: 'Stoppage time', group: 'control', requiresSide: false, playerField: 'none', highlightDefault: false },
   { type: 'shootout_kick', label: 'Shootout kick', group: 'shootout', requiresSide: true, playerField: 'optional', highlightDefault: true },
@@ -112,6 +117,10 @@ function transitions(cfg: FootballConfig, p: MatchProjection): string[] {
     case 'first_half':
       return ['half_time', 'abandoned'];
     case 'half_time':
+      return ['second_half_entering', 'second_half_ready', 'second_half', 'abandoned'];
+    case 'second_half_entering':
+      return ['second_half_ready', 'second_half', 'abandoned'];
+    case 'second_half_ready':
       return ['second_half', 'abandoned'];
     case 'second_half': {
       const out = ['full_time'];
@@ -250,6 +259,12 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
       case 'save':
         bump(p.stats[side!], 'saves');
         break;
+      case 'offside':
+        bump(p.stats[side!], 'offsides');
+        break;
+      case 'foul':
+        bump(p.stats[side!], 'fouls');
+        break;
       case 'stat_adjust': {
         const pl = e.payload as { stat: string; delta: number };
         adjustStat(p.stats[side!], pl.stat, pl.delta);
@@ -303,7 +318,7 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
       stoppageText = `+${formatClock(ms - lim.limit).replace(/^0/, '')}`;
     }
     if (ph.kind !== 'play' || p.phase === 'shootout') {
-      clockText = ph.kind === 'final' ? 'FT' : ph.kind === 'break' ? ph.short : p.phase === 'shootout' ? 'PEN' : clockText;
+      clockText = ph.kind === 'final' ? 'FT' : p.phase.startsWith('second_half_') ? 'HT' : ph.kind === 'break' ? ph.short : p.phase === 'shootout' ? 'PEN' : clockText;
     }
     return {
       periodLabel: ph.label,
@@ -318,17 +333,20 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
   },
 
   capabilities: () => ({
-    graphics: ['scorebug', 'ident', 'lineup', 'goal', 'card', 'substitution', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate'],
+    graphics: ['scorebug', 'ident', 'lineup', 'goal', 'card', 'substitution', 'period_banner', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate'],
     scorebugFields: ['score', 'clock', 'period', 'stoppage', 'shootout'],
+    // broadcast order: the first six are the default half-time / full-time panel
     statRows: [
-      { key: 'goals', label: 'Goals' },
       { key: 'shots_on_target', label: 'Shots on target' },
       { key: 'shots_off_target', label: 'Shots off target' },
       { key: 'corners', label: 'Corners' },
-      { key: 'saves', label: 'Saves' },
+      { key: 'fouls', label: 'Fouls' },
+      { key: 'offsides', label: 'Offsides' },
       { key: 'yellow_cards', label: 'Yellow cards' },
       { key: 'red_cards', label: 'Red cards' },
+      { key: 'saves', label: 'Saves' },
       { key: 'possession_pct', label: 'Possession', unit: '%' },
+      { key: 'goals', label: 'Goals' },
     ],
   }),
   highlightDefaults: () => ['goal', 'own_goal', 'penalty_scored', 'penalty_missed', 'red_card', 'manual_moment'],

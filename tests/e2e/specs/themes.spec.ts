@@ -9,9 +9,9 @@ test('theme page previews every graphic and plays entrance and exit', async ({ b
 
   const stage = page.getByTestId('theme-preview-stage');
   const cards = page.locator('button[aria-pressed]');
-  await expect(cards).toHaveCount(14); // football: 15 built-ins minus the basketball score update
+  await expect(cards).toHaveCount(15); // football: 16 built-ins minus the basketball score update
   await page.getByLabel('Sport').selectOption('basketball');
-  await expect(cards).toHaveCount(13);
+  await expect(cards).toHaveCount(14);
   await page.getByLabel('Sport').selectOption('football');
 
   await page.getByRole('switch').first().click(); // loop off: real timing, stays on until taken out

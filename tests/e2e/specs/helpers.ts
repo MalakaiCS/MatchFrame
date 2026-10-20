@@ -8,6 +8,7 @@ export async function login(browser: Browser): Promise<{ ctx: BrowserContext; pa
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   const page = await ctx.newPage();
   await page.goto('/login');
+  await page.waitForLoadState('networkidle'); // hydrated: the submit is handled by the app, not the native form
   await page.fill('#email', EMAIL);
   await page.fill('#password', PASSWORD);
   await page.click('button[type=submit]');

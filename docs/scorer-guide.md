@@ -14,7 +14,10 @@ you can review them.
 * Start the period with the phase buttons (e.g. *1st Half*); the clock starts and runs from the server's anchor,
   so refreshing or locking the phone does not change it.
 * Record events with the large buttons. For goals the score updates immediately; choose the scorer afterwards
-  (*Later* is fine — players are never guessed).
+  (*Later* is fine — players are never guessed). Goals, cards and substitutions put a graphic on air; corners,
+  shots, saves, fouls and offsides only count towards the half-time and full-time statistics.
+* Between halves use *Players entering* and *About to start* again before *2nd Half*, so the lineups and the
+  kick-off graphics play for the second half too.
 * Mistakes: use undo on the event in *Recent* and give a reason. Corrections are audited and update graphics.
 * Clock corrections need a reason; basketball has a separate shot clock.
 

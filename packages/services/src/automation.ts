@@ -25,6 +25,7 @@ import {
   getAdapter,
   matchTriggers,
   phaseBoundCancellations,
+  phaseStepCancellations,
   planRun,
   playlistLayers,
   replay,
@@ -185,6 +186,7 @@ async function triggerForOverlay(t: Tx, d: AutomationDeps, ov: typeof overlays.$
   if (input.kind === 'phase') {
     const act = await activeRuns(t, ov.id, ['running', 'queued']);
     for (const c of phaseBoundCancellations(act, input.phaseKind)) await stopRun(t, c.runId, 'cancelled', c.reason, at);
+    for (const c of phaseStepCancellations(plan, act, input)) await stopRun(t, c.runId, 'cancelled', c.reason, at);
     // default scorebug in play phases (Auto mode only)
     if (plan.defaultScorebug && input.phaseKind === 'play' && st.mode === 'auto' && !st.inhibited && !st.scorebugVisible) await defaultScorebugRun(t, ov, `phase:${input.phaseId}:${input.seq}`, at);
   }

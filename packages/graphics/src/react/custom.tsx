@@ -20,7 +20,7 @@ function El({ e, p }: { e: SceneElement; p: GraphicProps }) {
   if (e.hidden) return null;
   const ctx = { data: p.data, variables: p.cue.variables, now: p.now, playerId: (p.cue.variables.player as string) ?? null };
   const val = (v: unknown, fallback = '') => (isBinding(v) ? resolveBinding(v, ctx) : typeof v === 'string' ? v : fallback);
-  const kind = e.animation.in === 'none' ? 'fade' : (e.animation.in.replace('slide-down', 'slide-up') as 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'wipe');
+  const kind = e.animation.in === 'none' ? 'fade' : e.animation.in;
   const base: CSSProperties = { position: 'absolute', ...anchorOffset(e), opacity: e.opacity, zIndex: e.z, ...(e.animation.in === 'none' && p.phase === 'in' ? {} : animStyle(p, kind, e.animation.delayMs)) };
   switch (e.type) {
     case 'rect':

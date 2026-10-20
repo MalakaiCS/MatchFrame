@@ -28,6 +28,7 @@ export function sampleVariables(templateKey: string, sport: 'football' | 'basket
     case 'lineup': return { team: 'home', page: 1 };
     case 'goal': return { team: 'home', player: samplePlayerId('home', 9), minute: '63', eventType: 'goal' };
     case 'score': return { team: 'home', player: samplePlayerId('home', 4), points: 3 };
+    case 'period_banner': return { heading: 'KICK-OFF', period: sport === 'football' ? '2nd Half' : '3rd Quarter' };
     case 'card': return { team: 'away', player: samplePlayerId('away', 5), cardType: 'yellow', minute: '58' };
     case 'substitution': return { team: 'home', playerOut: samplePlayerId('home', 8), playerIn: samplePlayerId('home', 12), minute: '70' };
     case 'lower_third': return { heading: 'Sam Patel', subtitle: 'Head coach, Harbour City FC' };
@@ -49,7 +50,7 @@ const BASKETBALL_POSITIONS = ['Guard', 'Guard', 'Forward', 'Forward', 'Center', 
 export function sampleData(theme: ThemeConfig, sport: 'football' | 'basketball' = 'football'): RenderData {
   const a = getAdapter(sport);
   const cfg = a.defaultConfig;
-  const proj = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : 'p3', score: { home: 2, away: 1 }, stats: { home: { goals: 2, shots_on_target: 6, corners: 4, points: 54 }, away: { goals: 1, shots_on_target: 3, corners: 2, points: 49 } } };
+  const proj = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : 'p3', score: { home: 2, away: 1 }, stats: { home: { goals: 2, shots_on_target: 6, shots_off_target: 4, corners: 4, offsides: 1, fouls: 7, yellow_cards: 1, saves: 2, points: 54 }, away: { goals: 1, shots_on_target: 3, shots_off_target: 5, corners: 2, offsides: 3, fouls: 9, yellow_cards: 2, saves: 4, points: 49 } } };
   const clocks = a.initialClocks(cfg);
   clocks.main = { ...clocks.main!, baseMs: sport === 'football' ? 63 * 60_000 + 12_000 : 4 * 60_000 + 31_000, periodId: proj.phase };
   const mk = (n: number, side: 'home' | 'away') => ({ playerId: `00000000-0000-4000-8000-${side === 'home' ? '1' : '2'}${String(n).padStart(11, '0')}`, displayName: ['Mia Torres', 'Léa Ångström', 'Kai Fitzgerald-Montgomery', 'Noah Ito', 'Aroha Te Huia', 'Theo Rossi', 'Isla Walker', 'Mateo Ramírez', 'Zoe Okafor', 'Finn Larsen', 'Ana Silva'][n % 11]!, number: n + 1, starter: n < 11, photoAssetId: null });
