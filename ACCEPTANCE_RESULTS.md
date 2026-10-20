@@ -130,6 +130,27 @@ Not executed: the YouTube video could not be loaded from this environment (YouTu
 the click-to-play frame and the content-security rule were checked, not playback. Search-engine indexing was not
 switched on (`SITE_INDEXING` unset). Stripe Checkout for the new plans was not exercised (no Stripe account here), and plan allowances are recorded but not enforced. Open owner decisions are listed in `docs/public-site.md`.
 
+## Premier look, version 2 (2026-10-20)
+
+The Premier look restyled in the style of a top-flight football motion graphics pack (an original design, no league
+marks). The reference video and the pack's product page could not be opened from this environment (YouTube,
+Gumroad, Behance and Vimeo are unreachable here), so the style follows the pack's published contents and the
+look of top-flight football broadcast graphics in general, not a frame-by-frame comparison.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint`, `pnpm build` | clean |
+| `pnpm db:migrate`: migration 0010 adds Premier version 2 (Outfit type) beside the immutable version 1 | applied; both versions present |
+| `pnpm test` | 101 tests, 17 files, all pass |
+| `pnpm test:db` | 53 tests, 6 files, all pass |
+| Visual regression: all 37 Premier baselines regenerated from the theme page (football, 9:16 and venue); every other look's baselines unchanged and passing | pass |
+| Full `pnpm test:e2e` on the final build | 29 tests, 29 pass (`docs/evidence/e2e/results.json`) |
+| Manual review of every Premier graphic in the public showcase (16:9), no script errors | reviewed |
+
+Not executed: a side-by-side comparison with the reference video (not viewable here). In the vertical format,
+the holding slate is cropped at the sides as in every look, because background graphics are scaled to cover the
+frame. A Premier look profile published on version 1 keeps the old typeface until it is published again.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
