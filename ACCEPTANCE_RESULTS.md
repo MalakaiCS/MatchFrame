@@ -151,6 +151,25 @@ Not executed: a side-by-side comparison with the reference video (not viewable h
 the holding slate is cropped at the sides as in every look, because background graphics are scaled to cover the
 frame. A Premier look profile published on version 1 keeps the old typeface until it is published again.
 
+## Six broadcast looks (2026-10-20)
+
+Liga, Major, Southern, Continental, Primetime and Meister, drawn by one engine (`theme-pack.tsx`). Each is an
+original design in the style of another league's or network's graphics, made without viewing those broadcasts from
+this environment, and carries no league or broadcaster marks, names or typefaces.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint`, `pnpm build` | clean |
+| `pnpm db:migrate`: migration 0011 adds version 1 of each look; the database lists ten built-in looks | applied |
+| `pnpm test`, including the new check that every look has defaults, a name and description and draws every built-in graphic | 102 tests, 18 files, all pass |
+| `pnpm test:db` | 53 tests, 6 files, all pass |
+| Visual regression: 162 new baselines (27 football graphics in each new look) from the theme page; every existing baseline unchanged and passing | pass |
+| Full `pnpm test:e2e` on the final build | 35 tests, 35 pass (`docs/evidence/e2e/results.json`) |
+| Manual review of each new look's scorebug, match header, line-up, goal, match stats and half-time score in the public showcase, no script errors | reviewed |
+
+Not executed: vertical and venue formats have baselines only for Broadcast and Premier; the new looks use the same
+format rules and were not captured in those formats. Other sports were not captured in the new looks.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
