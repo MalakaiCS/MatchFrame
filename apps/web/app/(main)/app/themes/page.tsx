@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { DEFAULT_THEMES, type ThemeConfig } from '@bs/graphics';
+import { BUILTIN_TEMPLATES, DEFAULT_THEMES, type ThemeConfig } from '@bs/graphics';
 import { Keyframes } from '@bs/graphics/react';
 import { ThemeThumb } from '@/components/theme-preview';
 import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
@@ -37,12 +37,15 @@ export default function ThemesPage() {
           {themes.isLoading ? <Spinner /> : (
             <div className="grid gap-4 md:grid-cols-3">
               {themes.data?.map((t) => (
-                <Card key={t.id} className="p-3">
-                  <ThemeThumb theme={(t.versions[0]?.config as ThemeConfig) ?? DEFAULT_THEMES.broadcast} />
-                  <h2 className="mt-2 font-medium">{t.name}</h2>
-                  <p className="text-sm text-muted">{t.description}</p>
-                  <p className="mt-1 text-xs text-muted">v{t.versions[0]?.version} · football & basketball · 15 graphics</p>
-                </Card>
+                <Link key={t.id} href={`/app/themes/${t.key}`} className="block rounded-lg transition hover:ring-2 hover:ring-primary/50">
+                  <Card className="h-full p-3">
+                    <ThemeThumb theme={(t.versions[0]?.config as ThemeConfig) ?? DEFAULT_THEMES.broadcast} />
+                    <h2 className="mt-2 font-medium">{t.name}</h2>
+                    <p className="text-sm text-muted">{t.description}</p>
+                    <p className="mt-1 text-xs text-muted">v{t.versions[0]?.version} · football & basketball · {BUILTIN_TEMPLATES.length} graphics</p>
+                    <p className="mt-2 text-sm text-primary">View graphics and animations →</p>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
@@ -59,7 +62,10 @@ export default function ThemesPage() {
                   <div className="mt-2 flex items-center justify-between"><h2 className="font-medium">{p.name}</h2><StatusPill tone="primary">v{p.currentVersion}</StatusPill></div>
                   <p className="text-xs text-muted">{p.draft.themeKey} · {comps.data?.find((c) => c.id === p.competitionId)?.name ?? 'no competition'}</p>
                   <Table className="mt-2"><tbody>{p.versions.slice(0, 3).map((v) => <tr key={v.id}><td>v{v.version}</td><td className="text-right text-xs text-muted">{fmtDate(v.publishedAt, tz)}</td></tr>)}</tbody></Table>
-                  {full ? <Button size="sm" className="mt-2" onClick={() => setEdit(p)}>Edit draft</Button> : null}
+                  <div className="mt-2 flex gap-2">
+                    <Button asChild size="sm"><Link href={`/app/themes/${p.draft.themeKey}?profile=${p.id}`}>Preview graphics</Link></Button>
+                    {full ? <Button size="sm" onClick={() => setEdit(p)}>Edit draft</Button> : null}
+                  </div>
                 </Card>
               );
             })}
