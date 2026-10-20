@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { Spinner } from '@bs/ui';
+import { Spinner, Toaster } from '@bs/ui';
 import { api } from '@/lib/api';
 import { useMe, isFull } from '@/lib/session';
 
@@ -36,6 +36,7 @@ export function ScorerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       {children}
+      <Toaster />
     </div>
   );
 }

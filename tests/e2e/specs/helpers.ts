@@ -39,8 +39,11 @@ export async function freshMatch(page: Page): Promise<string> {
   return m.id;
 }
 
+/** Kick off straight from the fixture's starting state. The phone's big Next button follows the full flow
+ *  (pre-match → players entering → about to start → kick-off), so the direct jump sits under "More options". */
 export async function startFirstHalf(page: Page) {
-  await page.getByRole('region', { name: 'Match phase' }).getByRole('button', { name: '1st Half' }).click();
+  await page.getByRole('region', { name: 'Match phase' }).getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '1st Half', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm' }).click();
   await expect(page.getByRole('region', { name: 'Clock controls' })).toBeVisible();
 }

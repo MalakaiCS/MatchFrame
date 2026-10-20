@@ -2,7 +2,9 @@
 // Sponsors: brands, creatives (approval), campaigns with allocations, caps and spacing.
 import { useState } from 'react';
 import { Check, Plus, X } from 'lucide-react';
-import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Table } from '@bs/ui';
+import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Table } from '@bs/ui';
+import { PLACEMENTS, PRIORITIES, placementLabel } from '@/lib/labels';
+import { PlacementThumb } from '@/components/sponsors/placement-thumb';
 import { post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { useMe } from '@/lib/session';
@@ -10,7 +12,6 @@ import { useMe } from '@/lib/session';
 interface Creative { id: string; name: string; kind: string; width: number | null; height: number | null; approvalStatus: string; assetState: string; url: string | null; expiresAt: string | null }
 interface Brand { id: string; name: string; category: string | null; creativeSets: { id: string; name: string; creatives: Creative[] }[] }
 interface Campaign { id: string; brandId: string; creativeSetId: string; name: string; startsAt: string; endsAt: string; priority: number; weight: number; totalCap: number | null; perMatchCap: number | null; minSpacingSeconds: number; status: string; allocations: { scopeType: string; scopeId: string | null; placement: string }[] }
-const PLACEMENTS = ['scorebug_logo', 'lower_third_banner', 'event_partner', 'detached_logo', 'full_frame_image', 'full_frame_video', 'clip_intro', 'clip_outro'];
 const MANAGE = new Set(['owner', 'admin', 'producer']);
 
 export default function SponsorsPage() {
@@ -22,14 +23,13 @@ export default function SponsorsPage() {
   const comps = useGet<{ id: string; name: string }[]>(['competitions'], 'competitions');
   const [brandOpen, setBrandOpen] = useState(false);
   const [brand, setBrand] = useState({ name: '', category: '' });
-  const addBrand = useAction(() => post('brands', { name: brand.name, category: brand.category || null }), [['sponsors']]);
+  const addBrand = useAction(() => post('brands', { name: brand.name, category: brand.category || null }), [['sponsors']], { success: 'Brand added' });
   const [crOpen, setCrOpen] = useState<string | null>(null);
   const [cr, setCr] = useState({ assetId: '', name: '' });
-  const addCreative = useAction(() => post('creatives', { creativeSetId: crOpen, ...cr }), [['sponsors']]);
-  const approve = useAction(({ id, status }: { id: string; status: string }) => post(`creatives/${id}/approval`, { status }), [['sponsors']]);
+  const addCreative = useAction(() => post('creatives', { creativeSetId: crOpen, ...cr }), [['sponsors']], { success: 'Creative added. Approve it before it can go to air.' });
+  const approve = useAction(({ id, status }: { id: string; status: string }) => post(`creatives/${id}/approval`, { status }), [['sponsors']], { success: 'Approval updated' });
   const [camp, setCamp] = useState<Partial<Campaign> | null>(null);
-  const saveCamp = useAction((c: Partial<Campaign>) => (c.id ? put(`campaigns/${c.id}`, c) : post('campaigns', c)), [['sponsors']]);
-
+  const saveCamp = useAction((c: Partial<Campaign>) => (c.id ? put(`campaigns/${c.id}`, c) : post('campaigns', c)), [['sponsors']], { success: 'Campaign saved' });
   const startCampaign = (b: Brand) => {
     const now = new Date();
     setCamp({ brandId: b.id, creativeSetId: b.creativeSets[0]?.id, name: `${b.name} partner`, startsAt: now.toISOString(), endsAt: new Date(now.getTime() + 90 * 86400_000).toISOString(), priority: 3, weight: 1, minSpacingSeconds: 60, totalCap: null, perMatchCap: null, allocations: [{ scopeType: 'organisation', scopeId: null, placement: 'scorebug_logo' }] });
@@ -37,7 +37,7 @@ export default function SponsorsPage() {
 
   return (
     <>
-      <PageHeader title="Sponsors" subtitle="Approved creatives rotate into scorebugs, banners and breaks by placement, scope, priority, caps and spacing." actions={canManage ? <Button variant="primary" onClick={() => setBrandOpen(true)}><Plus className="size-4" /> New brand</Button> : null} />
+      <PageHeader title="Sponsors" subtitle="Sponsor logos and slates rotate into the graphics in the places you choose, with limits and spacing you set. Only approved artwork goes to air." actions={canManage ? <Button variant="primary" onClick={() => setBrandOpen(true)}><Plus className="size-4" /> New brand</Button> : null} />
       <ErrorNotice error={data.error} />
       {data.isLoading ? <Spinner /> : !data.data?.brands.length ? <EmptyState title="No sponsors yet" body="Add a brand, upload creatives in Assets, approve them and create a campaign." /> : (
         <div className="space-y-4">
@@ -63,15 +63,15 @@ export default function SponsorsPage() {
                 ))}
               </div>
               <Table className="mt-3">
-                <thead><tr><th>Campaign</th><th>Flight</th><th>Priority</th><th>Caps</th><th>Placements</th><th /></tr></thead>
+                <thead><tr><th>Campaign</th><th>Runs</th><th>Priority</th><th>Limits</th><th>Where it appears</th><th /></tr></thead>
                 <tbody>
                   {data.data!.campaigns.filter((c) => c.brandId === b.id).map((c) => (
                     <tr key={c.id}>
                       <td>{c.name}</td>
                       <td className="text-xs">{fmtDate(c.startsAt, tz, { dateStyle: 'medium' })} – {fmtDate(c.endsAt, tz, { dateStyle: 'medium' })}{new Date(c.endsAt) < new Date() ? <StatusPill tone="offline" className="ml-1">ended</StatusPill> : null}</td>
-                      <td>P{c.priority} · w{c.weight}</td>
-                      <td className="text-xs">{c.totalCap ?? '∞'} total · {c.perMatchCap ?? '∞'}/match · {c.minSpacingSeconds}s spacing</td>
-                      <td className="text-xs">{c.allocations.map((a) => `${a.placement} (${a.scopeType})`).join(', ')}</td>
+                      <td className="text-xs">{PRIORITIES[c.priority] ?? c.priority}{c.weight > 1 ? ` · ${c.weight}× share` : ''}</td>
+                      <td className="text-xs">{c.totalCap ? `${c.totalCap} in total` : 'No total limit'} · {c.perMatchCap ? `${c.perMatchCap} per match` : 'any number per match'} · at least {c.minSpacingSeconds}s apart</td>
+                      <td className="text-xs"><ul className="grid gap-1">{c.allocations.map((a, i) => <li key={i} className="flex items-center gap-2"><PlacementThumb placement={a.placement} /><span>{placementLabel(a.placement)} · {a.scopeType === 'organisation' ? 'all matches' : (comps.data?.find((x) => x.id === a.scopeId)?.name ?? 'one competition')}</span></li>)}</ul></td>
                       <td>{canManage ? <Button size="sm" variant="ghost" onClick={() => setCamp(c)}>Edit</Button> : null}</td>
                     </tr>
                   ))}
@@ -84,7 +84,7 @@ export default function SponsorsPage() {
 
       <Dialog open={brandOpen} onOpenChange={setBrandOpen} title="New brand" footer={<Button variant="primary" disabled={!brand.name} onClick={async () => { await addBrand.mutateAsync(undefined as never); setBrandOpen(false); }}>Create</Button>}>
         <Field label="Name" htmlFor="b-name"><Input id="b-name" value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} /></Field>
-        <Field label="Category (for exclusions)" htmlFor="b-cat"><Input id="b-cat" value={brand.category} onChange={(e) => setBrand({ ...brand, category: e.target.value })} /></Field>
+        <Field label="Category (keeps rival brands apart, e.g. beverage)" htmlFor="b-cat"><Input id="b-cat" value={brand.category} onChange={(e) => setBrand({ ...brand, category: e.target.value })} /></Field>
         <ErrorNotice error={addBrand.error} />
       </Dialog>
 
@@ -98,18 +98,19 @@ export default function SponsorsPage() {
         {camp ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Name" htmlFor="cp-name"><Input id="cp-name" value={camp.name} onChange={(e) => setCamp({ ...camp, name: e.target.value })} /></Field>
-            <Field label="Priority (1 highest)" htmlFor="cp-pri"><NativeSelect id="cp-pri" value={camp.priority} onChange={(e) => setCamp({ ...camp, priority: Number(e.target.value) })}>{[1, 2, 3, 4].map((p) => <option key={p}>{p}</option>)}</NativeSelect></Field>
+            <Field label="Priority" htmlFor="cp-pri"><NativeSelect id="cp-pri" value={camp.priority} onChange={(e) => setCamp({ ...camp, priority: Number(e.target.value) })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} · {PRIORITIES[p]}</option>)}</NativeSelect></Field>
             <Field label="Starts" htmlFor="cp-s"><Input id="cp-s" type="date" value={camp.startsAt?.slice(0, 10)} onChange={(e) => setCamp({ ...camp, startsAt: new Date(e.target.value).toISOString() })} /></Field>
             <Field label="Ends" htmlFor="cp-e"><Input id="cp-e" type="date" value={camp.endsAt?.slice(0, 10)} onChange={(e) => setCamp({ ...camp, endsAt: new Date(`${e.target.value}T23:59:59`).toISOString() })} /></Field>
-            <Field label="Rotation weight" htmlFor="cp-w"><Input id="cp-w" type="number" min={1} value={camp.weight} onChange={(e) => setCamp({ ...camp, weight: Number(e.target.value) || 1 })} /></Field>
-            <Field label="Minimum spacing (s)" htmlFor="cp-sp"><Input id="cp-sp" type="number" min={0} value={camp.minSpacingSeconds} onChange={(e) => setCamp({ ...camp, minSpacingSeconds: Number(e.target.value) || 0 })} /></Field>
-            <Field label="Total cap (blank = none)" htmlFor="cp-tc"><Input id="cp-tc" type="number" min={1} value={camp.totalCap ?? ''} onChange={(e) => setCamp({ ...camp, totalCap: e.target.value ? Number(e.target.value) : null })} /></Field>
-            <Field label="Per-match cap" htmlFor="cp-mc"><Input id="cp-mc" type="number" min={1} value={camp.perMatchCap ?? ''} onChange={(e) => setCamp({ ...camp, perMatchCap: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Share of rotation" htmlFor="cp-w" hint="2 shows twice as often as a sponsor on 1"><Input id="cp-w" type="number" min={1} value={camp.weight} onChange={(e) => setCamp({ ...camp, weight: Number(e.target.value) || 1 })} /></Field>
+            <Field label="At least this many seconds apart" htmlFor="cp-sp"><Input id="cp-sp" type="number" min={0} value={camp.minSpacingSeconds} onChange={(e) => setCamp({ ...camp, minSpacingSeconds: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Most times in total (blank = no limit)" htmlFor="cp-tc"><Input id="cp-tc" type="number" min={1} value={camp.totalCap ?? ''} onChange={(e) => setCamp({ ...camp, totalCap: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Most times per match (blank = no limit)" htmlFor="cp-mc"><Input id="cp-mc" type="number" min={1} value={camp.perMatchCap ?? ''} onChange={(e) => setCamp({ ...camp, perMatchCap: e.target.value ? Number(e.target.value) : null })} /></Field>
             <fieldset className="sm:col-span-2">
-              <legend className="mb-1 text-sm font-medium">Allocations</legend>
+              <legend className="mb-1 flex items-center gap-2 text-sm font-medium">Where it appears <InfoTip text="Each row is one place in the graphics where this sponsor can show, and which matches it applies to." /></legend>
               {camp.allocations?.map((a, i) => (
-                <div key={i} className="mb-1 flex gap-2">
-                  <NativeSelect aria-label="Placement" value={a.placement} onChange={(e) => setCamp({ ...camp, allocations: camp.allocations!.map((x, k) => (k === i ? { ...x, placement: e.target.value } : x)) })}>{PLACEMENTS.map((p) => <option key={p}>{p}</option>)}</NativeSelect>
+                <div key={i} className="mb-1 flex items-center gap-2">
+                  <PlacementThumb placement={a.placement} />
+                  <NativeSelect aria-label="Placement" title={PLACEMENTS[a.placement]?.where} value={a.placement} onChange={(e) => setCamp({ ...camp, allocations: camp.allocations!.map((x, k) => (k === i ? { ...x, placement: e.target.value } : x)) })}>{Object.keys(PLACEMENTS).map((p) => <option key={p} value={p}>{placementLabel(p)}</option>)}</NativeSelect>
                   <NativeSelect aria-label="Scope" value={a.scopeType === 'competition' ? `competition:${a.scopeId}` : 'organisation'} onChange={(e) => { const [st, sid] = e.target.value.split(':'); setCamp({ ...camp, allocations: camp.allocations!.map((x, k) => (k === i ? { ...x, scopeType: st!, scopeId: sid ?? null } : x)) }); }}>
                     <option value="organisation">All matches</option>
                     {comps.data?.map((c) => <option key={c.id} value={`competition:${c.id}`}>{c.name}</option>)}
@@ -117,7 +118,7 @@ export default function SponsorsPage() {
                   <Button size="sm" variant="ghost" onClick={() => setCamp({ ...camp, allocations: camp.allocations!.filter((_, k) => k !== i) })}>Remove</Button>
                 </div>
               ))}
-              <Button size="sm" onClick={() => setCamp({ ...camp, allocations: [...(camp.allocations ?? []), { scopeType: 'organisation', scopeId: null, placement: 'lower_third_banner' }] })}>Add placement</Button>
+              <Button size="sm" onClick={() => setCamp({ ...camp, allocations: [...(camp.allocations ?? []), { scopeType: 'organisation', scopeId: null, placement: 'lower_third_banner' }] })}>Add a place</Button>
             </fieldset>
             <div className="sm:col-span-2"><ErrorNotice error={saveCamp.error} /></div>
           </div>

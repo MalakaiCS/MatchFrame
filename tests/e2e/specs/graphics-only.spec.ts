@@ -16,7 +16,7 @@ test('graphics-only hides streaming and keeps overlays working', async ({ browse
 
   const matchId = await freshMatch(page);
   await page.goto(`/app/matches/${matchId}`);
-  await expect(page.getByRole('tab', { name: 'Overlays' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'OBS link' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Streams' })).toHaveCount(0);
   await expect(page.getByRole('tab', { name: /Recordings/ })).toHaveCount(0);
 

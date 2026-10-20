@@ -5,6 +5,7 @@ import { Slot } from '@radix-ui/react-slot';
 import * as DialogP from '@radix-ui/react-dialog';
 import * as TabsP from '@radix-ui/react-tabs';
 import * as SwitchP from '@radix-ui/react-switch';
+import * as TooltipP from '@radix-ui/react-tooltip';
 import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle2, CircleDot, Loader2, Radio, WifiOff, X } from 'lucide-react';
 
@@ -179,12 +180,12 @@ export function ErrorNotice({ error, onRetry }: { error: { message?: string; cod
   );
 }
 
-export function Dialog({ open, onOpenChange, title, description, children, footer, wide }: { open: boolean; onOpenChange: (o: boolean) => void; title: string; description?: React.ReactNode; children?: React.ReactNode; footer?: React.ReactNode; wide?: boolean }) {
+export function Dialog({ open, onOpenChange, title, description, children, footer, wide, size }: { open: boolean; onOpenChange: (o: boolean) => void; title: string; description?: React.ReactNode; children?: React.ReactNode; footer?: React.ReactNode; wide?: boolean; size?: 'md' | 'lg' | 'xl' }) {
   return (
     <DialogP.Root open={open} onOpenChange={onOpenChange}>
       <DialogP.Portal>
         <DialogP.Overlay className="fixed inset-0 z-40 bg-black/60" />
-        <DialogP.Content className={cx('fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-card)] border border-border bg-panel p-5 shadow-2xl', wide ? 'max-w-3xl' : 'max-w-lg')}>
+        <DialogP.Content className={cx('fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-card)] border border-border bg-panel p-5 shadow-2xl', size === 'xl' ? 'max-w-6xl' : wide || size === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
               <DialogP.Title className="text-lg font-semibold">{title}</DialogP.Title>
@@ -236,4 +237,76 @@ export function Table({ children, className }: { children: React.ReactNode; clas
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className="rounded border border-border bg-bg px-1.5 py-0.5 font-mono text-[11px] text-muted">{children}</kbd>;
+}
+
+// ------------------------------------------------------------------ feedback
+
+export interface ToastItem { id: number; message: string; kind: 'success' | 'error' | 'info' }
+type ToastListener = (t: ToastItem) => void;
+const toastListeners = new Set<ToastListener>();
+let toastSeq = 0;
+
+/** Short confirmation ("Lineup saved") shown by <Toaster/>. Safe to call anywhere; a no-op without a Toaster. */
+export function toast(message: string, kind: ToastItem['kind'] = 'success') {
+  const t = { id: ++toastSeq, message, kind };
+  toastListeners.forEach((l) => l(t));
+}
+
+export function Toaster() {
+  const [items, setItems] = React.useState<ToastItem[]>([]);
+  React.useEffect(() => {
+    const l: ToastListener = (t) => {
+      setItems((xs) => [...xs, t].slice(-4));
+      setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== t.id)), t.kind === 'error' ? 6500 : 3200);
+    };
+    toastListeners.add(l);
+    return () => void toastListeners.delete(l);
+  }, []);
+  return (
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(92vw,22rem)] flex-col gap-2" role="status" aria-live="polite">
+      {items.map((t) => {
+        const I = t.kind === 'error' ? AlertTriangle : t.kind === 'info' ? CircleDot : CheckCircle2;
+        return (
+          <div key={t.id} className={cx('pointer-events-auto flex items-start gap-2 rounded-md border bg-panel px-3 py-2 text-sm shadow-xl', t.kind === 'error' ? 'border-live/60 text-live' : t.kind === 'info' ? 'border-border text-text' : 'border-healthy/60 text-text')}>
+            <I className={cx('mt-0.5 size-4 shrink-0', t.kind === 'success' && 'text-healthy')} aria-hidden />
+            <span>{t.message}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A small "?" that explains a term on hover or focus. Needs the app's TooltipProvider. */
+export function InfoTip({ text, label = 'What does this mean?' }: { text: React.ReactNode; label?: string }) {
+  return (
+    <TooltipP.Root>
+      <TooltipP.Trigger asChild>
+        <button type="button" aria-label={label} className="inline-grid size-5 shrink-0 place-items-center rounded-full border border-border text-[11px] font-semibold text-muted hover:border-primary hover:text-text">?</button>
+      </TooltipP.Trigger>
+      <TooltipP.Portal>
+        <TooltipP.Content sideOffset={6} className="z-[70] max-w-xs rounded-md border border-border bg-panel px-3 py-2 text-xs leading-relaxed text-text shadow-xl">
+          {text}
+          <TooltipP.Arrow className="fill-border" />
+        </TooltipP.Content>
+      </TooltipP.Portal>
+    </TooltipP.Root>
+  );
+}
+
+/** One line of a checklist: a tick or a to-do, a label, and the action that completes it. */
+export function CheckRow({ done, label, detail, action }: { done: boolean; label: React.ReactNode; detail?: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <li className="flex flex-wrap items-center gap-3 py-2">
+      <span className={cx('grid size-6 shrink-0 place-items-center rounded-full border', done ? 'border-healthy bg-healthy/15 text-healthy' : 'border-border text-muted')} aria-hidden>
+        {done ? <CheckCircle2 className="size-4" /> : <CircleDot className="size-3" />}
+      </span>
+      <span className="sr-only">{done ? 'Done:' : 'To do:'}</span>
+      <div className="min-w-0 flex-1">
+        <div className={cx('text-sm', done ? 'text-text' : 'font-medium')}>{label}</div>
+        {detail ? <div className="text-xs text-muted">{detail}</div> : null}
+      </div>
+      {action ? <div className="flex flex-wrap items-center gap-2">{action}</div> : null}
+    </li>
+  );
 }

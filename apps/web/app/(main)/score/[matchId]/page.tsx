@@ -1,7 +1,7 @@
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CloudOff, Pause, Play, RotateCcw, Undo2, UserRound } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CloudOff, Pause, Play, RotateCcw, Undo2, UserRound } from 'lucide-react';
 import { clockDisplayMs, getAdapter, type DisplayModel, type EventTypeDef } from '@bs/domain';
 import { Button, Dialog, ErrorNotice, Field, Input, Spinner, StatusPill, cx } from '@bs/ui';
 import { get } from '@/lib/api';
@@ -32,6 +32,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const [clockDlg, setClockDlg] = useState<string | null>(null);
   const [clockVal, setClockVal] = useState('');
   const [phaseConfirm, setPhaseConfirm] = useState<string | null>(null);
+  const [morePhases, setMorePhases] = useState(false);
   const [bbReset, setBbReset] = useState(true);
   const lastCommand = useRef<string | null>(null);
 
@@ -59,6 +60,15 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const players = (side: Side) => m.lineup[side];
   const mainClock = s.state.clocks.main;
   const running = !!mainClock?.running;
+  // the one step that follows the match flow (pre-match → players entering → about to start → kick-off → …); the rest sit under "More"
+  const phaseDefs = transitions.map((id) => adapter.phase(cfg, id)!);
+  const nextPhase = phaseDefs.find((p) => p.kind !== 'terminal' && p.tags.length) ?? phaseDefs.find((p) => p.kind !== 'terminal') ?? null;
+  const otherPhases = phaseDefs.filter((p) => p.id !== nextPhase?.id);
+  // goals, cards and substitutions put a graphic on air; the rest are statistics for the half-time board
+  const GRAPHIC_GROUPS = ['score', 'discipline', 'change', 'shootout'];
+  const primaryEvents = events.filter((e) => GRAPHIC_GROUPS.includes(e.group));
+  const statEvents = events.filter((e) => !GRAPHIC_GROUPS.includes(e.group));
+  const overrunMs = phase.kind === 'play' && proj.phase !== 'shootout' && mainClock?.limitMs ? clockDisplayMs(mainClock, s.serverNow()) - mainClock.limitMs : 0;
 
   const sendFact = async (ev: EventTypeDef, side: Side | null, extra: Record<string, unknown> = {}, playerId?: string | null) => {
     const label = `${ev.label}${side ? ` · ${team(side).abbreviation}` : ''}`;
@@ -129,8 +139,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
       {s.leaseProblem || (s.online && !s.holding) ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-live/50 bg-live/10 px-3 py-2 text-sm" role="alert">
           <AlertTriangle className="size-4 text-live" />
-          <span className="flex-1">{s.leaseProblem ?? 'You are not controlling this match. Actions will wait until you have control.'}</span>
-          <Button size="sm" onClick={() => s.takeControl()}>Try to take control</Button>
+          <span className="flex-1">{s.leaseProblem ?? 'Another device has control of this match. Your actions will wait until you take over.'}</span>
+          <Button size="sm" onClick={() => s.takeControl()}>Take over scoring</Button>
         </div>
       ) : null}
 
@@ -154,6 +164,13 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         </div>
       </section>
       {display.alerts.map((a) => <p key={a} className="rounded-md bg-warning/10 px-3 py-2 text-sm text-warning" role="alert">{a}</p>)}
+      {overrunMs > 10 * 60_000 ? (
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-warning/60 bg-warning/10 px-3 py-2 text-sm">
+          <span className="flex w-full items-center gap-2"><AlertTriangle className="size-4 shrink-0 text-warning" /> This period is {Math.floor(overrunMs / 60_000)} minutes over. Still playing?</span>
+          {nextPhase ? <Button size="sm" variant="primary" disabled={!canWrite} onClick={() => setPhaseConfirm(nextPhase.id)}>Next: {nextPhase.label}</Button> : null}
+          <Button size="sm" variant="ghost" disabled={!canWrite} onClick={() => { setClockDlg('main'); setClockVal(mmss(clockDisplayMs(mainClock!, s.serverNow()))); }}>Correct clock</Button>
+        </div>
+      ) : null}
 
       {/* clock */}
       {phase.kind === 'play' && proj.phase !== 'shootout' ? (
@@ -195,24 +212,36 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           <label className="col-span-2 flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={bbReset} onChange={(e) => setBbReset(e.target.checked)} className="size-5" /> Reset shot clock on 2/3-point scores</label>
         </section>
       ) : events.length ? (
-        <section className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Events">
-          {events.map((ev) => (
-            <Button key={ev.type} size="touch" variant={ev.group === 'score' || ev.group === 'shootout' ? 'primary' : ev.group === 'discipline' ? 'danger' : 'secondary'} disabled={!canWrite} onClick={() => onEvent(ev)}>
-              {ev.label}
-            </Button>
-          ))}
-        </section>
+        <>
+          <section className="grid grid-cols-3 gap-2" aria-label="Events">
+            {primaryEvents.map((ev) => (
+              <Button key={ev.type} size="touch" variant={ev.group === 'score' || ev.group === 'shootout' ? 'primary' : ev.group === 'discipline' ? 'danger' : 'secondary'} disabled={!canWrite} onClick={() => onEvent(ev)}>
+                {ev.label}
+              </Button>
+            ))}
+          </section>
+          {statEvents.length ? (
+            <section className="rounded-[var(--radius-card)] border border-border p-3" aria-label="Statistics">
+              <h2 className="mb-2 text-xs font-medium text-muted">Statistics · counted for the half-time board, no graphic</h2>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {statEvents.map((ev) => <Button key={ev.type} size="md" variant="ghost" className="border border-border" disabled={!canWrite} onClick={() => onEvent(ev)}>{ev.label}</Button>)}
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : null}
 
       {/* phases */}
       <section aria-label="Match phase" className="rounded-[var(--radius-card)] border border-border p-3">
-        <h2 className="mb-2 text-xs font-medium text-muted">Phase: {phase.label}</h2>
-        <div className="flex flex-wrap gap-2">
-          {transitions.map((to) => {
-            const def = adapter.phase(cfg, to)!;
-            return <Button key={to} size="touch" variant={def.kind === 'terminal' ? 'danger' : def.kind === 'play' ? 'primary' : 'secondary'} disabled={!canWrite} onClick={() => setPhaseConfirm(to)}>{def.label}</Button>;
-          })}
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-medium text-muted">Now: {phase.label}</h2>
+          {otherPhases.length ? <button className="text-xs text-muted underline" onClick={() => setMorePhases(true)}>More options</button> : null}
         </div>
+        {nextPhase ? (
+          <Button size="touch" variant={nextPhase.kind === 'play' ? 'primary' : 'secondary'} className="w-full justify-between" disabled={!canWrite} onClick={() => setPhaseConfirm(nextPhase.id)}>
+            <span>Next: {nextPhase.label}</span><ArrowRight className="size-5" />
+          </Button>
+        ) : <p className="text-sm text-muted">The match is finished.</p>}
       </section>
 
       {/* review queue */}
@@ -290,12 +319,18 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         </div>
       </Dialog>
 
+      <Dialog open={morePhases} onOpenChange={setMorePhases} title="Other options" description="Skip a step or end the match early. Each move is confirmed.">
+        <div className="grid gap-2">
+          {otherPhases.map((def) => <Button key={def.id} size="touch" variant={def.kind === 'terminal' ? 'danger' : 'secondary'} disabled={!canWrite} onClick={() => { setMorePhases(false); setPhaseConfirm(def.id); }}>{def.label}</Button>)}
+        </div>
+      </Dialog>
+
       <Dialog open={!!phaseConfirm} onOpenChange={(o) => !o && setPhaseConfirm(null)} title={`Move to ${phaseConfirm ? adapter.phase(cfg, phaseConfirm)?.label : ''}?`} description={phaseConfirm && adapter.phase(cfg, phaseConfirm)?.kind === 'play' ? 'The period clock is set for the new period.' : 'The match clock pauses.'}
         footer={<><Button variant="ghost" onClick={() => setPhaseConfirm(null)}>Cancel</Button><Button variant="primary" onClick={async () => { await s.enqueue('SET_PHASE', { to: phaseConfirm }, `→ ${adapter.phase(cfg, phaseConfirm!)?.label}`); setPhaseConfirm(null); }}>Confirm</Button></>} />
 
       <div className="flex justify-between text-xs text-muted">
         <span>{m.competition.name}</span>
-        <button className="underline" onClick={() => s.release()}>Release control</button>
+        <button className="underline" onClick={() => s.release()}>Hand over scoring</button>
       </div>
     </div>
   );

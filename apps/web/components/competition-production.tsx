@@ -18,8 +18,8 @@ export function CompetitionProduction({ competition: c, canEdit }: Props) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="p-4">
-        <h2 className="mb-3 font-medium">Graphics profile</h2>
-        <Field label="Theme profile" htmlFor="tp" hint="New overlays pin the published version; live overlays change only after an explicit apply.">
+        <h2 className="mb-3 font-medium">Default look</h2>
+        <Field label="Look for new fixtures" htmlFor="tp" hint="New fixtures start with this look. A match already set up changes only when you apply the newer version on its OBS link tab.">
           <NativeSelect id="tp" disabled={!canEdit} value={c.themeProfileId ?? ''} onChange={(e) => save.mutate({ themeProfileId: e.target.value || null })}>
             <option value="">None</option>
             {profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.currentVersion})</option>)}
@@ -27,10 +27,10 @@ export function CompetitionProduction({ competition: c, canEdit }: Props) {
         </Field>
       </Card>
       <Card className="p-4">
-        <h2 className="mb-3 font-medium">Game plan</h2>
-        <Field label="Published game plan version" htmlFor="gp">
+        <h2 className="mb-3 font-medium">Default automation</h2>
+        <Field label="Plan for new fixtures" htmlFor="gp">
           <NativeSelect id="gp" disabled={!canEdit} value={c.gamePlanVersionId ?? ''} onChange={(e) => save.mutate({ gamePlanVersionId: e.target.value || null })}>
-            <option value="">None (manual only)</option>
+            <option value="">Off (everything from the control room)</option>
             {plans.data?.filter((p) => p.sport === c.sport).flatMap((p) => p.versions.map((v) => <option key={v.id} value={v.id}>{p.name} · v{v.version}</option>))}
           </NativeSelect>
         </Field>

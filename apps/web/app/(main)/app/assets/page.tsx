@@ -37,7 +37,7 @@ function Teams({ full }: { full: boolean }) {
   const [sel, setSel] = useState<string | null>(null);
   const blank = { name: '', shortName: '', abbreviation: '', sport: 'football', primaryColor: '#1F6FEB', secondaryColor: '#0B1220' };
   const [form, setForm] = useState(blank);
-  const create = useAction((v: typeof form) => post('teams', v), [['teams']]);
+  const create = useAction((v: typeof form) => post('teams', v), [['teams']], { success: 'Team added' });
   return (
     <>
       <div className="mb-3 flex justify-between">
@@ -77,8 +77,8 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
   const players = useGet<Player[]>(['players'], 'players');
   const comps = useGet<(Comp & { currentSeason: { id: string; name: string } | null })[]>(['competitions'], 'competitions');
   const [add, setAdd] = useState({ playerId: '', seasonId: '', number: '' });
-  const addRoster = useAction(() => post('rosters', { playerId: add.playerId, teamId: id, seasonId: add.seasonId, number: add.number ? Number(add.number) : null }), [['team', id]]);
-  const removeRoster = useAction((rid: string) => del(`rosters/${rid}`), [['team', id]]);
+  const addRoster = useAction(() => post('rosters', { playerId: add.playerId, teamId: id, seasonId: add.seasonId, number: add.number ? Number(add.number) : null }), [['team', id]], { success: 'Added to the roster' });
+  const removeRoster = useAction((rid: string) => del(`rosters/${rid}`), [['team', id]], { success: 'Removed from the roster' });
   const archive = useAction(() => patch(`teams/${id}`, { status: team.data?.status === 'archived' ? 'active' : 'archived' }), [['team', id], ['teams']]);
   const remove = useAction(() => del(`teams/${id}`), [['teams']]);
   const seasons = (comps.data ?? []).filter((c) => c.sport === team.data?.sport && c.currentSeason).map((c) => ({ id: c.currentSeason!.id, label: `${c.name} · ${c.currentSeason!.name}` }));
@@ -138,7 +138,7 @@ function Players({ full }: { full: boolean }) {
 function Venues({ full }: { full: boolean }) {
   const venues = useGet<{ id: string; name: string; address: string | null; timezone: string }[]>(['venues'], 'venues');
   const [form, setForm] = useState({ name: '', address: '', timezone: 'Australia/Brisbane' });
-  const create = useAction(() => post('venues', { ...form, address: form.address || null }), [['venues']]);
+  const create = useAction(() => post('venues', { ...form, address: form.address || null }), [['venues']], { success: 'Venue added' });
   return (
     <>
       {full ? (
@@ -158,7 +158,7 @@ function Venues({ full }: { full: boolean }) {
 function Clubs({ full }: { full: boolean }) {
   const clubs = useGet<{ id: string; name: string; shortName: string | null }[]>(['clubs'], 'clubs');
   const [name, setName] = useState('');
-  const create = useAction(() => post('clubs', { name }), [['clubs']]);
+  const create = useAction(() => post('clubs', { name }), [['clubs']], { success: 'Club added' });
   return (
     <>
       {full ? <div className="mb-3 flex items-end gap-2"><Field label="Club name" htmlFor="cl"><Input id="cl" value={name} onChange={(e) => setName(e.target.value)} /></Field><Button variant="primary" disabled={!name.trim()} loading={create.isPending} onClick={() => create.mutate(undefined, { onSuccess: () => setName('') })}>Add club</Button></div> : null}

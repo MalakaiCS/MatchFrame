@@ -269,7 +269,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
     if (e.topic === 'scorer.lease.changed') {
       const l = p.lease as Lease;
       setLease(l);
-      if (l?.holderDeviceId && l.holderDeviceId !== device.current) setLeaseProblem(`${l.holderName ?? 'Someone else'} took over scoring${l.takenOverFrom ? '' : ''}. Your pending actions were kept and not applied.`);
+      if (l?.holderDeviceId && l.holderDeviceId !== device.current) setLeaseProblem(`${l.holderName ?? 'Someone else'} took over scoring. Your pending actions were kept and not applied.`);
     }
   });
 

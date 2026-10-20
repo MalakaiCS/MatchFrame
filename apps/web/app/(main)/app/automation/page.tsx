@@ -1,23 +1,35 @@
 'use client';
-// Game plans: playlists with triggers, guards, priorities and timed items; publish-time validation; and an
-// isolated rehearsal that replays a synthetic match through the production decision functions.
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, Plus, Upload } from 'lucide-react';
-import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx } from '@bs/ui';
+// Automation plans: playlists that run graphics from the scorer's phases and events. Edited in plain language
+// (when it runs, which steps, how long); the JSON view stays for power users. Rehearsal plays the plan through
+// the real renderer against a synthetic match.
+import { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
+import { gamePlanSchema, type GamePlan, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
+import { Button, Card, Dialog, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx, toast } from '@bs/ui';
 import { ApiError, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
+import { PLAYLIST_KINDS, PRIORITIES } from '@/lib/labels';
+import { TriggerDialog, triggerText, type Sport } from '@/components/automation/trigger-editor';
+import { StepDialog, stepText } from '@/components/automation/step-editor';
+import { RehearsalPreview, type RehearsalCue } from '@/components/automation/rehearsal-preview';
 
 interface Issue { path: string; message: string; severity: 'error' | 'warning' }
-interface Item { id: string; action: string; templateKey?: string; placement?: string; offsetMs: number; durationMs?: number | null }
-interface Playlist { id: string; name: string; kind: string; priority: number; promotional: boolean; triggers: { id: string; type: string; eventTypes?: string[]; phaseTags?: string[]; atMs?: number }[]; repeat: { mode: string; gapMs: number; maxIterations: number }; items: Item[] }
-interface Draft { version: 1; sport: string; defaultScorebug: boolean; freshnessMs: number; playlists: Playlist[] }
-interface PlanSummary { id: string; name: string; sport: string; currentVersion: number; updatedAt: string; versions: { id: string; version: number; publishedAt: string }[] }
-interface PlanDetail extends PlanSummary { draft: Draft; validation: { ok: boolean; issues: Issue[] } }
-interface Rehearsal { decisions: { t: number; playlistId: string; triggerId: string; outcome: string; reason: string }[]; cues: { t: number; playlistId: string; action: string; templateKey?: string; layer: string | null; durationMs: number | null; placement?: string }[]; durationMs: number }
+interface PlanSummary { id: string; name: string; sport: Sport; currentVersion: number; updatedAt: string; versions: { id: string; version: number; publishedAt: string }[] }
+interface PlanDetail extends PlanSummary { draft: unknown; validation: { ok: boolean; issues: Issue[] } }
+interface Rehearsal { decisions: { t: number; playlistId: string; triggerId: string; outcome: string; reason: string }[]; cues: RehearsalCue[]; durationMs: number }
 
-const triggerLabel = (t: Playlist['triggers'][number]) =>
-  t.type === 'event' ? `on ${t.eventTypes?.join(', ')}` : t.type === 'phase' ? `phase ${t.phaseTags?.join(', ')}` : t.type === 'match_clock' ? `at ${Math.round((t.atMs ?? 0) / 60000)}′` : t.type;
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'item';
+const uniqueId = (base: string, taken: string[]) => {
+  let id = base;
+  for (let n = 2; taken.includes(id); n++) id = `${base}_${n}`;
+  return id;
+};
+/** The draft as a full GamePlan (defaults filled in); an invalid draft is shown as-is so it can still be repaired. */
+const asPlan = (draft: unknown): GamePlan => {
+  const r = gamePlanSchema.safeParse(draft);
+  return r.success ? r.data : (draft as GamePlan);
+};
 
 export default function AutomationPage() {
   const me = useMe();
@@ -27,19 +39,19 @@ export default function AutomationPage() {
   const [sel, setSel] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', sport: 'football', fromStarter: true });
-  const create = useAction(() => post<{ id: string }>('game-plans', form), [['game-plans']]);
+  const create = useAction(() => post<{ id: string }>('game-plans', form), [['game-plans']], { success: 'Plan created' });
   useEffect(() => {
     if (!sel && plans.data?.[0]) setSel(plans.data[0].id);
   }, [plans.data, sel]);
 
   return (
     <>
-      <PageHeader title="Automation" subtitle="Game plans decide which graphics run from scoring events, phases, clock times and sponsor rotations." actions={full ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New game plan</Button> : null} />
+      <PageHeader title="Automation" subtitle="Plans decide which graphics run from the scorer's phases and events: lineups before kick-off, the goal strap on a goal, the half-time board, and so on." actions={full ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New plan</Button> : null} />
       <ErrorNotice error={plans.error} />
       {plans.isLoading ? <Spinner /> : (
         <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
           <Card className="p-2">
-            <ul aria-label="Game plans">
+            <ul aria-label="Automation plans">
               {plans.data?.map((p) => (
                 <li key={p.id}>
                   <button type="button" onClick={() => setSel(p.id)} className={cx('w-full rounded px-2 py-2 text-left text-sm', sel === p.id ? 'bg-elevated' : 'hover:bg-elevated/60')} aria-current={sel === p.id}>
@@ -48,17 +60,17 @@ export default function AutomationPage() {
                   </button>
                 </li>
               ))}
-              {!plans.data?.length ? <li className="p-2 text-sm text-muted">No game plans yet. Start from a starter plan.</li> : null}
+              {!plans.data?.length ? <li className="p-2 text-sm text-muted">No plans yet. Create one from the starter plan: it already follows a normal match.</li> : null}
             </ul>
           </Card>
           {sel ? <PlanEditor key={sel} id={sel} canEdit={full} tz={tz} /> : null}
         </div>
       )}
-      <Dialog open={open} onOpenChange={setOpen} title="New game plan" footer={<Button variant="primary" disabled={!form.name || create.isPending} onClick={async () => { const r = await create.mutateAsync(undefined as never); setSel(r.id); setOpen(false); }}>Create</Button>}>
+      <Dialog open={open} onOpenChange={setOpen} title="New automation plan" footer={<Button variant="primary" disabled={!form.name || create.isPending} onClick={async () => { const r = await create.mutateAsync(undefined as never); setSel(r.id); setOpen(false); }}>Create</Button>}>
         <div className="space-y-3">
-          <Field label="Name" htmlFor="gp-name"><Input id="gp-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+          <Field label="Name" htmlFor="gp-name"><Input id="gp-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Saturday league" /></Field>
           <Field label="Sport" htmlFor="gp-sport"><NativeSelect id="gp-sport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.fromStarter} onChange={(e) => setForm({ ...form, fromStarter: e.target.checked })} /> Start from the {form.sport} starter plan</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.fromStarter} onChange={(e) => setForm({ ...form, fromStarter: e.target.checked })} /> Start from the {form.sport} starter plan (pre-match, lineups, kick-off, goals, cards, half time, full time)</label>
           <ErrorNotice error={create.error} />
         </div>
       </Dialog>
@@ -66,23 +78,36 @@ export default function AutomationPage() {
   );
 }
 
+function issueText(i: Issue, plan: GamePlan): string {
+  const m = /playlists\[(\d+)\](?:\.items\[(\d+)\])?(?:\.triggers\.(\w+))?/.exec(i.path);
+  if (!m) return `${i.path === '(json)' ? 'JSON' : i.path}: ${i.message}`;
+  const pl = plan.playlists[Number(m[1])];
+  const where = pl ? `“${pl.name}”${m[2] ? ` → step ${Number(m[2]) + 1}` : m[3] ? ' → when it runs' : ''}` : i.path;
+  return `${where}: ${i.message}`;
+}
+
 function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: string }) {
   const plan = useGet<PlanDetail>(['game-plan', id], `game-plans/${id}`);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<GamePlan | null>(null);
   const [json, setJson] = useState('');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [err, setErr] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [editTrigger, setEditTrigger] = useState<{ pi: number; ti: number | null } | null>(null);
+  const [editStep, setEditStep] = useState<{ pi: number; ii: number | null } | null>(null);
+  const [newPlaylist, setNewPlaylist] = useState<{ name: string; kind: Playlist['kind'] } | null>(null);
   useEffect(() => {
     if (plan.data && !draft) {
-      setDraft(plan.data.draft);
-      setJson(JSON.stringify(plan.data.draft, null, 2));
+      const d = asPlan(plan.data.draft);
+      setDraft(d);
+      setJson(JSON.stringify(d, null, 2));
       setIssues(plan.data.validation.issues);
     }
   }, [plan.data, draft]);
   if (!plan.data || !draft) return <Spinner />;
+  const sport = plan.data.sport;
 
-  const save = async (d: Draft) => {
+  const save = async (d: GamePlan) => {
     setErr(null);
     try {
       const r = await put<{ validation: { issues: Issue[] } }>(`game-plans/${id}/draft`, { draft: d });
@@ -93,8 +118,9 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
       setErr(e as ApiError);
     }
   };
-  const update = (fn: (d: Draft) => Draft) => {
-    const d = fn(structuredClone(draft));
+  const update = (fn: (d: GamePlan) => GamePlan | void) => {
+    const copy = structuredClone(draft);
+    const d = fn(copy) ?? copy;
     setDraft(d);
     setJson(JSON.stringify(d, null, 2));
     void save(d);
@@ -103,19 +129,26 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
     setErr(null);
     try {
       const r = await post<{ version: number }>(`game-plans/${id}/publish`);
-      setSaved(`Published v${r.version}. Assign it to an output in the control room.`);
+      setSaved(`Published v${r.version}`);
+      toast(`Published v${r.version}. Choose it on a match (Match day → Automation) or as the competition default.`);
       await plan.refetch();
     } catch (e) {
       setErr(e as ApiError);
     }
   };
   const errors = issues.filter((i) => i.severity === 'error');
+  const move = (pi: number, ii: number, dir: -1 | 1) => update((d) => {
+    const items = d.playlists[pi]!.items;
+    const j = ii + dir;
+    if (j < 0 || j >= items.length) return;
+    [items[ii], items[j]] = [items[j]!, items[ii]!];
+  });
 
   return (
     <div className="min-w-0 space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-3">
         <h2 className="text-lg font-semibold">{plan.data.name}</h2>
-        <StatusPill tone="primary">{plan.data.sport}</StatusPill>
+        <StatusPill tone="primary">{sport}</StatusPill>
         <span className="text-xs text-muted">{plan.data.currentVersion ? `v${plan.data.currentVersion} published ${fmtDate(plan.data.versions[0]?.publishedAt, tz)}` : 'not yet published'}</span>
         <div className="ml-auto flex items-center gap-2">
           {saved ? <span role="status" className="text-xs text-muted">{saved}</span> : null}
@@ -125,57 +158,117 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
       <ErrorNotice error={err} />
       {issues.length ? (
         <Card className="p-3">
-          <h3 className="mb-1 text-sm font-medium">{errors.length ? `${errors.length} error(s) block publishing` : 'Warnings'}</h3>
-          <ul className="space-y-0.5 text-xs">{issues.map((i, k) => <li key={k} className={i.severity === 'error' ? 'text-live' : 'text-warning'}>{i.path}: {i.message}</li>)}</ul>
+          <h3 className="mb-1 text-sm font-medium">{errors.length ? `${errors.length} thing${errors.length > 1 ? 's' : ''} to fix before publishing` : 'Worth a look'}</h3>
+          <ul className="space-y-0.5 text-xs">{issues.map((i, k) => <li key={k} className={i.severity === 'error' ? 'text-live' : 'text-warning'}>{issueText(i, draft)}</li>)}</ul>
         </Card>
       ) : null}
       <Tabs defaultValue="playlists">
         <TabList className="mb-3"><Tab value="playlists">Playlists</Tab><Tab value="rehearse">Rehearse</Tab><Tab value="advanced">Advanced (JSON)</Tab></TabList>
         <TabPanel value="playlists" className="space-y-3">
           <Card className="flex flex-wrap items-center gap-4 p-3 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" disabled={!canEdit} checked={draft.defaultScorebug} onChange={(e) => update((d) => ({ ...d, defaultScorebug: e.target.checked }))} /> Show scorebug during play by default</label>
-            <label className="flex items-center gap-2">Live window <Input type="number" className="w-20" disabled={!canEdit} value={draft.freshnessMs / 1000} min={1} max={120} onChange={(e) => update((d) => ({ ...d, freshnessMs: Math.max(1, Math.min(120, Number(e.target.value) || 10)) * 1000 }))} /> s</label>
-            <span className="text-xs text-muted">Facts recorded later than this never trigger on-air graphics.</span>
+            <label className="flex items-center gap-2"><input type="checkbox" disabled={!canEdit} checked={draft.defaultScorebug} onChange={(e) => update((d) => { d.defaultScorebug = e.target.checked; })} /> Show the scorebug during play by default</label>
+            <label className="flex items-center gap-2">Ignore events older than <Input type="number" className="w-20" disabled={!canEdit} value={draft.freshnessMs / 1000} min={1} max={120} onChange={(e) => update((d) => { d.freshnessMs = Math.max(1, Math.min(120, Number(e.target.value) || 10)) * 1000; })} /> s <InfoTip text="A goal typed in late (for example after a connection drop) updates the score but never replays its celebration graphic." /></label>
           </Card>
-          {draft.playlists.map((pl, i) => (
+          {draft.playlists.map((pl, pi) => (
             <Card key={pl.id} className="p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Input aria-label="Playlist name" className="w-56" disabled={!canEdit} value={pl.name} onChange={(e) => update((d) => { d.playlists[i]!.name = e.target.value; return d; })} />
-                <StatusPill tone="neutral">{pl.kind}</StatusPill>
-                <span className="text-xs text-muted">{pl.triggers.map(triggerLabel).join(' / ')}</span>
+                <Input aria-label="Playlist name" className="w-60" disabled={!canEdit} value={pl.name} onChange={(e) => update((d) => { d.playlists[pi]!.name = e.target.value; })} />
+                <NativeSelect aria-label="Part of the match" className="w-auto" disabled={!canEdit} value={pl.kind} onChange={(e) => update((d) => { d.playlists[pi]!.kind = e.target.value as Playlist['kind']; })}>{Object.entries(PLAYLIST_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect>
                 <label className="ml-auto flex items-center gap-1 text-xs">Priority
-                  <NativeSelect aria-label="Priority" className="w-auto" disabled={!canEdit} value={pl.priority} onChange={(e) => update((d) => { d.playlists[i]!.priority = Number(e.target.value); return d; })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p}{p === 1 ? ' (highest)' : ''}</option>)}</NativeSelect>
+                  <NativeSelect aria-label="Priority" className="w-auto" disabled={!canEdit} value={pl.priority} onChange={(e) => update((d) => { d.playlists[pi]!.priority = Number(e.target.value); })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} · {PRIORITIES[p]}</option>)}</NativeSelect>
                 </label>
-                <label className="flex items-center gap-1 text-xs"><input type="checkbox" disabled={!canEdit} checked={pl.repeat.mode === 'loop'} onChange={(e) => update((d) => { d.playlists[i]!.repeat = { ...pl.repeat, mode: e.target.checked ? 'loop' : 'once' }; return d; })} /> Loop</label>
-                {canEdit ? <Button size="sm" variant="ghost" onClick={() => update((d) => { d.playlists.splice(i, 1); return d; })}>Remove</Button> : null}
+                <label className="flex items-center gap-1 text-xs"><input type="checkbox" disabled={!canEdit} checked={pl.repeat.mode === 'loop'} onChange={(e) => update((d) => { d.playlists[pi]!.repeat = { ...pl.repeat, mode: e.target.checked ? 'loop' : 'once' }; })} /> Repeat</label>
+                {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1 text-xs">gap <Input type="number" className="w-16" min={0} disabled={!canEdit} value={pl.repeat.gapMs / 1000} onChange={(e) => update((d) => { d.playlists[pi]!.repeat.gapMs = Math.max(0, Number(e.target.value) || 0) * 1000; })} /> s</label> : null}
+                {canEdit ? <Button size="sm" variant="ghost" aria-label={`Remove playlist ${pl.name}`} onClick={() => confirm(`Remove “${pl.name}”?`) && update((d) => { d.playlists.splice(pi, 1); })}><Trash2 className="size-4" /></Button> : null}
               </div>
-              <ol className="mt-2 flex flex-wrap gap-1 text-xs">
-                {pl.items.map((it) => (
-                  <li key={it.id} className="rounded bg-elevated px-2 py-1">+{(it.offsetMs / 1000).toFixed(1)}s {it.action}{it.templateKey ? ` ${it.templateKey.replace('builtin:', '')}` : ''}{it.placement ? ` ${it.placement}` : ''}{it.durationMs ? ` · ${it.durationMs / 1000}s` : ''}</li>
-                ))}
-              </ol>
+              <div className="mt-3 grid gap-3 md:grid-cols-[18rem_1fr]">
+                <div>
+                  <h4 className="mb-1 text-xs font-medium text-muted">Runs</h4>
+                  <ul className="space-y-1 text-sm">
+                    {pl.triggers.map((t, ti) => (
+                      <li key={t.id} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
+                        <span className="flex-1">{triggerText(t, sport)}</span>
+                        {canEdit ? <><button className="text-muted hover:text-text" aria-label="Edit trigger" onClick={() => setEditTrigger({ pi, ti })}><Pencil className="size-3.5" /></button>{pl.triggers.length > 1 ? <button className="text-muted hover:text-live" aria-label="Remove trigger" onClick={() => update((d) => { d.playlists[pi]!.triggers.splice(ti, 1); })}><Trash2 className="size-3.5" /></button> : null}</> : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {canEdit ? <Button size="sm" variant="ghost" className="mt-1" onClick={() => setEditTrigger({ pi, ti: null })}><Plus className="size-3.5" /> Also run when…</Button> : null}
+                </div>
+                <div>
+                  <h4 className="mb-1 text-xs font-medium text-muted">Steps</h4>
+                  <ol className="space-y-1 text-sm">
+                    {pl.items.map((it, ii) => (
+                      <li key={it.id} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
+                        <span className="w-5 text-xs text-muted">{ii + 1}.</span>
+                        <span className="flex-1">{stepText(it)}</span>
+                        {canEdit ? <>
+                          <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move up" disabled={ii === 0} onClick={() => move(pi, ii, -1)}><ArrowUp className="size-3.5" /></button>
+                          <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move down" disabled={ii === pl.items.length - 1} onClick={() => move(pi, ii, 1)}><ArrowDown className="size-3.5" /></button>
+                          <button className="text-muted hover:text-text" aria-label="Edit step" onClick={() => setEditStep({ pi, ii })}><Pencil className="size-3.5" /></button>
+                          <button className="text-muted hover:text-live" aria-label="Remove step" onClick={() => update((d) => { d.playlists[pi]!.items.splice(ii, 1); })}><Trash2 className="size-3.5" /></button>
+                        </> : null}
+                      </li>
+                    ))}
+                    {!pl.items.length ? <li className="text-xs text-muted">No steps yet.</li> : null}
+                  </ol>
+                  {canEdit ? <Button size="sm" variant="ghost" className="mt-1" onClick={() => setEditStep({ pi, ii: null })}><Plus className="size-3.5" /> Add step</Button> : null}
+                </div>
+              </div>
             </Card>
           ))}
-          <p className="text-xs text-muted">Edit triggers, guards and item timing in the Advanced tab; changes save as a draft and are validated before publishing.</p>
+          {canEdit ? <Button onClick={() => setNewPlaylist({ name: '', kind: 'in_play' })}><Plus className="size-4" /> Add playlist</Button> : null}
+          <p className="text-xs text-muted">Playlists on the same layer take turns by priority: a goal (priority 1) interrupts a sponsor loop (priority 3). Changes save as a draft; matches use the published version you choose for them.</p>
         </TabPanel>
-        <TabPanel value="rehearse"><RehearsalView id={id} draft={draft} /></TabPanel>
+        <TabPanel value="rehearse"><RehearsalView id={id} sport={sport} names={Object.fromEntries(draft.playlists.map((p) => [p.id, p.name]))} /></TabPanel>
         <TabPanel value="advanced" className="space-y-2">
-          <Textarea aria-label="Game plan JSON" className="h-[28rem] font-mono text-xs" disabled={!canEdit} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} />
-          {canEdit ? <Button onClick={() => { try { const d = JSON.parse(json) as Draft; setDraft(d); void save(d); } catch { setIssues([{ path: '(json)', message: 'Not valid JSON', severity: 'error' }]); } }}>Save draft</Button> : null}
+          <Textarea aria-label="Plan JSON" className="h-[28rem] font-mono text-xs" disabled={!canEdit} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} />
+          {canEdit ? <Button onClick={() => { try { const d = asPlan(JSON.parse(json)); setDraft(d); void save(d); } catch { setIssues([{ path: '(json)', message: 'Not valid JSON', severity: 'error' }]); } }}>Save draft</Button> : null}
         </TabPanel>
       </Tabs>
+
+      {editTrigger ? (
+        <TriggerDialog sport={sport} trigger={editTrigger.ti == null ? null : draft.playlists[editTrigger.pi]!.triggers[editTrigger.ti]!}
+          id={editTrigger.ti == null ? uniqueId('t_' + slug(draft.playlists[editTrigger.pi]!.name), draft.playlists.flatMap((p) => p.triggers.map((t) => t.id))) : draft.playlists[editTrigger.pi]!.triggers[editTrigger.ti]!.id}
+          onClose={() => setEditTrigger(null)}
+          onSave={(t: Trigger) => { update((d) => { const list = d.playlists[editTrigger.pi]!.triggers; if (editTrigger.ti == null) list.push(t); else list[editTrigger.ti] = t; }); setEditTrigger(null); }} />
+      ) : null}
+      {editStep ? (
+        <StepDialog sport={sport} playlist={draft.playlists[editStep.pi]!} item={editStep.ii == null ? null : draft.playlists[editStep.pi]!.items[editStep.ii]!}
+          onClose={() => setEditStep(null)}
+          onSave={(it: PlanItem) => {
+            update((d) => {
+              const pl = d.playlists[editStep.pi]!;
+              if (editStep.ii == null) pl.items.push({ ...it, id: uniqueId(slug(it.templateKey ? it.templateKey.replace('builtin:', '') : it.action), pl.items.map((x) => x.id)) });
+              else pl.items[editStep.ii] = { ...it, id: pl.items[editStep.ii]!.id };
+            });
+            setEditStep(null);
+          }} />
+      ) : null}
+      {newPlaylist ? (
+        <Dialog open onOpenChange={(o) => !o && setNewPlaylist(null)} title="New playlist" description="Give it a name and say which part of the match it belongs to; then add when it runs and its steps."
+          footer={<><Button variant="ghost" onClick={() => setNewPlaylist(null)}>Cancel</Button><Button variant="primary" disabled={!newPlaylist.name.trim()} onClick={() => {
+            update((d) => { d.playlists.push({ id: uniqueId(slug(newPlaylist.name), d.playlists.map((p) => p.id)), name: newPlaylist.name.trim(), kind: newPlaylist.kind, priority: 2, promotional: false, cooldownMs: 0, guards: [], repeat: { mode: 'once', gapMs: 0, maxIterations: 1 }, triggers: [{ id: uniqueId('t_' + slug(newPlaylist.name), d.playlists.flatMap((p) => p.triggers.map((t) => t.id))), type: 'manual' }], items: [] }); });
+            setNewPlaylist(null);
+          }}>Create</Button></>}>
+          <div className="grid gap-3">
+            <Field label="Name" htmlFor="np-name"><Input id="np-name" value={newPlaylist.name} onChange={(e) => setNewPlaylist({ ...newPlaylist, name: e.target.value })} placeholder="e.g. Man of the match" /></Field>
+            <Field label="Part of the match" htmlFor="np-kind" hint="It stops by itself when the match leaves this part."><NativeSelect id="np-kind" value={newPlaylist.kind} onChange={(e) => setNewPlaylist({ ...newPlaylist, kind: e.target.value as Playlist['kind'] })}>{Object.entries(PLAYLIST_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect></Field>
+          </div>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
 
 const SPEEDS = [1, 2, 5, 10];
 
-function RehearsalView({ id, draft }: { id: string; draft: Draft }) {
+function RehearsalView({ id, sport, names }: { id: string; sport: Sport; names: Record<string, string> }) {
   const [r, setR] = useState<Rehearsal | null>(null);
   const [err, setErr] = useState<ApiError | null>(null);
   const [speed, setSpeed] = useState(5);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [theme, setTheme] = useState<'broadcast' | 'minimal' | 'club'>('broadcast');
   const last = useRef(0);
   const run = async () => {
     setErr(null);
@@ -192,49 +285,45 @@ function RehearsalView({ id, draft }: { id: string; draft: Draft }) {
     last.current = performance.now();
     let raf = 0;
     const step = (now: number) => {
-      setT((x) => Math.min(r.durationMs, x + (now - last.current) * speed));
+      setT((x) => {
+        const nx = Math.min(r.durationMs, x + (now - last.current) * speed);
+        if (nx >= r.durationMs) setPlaying(false);
+        return nx;
+      });
       last.current = now;
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [playing, r, speed]);
-  const onAir = useMemo(() => {
-    if (!r) return [];
-    const by = new Map<string, Rehearsal['cues'][number]>();
-    for (const c of r.cues) if (c.t <= t && c.layer && !c.action.includes('cancelled') && ['show', 'sponsor', 'creative', 'media'].includes(c.action) && (c.durationMs == null || c.t + c.durationMs > t)) by.set(c.layer, c);
-    return [...by.entries()];
-  }, [r, t]);
+  const playlistName = (pid: string) => (pid === '_default_scorebug' ? 'Default scorebug' : (names[pid] ?? pid));
   const fmt = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+  const current = r ? r.decisions.filter((d) => d.t <= t).slice(-1)[0] : null;
   return (
     <div className="space-y-3">
       <Card className="flex flex-wrap items-center gap-3 p-3 text-sm">
-        <StatusPill tone="warning">Rehearsal — isolated</StatusPill>
-        <span className="text-xs text-muted">Synthetic {draft.sport} match. Nothing is sent to outputs, streams, sponsor reports or usage.</span>
+        <StatusPill tone="warning">Rehearsal</StatusPill>
+        <span className="text-xs text-muted">Plays the draft against a made-up {sport} match (pre-match, kick-off, a goal, a card, half time, second half, full time). Nothing goes to any output.</span>
         <div className="ml-auto flex items-center gap-2">
+          <NativeSelect aria-label="Look" className="w-auto" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}><option value="broadcast">Broadcast look</option><option value="minimal">Minimal look</option><option value="club">Club look</option></NativeSelect>
           <NativeSelect aria-label="Speed" className="w-auto" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>{SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}</NativeSelect>
           {r ? <Button size="sm" variant="secondary" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause className="size-4" /> : <Play className="size-4" />}</Button> : null}
-          <Button variant="primary" className="whitespace-nowrap" onClick={() => void run()}>Rehearse draft</Button>
+          <Button variant="primary" className="whitespace-nowrap" onClick={() => void run()}>{r ? 'Rehearse again' : 'Rehearse the draft'}</Button>
         </div>
       </Card>
       <ErrorNotice error={err} />
       {r ? (
         <>
+          <RehearsalPreview cues={r.cues} t={t} sport={sport} themeKey={theme} />
           <Card className="p-3">
-            <div className="mb-2 flex items-center gap-2 text-sm"><span className="font-mono">{fmt(t)}</span> / <span className="font-mono text-muted">{fmt(r.durationMs)}</span></div>
+            <div className="mb-2 flex items-center gap-3 text-sm"><span className="font-mono">{fmt(t)}</span> / <span className="font-mono text-muted">{fmt(r.durationMs)}</span>{current ? <span className="text-xs text-muted">Last: {playlistName(current.playlistId)} · {current.outcome}</span> : null}</div>
             <input type="range" aria-label="Rehearsal position" className="w-full" min={0} max={r.durationMs} value={t} onChange={(e) => setT(Number(e.target.value))} />
-            <div className="mt-2 grid gap-1 text-xs sm:grid-cols-3">
-              {['fullframe', 'event', 'lower', 'sponsor', 'ticker', 'background'].map((l) => {
-                const c = onAir.find(([k]) => k === l)?.[1];
-                return <div key={l} className={cx('rounded border px-2 py-1', c ? 'border-primary' : 'border-border text-muted')}><span className="uppercase">{l}</span>: {c ? `${c.templateKey?.replace('builtin:', '') ?? c.placement} (${c.playlistId})` : '—'}</div>;
-              })}
-            </div>
           </Card>
           <Table>
-            <thead><tr><th>Time</th><th>Playlist</th><th>Outcome</th><th>Why</th></tr></thead>
+            <thead><tr><th>Time</th><th>Playlist</th><th>What happened</th><th>Why</th></tr></thead>
             <tbody>
               {r.decisions.map((d, k) => (
-                <tr key={k} className={d.t <= t ? '' : 'opacity-40'}><td className="font-mono">{fmt(d.t)}</td><td>{d.playlistId}</td><td><StatusPill tone={d.outcome === 'fired' ? 'healthy' : d.outcome === 'skipped' ? 'neutral' : 'warning'}>{d.outcome}</StatusPill></td><td className="text-xs text-muted">{d.reason}</td></tr>
+                <tr key={k} className={d.t <= t ? '' : 'opacity-40'}><td className="font-mono">{fmt(d.t)}</td><td>{playlistName(d.playlistId)}</td><td><StatusPill tone={d.outcome === 'fired' ? 'healthy' : d.outcome === 'skipped' ? 'neutral' : 'warning'}>{d.outcome === 'fired' ? 'ran' : d.outcome}</StatusPill></td><td className="text-xs text-muted">{d.reason}</td></tr>
               ))}
             </tbody>
           </Table>

@@ -4,13 +4,17 @@
 
 1. **Fixture** — Matches → open the fixture. Check teams, venue, kickoff (shown in the organisation timezone,
    stored in UTC) and the lineup snapshot. Lineups lock at kickoff; later roster changes never rewrite them.
-2. **Graphics output** — Match → *Overlays* → *New overlay*. Each overlay is an independent output with its own
-   mode, layers and production URL. Copy the **Production URL** into OBS as a Browser Source at 1920×1080
-   (transparent; no custom CSS needed). Rotate the URL if it leaks — the old link stops immediately.
-3. **Automation** — in the control room, *Automation queue & history* → choose a published game plan, or leave
-   *No automation* to run manually. Rehearse a plan first: Automation → plan → *Rehearse* (isolated, nothing is
-   sent to outputs, sponsors, streams or usage).
-4. **Streaming (optional)** — Streams → *New input*; give the encoder the RTMP URL and key (reveal is audited;
+2. **Match day checklist** — at the top of the match page: lineups entered, a look chosen, automation set, a
+   scorer assigned, OBS connected. Each line has its action in place; *Copy OBS link* and *Send scorer link*
+   (with a QR code) sit beside it. The dashboard shows the next match with the same three buttons.
+3. **OBS link** — every match has one graphics output from the moment it is created. Match → *OBS link* →
+   *Copy link*, then in OBS add a Browser Source at 1920×1080 (transparent; no custom CSS). The status turns
+   green once OBS is showing the page. *Advanced → create a new link* if the link leaks; the old one stops at
+   once. A second output (for example a clean feed) is under *More outputs*.
+4. **Automation** — choose a published plan on the match (checklist) or as the competition default. Plans are
+   edited in plain language under Automation (when it runs, which steps, how long); *Rehearse* plays the draft
+   through the real graphics against a made-up match, with nothing sent to any output.
+5. **Streaming (optional)** — Streams → *New input*; give the encoder the RTMP URL and key (reveal is audited;
    the transport is labelled unencrypted). On the match *Streams* tab add a **Programme** output (with graphics)
    and optionally a **Clean** output (no graphics), pick the input and preset, add up to three destinations
    (YouTube/Facebook/Twitch: paste the server URL and stream key from the platform) and *Start stream*.
@@ -19,8 +23,9 @@
 ## In the control room
 
 * **Preview vs To Air** — selecting a graphic and editing its fields changes only the preview. *To air* (F8)
-  sends it; *Out* (F9) takes it out. The command list shows *requested → accepted → displayed*; *displayed* means
-  the output renderer acknowledged the revision.
+  sends it; *Out* (F9) takes it out; the buttons stay pinned at the bottom of the form. *Sent from this desk*
+  shows *requested → accepted → displayed*; *displayed* means OBS acknowledged the change. Press **?** for the
+  shortcut list. *What happens next* tells you which graphics run when the scorer presses the next phase.
 * **Auto / Manual** — Manual pauses automatic takes and cancels pending automatic cues; what is on air stays.
   Returning to Auto does not replay anything that happened meanwhile; the default scorebug is restored in play.
 * **Emergency clear** — press and hold: every layer and the scorebug go out and automation is inhibited until

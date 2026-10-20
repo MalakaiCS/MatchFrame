@@ -24,10 +24,9 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
   const fixtures = useGet<{ items: MatchRow[]; total: number }>(['matches', 'competition', id], `matches?competitionId=${id}&pageSize=100`);
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [season, setSeason] = useState({ name: '', startsOn: '', endsOn: '' });
-  const addSeason = useAction((v: typeof season) => post(`competitions/${id}/seasons`, { name: v.name, startsOn: v.startsOn || null, endsOn: v.endsOn || null }), [['competition', id]]);
+  const addSeason = useAction((v: typeof season) => post(`competitions/${id}/seasons`, { name: v.name, startsOn: v.startsOn || null, endsOn: v.endsOn || null }), [['competition', id]], { success: 'Season added' });
   const archive = useAction(() => patch(`competitions/${id}`, { status: c.data?.status === 'archived' ? 'active' : 'archived' }), [['competition', id], ['competitions']]);
-  const setPreset = useAction((preset: string) => patch(`competitions/${id}`, { rulesPreset: preset }), [['competition', id]]);
-
+  const setPreset = useAction((preset: string) => patch(`competitions/${id}`, { rulesPreset: preset }), [['competition', id]], { success: 'Rules updated' });
   if (c.isLoading) return <Spinner />;
   if (c.error) return <ErrorNotice error={c.error} onRetry={() => c.refetch()} />;
   const comp = c.data!;

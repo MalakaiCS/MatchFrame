@@ -24,10 +24,10 @@ export default function ControlRooms() {
 
   return (
     <>
-      <PageHeader title="Control rooms" subtitle="Open the production desk for any overlay. Each overlay has independent graphics state." />
+      <PageHeader title="Control rooms" subtitle="Open the desk for any match that is live or coming up. Each graphics output has its own desk." />
       <ErrorNotice error={live.error ?? upcoming.error} />
-      {live.isLoading ? <Spinner /> : !rows.length ? <EmptyState title="No overlays on live or upcoming matches" body="Add an overlay from a match's Overlays tab." action={<Button asChild><Link href="/app/matches">Go to matches</Link></Button>} /> : (
-        <Table><thead><tr><th>Match</th><th>Kick-off</th><th>Status</th><th>Overlays</th></tr></thead><tbody>
+      {live.isLoading ? <Spinner /> : !rows.length ? <EmptyState title="No live or upcoming matches" body="Add a fixture and its OBS link is ready straight away." action={<Button asChild><Link href="/app/matches">Go to matches</Link></Button>} /> : (
+        <Table><thead><tr><th>Match</th><th>Kick-off</th><th>Status</th><th>Open the desk</th></tr></thead><tbody>
           {rows.map((m) => (
             <tr key={m.id}>
               <td>{m.home?.name} v {m.away?.name}<span className="block text-xs text-muted">{m.competition.name}</span></td>

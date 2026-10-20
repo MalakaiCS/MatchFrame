@@ -35,11 +35,13 @@ export function AutomationPanel({ overlayId, gamePlanVersionId, sport, canEdit =
   const [msg, setMsg] = useState<string | null>(null);
   const current = plans.data?.find((p) => p.versions.some((v) => v.id === gamePlanVersionId));
   const detail = useQuery({ queryKey: ['game-plan', current?.id], queryFn: () => get<PlanDetail>(`game-plans/${current!.id}`), enabled: !!current });
-  const manual = useMemo(() => detail.data?.versions.find((v) => v.id === gamePlanVersionId)?.definition.playlists.filter((p) => p.triggers.some((t) => t.type === 'manual')) ?? [], [detail.data, gamePlanVersionId]);
+  const playlists = useMemo(() => detail.data?.versions.find((v) => v.id === gamePlanVersionId)?.definition.playlists ?? [], [detail.data, gamePlanVersionId]);
+  const manual = useMemo(() => playlists.filter((p) => p.triggers.some((t) => t.type === 'manual')), [playlists]);
+  const nameOf = (id: string) => (id === '_default_scorebug' ? 'Default scorebug' : (playlists.find((p) => p.id === id)?.name ?? id));
 
   const assign = async (versionId: string) => {
     await put(`overlays/${overlayId}/game-plan`, { gamePlanVersionId: versionId || null });
-    setMsg(versionId ? 'Game plan assigned. New triggers use it immediately.' : 'Automation disabled for this output.');
+    setMsg(versionId ? 'Automation plan set. It applies from the next scorer action.' : 'Automation is off for this output.');
     onChanged?.();
   };
   const fire = async (playlistId: string) => {
@@ -52,22 +54,22 @@ export function AutomationPanel({ overlayId, gamePlanVersionId, sport, canEdit =
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor={`gp-${overlayId}`} className="text-muted">Game plan</label>
+        <label htmlFor={`gp-${overlayId}`} className="text-muted">Automation plan</label>
         <NativeSelect id={`gp-${overlayId}`} value={gamePlanVersionId ?? ''} disabled={!canEdit} onChange={(e) => void assign(e.target.value)} className="w-auto">
-          <option value="">No automation (manual only)</option>
+          <option value="">Off (everything from this desk)</option>
           {choices.map((p) => p.versions.map((v) => <option key={v.id} value={v.id}>{p.name} · v{v.version}</option>))}
         </NativeSelect>
         {manual.map((p) => <Button key={p.id} size="sm" variant="secondary" disabled={!canOperate} onClick={() => void fire(p.id)}>Run “{p.name}”</Button>)}
         {msg ? <span role="status" className="text-xs text-muted">{msg}</span> : null}
       </div>
-      {!gamePlanVersionId ? <p className="text-xs text-muted">Automation is off for this output. Assign a published game plan to run playlists from scoring events.</p> : null}
+      {!gamePlanVersionId ? <p className="text-xs text-muted">Automation is off for this output. Choose a published plan and graphics will follow the scorer's taps.</p> : null}
       <ul className="max-h-64 space-y-1 overflow-auto text-xs" aria-label="Automation history">
         {(log.data ?? []).map((r) => (
           <li key={r.id} className="rounded border border-border px-2 py-1">
             <div className="flex items-center gap-2">
               <StatusPill tone={TONE[r.state] ?? 'neutral'}>{r.state}</StatusPill>
-              <span className="font-medium">{r.playlistId === '_default_scorebug' ? 'Default scorebug' : r.playlistId}</span>
-              <span className="text-muted">P{r.priority} · {r.triggerId}</span>
+              <span className="font-medium">{nameOf(r.playlistId)}</span>
+              <span className="text-muted">priority {r.priority}</span>
               <span className="ml-auto text-muted">{new Date(r.createdAt).toLocaleTimeString()}</span>
             </div>
             {r.reason ? <div className="text-muted">{r.reason}</div> : null}
@@ -76,7 +78,7 @@ export function AutomationPanel({ overlayId, gamePlanVersionId, sport, canEdit =
             ) : null}
           </li>
         ))}
-        {log.data && !log.data.length ? <li className="text-muted">No automation activity yet.</li> : null}
+        {log.data && !log.data.length ? <li className="text-muted">Nothing has run automatically yet. Entries appear here as the scorer records the match.</li> : null}
       </ul>
     </div>
   );

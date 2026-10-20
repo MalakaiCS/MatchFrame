@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, Eye, Radio, Search } from 'lucide-react';
+import { CircleHelp, Copy, Radio, Search } from 'lucide-react';
 import { findTemplate, reduceOverlay, type Cue, type Layer, type OverlayPublicState, type TemplateDef } from '@bs/graphics';
 import { Keyframes, Renderer, Stage, THEMES, customDefsFrom, renderCustomScene } from '@bs/graphics/react';
 import { getAdapter } from '@bs/domain';
-import { Button, ErrorNotice, Kbd, Spinner, StatusPill, Tab, TabList, TabPanel, Tabs, cx } from '@bs/ui';
+import { Button, Dialog, ErrorNotice, Kbd, Spinner, StatusPill, Tab, TabList, TabPanel, Tabs, cx } from '@bs/ui';
 import { get } from '@/lib/api';
-import { useGet } from '@/lib/hooks';
+import { useCopy, useGet } from '@/lib/hooks';
+import { layerLabel } from '@/lib/labels';
 import { useConnectionStatus } from '@/lib/realtime';
 import { Catalogue, defaultVariables } from '@/components/control/catalogue';
 import { VariableForm } from '@/components/control/variable-form';
@@ -16,6 +17,7 @@ import { EmergencyClear } from '@/components/control/emergency';
 import { useControl, type PendingCommand } from '@/components/control/use-control';
 import { AutomationPanel } from '@/components/control/automation-panel';
 import { ProgrammeMonitor } from '@/components/control/programme-monitor';
+import { ComingNext } from '@/components/control/coming-next';
 
 const DEFAULT_KEYS = { take: 'F8', out: 'F9', scorebug: 'F2', search: '/', clear: 'Shift+Escape' };
 type Keys = typeof DEFAULT_KEYS;
@@ -54,6 +56,8 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
   const [logSearch, setLogSearch] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [help, setHelp] = useState(false);
+  const copy = useCopy();
   const searchRef = useRef<HTMLInputElement>(null);
 
   const data = c.data;
@@ -122,6 +126,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
       else if (k === keys.scorebug) { e.preventDefault(); void toggleScorebug(); }
       else if (k === keys.search) { e.preventDefault(); searchRef.current?.focus(); }
       else if (k === keys.clear) { e.preventDefault(); setConfirmClear(true); }
+      else if (k === '?' || k === 'Shift+?') { e.preventDefault(); setHelp(true); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
@@ -150,12 +155,13 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
           <button key={m} disabled={!canOp} onClick={() => run(() => c.send({ type: 'SET_MODE', mode: m }, `Mode ${m}`))} aria-pressed={state.mode === m} className={cx('h-9 px-3 text-sm capitalize', state.mode === m ? (m === 'auto' ? 'bg-primary text-bg' : 'bg-warning text-bg') : 'text-muted hover:text-text')}>{m}</button>
         ))}
       </div>
-      {conn === 'connected' ? <StatusPill tone="healthy">Control link</StatusPill> : <StatusPill tone="offline">Control link offline</StatusPill>}
-      {prodRenderers.length ? (behind ? <StatusPill tone="warning">Output at rev {c.displayed}, requested {state.revision}</StatusPill> : <StatusPill tone="healthy">Output in sync · rev {c.displayed}</StatusPill>) : <StatusPill tone="offline">No output renderer</StatusPill>}
-      {d.overlay.kind === 'programme' ? <StatusPill tone="live"><Radio className="size-3" /> Cloud programme</StatusPill> : <StatusPill tone="neutral">Browser source</StatusPill>}
+      {conn === 'connected' ? <StatusPill tone="healthy">Connected</StatusPill> : <StatusPill tone="offline">Connection lost</StatusPill>}
+      {prodRenderers.length ? (behind ? <StatusPill tone="warning">OBS catching up</StatusPill> : <StatusPill tone="healthy">OBS showing the latest</StatusPill>) : <StatusPill tone="offline">OBS not connected</StatusPill>}
+      {d.overlay.kind === 'programme' ? <StatusPill tone="live"><Radio className="size-3" /> Cloud programme</StatusPill> : null}
       {state.inhibited ? <StatusPill tone="live">OUTPUT CLEARED</StatusPill> : null}
       <div className="ml-auto flex items-center gap-2">
-        <Button size="sm" variant="ghost" onClick={async () => { const u = await get<{ production: string }>(`overlays/${overlayId}/urls`); await navigator.clipboard.writeText(u.production); }}><Copy className="size-4" /> Production URL</Button>
+        <Button size="sm" variant="ghost" onClick={async () => { const u = await get<{ production: string }>(`overlays/${overlayId}/urls`); await copy(u.production, 'OBS link'); }}><Copy className="size-4" /> Copy OBS link</Button>
+        <Button size="sm" variant="ghost" aria-label="Keyboard shortcuts" onClick={() => setHelp(true)}><CircleHelp className="size-4" /></Button>
         {state.inhibited ? <Button size="sm" variant="primary" disabled={!canOp} onClick={() => run(() => c.send({ type: 'RESUME' }, 'Resume output'))}>Resume output</Button> : null}
         <EmergencyClear disabled={!canOp} onClear={clear} />
       </div>
@@ -216,7 +222,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
 
   const monitor = (label: string, st: OverlayPublicState, tone: 'preview' | 'programme') => (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs"><span className={cx('font-semibold uppercase tracking-wide', tone === 'programme' ? 'text-live' : 'text-healthy')}>{label}</span>{tone === 'programme' ? <span className="text-muted">rev {state.revision} · displayed {c.displayed}</span> : <span className="text-muted">Local draft — not on air</span>}</div>
+      <div className="mb-1 flex items-center justify-between text-xs"><span className={cx('font-semibold uppercase tracking-wide', tone === 'programme' ? 'text-live' : 'text-healthy')}>{label}</span>{tone === 'programme' ? <span className="text-muted">{behind ? 'OBS is catching up' : 'what OBS is showing'}</span> : <span className="text-muted">Your draft — not on air yet</span>}</div>
       <div className={cx('relative aspect-video overflow-hidden rounded-md border-2 bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]', tone === 'programme' ? 'border-live' : 'border-healthy')}>
         <Stage><Renderer state={st} data={data} themes={THEMES} serverNow={c.serverNow} customDefs={custom} renderCustom={renderCustomScene} /></Stage>
       </div>
@@ -227,29 +233,33 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
     <div className="flex flex-col gap-3">
       {monitor('Preview', previewState ?? state, 'preview')}
       {d.overlay.kind === 'programme' ? <ProgrammeMonitor matchId={matchId} overlayId={overlayId} /> : null}
-      {monitor(d.overlay.kind === 'programme' ? 'Graphics state (sent to compositor)' : 'Programme graphics', state, 'programme')}
+      {monitor(d.overlay.kind === 'programme' ? 'On air (sent to the cloud programme)' : 'On air', state, 'programme')}
       <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
         {t ? (
           <>
             <div className="mb-2 flex items-center justify-between"><h3 className="font-medium">{t.name}</h3>{selectedOnAir ? <StatusPill tone="live">On air</StatusPill> : <StatusPill tone="neutral">Off air</StatusPill>}</div>
             <VariableForm t={t} data={data} values={vars} onChange={setVars} creatives={Object.values(data.creatives).map((x) => ({ id: x.id, label: x.brandName }))} />
-            <div className="mt-3 flex gap-2">
+            <div className="sticky bottom-0 -mx-3 -mb-3 mt-3 flex gap-2 border-t border-border bg-panel p-3">
               <Button variant="live" className="flex-1" disabled={!canOp || state.inhibited} onClick={() => void take()}>{selectedOnAir ? 'Update on air' : 'To air'} <Kbd>{keys.take}</Kbd></Button>
               <Button className="flex-1" disabled={!canOp || !selectedOnAir} onClick={() => out()}>Out <Kbd>{keys.out}</Kbd></Button>
             </div>
           </>
-        ) : <p className="text-sm text-muted">Select a graphic to preview and edit it. Changes stay in Preview until you press To air.</p>}
+        ) : <p className="text-sm text-muted">Pick a graphic from the list to preview it and fill in its details. Nothing goes on air until you press To air.</p>}
         {err ? <p role="alert" className="mt-2 text-sm text-live">{err}</p> : null}
         {state.inhibited ? <p className="mt-2 text-sm text-live">Emergency clear is active. Graphics and automation are held until you press Resume output.</p> : null}
       </div>
       <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
-        <div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-medium text-muted">Active layers</h3><Button size="sm" variant="ghost" disabled={!canOp} onClick={() => void toggleScorebug()}>{state.scorebugVisible ? 'Hide' : 'Show'} scorebug <Kbd>{keys.scorebug}</Kbd></Button></div>
+        <h3 className="mb-1 text-xs font-medium text-muted">What happens next</h3>
+        <ComingNext data={data} gamePlanVersionId={d.overlay.gamePlanVersionId} mode={state.mode} />
+      </div>
+      <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
+        <div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-medium text-muted">On air now</h3><Button size="sm" variant="ghost" disabled={!canOp} onClick={() => void toggleScorebug()}>{state.scorebugVisible ? 'Hide' : 'Show'} scorebug <Kbd>{keys.scorebug}</Kbd></Button></div>
         <ul className="space-y-1 text-sm">
           {(Object.entries(state.layers) as [Layer, Cue][]).map(([layer, cue]) => (
             <li key={layer} className="flex items-center gap-2">
-              <span className="w-20 text-xs uppercase text-muted">{layer}</span>
+              <span className="w-28 truncate text-xs text-muted" title={layer}>{layerLabel(layer)}</span>
               <span className="flex-1 truncate">{findTemplate(cue.templateKey, custom)?.name ?? cue.templateKey}{cue.outAt ? ' (going out)' : ''}</span>
-              <span className="text-xs text-muted">{cue.source}{cue.durationMs ? ` · ${Math.max(0, Math.round((cue.startedAt + cue.durationMs - c.serverNow()) / 1000))}s` : ''}</span>
+              <span className="text-xs text-muted">{cue.source === 'automation' ? 'automatic' : 'from this desk'}{cue.durationMs ? ` · ${Math.max(0, Math.round((cue.startedAt + cue.durationMs - c.serverNow()) / 1000))}s left` : ''}</span>
               {!cue.outAt ? <Button size="sm" variant="ghost" disabled={!canOp} onClick={() => out(layer)}>Out</Button> : null}
             </li>
           ))}
@@ -261,14 +271,15 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
 
   const bottom = (
     <Tabs defaultValue="commands">
-      <TabList><Tab value="commands">Commands</Tab><Tab value="automation">Automation queue & history</Tab><Tab value="diagnostics">Diagnostics</Tab></TabList>
+      <TabList><Tab value="commands">Sent from this desk</Tab><Tab value="automation">Automation</Tab><Tab value="diagnostics">Diagnostics</Tab></TabList>
       <TabPanel value="commands" className="py-2"><CommandLog pending={c.pending} /></TabPanel>
       <TabPanel value="automation" className="py-2"><AutomationPanel overlayId={overlayId} gamePlanVersionId={d.overlay.gamePlanVersionId} sport={data.match.sport} canOperate={d.canOperate} onChanged={() => void c.reload?.()} /></TabPanel>
       <TabPanel value="diagnostics" className="py-2 text-xs text-muted">
         <ul className="space-y-1">
-          <li>Renderers: {d.renderers.map((r) => `${r.purpose}${r.reporting ? ' (reporting)' : ''} rev ${r.displayedRevision}`).join(', ') || 'none connected'}</li>
-          {behind ? <li className="text-warning">Output has not yet displayed revision {state.revision}.</li> : null}
-          {d.overlay.pendingThemeProfileVersionId ? <li className="text-warning">A newer theme version is published but not applied to this output.</li> : null}
+          <li>Connected outputs: {d.renderers.map((r) => `${r.purpose}${r.reporting ? ' (reports sponsor delivery)' : ''} at revision ${r.displayedRevision}`).join(', ') || 'none'}</li>
+          <li>Latest revision sent: {state.revision}; shown by OBS: {c.displayed}.</li>
+          {behind ? <li className="text-warning">OBS has not yet shown revision {state.revision}.</li> : null}
+          {d.overlay.pendingThemeProfileVersionId ? <li className="text-warning">A newer version of the look is published but not applied to this output (match page → OBS link).</li> : null}
           {disp.alerts.map((a) => <li key={a} className="text-warning">{a}</li>)}
         </ul>
       </TabPanel>
@@ -302,7 +313,14 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
           </div>
         </div>
       ) : null}
-      <p className="text-xs text-muted"><Eye className="inline size-3" /> Shortcuts: take {keys.take}, out {keys.out}, scorebug {keys.scorebug}, search {keys.search}, clear {keys.clear}. Change them under Settings → preferences.</p>
+      <Dialog open={help} onOpenChange={setHelp} title="Keyboard shortcuts" description="Press ? any time to see this. Change the keys under Settings → preferences.">
+        <table className="w-full text-sm"><tbody>
+          {[['To air / Update on air', keys.take], ['Take the selected graphic out', keys.out], ['Show or hide the scorebug', keys.scorebug], ['Search graphics', keys.search], ['Emergency clear (asks first)', keys.clear], ['This help', '?']].map(([what, key]) => (
+            <tr key={what} className="border-t border-border"><td className="py-2">{what}</td><td className="py-2 text-right"><Kbd>{key}</Kbd></td></tr>
+          ))}
+        </tbody></table>
+        <p className="mt-3 text-xs text-muted">Preview on the right is your draft; the panel below it is what OBS is showing. Automation runs from the scorer's phase buttons; switch to Manual to pause it.</p>
+      </Dialog>
     </div>
   );
 }

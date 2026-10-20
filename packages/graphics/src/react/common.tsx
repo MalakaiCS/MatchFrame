@@ -130,6 +130,14 @@ export function kickoffCountdown(p: GraphicProps): string | null {
   return m > 99 ? null : `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** The look's own logo (league or broadcaster), shown in the title bars of full-screen graphics and on the slate. */
+export function ThemeBadge({ p, height }: { p: GraphicProps; height: number }) {
+  const [broken, setBroken] = useState(false);
+  const url = p.data.theme.logoUrl;
+  if (!url || broken) return null;
+  return <img alt="" src={url} onError={() => setBroken(true)} style={{ height, maxWidth: height * 3, objectFit: 'contain', flex: 'none' }} />;
+}
+
 /** Heading and period for the kick-off / period banner. */
 export function periodBanner(p: GraphicProps): { heading: string; period: string } {
   const heading = typeof p.cue.variables.heading === 'string' && p.cue.variables.heading ? p.cue.variables.heading : 'KICK-OFF';

@@ -178,6 +178,25 @@ export async function applyPendingTheme(ctx: Ctx, overlayId: string) {
   });
 }
 
+/** Pin an output to the latest published version of a look (the match-day "choose a look" action). */
+export async function setOverlayThemeProfile(ctx: Ctx, overlayId: string, profileId: string | null) {
+  return tx(ctx, async (t) => {
+    const { o, m } = await loadOverlay(ctx, t, overlayId);
+    assertCan(ctx.actor, 'overlay.operate', { matchId: m.id, competitionId: m.competitionId, overlayId });
+    let pv: typeof themeProfileVersions.$inferSelect | undefined;
+    if (profileId) {
+      [pv] = await t.select().from(themeProfileVersions).where(and(eq(themeProfileVersions.profileId, profileId), eq(themeProfileVersions.organisationId, ctx.actor.organisationId))).orderBy(desc(themeProfileVersions.version)).limit(1);
+      if (!pv) throw conflict('NOT_PUBLISHED', 'Publish this look before using it on a match');
+    }
+    const next = { themeProfileVersionId: pv?.id ?? null, themeVersionId: pv?.themeVersionId ?? null };
+    await t.update(overlays).set({ ...next, pendingThemeProfileVersionId: null, updatedAt: new Date() }).where(eq(overlays.id, overlayId));
+    const [s] = await t.update(overlayState).set({ revision: sql`${overlayState.revision} + 1`, updatedAt: new Date() }).where(eq(overlayState.overlayId, overlayId)).returning();
+    await enqueueOutbox(t, { organisationId: ctx.actor.organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: overlayId, payload: { ...publicState(s!, next), themeChanged: true } });
+    await audit(t, ctx.actor, 'overlay.theme_profile', 'overlay', overlayId, { before: { themeProfileVersionId: o.themeProfileVersionId }, after: next });
+    return { ok: true, version: pv?.version ?? null };
+  });
+}
+
 export async function setOverlayGamePlan(ctx: Ctx, overlayId: string, gamePlanVersionId: string | null) {
   return tx(ctx, async (t) => {
     const { m } = await loadOverlay(ctx, t, overlayId);

@@ -3,7 +3,7 @@
 // Every graphic builds in parts (panel, stripe, badge, text) on a short stagger and exits as one.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
 
 const SX = 96; // 5% title-safe
 const SY = 54;
@@ -165,8 +165,9 @@ function PlayerCard(p: GraphicProps) {
 function FullPanel({ p, title, children, width = 1100 }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number }) {
   return (
     <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 140, width, fontFamily: p.data.theme.font, ...animStyle(p, 'slide-up') }} data-graphic={p.t.key}>
-      <div style={{ background: p.data.theme.primary, color: p.data.theme.secondary, padding: '16px 32px', fontSize: 34, fontWeight: 900, letterSpacing: 1, ...angled(30), ...animStyle(p, 'wipe', 60, 420) }}>
+      <div style={{ background: p.data.theme.primary, color: p.data.theme.secondary, padding: '16px 48px 16px 32px', fontSize: 34, fontWeight: 900, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, ...angled(30), ...animStyle(p, 'wipe', 60, 420) }}>
         <div style={animStyle(p, 'rise', 160, 320)}>{title}</div>
+        <ThemeBadge p={p} height={40} />
       </div>
       <Panel p={p} style={{ padding: 32, transformOrigin: 'top', ...animStyle(p, 'grow-y', 120, 380) }}>{children}</Panel>
     </div>
@@ -336,6 +337,7 @@ function Ticker(p: GraphicProps) {
 function Slate(p: GraphicProps) {
   return (
     <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${p.data.theme.secondary} 0%, ${p.data.theme.panel} 100%)`, color: p.data.theme.text, fontFamily: p.data.theme.font, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 40, ...animStyle(p, 'fade') }} data-graphic="slate">
+      <div style={animStyle(p, 'fade', 100, 400)}><ThemeBadge p={p} height={80} /></div>
       <div style={{ width: 1100 }}><TeamsHeader p={p} delayMs={200} /></div>
       <div style={{ fontSize: 52, fontWeight: 800, ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
       <div style={{ fontSize: 28, opacity: 0.7, ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>

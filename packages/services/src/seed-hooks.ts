@@ -19,9 +19,12 @@ export function seedHooks(config: AppConfig): SeedHook[] {
   const graphics: SeedHook = async ({ ctx, created }) => {
     for (const c of created) {
       const prof = await themesSvc.createProfile(ctx, { name: c.sport === 'football' ? 'League broadcast look' : 'Club look', themeKey: c.sport === 'football' ? 'broadcast' : 'club', competitionId: c.competitionId, publish: true });
-      void prof;
       const demo = await withTenant(ctx.db, { organisationId: ctx.actor.organisationId }, (t) => t.select().from(matches).where(and(eq(matches.competitionId, c.competitionId), eq(matches.isDemo, true))));
-      for (const m of demo) await overlaysSvc.createOverlay(ctx, m.id, { name: 'Main graphics' });
+      for (const m of demo) {
+        const existing = await overlaysSvc.listOverlays(ctx, m.id);
+        if (!existing.length) await overlaysSvc.createOverlay(ctx, m.id, { name: 'Main graphics' });
+        for (const o of existing.filter((x) => !x.theme)) await overlaysSvc.setOverlayThemeProfile(ctx, o.id, prof.id);
+      }
       await withTenant(ctx.db, { organisationId: ctx.actor.organisationId }, (t) => t.select().from(competitions).where(eq(competitions.id, c.competitionId)));
     }
   };

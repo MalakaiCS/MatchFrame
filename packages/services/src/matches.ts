@@ -23,8 +23,9 @@ import { getAdapter, isValidTimeZone, resolveLocalTime, type LineupPlayer, type 
 import { z } from 'zod';
 import { assertCan, assignedScopes, hasWideRead } from './authz';
 import { audit } from './audit';
-import { conflict, invalid, notFound } from './errors';
+import { AppError, conflict, invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
+import { createOverlay } from './overlays';
 import { enqueueOutbox } from './outbox';
 
 export const matchInput = z.object({
@@ -116,6 +117,12 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
   await t.insert(scorerLeases).values({ matchId: m!.id, organisationId: ctx.actor.organisationId });
   const lineup: LineupSnapshot = { home: await rosterLineup(t, home.id, season.id), away: await rosterLineup(t, away.id, season.id) };
   await t.insert(matchLineups).values({ matchId: m!.id, organisationId: ctx.actor.organisationId, snapshot: lineup as never, teams: { home: teamSnapshot(home), away: teamSnapshot(away) } as never });
+  // Every match gets one graphics output, so the OBS link exists from day one; a second output is an explicit add.
+  try {
+    await createOverlay(ctx, m!.id, { name: 'Main graphics' }, t);
+  } catch (e) {
+    if (!(e instanceof AppError && e.status === 403)) throw e;
+  }
   return m!;
 }
 
@@ -210,6 +217,7 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
           phase: r.s.phase,
           score: proj.score ?? { home: 0, away: 0 },
           stateVersion: r.s.stateVersion,
+          stateUpdatedAt: r.s.updatedAt,
           scorer: lease?.l.holderUserId && lease.l.expiresAt && lease.l.expiresAt.getTime() > Date.now() ? { name: lease.name } : null,
           overlays: ovs.filter((o) => o.o.matchId === r.m.id).map((o) => ({ id: o.o.id, name: o.o.name, kind: o.o.kind, publicId: o.o.publicId, mode: o.st?.mode, inhibited: o.st?.inhibited, revision: o.st?.revision, displayedRevision: o.st?.displayedRevision })),
           outputs: outs.filter((o) => o.matchId === r.m.id).map((o) => ({ id: o.id, name: o.name, mode: o.mode })),
@@ -237,6 +245,12 @@ export async function getMatch(ctx: Ctx, id: string) {
     const [season] = await t.select().from(seasons).where(eq(seasons.id, m.seasonId));
     const [venue] = m.venueId ? await t.select().from(venues).where(eq(venues.id, m.venueId)) : [null];
     const [lease] = await t.select({ l: scorerLeases, name: users.name }).from(scorerLeases).leftJoin(users, eq(users.id, scorerLeases.holderUserId)).where(eq(scorerLeases.matchId, id));
+    const assigned = await t
+      .select({ membershipId: memberships.id, name: users.name, status: memberships.status })
+      .from(permissionGrants)
+      .innerJoin(memberships, eq(memberships.id, permissionGrants.membershipId))
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(and(eq(permissionGrants.scopeType, 'match'), eq(permissionGrants.scopeId, id), eq(permissionGrants.action, 'match.score')));
     const adapter = getAdapter(m.sport);
     const cfg = m.rulesConfig as never;
     return {
@@ -249,6 +263,7 @@ export async function getMatch(ctx: Ctx, id: string) {
       lineupLocked: !!lineup!.lockedAt,
       state: { phase: state!.phase, projection: state!.projection, clocks: state!.clocks, stateVersion: state!.stateVersion, sequence: state!.sequence },
       lease: lease ? { holderUserId: lease.l.holderUserId, holderName: lease.name, holderDeviceId: lease.l.holderDeviceId, leaseVersion: lease.l.leaseVersion, expiresAt: lease.l.expiresAt, takenOverFrom: lease.l.takenOverFrom } : null,
+      scorers: assigned.filter((x) => x.status === 'active').map((x) => ({ membershipId: x.membershipId, name: x.name })),
       rules: {
         description: adapter.describeRules(cfg),
         phases: adapter.phases(cfg),

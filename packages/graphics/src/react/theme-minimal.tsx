@@ -3,7 +3,7 @@
 // Quiet motion: panels fade and rise, rules draw across, text settles in on a short stagger.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
 import { lineupPage } from './theme-broadcast';
 
 const SX = 96;
@@ -110,7 +110,10 @@ function PlayerCard(p: GraphicProps) {
 function Card2({ p, title, children, width = 1000 }: { p: GraphicProps; title: string; children: React.ReactNode; width?: number }) {
   return (
     <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 150, width, ...light(p), padding: '34px 44px', ...animStyle(p, 'rise') }} data-graphic={p.t.key}>
-      <div style={{ fontSize: 20, letterSpacing: 4, color: '#5b6577', marginBottom: 18, ...animStyle(p, 'wipe', 100, 380) }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, ...animStyle(p, 'wipe', 100, 380) }}>
+        <div style={{ fontSize: 20, letterSpacing: 4, color: '#5b6577' }}>{title}</div>
+        <ThemeBadge p={p} height={34} />
+      </div>
       {children}
     </div>
   );
@@ -248,7 +251,7 @@ function Ticker(p: GraphicProps) {
 function Slate(p: GraphicProps) {
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#F3F6FB', color: '#0B1220', fontFamily: p.data.theme.font, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 220px', gap: 26, ...animStyle(p, 'fade') }} data-graphic="slate">
-      <div style={{ fontSize: 22, letterSpacing: 5, color: '#5b6577', ...animStyle(p, 'wipe', 150, 420) }}>{p.data.match.competition.name.toUpperCase()}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...animStyle(p, 'wipe', 150, 420) }}><span style={{ fontSize: 22, letterSpacing: 5, color: '#5b6577' }}>{p.data.match.competition.name.toUpperCase()}</span><ThemeBadge p={p} height={56} /></div>
       <Versus p={p} delayMs={260} />
       <div style={{ fontSize: 46, fontWeight: 300, ...animStyle(p, 'rise', 460, 400) }}>{slateMessage(p)}</div>
       <div style={animStyle(p, 'fade', 560, 400)}><SponsorMark p={p} placement="detached_logo" height={60} /></div>

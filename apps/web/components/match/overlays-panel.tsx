@@ -1,98 +1,115 @@
 'use client';
+// The match's graphics outputs, led by the OBS link. One output is created with every match; more are an
+// explicit "Add another output" so most people never meet the concept.
 import Link from 'next/link';
 import { useState } from 'react';
-import { Copy, Eye, KeyRound, Plus, Clapperboard } from 'lucide-react';
-import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill } from '@bs/ui';
-import { get, post } from '@/lib/api';
-import { useAction, useGet } from '@/lib/hooks';
+import { Clapperboard, Copy, ExternalLink, Plus } from 'lucide-react';
+import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, type Tone } from '@bs/ui';
+import { post } from '@/lib/api';
+import { useAction, useCopy, useGet } from '@/lib/hooks';
+import { layerLabel } from '@/lib/labels';
 
-interface OverlayRow {
-  id: string; name: string; kind: string; publicId: string;
+export interface OverlayRow {
+  id: string; name: string; kind: string; publicId: string; gamePlanVersionId: string | null;
   theme: { profile: string; version: number } | null; pendingTheme: { id: string; version: number } | null;
   state: { revision: number; displayedRevision: number; displayedAt: string | null; mode: string; inhibited: boolean; scorebugVisible: boolean; onAir: string[] };
   renderers: { purpose: string; displayedRevision: number; lastSeenAt: string; reporting: boolean }[];
 }
 
-export function OverlaysPanel({ matchId, canEdit }: { matchId: string; sport: string; canEdit: boolean }) {
+/** Is OBS (or the cloud compositor) showing this output, and is it up to date? */
+export function obsStatus(o: OverlayRow): { connected: boolean; tone: Tone; text: string } {
+  const prod = o.renderers.filter((r) => r.purpose === 'production' || r.purpose === 'compositor');
+  if (!prod.length) return { connected: false, tone: 'offline', text: 'OBS not connected yet' };
+  return o.state.displayedRevision >= o.state.revision ? { connected: true, tone: 'healthy', text: 'OBS connected · showing the latest' } : { connected: true, tone: 'warning', text: 'OBS connected · catching up' };
+}
+
+export function ObsLinkPanel({ matchId, canEdit }: { matchId: string; canEdit: boolean }) {
   const list = useGet<OverlayRow[]>(['overlays', matchId], `matches/${matchId}/overlays`, { refetchInterval: 5000 });
   const profiles = useGet<{ id: string; name: string; currentVersion: number }[]>(['theme-profiles'], 'theme-profiles');
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: 'Main graphics', themeProfileId: '' });
-  const create = useAction(() => post('matches/' + matchId + '/overlays', { name: form.name, themeProfileId: form.themeProfileId || null }), [['overlays', matchId]]);
-  const [urls, setUrls] = useState<{ id: string; production: string; monitor: string } | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const rotate = useAction((id: string) => post(`overlays/${id}/rotate`, { purpose: 'production' }), [['overlays', matchId]]);
-  const apply = useAction((id: string) => post(`overlays/${id}/apply-theme`), [['overlays', matchId]]);
-
-  const showUrls = async (id: string) => setUrls({ id, ...(await get<{ production: string; monitor: string }>(`overlays/${id}/urls`)) });
-  const copy = async (text: string, key: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1500);
-  };
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ name: 'Second output', themeProfileId: '' });
+  const createDefault = useAction(() => post(`matches/${matchId}/overlays`, { name: 'Main graphics' }), [['overlays', matchId]], { success: 'OBS link created' });
+  const add = useAction(() => post(`matches/${matchId}/overlays`, { name: form.name, themeProfileId: form.themeProfileId || null }), [['overlays', matchId]], { success: 'Output added' });
 
   if (list.isLoading) return <Spinner />;
+  if (list.error) return <ErrorNotice error={list.error} onRetry={() => list.refetch()} />;
+  const [primary, ...others] = list.data ?? [];
+  if (!primary) {
+    return (
+      <EmptyState title="No OBS link yet" body="The OBS link is the address you paste into OBS (or vMix) as a Browser Source. It shows this match's graphics over your video."
+        action={canEdit ? <Button variant="primary" loading={createDefault.isPending} onClick={() => createDefault.mutate(undefined)}>Create the OBS link</Button> : null} />
+    );
+  }
   return (
-    <div className="grid gap-3">
-      <ErrorNotice error={list.error ?? rotate.error ?? apply.error} />
-      {canEdit ? <div className="flex justify-end"><Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New overlay</Button></div> : null}
-      {!list.data?.length ? <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No overlays yet. An overlay is one independent graphics output: a browser source for OBS/vMix, or the graphics of a cloud programme.</p> : null}
-      {list.data?.map((o) => {
-        const prod = o.renderers.filter((r) => r.purpose === 'production' || r.purpose === 'compositor');
-        const inSync = o.state.displayedRevision >= o.state.revision;
-        return (
-          <Card key={o.id} className="p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-medium">{o.name}</h3>
-              <StatusPill tone={o.state.inhibited ? 'live' : o.state.mode === 'manual' ? 'warning' : 'primary'}>{o.state.inhibited ? 'Emergency cleared' : o.state.mode === 'manual' ? 'Manual' : 'Auto'}</StatusPill>
-              <StatusPill tone={prod.length ? 'healthy' : 'offline'}>{prod.length ? `${prod.length} output renderer(s)` : 'No output renderer connected'}</StatusPill>
-              {prod.length ? <StatusPill tone={inSync ? 'healthy' : 'warning'}>{inSync ? `Displaying rev ${o.state.displayedRevision}` : `Rev ${o.state.revision} not yet displayed`}</StatusPill> : null}
-              <span className="text-xs text-muted">{o.theme ? `${o.theme.profile} v${o.theme.version}` : 'Default theme'}</span>
-              <div className="ml-auto flex flex-wrap gap-2">
-                <Button asChild variant="primary" size="sm"><Link href={`/app/matches/${matchId}/control/${o.id}`}><Clapperboard className="size-4" /> Control room</Link></Button>
-                <Button size="sm" onClick={() => showUrls(o.id)}><Eye className="size-4" /> URLs</Button>
-                {canEdit ? <Button size="sm" variant="ghost" loading={rotate.isPending} onClick={() => confirm(`Rotate the production URL for "${o.name}"? Browser sources using the old URL stop immediately.`) && rotate.mutate(o.id)}><KeyRound className="size-4" /> Rotate URL</Button> : null}
-              </div>
-            </div>
-            {o.pendingTheme ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
-                Theme v{o.pendingTheme.version} is published. This overlay stays on its pinned version until you apply it.
-                <Button size="sm" loading={apply.isPending} onClick={() => apply.mutate(o.id)}>Apply now</Button>
-              </div>
-            ) : null}
-            <p className="mt-2 text-xs text-muted">On air: {o.state.onAir.length ? o.state.onAir.join(', ') : 'nothing'}</p>
-          </Card>
-        );
-      })}
-      <Dialog open={open} onOpenChange={setOpen} title="New overlay" description="Pins the current published theme version. Later theme changes need an explicit apply." footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} onClick={() => create.mutate(undefined, { onSuccess: () => setOpen(false) })}>Create</Button></>}>
+    <div className="grid gap-4">
+      <OutputCard o={primary} matchId={matchId} canEdit={canEdit} primary />
+      <details className="rounded-[var(--radius-card)] border border-border p-3 text-sm">
+        <summary className="cursor-pointer font-medium">More outputs {others.length ? `(${others.length})` : ''}</summary>
+        <p className="mt-2 text-xs text-muted">A second output has its own OBS link and its own graphics state, for example a clean feed without a scorebug or a different look for a second screen.</p>
+        <div className="mt-3 grid gap-3">
+          {others.map((o) => <OutputCard key={o.id} o={o} matchId={matchId} canEdit={canEdit} />)}
+          {canEdit ? <div><Button size="sm" onClick={() => setAddOpen(true)}><Plus className="size-4" /> Add another output</Button></div> : null}
+        </div>
+      </details>
+      <Dialog open={addOpen} onOpenChange={setAddOpen} title="Add another output" description="It starts with the current published version of the look you choose."
+        footer={<><Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button><Button variant="primary" disabled={!form.name.trim()} loading={add.isPending} onClick={() => add.mutate(undefined, { onSuccess: () => setAddOpen(false) })}>Add output</Button></>}>
         <div className="grid gap-3">
           <Field label="Name" htmlFor="on"><Input id="on" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <Field label="Theme profile" htmlFor="op" hint="Defaults to the competition's profile"><NativeSelect id="op" value={form.themeProfileId} onChange={(e) => setForm({ ...form, themeProfileId: e.target.value })}><option value="">Competition default</option>{profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.currentVersion})</option>)}</NativeSelect></Field>
-          <ErrorNotice error={create.error} />
+          <Field label="Look" htmlFor="op" hint="Defaults to the competition's look"><NativeSelect id="op" value={form.themeProfileId} onChange={(e) => setForm({ ...form, themeProfileId: e.target.value })}><option value="">Competition default</option>{profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.currentVersion})</option>)}</NativeSelect></Field>
+          <ErrorNotice error={add.error} />
         </div>
       </Dialog>
-      <Dialog open={!!urls} onOpenChange={(o) => !o && setUrls(null)} wide title="Output URLs" description="Production URLs are read-only capabilities. Anyone with the link can view this output's graphics, so share them only with your production machine.">
-        {urls ? (
-          <div className="grid gap-4 text-sm">
-            {(['production', 'monitor'] as const).map((k) => (
-              <div key={k}>
-                <div className="mb-1 font-medium capitalize">{k}{k === 'monitor' ? ' (checkerboard background, diagnostics)' : ' (transparent, for OBS/vMix)'}</div>
-                <div className="flex gap-2"><Input readOnly value={urls[k]} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} /><Button onClick={() => copy(urls[k], k)}><Copy className="size-4" />{copied === k ? 'Copied' : 'Copy'}</Button></div>
-              </div>
-            ))}
-            <div className="rounded-md bg-bg p-3 text-xs text-muted">
-              <p className="mb-1 font-medium text-text">OBS browser source</p>
-              <ol className="list-decimal space-y-1 pl-4">
-                <li>Add a <b>Browser</b> source and paste the production URL.</li>
-                <li>Set width <b>1920</b> and height <b>1080</b> (graphics scale to other sizes without moving).</li>
-                <li>Leave custom CSS empty; the page background is already transparent.</li>
-                <li>Untick “Shutdown source when not visible” so graphics stay current. If the source is hidden or reloaded, it reconnects and shows the current state without replaying old animations.</li>
-              </ol>
-              <p className="mt-2">Other software with an HTML/browser input (for example vMix Web Browser input) can use the same URL; we have tested OBS behaviour only.</p>
-            </div>
-          </div>
-        ) : null}
-      </Dialog>
     </div>
+  );
+}
+
+function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; matchId: string; canEdit: boolean; primary?: boolean }) {
+  const urls = useGet<{ production: string | null; monitor: string | null }>(['overlay-urls', o.id], `overlays/${o.id}/urls`);
+  const copy = useCopy();
+  const rotate = useAction(() => post(`overlays/${o.id}/rotate`, { purpose: 'production' }), [['overlay-urls', o.id], ['overlays', matchId]], { success: 'New OBS link created. Update the Browser Source in OBS.' });
+  const apply = useAction(() => post(`overlays/${o.id}/apply-theme`), [['overlays', matchId]], { success: 'New version of the look applied' });
+  const st = obsStatus(o);
+  const link = urls.data?.production ?? null;
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-medium">{primary ? 'OBS link' : o.name}</h3>
+        <StatusPill tone={st.tone}>{st.text}</StatusPill>
+        {o.state.inhibited ? <StatusPill tone="live">Cleared (emergency)</StatusPill> : o.state.mode === 'manual' ? <StatusPill tone="warning">Manual mode</StatusPill> : null}
+        <div className="ml-auto"><Button asChild variant="primary" size="sm"><Link href={`/app/matches/${matchId}/control/${o.id}`}><Clapperboard className="size-4" /> Control room</Link></Button></div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Input readOnly aria-label="OBS link" value={link ?? (urls.isLoading ? 'Loading…' : 'Not available for your role')} className="min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+        <Button variant="primary" disabled={!link} onClick={() => link && void copy(link, 'OBS link')}><Copy className="size-4" /> Copy link</Button>
+        {urls.data?.monitor ? <Button asChild variant="ghost"><a href={urls.data.monitor} target="_blank" rel="noreferrer"><ExternalLink className="size-4" /> Preview</a></Button> : null}
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        Look: {o.theme ? `${o.theme.profile} v${o.theme.version}` : 'default'} · On air now: {o.state.onAir.length ? o.state.onAir.map(layerLabel).join(', ') : 'nothing'}
+      </p>
+      {o.pendingTheme ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
+          A newer version of this look (v{o.pendingTheme.version}) is published. This output keeps its current version until you apply it.
+          {canEdit ? <Button size="sm" loading={apply.isPending} onClick={() => apply.mutate(undefined)}>Use the new version</Button> : null}
+        </div>
+      ) : null}
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer text-primary">How to add it to OBS</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
+          <li>In OBS, under <b className="text-text">Sources</b>, press <b className="text-text">+</b> and choose <b className="text-text">Browser</b>.</li>
+          <li>Paste the link. Set width <b className="text-text">1920</b> and height <b className="text-text">1080</b>. Leave the custom CSS box empty: the background is already transparent.</li>
+          <li>Untick <b className="text-text">Shutdown source when not visible</b>, so the graphics stay current. Move the source above your camera.</li>
+        </ol>
+        <p className="mt-2 text-xs text-muted">vMix: add a <b>Web Browser</b> input with the same link. The status above turns green once OBS or vMix is showing the page.</p>
+      </details>
+      {canEdit ? (
+        <details className="mt-2 text-xs text-muted">
+          <summary className="cursor-pointer">Advanced</summary>
+          <p className="mt-2">Anyone with this link can see the graphics. If it has been shared too widely,{' '}
+            <button className="underline" disabled={rotate.isPending} onClick={() => confirm(`Create a new OBS link for "${o.name}"? The old link stops working straight away, so update OBS afterwards.`) && rotate.mutate(undefined)}>create a new link</button>.
+          </p>
+        </details>
+      ) : null}
+      <ErrorNotice error={urls.error ?? rotate.error ?? apply.error} />
+    </Card>
   );
 }

@@ -7,7 +7,7 @@ import * as DM from '@radix-ui/react-dropdown-menu';
 import {
   Bell, BarChart3, Building2, ChevronDown, Clapperboard, Film, Gauge, Image, LayoutGrid, LogOut, Megaphone, Palette, Radio, Search, Settings, Trophy, Workflow,
 } from 'lucide-react';
-import { cx, Spinner, StatusPill } from '@bs/ui';
+import { cx, Spinner, StatusPill, Toaster } from '@bs/ui';
 import { api, get, post } from '@/lib/api';
 import { canSee, useMe } from '@/lib/session';
 import { useConnectionStatus } from '@/lib/realtime';
@@ -160,6 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
       </div>
+      <Toaster />
     </div>
   );
 }

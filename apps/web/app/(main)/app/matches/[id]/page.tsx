@@ -3,13 +3,14 @@ import Link from 'next/link';
 import { Suspense, use, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ErrorNotice, Field, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
-import { patch, post, put } from '@/lib/api';
+import { Button, Card, ErrorNotice, Field, InfoTip, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
+import { patch, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isFull, streamingOn, useMe } from '@/lib/session';
 import { useRealtime } from '@/lib/realtime';
 import { phaseTone } from '@/components/match-table';
-import { OverlaysPanel } from '@/components/match/overlays-panel';
+import { ObsLinkPanel } from '@/components/match/overlays-panel';
+import { MatchDayChecklist } from '@/components/match/match-day';
 import { StreamsPanel } from '@/components/match/streams-panel';
 import { MatchMediaPanel } from '@/components/match/media-panel';
 
@@ -21,15 +22,19 @@ export interface MatchDetail {
   lineup: { home: LineupPlayer[]; away: LineupPlayer[] }; lineupLocked: boolean;
   state: { phase: string; projection: { score: { home: number; away: number }; shootout: { home: number; away: number } | null; stats: Record<string, Record<string, number>> }; stateVersion: number };
   lease: { holderName: string | null; expiresAt: string | null; leaseVersion: number; takenOverFrom: string | null } | null;
+  scorers: { membershipId: string; name: string }[];
   rules: { description: string[]; phases: { id: string; label: string }[]; capabilities: { statRows: { key: string; label: string }[] } };
   homeTeamId: string; awayTeamId: string; seasonId: string; scoringSource: string; scorerSourceDelayMs: number;
 }
 interface Fact { id: string; sequence: number; category: string; type: string; side: string | null; playerId: string | null; periodId: string; clockMs: number | null; occurredAt: string; acceptedAt: string; source: string; actorName: string | null; voided: boolean; revision: number; historical: boolean; payload: Record<string, unknown>; corrections: { kind: string; reason: string; createdAt: string }[] }
 
+const TABS = ['overview', 'lineup', 'facts', 'overlays', 'streams', 'media'];
+
 function Inner({ id }: { id: string }) {
   const me = useMe();
   const qc = useQueryClient();
-  const tab = useSearchParams().get('tab') ?? 'overview';
+  const wanted = useSearchParams().get('tab') ?? 'overview';
+  const [tab, setTab] = useState(TABS.includes(wanted) ? wanted : 'overview');
   const m = useGet<MatchDetail>(['match', id], `matches/${id}`);
   const facts = useGet<Fact[]>(['facts', id], `matches/${id}/facts`);
   useRealtime('match', id, (e) => {
@@ -45,6 +50,8 @@ function Inner({ id }: { id: string }) {
   const streaming = streamingOn(me.data);
   const tz = d.timezone;
   const playerName = (pid: string | null) => [...d.lineup.home, ...d.lineup.away].find((p) => p.playerId === pid)?.displayName ?? null;
+  const scoringNow = d.lease?.holderName && d.lease.expiresAt && new Date(d.lease.expiresAt) > new Date() ? d.lease.holderName : null;
+  const events = facts.data?.filter((f) => f.category === 'event').length ?? 0;
 
   return (
     <>
@@ -58,13 +65,13 @@ function Inner({ id }: { id: string }) {
         <div className="text-3xl font-semibold tabular">{d.state.projection.score.home} – {d.state.projection.score.away}{d.state.projection.shootout ? <span className="ml-2 text-base text-muted">({d.state.projection.shootout.home}–{d.state.projection.shootout.away} pens)</span> : null}</div>
         <StatusPill tone={phaseTone(d.status)}>{d.rules.phases.find((p) => p.id === d.state.phase)?.label ?? d.state.phase}</StatusPill>
         {d.isDemo ? <StatusPill tone="warning">Demo match</StatusPill> : null}
-        <span className="text-sm text-muted">Scorer: {d.lease?.holderName && d.lease.expiresAt && new Date(d.lease.expiresAt) > new Date() ? d.lease.holderName : 'none active'}{d.lease?.takenOverFrom ? ' (taken over)' : ''}</span>
-        <span className="text-xs text-muted">State v{d.state.stateVersion}</span>
+        <span className="text-sm text-muted">{scoringNow ? `Scoring now: ${scoringNow}${d.lease?.takenOverFrom ? ' (took over)' : ''}` : 'No scorer connected'}</span>
       </Card>
-      <Tabs defaultValue={tab}>
+      {full ? <MatchDayChecklist d={d} canEdit={full} onGoTo={setTab} /> : null}
+      <Tabs value={tab} onValueChange={setTab}>
         <TabList className="mb-4">
-          <Tab value="overview">Overview</Tab><Tab value="lineup">Lineup</Tab><Tab value="facts">Facts ({facts.data?.filter((f) => f.category === 'event').length ?? 0})</Tab>
-          <Tab value="overlays">Overlays</Tab>
+          <Tab value="overview">Overview</Tab><Tab value="lineup">Lineup</Tab><Tab value="facts">Event log ({events})</Tab>
+          <Tab value="overlays">OBS link</Tab>
           {streaming ? <><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab></> : null}
         </TabList>
         <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
@@ -82,7 +89,7 @@ function Inner({ id }: { id: string }) {
         <TabPanel value="lineup"><LineupEditor d={d} canEdit={full} /></TabPanel>
         <TabPanel value="facts">
           <ErrorNotice error={facts.error} />
-          <Table><thead><tr><th>#</th><th>Time</th><th>Event</th><th>Team</th><th>Player</th><th>Source</th><th>Status</th></tr></thead><tbody>
+          <Table><thead><tr><th>#</th><th>Time</th><th>Event</th><th>Team</th><th>Player</th><th>Recorded by</th><th>Status</th></tr></thead><tbody>
             {facts.data?.slice().reverse().map((f) => (
               <tr key={f.id} className={f.voided ? 'opacity-60' : ''}>
                 <td className="tabular">{f.sequence}</td>
@@ -91,12 +98,13 @@ function Inner({ id }: { id: string }) {
                 <td>{f.side ? d.teams[f.side as 'home'].abbreviation : ''}</td>
                 <td>{playerName(f.playerId) ?? (f.playerId ? 'Unknown' : '—')}</td>
                 <td className="text-xs text-muted">{f.source}{f.actorName ? ` · ${f.actorName}` : ''}</td>
-                <td>{f.voided ? <StatusPill tone="warning">voided</StatusPill> : f.revision > 1 ? <StatusPill tone="primary">corrected</StatusPill> : null}{f.corrections.map((c, i) => <span key={i} className="block text-xs text-muted">{c.kind}: {c.reason}</span>)}</td>
+                <td>{f.voided ? <StatusPill tone="warning">undone</StatusPill> : f.revision > 1 ? <StatusPill tone="primary">corrected</StatusPill> : null}{f.corrections.map((c, i) => <span key={i} className="block text-xs text-muted">{c.kind}: {c.reason}</span>)}</td>
               </tr>
             ))}
+            {facts.data && !facts.data.length ? <tr><td colSpan={7} className="text-center text-muted">Nothing recorded yet. Goals, cards and phase changes from the scorer appear here.</td></tr> : null}
           </tbody></Table>
         </TabPanel>
-        <TabPanel value="overlays"><OverlaysPanel matchId={d.id} sport={d.sport} canEdit={full} /></TabPanel>
+        <TabPanel value="overlays"><ObsLinkPanel matchId={d.id} canEdit={full} /></TabPanel>
         {streaming ? <>
           <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel>
           <TabPanel value="media"><MatchMediaPanel matchId={d.id} tz={tz} /></TabPanel>
@@ -107,23 +115,15 @@ function Inner({ id }: { id: string }) {
 }
 
 function ScoringSetup({ d }: { d: MatchDetail }) {
-  const members = useGet<{ id: string; name: string; role: string; status: string }[]>(['members'], 'members');
-  const [mid, setMid] = useState('');
-  const assign = useAction((membershipId: string) => post(`matches/${d.id}/scorers`, { membershipId }), [['members']]);
-  const source = useAction((v: { scoringSource: string; scorerSourceDelayMs: number }) => patch(`matches/${d.id}`, v), [['match', d.id]]);
+  const source = useAction((v: { scoringSource: string; scorerSourceDelayMs: number }) => patch(`matches/${d.id}`, v), [['match', d.id]], { success: 'Scoring settings saved' });
   return (
     <Card className="p-4">
-      <h2 className="mb-2 font-medium">Scoring</h2>
-      <div className="flex items-end gap-2">
-        <Field label="Assign a scorer" htmlFor="as" className="flex-1"><NativeSelect id="as" value={mid} onChange={(e) => setMid(e.target.value)}><option value="">Choose member…</option>{members.data?.filter((x) => x.status === 'active').map((x) => <option key={x.id} value={x.id}>{x.name} ({x.role})</option>)}</NativeSelect></Field>
-        <Button disabled={!mid} loading={assign.isPending} onClick={() => assign.mutate(mid)}>Assign</Button>
+      <h2 className="mb-2 flex items-center gap-2 font-medium">Scoring settings <InfoTip text="Where the scorer watches from decides how clips and timed graphics line up with the video. Assign the scorer in the Match day checklist above." /></h2>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="The scorer is" htmlFor="ss"><NativeSelect id="ss" value={d.scoringSource} onChange={(e) => source.mutate({ scoringSource: e.target.value, scorerSourceDelayMs: d.scorerSourceDelayMs })}><option value="courtside">At the ground</option><option value="watching_stream">Watching the delayed stream</option></NativeSelect></Field>
+        <Field label="Stream delay (ms)" htmlFor="sd" hint="Only matters when watching the stream"><input id="sd" type="number" className="h-9 rounded-md border border-border bg-bg px-2 text-sm" defaultValue={d.scorerSourceDelayMs} onBlur={(e) => source.mutate({ scoringSource: d.scoringSource, scorerSourceDelayMs: Number(e.target.value) || 0 })} /></Field>
       </div>
-      {assign.done ? <p className="mt-1 text-xs text-healthy">Assigned. They will see this match on their scoring list.</p> : null}
-      <ErrorNotice error={assign.error} />
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Field label="Scorer watches" htmlFor="ss"><NativeSelect id="ss" value={d.scoringSource} onChange={(e) => source.mutate({ scoringSource: e.target.value, scorerSourceDelayMs: d.scorerSourceDelayMs })}><option value="courtside">Live, courtside</option><option value="watching_stream">The delayed stream</option></NativeSelect></Field>
-        <Field label="Scorer delay (ms)" htmlFor="sd" hint="Used to align clips and cues"><input id="sd" type="number" className="h-9 rounded-md border border-border bg-bg px-2 text-sm" defaultValue={d.scorerSourceDelayMs} onBlur={(e) => source.mutate({ scoringSource: d.scoringSource, scorerSourceDelayMs: Number(e.target.value) || 0 })} /></Field>
-      </div>
+      <ErrorNotice error={source.error} />
     </Card>
   );
 }
@@ -131,12 +131,12 @@ function ScoringSetup({ d }: { d: MatchDetail }) {
 function LineupEditor({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
   const [lu, setLu] = useState(d.lineup);
   useEffect(() => setLu(d.lineup), [d.lineup]);
-  const save = useAction((lock: boolean) => put(`matches/${d.id}/lineup`, { home: lu.home.map(({ playerId, number, starter, captain, position }) => ({ playerId, number, starter, captain, position })), away: lu.away.map(({ playerId, number, starter, captain, position }) => ({ playerId, number, starter, captain, position })), lock }), [['match', d.id]]);
+  const save = useAction((lock: boolean) => put(`matches/${d.id}/lineup`, { home: lu.home.map(({ playerId, number, starter, captain, position }) => ({ playerId, number, starter, captain, position })), away: lu.away.map(({ playerId, number, starter, captain, position }) => ({ playerId, number, starter, captain, position })), lock }), [['match', d.id]], { success: (r: unknown) => (r && typeof r === 'object' && 'lockedAt' in r && (r as { lockedAt: unknown }).lockedAt ? 'Lineup saved and locked' : 'Lineup saved') });
   const toggle = (side: 'home' | 'away', pid: string, key: 'starter' | 'captain') => setLu({ ...lu, [side]: lu[side].map((p) => (p.playerId === pid ? { ...p, [key]: !p[key] } : p)) });
   const remove = (side: 'home' | 'away', pid: string) => setLu({ ...lu, [side]: lu[side].filter((p) => p.playerId !== pid) });
   return (
     <div>
-      <p className="mb-3 text-sm text-muted">The lineup is a snapshot: later roster edits and transfers never change this match’s graphics or history.{d.lineupLocked ? ' Locked.' : ''}</p>
+      <p className="mb-3 text-sm text-muted">The lineup is a snapshot for this match: later roster changes and transfers never alter its graphics or history.{d.lineupLocked ? ' Locked.' : ''}</p>
       <div className="grid gap-4 md:grid-cols-2">
         {(['home', 'away'] as const).map((side) => (
           <Card key={side} className="p-3">
@@ -154,7 +154,6 @@ function LineupEditor({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
         ))}
       </div>
       {canEdit ? <div className="mt-3 flex gap-2"><Button variant="primary" loading={save.isPending} onClick={() => save.mutate(false)}>Save lineup</Button><Button loading={save.isPending} onClick={() => save.mutate(true)}>Save and lock</Button></div> : null}
-      {save.done ? <p className="mt-2 text-sm text-healthy">Lineup saved.</p> : null}
       <ErrorNotice error={save.error} />
     </div>
   );

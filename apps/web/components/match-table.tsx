@@ -20,6 +20,7 @@ export interface MatchRow {
   away: { name: string; abbreviation: string; primaryColor: string } | null;
   score: { home: number; away: number };
   scorer: { name: string | null } | null;
+  stateUpdatedAt?: string;
   overlays: { id: string; name: string; kind: string; mode?: string; inhibited?: boolean; revision?: number; displayedRevision?: number }[];
   outputs: { id: string; name: string; mode: string }[];
   stream: { id: string; state: string; error: unknown } | null;
@@ -72,22 +73,22 @@ export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz:
       <thead>
         <tr>
           <th className="w-8"><span className="sr-only">Expand</span></th>
-          <th>Kick-off</th><th>Competition</th><th>Match</th><th className="text-right">Score</th><th>Phase</th><th>Scorer</th><th>Programme</th><th>Overlays</th><th><span className="sr-only">Actions</span></th>
+          <th>Kick-off</th><th>Competition</th><th>Match</th><th className="text-right">Score</th><th>Phase</th><th>Scorer</th><th>Programme</th><th>Graphics</th><th><span className="sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody>
         {rows.map((m) => (
           <Fragment key={m.id}>
             <tr className="hover:bg-elevated/40">
-              <td><button aria-expanded={open === m.id} aria-label="Show outputs and overlays" onClick={() => setOpen(open === m.id ? null : m.id)} className="text-muted hover:text-text">{open === m.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
+              <td><button aria-expanded={open === m.id} aria-label="Show graphics outputs and streams" onClick={() => setOpen(open === m.id ? null : m.id)} className="text-muted hover:text-text">{open === m.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
               <td className="whitespace-nowrap tabular">{fmtDate(m.scheduledAt, tz)}</td>
               <td className="text-muted">{m.competition.shortName ?? m.competition.name}{m.round ? <span className="block text-xs">{m.round}</span> : null}</td>
               <td><Link href={`/app/matches/${m.id}`} className="flex flex-col hover:text-primary"><Team t={m.home} /><Team t={m.away} /></Link>{m.venue ? <span className="text-xs text-muted">{m.venue.name}</span> : null}</td>
               <td className="text-right tabular font-semibold">{m.status === 'scheduled' ? '—' : `${m.score.home}–${m.score.away}`}</td>
               <td><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? m.phase.replace(/_/g, ' ') : m.status}</StatusPill>{m.isDemo ? <StatusPill className="ml-1" tone="warning">demo</StatusPill> : null}</td>
-              <td className="text-muted">{m.scorer?.name ?? 'None active'}</td>
+              <td className="text-muted">{m.scorer?.name ?? 'Nobody scoring'}</td>
               <td>{m.stream ? <StatusPill tone={streamTone(m.stream.state)}>{m.stream.state.replace(/_/g, ' ').toLowerCase()}</StatusPill> : <span className="text-xs text-muted">Not configured</span>}</td>
-              <td>{m.overlays.length ? m.overlays.map((o) => <StatusPill key={o.id} className="mr-1" tone={o.inhibited ? 'live' : o.mode === 'manual' ? 'warning' : 'primary'}>{o.inhibited ? 'cleared' : o.mode ?? 'auto'}</StatusPill>) : <span className="text-xs text-muted">None</span>}</td>
+              <td>{m.overlays.length ? m.overlays.map((o) => <StatusPill key={o.id} className="mr-1" tone={o.inhibited ? 'live' : o.mode === 'manual' ? 'warning' : 'primary'}>{o.inhibited ? 'cleared' : o.mode ?? 'auto'}</StatusPill>) : <span className="text-xs text-muted">No OBS link</span>}</td>
               <td className="whitespace-nowrap text-right"><Button asChild size="sm" variant="ghost"><Link href={`/app/matches/${m.id}`}>Open</Link></Button></td>
             </tr>
             {open === m.id ? (
@@ -96,16 +97,16 @@ export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz:
                 <td colSpan={9} className="bg-bg/60">
                   <div className="grid gap-3 py-2 md:grid-cols-2">
                     <div>
-                      <h3 className="mb-1 text-xs font-medium text-muted">Overlays</h3>
+                      <h3 className="mb-1 text-xs font-medium text-muted">Graphics outputs</h3>
                       {m.overlays.length ? m.overlays.map((o) => (
                         <div key={o.id} className="flex flex-wrap items-center gap-2 py-1 text-sm">
                           <span className="min-w-32">{o.name}</span>
-                          <span className="text-xs text-muted">rev {o.displayedRevision ?? 0}/{o.revision ?? 0} displayed</span>
+                          <span className="text-xs text-muted">{(o.displayedRevision ?? 0) >= (o.revision ?? 0) ? 'OBS up to date' : 'OBS catching up'}</span>
                           <Button asChild size="sm" variant="primary"><Link href={`/app/matches/${m.id}/control/${o.id}`}>Control room</Link></Button>
-                          <Button asChild size="sm"><Link href={`/app/matches/${m.id}?tab=overlays`}>Configure</Link></Button>
-                          <Button size="sm" variant="ghost" onClick={() => copyUrl(o.id)}><Copy className="size-3.5" />{copied === o.id ? 'Copied' : copied === `err:${o.id}` ? 'Not permitted' : 'Copy production URL'}</Button>
+                          <Button asChild size="sm"><Link href={`/app/matches/${m.id}?tab=overlays`}>OBS link</Link></Button>
+                          <Button size="sm" variant="ghost" onClick={() => copyUrl(o.id)}><Copy className="size-3.5" />{copied === o.id ? 'Copied' : copied === `err:${o.id}` ? 'Not permitted' : 'Copy OBS link'}</Button>
                         </div>
-                      )) : <p className="text-sm text-muted">No overlays. <Link className="text-primary" href={`/app/matches/${m.id}?tab=overlays`}>Add one</Link></p>}
+                      )) : <p className="text-sm text-muted">No OBS link yet. <Link className="text-primary" href={`/app/matches/${m.id}?tab=overlays`}>Create one</Link></p>}
                     </div>
                     <div>
                       <h3 className="mb-1 text-xs font-medium text-muted">Outputs</h3>

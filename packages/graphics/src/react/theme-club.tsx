@@ -3,7 +3,7 @@
 // Lively motion: pills zoom and drop in with a little overshoot, badges pop, rows cascade.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, kickoffCountdown, minute, periodBanner, personOrTeam, player, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, slateMessage, statRows, team, tickerSpeed } from './common';
 import { lineupPage } from './theme-broadcast';
 
 const SY = 54;
@@ -118,7 +118,7 @@ function PlayerCard(p: GraphicProps) {
 function Big({ p, title, children, width = 1100, color }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number; color?: string }) {
   return (
     <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 130, width, borderRadius: 40, overflow: 'hidden', fontFamily: p.data.theme.font, color: '#fff', boxShadow: '0 10px 50px rgba(0,0,0,.45)', ...animStyle(p, 'zoom') }} data-graphic={p.t.key}>
-      <div style={{ background: color ?? p.data.theme.primary, color: color ? '#fff' : p.data.theme.secondary, padding: '22px 40px', fontSize: 38, fontWeight: 900, textAlign: 'center', ...animStyle(p, 'slide-down', 100, 400) }}>{title}</div>
+      <div style={{ background: color ?? p.data.theme.primary, color: color ? '#fff' : p.data.theme.secondary, padding: '22px 40px', fontSize: 38, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, ...animStyle(p, 'slide-down', 100, 400) }}><ThemeBadge p={p} height={44} />{title}</div>
       <div style={{ background: p.data.theme.panel, padding: '30px 44px', transformOrigin: 'top', ...animStyle(p, 'grow-y', 160, 400) }}>{children}</div>
     </div>
   );
@@ -253,6 +253,7 @@ function Slate(p: GraphicProps) {
           <b style={{ fontSize: 40, ...animStyle(p, 'flip', 440, 440) }}>VS</b>
           <span style={animStyle(p, 'zoom', 400, 440)}><Logo url={a.logoUrl} label={a.abbreviation} size={140} color={a.primaryColor} radius={70} /></span>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, ...animStyle(p, 'fade', 480, 400) }}><ThemeBadge p={p} height={60} /></div>
         <div style={{ fontSize: 54, fontWeight: 900, marginTop: 24, ...animStyle(p, 'rise', 540, 400) }}>{slateMessage(p)}</div>
         <div style={{ fontSize: 26, opacity: 0.8, ...animStyle(p, 'rise', 620, 360) }}>{p.data.match.competition.name}</div>
         <div style={{ marginTop: 16, ...animStyle(p, 'fade', 720, 400) }}><SponsorMark p={p} placement="detached_logo" height={64} /></div>

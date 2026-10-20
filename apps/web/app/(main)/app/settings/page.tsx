@@ -29,7 +29,7 @@ export default function SettingsPage() {
 function OrgSettings({ admin }: { admin: boolean }) {
   const org = useGet<Org>(['org'], 'organisations/current');
   const [f, setF] = useState<{ name?: string; timezone?: string }>({});
-  const save = useAction(() => patch('organisations/current', f), [['org'], ['me']]);
+  const save = useAction(() => patch('organisations/current', f), [['org'], ['me']], { success: 'Saved' });
   if (org.isLoading) return <Spinner />;
   return (
     <Card className="max-w-lg p-4">
@@ -56,10 +56,10 @@ function Members({ admin, owner, selfId }: { admin: boolean; owner: boolean; sel
   const [open, setOpen] = useState(false);
   const [inv, setInv] = useState({ email: '', role: 'producer', scopeType: '', scopeId: '' });
   const [link, setLink] = useState<string | null>(null);
-  const invite = useAction(() => post<{ acceptUrl?: string }>('invitations', { email: inv.email, role: inv.role, scopeType: inv.scopeType || null, scopeId: inv.scopeId || null }), [['invitations']]);
-  const role = useAction((v: { id: string; role: string }) => patch(`members/${v.id}`, { role: v.role }), [['members']]);
-  const revoke = useAction((mid: string) => del(`members/${mid}`), [['members']]);
-  const revokeInv = useAction((iid: string) => del(`invitations/${iid}`), [['invitations']]);
+  const invite = useAction(() => post<{ acceptUrl?: string }>('invitations', { email: inv.email, role: inv.role, scopeType: inv.scopeType || null, scopeId: inv.scopeId || null }), [['invitations']], { success: 'Invitation sent' });
+  const role = useAction((v: { id: string; role: string }) => patch(`members/${v.id}`, { role: v.role }), [['members']], { success: 'Role updated' });
+  const revoke = useAction((mid: string) => del(`members/${mid}`), [['members']], { success: 'Member removed' });
+  const revokeInv = useAction((iid: string) => del(`invitations/${iid}`), [['invitations']], { success: 'Invitation withdrawn' });
   const scopeOptions = inv.scopeType === 'match' ? matches.data?.items.map((m) => ({ id: m.id, label: `${m.home?.name} v ${m.away?.name}` })) : inv.scopeType === 'competition' ? comps.data?.map((c) => ({ id: c.id, label: c.name })) : inv.scopeType === 'team' ? teams.data?.map((t) => ({ id: t.id, label: t.name })) : [];
   return (
     <>
@@ -108,7 +108,7 @@ function Members({ admin, owner, selfId }: { admin: boolean; owner: boolean; sel
 function Entitlements({ owner }: { owner: boolean }) {
   const org = useGet<Org>(['org'], 'organisations/current');
   const usage = useGet<{ module: string; unit: string; quantity: number; definition: string }[]>(['usage-summary'], 'reports/usage/summary');
-  const save = useAction((features: Record<string, boolean>) => put('organisations/current/entitlements', { features }), [['org']]);
+  const save = useAction((features: Record<string, boolean>) => put('organisations/current/entitlements', { features }), [['org']], { success: 'Features saved' });
   if (org.isLoading) return <Spinner />;
   const e = org.data?.entitlements;
   return (
@@ -134,8 +134,8 @@ function ApiKeys() {
   const [name, setName] = useState('');
   const [action, setAction] = useState('competition.read');
   const [shown, setShown] = useState<string | null>(null);
-  const create = useAction(() => post<{ key: string }>('api-keys', { name, scopes: [{ action, resourceType: 'organisation' }] }), [['api-keys']]);
-  const revoke = useAction((kid: string) => del(`api-keys/${kid}`), [['api-keys']]);
+  const create = useAction(() => post<{ key: string }>('api-keys', { name, scopes: [{ action, resourceType: 'organisation' }] }), [['api-keys']], { success: 'API key created' });
+  const revoke = useAction((kid: string) => del(`api-keys/${kid}`), [['api-keys']], { success: 'API key revoked' });
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end gap-2">

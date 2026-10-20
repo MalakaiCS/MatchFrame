@@ -3,7 +3,7 @@ import Link from 'next/link';
 const features = [
   ['Score once', 'A courtside scorer records each event once. Score, clock and stats update everywhere, with offline protection.'],
   ['Broadcast graphics', 'Three original themes: scorebugs, lineups, events, lower thirds, stats and slates, controlled live or automated.'],
-  ['Automation', 'Game plans react to goals, phases, clocks and milestones, with priorities, guards, rehearsal and manual override.'],
+  ['Automation', 'Graphics follow the scorer: lineups before kick-off, the goal strap on a goal, the half-time board. Rehearse the plan before match day.'],
   ['Sponsors', 'Campaigns, weighted rotation and placement rules, with honest delivery reports from render evidence.'],
   ['Cloud programme', 'Bring an RTMP camera feed, composite graphics in the cloud, stream to up to three destinations and record.'],
   ['Highlights', 'Event clips land in the media library while the match is live. Trim, crop for social, brand and export.'],

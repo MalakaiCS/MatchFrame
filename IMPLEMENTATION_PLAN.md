@@ -15,6 +15,7 @@ Source of truth: `MVP_SPEC.md`. P0 = complete first usable release; P1 = backlog
 | M6 Media library | Uploads, recordings, timeline mapping, live highlights, editor/exports, compilations, retention, shares | Done |
 | M7 Verification | Acceptance matrix, e2e, real-media checks, resilience, soak, restore drill, secret scan, runbooks | Done — `ACCEPTANCE_RESULTS.md` |
 | Hosted graphics-only edition | `STREAMING_ENABLED=false`, single-port container (`scripts/start-hosted.mjs`), Railway config, deploy guide | Done — built image run with env vars only: migrations on start, 5/5 e2e through the single port; not yet deployed to Railway |
+| Operator UI pass | Match-day checklist, OBS link tab with an auto-created output, scorer "Next" flow and grouped events, control-room ergonomics, plain-English wording, visual automation and look editors, dashboard next-match and first-run cards | Done — screenshot tour of every reworked screen (desktop + phone) and 6/6 Playwright specs on the production build |
 
 ## Architecture decisions
 

@@ -85,7 +85,7 @@ function NewFixture({ comps, tz, initialCompetition, onClose }: { comps: Comp[];
   const comp = useGet<Comp & { seasons: { id: string; name: string }[] }>(['competition', form.competitionId], form.competitionId ? `competitions/${form.competitionId}` : null);
   const teams = useGet<{ id: string; name: string }[]>(['teams', comp.data?.sport], comp.data ? `teams?sport=${comp.data.sport}` : null);
   const venues = useGet<{ id: string; name: string; timezone: string }[]>(['venues'], 'venues');
-  const create = useAction((v: typeof form) => post<{ id: string }>('matches', { ...v, venueId: v.venueId || null, round: v.round || null, externalId: v.externalId || null, kickoffLocal: v.kickoffLocal.replace('T', ' ') }), [['matches']]);
+  const create = useAction((v: typeof form) => post<{ id: string }>('matches', { ...v, venueId: v.venueId || null, round: v.round || null, externalId: v.externalId || null, kickoffLocal: v.kickoffLocal.replace('T', ' ') }), [['matches']], { success: 'Fixture created. Its OBS link is ready on the match page.' });
   const router = useRouter();
   useEffect(() => {
     if (comp.data?.seasons?.length && !form.seasonId) setForm((x) => ({ ...x, seasonId: comp.data!.seasons.at(-1)!.id }));

@@ -67,7 +67,7 @@ test('producer takes over while the scorer is offline; stale offline actions nee
   const b = await login(browser);
   await b.page.goto(`/score/${id}`);
   await b.page.waitForTimeout(2000);
-  const take = b.page.getByRole('button', { name: 'Try to take control' });
+  const take = b.page.getByRole('button', { name: 'Take over scoring' });
   if (await take.count()) await take.click(); // a different user must ask; the same producer on a new device takes over
   await expect(b.page.getByRole('region', { name: 'Events' }).getByRole('button', { name: /^Goal$/ })).toBeEnabled({ timeout: 15_000 });
   await b.page.getByRole('region', { name: 'Events' }).getByRole('button', { name: /^Goal$/ }).click();
@@ -79,5 +79,5 @@ test('producer takes over while the scorer is offline; stale offline actions nee
   await expect(a.page.getByRole('region', { name: 'Needs review' })).toBeVisible({ timeout: 30_000 });
   const st = await api<{ projection: { score: { home: number; away: number } } }>(b.page, `/api/v1/matches/${id}/state`);
   expect(st.projection.score).toEqual({ home: 0, away: 1 });
-  await expect(a.page.getByRole('alert').filter({ hasText: /not controlling|authority|control/i })).toBeVisible();
+  await expect(a.page.getByRole('alert').filter({ hasText: /took over|control/i })).toBeVisible(); // told, in words, that it no longer scores
 });

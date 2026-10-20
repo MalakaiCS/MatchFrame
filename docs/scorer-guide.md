@@ -11,8 +11,12 @@ you can review them.
 
 ## Scoring
 
-* Start the period with the phase buttons (e.g. *1st Half*); the clock starts and runs from the server's anchor,
-  so refreshing or locking the phone does not change it.
+* The big **Next:** button follows the match (Pre-match → Players entering → About to start → 1st Half → Half
+  Time → …); *More options* holds the rest, including Abandoned. Starting a period starts the clock from the
+  server's anchor, so refreshing or locking the phone does not change it. If a period runs more than ten minutes
+  over, the app asks whether you meant to end it.
+* Goals, cards and substitutions are the large buttons; corners, shots, saves, fouls and offsides sit under
+  *Statistics* and only feed the half-time and full-time board.
 * Record events with the large buttons. For goals the score updates immediately; choose the scorer afterwards
   (*Later* is fine — players are never guessed). Goals, cards and substitutions put a graphic on air; corners,
   shots, saves, fouls and offsides only count towards the half-time and full-time statistics.
