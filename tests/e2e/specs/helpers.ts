@@ -1,18 +1,37 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
 export const EMAIL = process.env.E2E_EMAIL ?? 'owner@studio.localhost';
 export const PASSWORD = process.env.E2E_PASSWORD ?? '';
 
+// One real sign-in per run: the session cookies are kept in a file and reused by every later context, so the
+// auth rate limit (three password sign-ins per ten seconds in production mode) is never the reason a spec fails.
+const STATE = path.join(os.tmpdir(), `bs-e2e-state-${crypto.createHash('md5').update(`${process.env.E2E_BASE_URL ?? ''}|${EMAIL}`).digest('hex')}.json`);
+
 export async function login(browser: Browser, opts: Parameters<Browser['newContext']>[0] = {}): Promise<{ ctx: BrowserContext; page: Page }> {
-  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, ...opts });
+  const fresh = fs.existsSync(STATE) && Date.now() - fs.statSync(STATE).mtimeMs < 20 * 60_000;
+  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, ...(fresh ? { storageState: STATE } : {}), ...opts });
   const page = await ctx.newPage();
+  if (fresh) {
+    await page.goto('/app');
+    try {
+      await page.waitForURL('**/app', { timeout: 15_000 });
+      await page.getByRole('heading', { level: 1 }).first().waitFor({ timeout: 15_000 });
+      return { ctx, page };
+    } catch {
+      // the saved session is no longer valid: sign in again below
+    }
+  }
   await page.goto('/login');
   await page.waitForLoadState('networkidle'); // hydrated: the submit is handled by the app, not the native form
   await page.fill('#email', EMAIL);
   await page.fill('#password', PASSWORD);
   await page.click('button[type=submit]');
   await page.waitForURL('**/app');
+  await ctx.storageState({ path: STATE });
   return { ctx, page };
 }
 

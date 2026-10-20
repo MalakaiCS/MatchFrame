@@ -58,13 +58,47 @@
   },
   "suites": [
     {
-      "title": "features.spec.ts",
-      "file": "features.spec.ts",
+      "title": "visual.spec.ts",
+      "file": "visual.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [
         {
-          "title": "scorer enters line-ups from the phone and finds the preferences sheet",
+          "title": "broadcast look: every football graphic",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31454,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T08:13:56.751Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-d3b15f7fd98e45e01e1e",
+          "file": "visual.spec.ts",
+          "line": 36,
+          "column": 3
+        },
+        {
+          "title": "minimal look: every football graphic",
           "ok": false,
           "tags": [],
           "tests": [
@@ -79,134 +113,531 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "failed",
-                  "duration": 3095,
+                  "duration": 38265,
                   "error": {
-                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Line-ups/ })\nExpected: visible\nError: strict mode violation: getByRole('link', { name: /Line-ups/ }) resolved to 2 elements:\n    1) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"inline-flex items-center justify-center gap-2 rounded-md transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-primary text-muted hover:text-text hover:bg-elevated h-8 px-3 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups', exact: true })\n    2) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"flex min-h-12 items-center gap-2 rounded-md border border-primary/50 bg-primary/10 px-3 py-2 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups are not complete.' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Line-ups/ })\u001b[22m\n",
-                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Line-ups/ })\nExpected: visible\nError: strict mode violation: getByRole('link', { name: /Line-ups/ }) resolved to 2 elements:\n    1) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"inline-flex items-center justify-center gap-2 rounded-md transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-primary text-muted hover:text-text hover:bg-elevated h-8 px-3 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups', exact: true })\n    2) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"flex min-h-12 items-center gap-2 rounded-md border border-primary/50 bg-primary/10 px-3 py-2 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups are not complete.' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Line-ups/ })\u001b[22m\n\n    at /home/user/MatchFrame/tests/e2e/specs/features.spec.ts:32:62",
+                    "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-scorebug.png, writing actual.",
+                    "stack": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-scorebug.png, writing actual.\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5",
                     "location": {
-                      "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                      "column": 62,
-                      "line": 32
+                      "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                      "column": 5,
+                      "line": 31
                     },
-                    "snippet": "  30 |   await expect(page.getByText('Sunlight mode (high contrast)')).toBeVisible();\n  31 |   await page.keyboard.press('Escape');\n> 32 |   await expect(page.getByRole('link', { name: /Line-ups/ })).toBeVisible();\n     |                                                              ^\n  33 | });\n  34 |\n  35 | test('run sheet, activity, match information and the public match centre with its feed', async ({ browser, baseURL }) => {"
+                    "snippet": "  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |"
                   },
                   "errors": [
                     {
                       "location": {
-                        "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                        "column": 62,
-                        "line": 32
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
                       },
-                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('link', { name: /Line-ups/ })\nExpected: visible\nError: strict mode violation: getByRole('link', { name: /Line-ups/ }) resolved to 2 elements:\n    1) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"inline-flex items-center justify-center gap-2 rounded-md transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-primary text-muted hover:text-text hover:bg-elevated h-8 px-3 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups', exact: true })\n    2) <a href=\"/score/d19c3fc5-98b3-496b-aaf4-9758fcbdfac1/lineup\" class=\"flex min-h-12 items-center gap-2 rounded-md border border-primary/50 bg-primary/10 px-3 py-2 text-sm\">…</a> aka getByRole('link', { name: 'Line-ups are not complete.' })\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('link', { name: /Line-ups/ })\u001b[22m\n\n\n  30 |   await expect(page.getByText('Sunlight mode (high contrast)')).toBeVisible();\n  31 |   await page.keyboard.press('Escape');\n> 32 |   await expect(page.getByRole('link', { name: /Line-ups/ })).toBeVisible();\n     |                                                              ^\n  33 | });\n  34 |\n  35 | test('run sheet, activity, match information and the public match centre with its feed', async ({ browser, baseURL }) => {\n    at /home/user/MatchFrame/tests/e2e/specs/features.spec.ts:32:62"
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-scorebug.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-ident.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-kick-off-period-banner.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-break-final-score.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-holding-slate.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-fixtures-and-results.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-summary.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-head-to-head-and-form.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-information-strap.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-team-lineup.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-formation.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-goal-score-event.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-card.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-substitution.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-shoot-out-tracker.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-lower-third.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-player-card.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-player-of-the-match.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-statistics.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-league-table.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-live-statistic.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-top-scorers.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-sponsor-graphic.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-full-frame-media.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-ticker.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                        "column": 5,
+                        "line": 31
+                      },
+                      "message": "Error: A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-stinger-wipe.png, writing actual.\n\n  29 |     await card.click();\n  30 |     await page.waitForTimeout(700); // reduced motion: the entrance is instant; data and fonts settle\n> 31 |     await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });\n     |     ^\n  32 |   }\n  33 | }\n  34 |\n    at snapAll (/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:31:5)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:39:5"
                     }
                   ],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:13:24.225Z",
+                  "startTime": "2026-10-20T08:14:28.414Z",
                   "annotations": [],
                   "attachments": [
                     {
+                      "name": "minimal-football-scorebug-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-scorebug.png"
+                    },
+                    {
+                      "name": "minimal-football-scorebug-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-scorebug-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-match-ident-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-ident.png"
+                    },
+                    {
+                      "name": "minimal-football-match-ident-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-match-ident-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-kick-off-period-banner-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-kick-off-period-banner.png"
+                    },
+                    {
+                      "name": "minimal-football-kick-off-period-banner-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-kick-off-period-banner-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-break-final-score-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-break-final-score.png"
+                    },
+                    {
+                      "name": "minimal-football-break-final-score-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-break-final-score-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-holding-slate-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-holding-slate.png"
+                    },
+                    {
+                      "name": "minimal-football-holding-slate-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-holding-slate-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-fixtures-and-results-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-fixtures-and-results.png"
+                    },
+                    {
+                      "name": "minimal-football-fixtures-and-results-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-fixtures-and-results-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-match-summary-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-summary.png"
+                    },
+                    {
+                      "name": "minimal-football-match-summary-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-match-summary-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-head-to-head-and-form-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-head-to-head-and-form.png"
+                    },
+                    {
+                      "name": "minimal-football-head-to-head-and-form-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-head-to-head-and-form-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-match-information-strap-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-information-strap.png"
+                    },
+                    {
+                      "name": "minimal-football-match-information-strap-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-match-information-strap-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-team-lineup-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-team-lineup.png"
+                    },
+                    {
+                      "name": "minimal-football-team-lineup-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-team-lineup-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-formation-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-formation.png"
+                    },
+                    {
+                      "name": "minimal-football-formation-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-formation-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-goal-score-event-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-goal-score-event.png"
+                    },
+                    {
+                      "name": "minimal-football-goal-score-event-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-goal-score-event-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-card-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-card.png"
+                    },
+                    {
+                      "name": "minimal-football-card-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-card-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-substitution-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-substitution.png"
+                    },
+                    {
+                      "name": "minimal-football-substitution-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-substitution-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-shoot-out-tracker-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-shoot-out-tracker.png"
+                    },
+                    {
+                      "name": "minimal-football-shoot-out-tracker-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-shoot-out-tracker-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-lower-third-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-lower-third.png"
+                    },
+                    {
+                      "name": "minimal-football-lower-third-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-lower-third-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-player-card-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-player-card.png"
+                    },
+                    {
+                      "name": "minimal-football-player-card-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-player-card-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-player-of-the-match-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-player-of-the-match.png"
+                    },
+                    {
+                      "name": "minimal-football-player-of-the-match-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-player-of-the-match-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-match-statistics-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-match-statistics.png"
+                    },
+                    {
+                      "name": "minimal-football-match-statistics-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-match-statistics-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-league-table-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-league-table.png"
+                    },
+                    {
+                      "name": "minimal-football-league-table-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-league-table-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-live-statistic-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-live-statistic.png"
+                    },
+                    {
+                      "name": "minimal-football-live-statistic-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-live-statistic-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-top-scorers-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-top-scorers.png"
+                    },
+                    {
+                      "name": "minimal-football-top-scorers-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-top-scorers-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-sponsor-graphic-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-sponsor-graphic.png"
+                    },
+                    {
+                      "name": "minimal-football-sponsor-graphic-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-sponsor-graphic-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-full-frame-media-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-full-frame-media.png"
+                    },
+                    {
+                      "name": "minimal-football-full-frame-media-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-full-frame-media-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-ticker-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-ticker.png"
+                    },
+                    {
+                      "name": "minimal-football-ticker-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-ticker-actual.png"
+                    },
+                    {
+                      "name": "minimal-football-stinger-wipe-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/minimal-football-stinger-wipe.png"
+                    },
+                    {
+                      "name": "minimal-football-stinger-wipe-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/minimal-football-stinger-wipe-actual.png"
+                    },
+                    {
                       "name": "screenshot",
                       "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-scorer-enters-lin-48919-finds-the-preferences-sheet/test-failed-1.png"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/test-failed-1.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/test-failed-2.png"
                     },
                     {
                       "name": "error-context",
                       "contentType": "text/markdown",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-scorer-enters-lin-48919-finds-the-preferences-sheet/error-context.md"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/error-context.md"
                     },
                     {
                       "name": "trace",
                       "contentType": "application/zip",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-scorer-enters-lin-48919-finds-the-preferences-sheet/trace.zip"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-minimal-look-every-football-graphic/trace.zip"
                     }
                   ],
                   "errorLocation": {
-                    "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                    "column": 62,
-                    "line": 32
+                    "file": "/home/user/MatchFrame/tests/e2e/specs/visual.spec.ts",
+                    "column": 5,
+                    "line": 31
                   }
                 }
               ],
               "status": "unexpected"
             }
           ],
-          "id": "85b3cc1667c06e9efc8f-69de1b94a921b2878947",
-          "file": "features.spec.ts",
-          "line": 7,
-          "column": 1
+          "id": "8324bb52c49185e48ff4-d4ef3d635eaef40a3f87",
+          "file": "visual.spec.ts",
+          "line": 36,
+          "column": 3
         },
         {
-          "title": "run sheet, activity, match information and the public match centre with its feed",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 5044,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:13:28.964Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-49600f178c5a6bd3418b",
-          "file": "features.spec.ts",
-          "line": 35,
-          "column": 1
-        },
-        {
-          "title": "control room: export dialog, run sheet tab and presence without a second operator",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 1,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 3601,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:13:34.274Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-474be507887b2497c4c8",
-          "file": "features.spec.ts",
-          "line": 86,
-          "column": 1
-        },
-        {
-          "title": "producer board, competition tables, round creation and the status page",
+          "title": "club look: every football graphic",
           "ok": false,
           "tags": [],
           "tests": [
@@ -220,77 +651,59 @@
                 {
                   "workerIndex": 1,
                   "parallelIndex": 0,
-                  "status": "failed",
-                  "duration": 8701,
+                  "status": "timedOut",
+                  "duration": 120052,
                   "error": {
-                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('columnheader', { name: 'Pts' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('columnheader', { name: 'Pts' })\u001b[22m\n",
-                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('columnheader', { name: 'Pts' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('columnheader', { name: 'Pts' })\u001b[22m\n\n    at /home/user/MatchFrame/tests/e2e/specs/features.spec.ts:115:65",
-                    "location": {
-                      "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                      "column": 65,
-                      "line": 115
-                    },
-                    "snippet": "  113 |   await expect(page.getByRole('heading', { name: 'Seasons' })).toBeVisible(); // hydrated and loaded before the tabs are used\n  114 |   await page.getByRole('tab', { name: 'Table', exact: true }).click();\n> 115 |   await expect(page.getByRole('columnheader', { name: 'Pts' })).toBeVisible();\n      |                                                                 ^\n  116 |   await page.getByRole('tab', { name: 'Results & fixtures' }).click();\n  117 |   await expect(page.getByText(/Round|Unrounded|No fixtures in this season yet|E2E/).first()).toBeVisible();\n  118 |   await page.getByRole('tab', { name: 'Players' }).click();"
+                    "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
                   },
                   "errors": [
                     {
+                      "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
+                    },
+                    {
                       "location": {
-                        "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                        "column": 65,
-                        "line": 115
+                        "file": "/home/user/MatchFrame/tests/e2e/specs/helpers.ts",
+                        "column": 14,
+                        "line": 15
                       },
-                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('columnheader', { name: 'Pts' })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('columnheader', { name: 'Pts' })\u001b[22m\n\n\n  113 |   await expect(page.getByRole('heading', { name: 'Seasons' })).toBeVisible(); // hydrated and loaded before the tabs are used\n  114 |   await page.getByRole('tab', { name: 'Table', exact: true }).click();\n> 115 |   await expect(page.getByRole('columnheader', { name: 'Pts' })).toBeVisible();\n      |                                                                 ^\n  116 |   await page.getByRole('tab', { name: 'Results & fixtures' }).click();\n  117 |   await expect(page.getByText(/Round|Unrounded|No fixtures in this season yet|E2E/).first()).toBeVisible();\n  118 |   await page.getByRole('tab', { name: 'Players' }).click();\n    at /home/user/MatchFrame/tests/e2e/specs/features.spec.ts:115:65"
+                      "message": "Error: page.waitForURL: Test ended.\n=========================== logs ===========================\nwaiting for navigation to \"**/app\" until \"load\"\n============================================================\n\n   at helpers.ts:15\n\n  13 |   await page.fill('#password', PASSWORD);\n  14 |   await page.click('button[type=submit]');\n> 15 |   await page.waitForURL('**/app');\n     |              ^\n  16 |   return { ctx, page };\n  17 | }\n  18 |\n    at login (/home/user/MatchFrame/tests/e2e/specs/helpers.ts:15:14)\n    at /home/user/MatchFrame/tests/e2e/specs/visual.spec.ts:37:22"
                     }
                   ],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:13:37.939Z",
+                  "startTime": "2026-10-20T08:15:12.541Z",
                   "annotations": [],
                   "attachments": [
                     {
                       "name": "screenshot",
                       "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-producer-board-co-fc6c2-reation-and-the-status-page/test-failed-3.png"
-                    },
-                    {
-                      "name": "screenshot",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-producer-board-co-fc6c2-reation-and-the-status-page/test-failed-1.png"
-                    },
-                    {
-                      "name": "screenshot",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-producer-board-co-fc6c2-reation-and-the-status-page/test-failed-2.png"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-club-look-every-football-graphic/test-failed-1.png"
                     },
                     {
                       "name": "error-context",
                       "contentType": "text/markdown",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-producer-board-co-fc6c2-reation-and-the-status-page/error-context.md"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-club-look-every-football-graphic/error-context.md"
                     },
                     {
                       "name": "trace",
                       "contentType": "application/zip",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/features-producer-board-co-fc6c2-reation-and-the-status-page/trace.zip"
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-club-look-every-football-graphic/trace.zip"
                     }
-                  ],
-                  "errorLocation": {
-                    "file": "/home/user/MatchFrame/tests/e2e/specs/features.spec.ts",
-                    "column": 65,
-                    "line": 115
-                  }
+                  ]
                 }
               ],
               "status": "unexpected"
             }
           ],
-          "id": "85b3cc1667c06e9efc8f-7c32b33e95de7c55b1fa",
-          "file": "features.spec.ts",
-          "line": 103,
-          "column": 1
+          "id": "8324bb52c49185e48ff4-b76d5f160e8b5e1af1b6",
+          "file": "visual.spec.ts",
+          "line": 36,
+          "column": 3
         },
         {
-          "title": "automation editor: conditions and approval per playlist",
+          "title": "broadcast look: vertical (9:16) and venue formats",
           "ok": true,
           "tags": [],
           "tests": [
@@ -305,12 +718,12 @@
                   "workerIndex": 2,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2627,
+                  "duration": 15328,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:13:48.757Z",
+                  "startTime": "2026-10-20T08:17:14.003Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -318,13 +731,13 @@
               "status": "expected"
             }
           ],
-          "id": "85b3cc1667c06e9efc8f-90edc139afc6995f6a32",
-          "file": "features.spec.ts",
-          "line": 133,
+          "id": "8324bb52c49185e48ff4-1256327fe2ee17605fbf",
+          "file": "visual.spec.ts",
+          "line": 43,
           "column": 1
         },
         {
-          "title": "settings: plan, branding, integrations, notifications, security and backups tabs",
+          "title": "broadcast look: basketball sport-specific graphics",
           "ok": true,
           "tags": [],
           "tests": [
@@ -339,12 +752,12 @@
                   "workerIndex": 2,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2614,
+                  "duration": 10128,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:13:51.568Z",
+                  "startTime": "2026-10-20T08:17:29.563Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -352,19 +765,155 @@
               "status": "expected"
             }
           ],
-          "id": "85b3cc1667c06e9efc8f-55defd70890a4230c603",
-          "file": "features.spec.ts",
-          "line": 151,
-          "column": 1
+          "id": "8324bb52c49185e48ff4-e4a0fe71b833f31bfe9b",
+          "file": "visual.spec.ts",
+          "line": 52,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: netball sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9986,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T08:17:39.729Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-c5e8c35a198ad369e1b2",
+          "file": "visual.spec.ts",
+          "line": 52,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: rugby_league sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9991,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T08:17:49.754Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-9ca0bb1439bd452e18c9",
+          "file": "visual.spec.ts",
+          "line": 52,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: afl sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11968,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T08:17:59.916Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-bd54eed948a22c5c5033",
+          "file": "visual.spec.ts",
+          "line": 52,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: hockey sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11597,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T08:18:11.956Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-d1af367742c42efe0ed8",
+          "file": "visual.spec.ts",
+          "line": 52,
+          "column": 3
         }
       ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-20T08:13:22.716Z",
-    "duration": 31672.217,
-    "expected": 4,
+    "startTime": "2026-10-20T08:13:55.832Z",
+    "duration": 268276.41099999996,
+    "expected": 7,
     "skipped": 0,
     "unexpected": 2,
     "flaky": 0

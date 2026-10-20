@@ -112,7 +112,7 @@ test('producer board, competition tables, round creation and the status page', a
   await page.goto(`/app/competitions/${comp.id}`);
   await expect(page.getByRole('heading', { name: 'Seasons' })).toBeVisible(); // hydrated and loaded before the tabs are used
   await page.getByRole('tab', { name: 'Table', exact: true }).click();
-  await expect(page.getByRole('columnheader', { name: 'Pts' })).toBeVisible();
+  await expect(page.locator('th', { hasText: /^Pts$/ })).toBeVisible(); // the table lays out with CSS, so header cells carry no columnheader role
   await page.getByRole('tab', { name: 'Results & fixtures' }).click();
   await expect(page.getByText(/Round|Unrounded|No fixtures in this season yet|E2E/).first()).toBeVisible();
   await page.getByRole('tab', { name: 'Players' }).click();
