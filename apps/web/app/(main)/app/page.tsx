@@ -7,6 +7,7 @@ import { get } from '@/lib/api';
 import { fmtDate, useCopy, useGet } from '@/lib/hooks';
 import { isFull, streamingOn, useMe } from '@/lib/session';
 import { MatchTable, streamTone, type MatchRow } from '@/components/match-table';
+import { DemoButton } from '@/components/demo-button';
 
 interface StreamRow { id: string; matchId: string; matchLabel: string; state: string; error: { message?: string } | null }
 const UNHEALTHY = ['DEGRADED', 'WAITING_FOR_INPUT', 'FAILED'];
@@ -83,6 +84,7 @@ export default function Dashboard() {
               <Button asChild size="sm"><Link href="/app/control-rooms"><Clapperboard className="size-4" /> Control rooms</Link></Button>
               {streaming ? <Button asChild size="sm"><Link href="/app/streams">Streams</Link></Button> : null}
               <Button asChild size="sm"><Link href="/app/media">Media library</Link></Button>
+              {full ? <DemoButton /> : null}
             </div>
           </Card>
         </aside>

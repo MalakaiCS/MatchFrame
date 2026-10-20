@@ -57,11 +57,7 @@ export function registerPlatformRoutes(b: AppBundle) {
 
   // ---------------------------------------------------------------- backups (installation owners)
   app.get('/api/v1/admin/backups', async (req) => backups.listBackups(await ctxFor(req)));
-  app.post('/api/v1/admin/backups/run', async (req) => {
-    const ctx = await ctxFor(req);
-    await backups.listBackups(ctx); // permission check (org.own)
-    return backups.runBackup({ db: deps.db, config: deps.config, storage: deps.storage });
-  });
+  app.post('/api/v1/admin/backups/run', async (req) => backups.requestBackup(await ctxFor(req)));
 
   // ---------------------------------------------------------------- billing
   app.get('/api/v1/billing', async (req) => billing.getBilling(await ctxFor(req)));

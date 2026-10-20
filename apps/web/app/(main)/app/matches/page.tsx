@@ -76,7 +76,7 @@ function MatchesInner() {
         </div>
       ) : null}
       {qs.get('new') ? <NewFixture comps={comps.data ?? []} tz={tz} initialCompetition={f.competitionId} onClose={() => router.push('/app/matches')} /> : null}
-      {qs.get('import') ? <ImportFixtures comps={comps.data ?? []} onClose={() => router.push('/app/matches')} /> : null}
+      {qs.get('import') ? <ImportFixtures comps={comps.data ?? []} tz={tz} onClose={() => router.push('/app/matches')} /> : null}
     </>
   );
 }
@@ -119,7 +119,7 @@ interface Plan {
   errorsCsv: string | null;
 }
 
-function ImportFixtures({ comps, onClose }: { comps: Comp[]; onClose: () => void }) {
+function ImportFixtures({ comps, tz, onClose }: { comps: Comp[]; tz: string; onClose: () => void }) {
   const sports = [...new Set(comps.map((c) => c.sport))];
   const [csv, setCsv] = useState('');
   const [fileName, setFileName] = useState('');
@@ -128,6 +128,10 @@ function ImportFixtures({ comps, onClose }: { comps: Comp[]; onClose: () => void
   const [result, setResult] = useState<{ created: string[]; updated: string[]; skipped: { externalId: string; reason: string }[]; teamsCreated: string[] } | null>(null);
   const [err, setErr] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [source, setSource] = useState<'csv' | 'ical' | 'sheet'>('csv');
+  const [ics, setIcs] = useState('');
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [ical, setIcal] = useState({ competition: comps[0]?.name ?? '', season: '', timezone: tz, separator: '' });
   const teams = useGet<{ id: string; name: string }[]>(['teams', opts.sport], `teams?sport=${opts.sport}`);
   const unknownTeams = plan ? [...new Set(plan.errors.filter((e) => e.code === 'UNKNOWN_TEAM').map((e) => /"(.*)"/.exec(e.message)?.[1] ?? ''))].filter(Boolean) : [];
 
@@ -136,7 +140,19 @@ function ImportFixtures({ comps, onClose }: { comps: Comp[]; onClose: () => void
     setErr(null);
     setResult(null);
     try {
-      setPlan(await post<Plan>('imports/fixtures/dry-run', { csv, options: o }));
+      if (source === 'ical') {
+        // calendar events titled "Home v Away" become fixture rows; the usual preview then applies
+        const r = await post<{ csv: string; rows: number; skipped: number; preview: Plan | null }>('imports/fixtures/ical', { ics, competition: ical.competition, season: ical.season, timezone: ical.timezone, separator: ical.separator || undefined, options: o });
+        setCsv(r.csv);
+        setFileName(`calendar: ${r.rows} fixture${r.rows === 1 ? '' : 's'} found${r.skipped ? `, ${r.skipped} event${r.skipped === 1 ? '' : 's'} skipped` : ''}`);
+        if (!r.preview) throw new ApiError(400, 'EMPTY', 'No fixtures were found in that calendar. Event titles need to read "Home v Away" (or "Home vs Away").');
+        setPlan(r.preview);
+      } else if (source === 'sheet') {
+        const r = await post<{ csv: string; preview: Plan }>('imports/fixtures/sheet', { url: sheetUrl.trim(), options: o });
+        setCsv(r.csv);
+        setFileName('published sheet');
+        setPlan(r.preview);
+      } else setPlan(await post<Plan>('imports/fixtures/dry-run', { csv, options: o }));
     } catch (e) {
       setErr(e as ApiError);
     } finally {
@@ -164,7 +180,7 @@ function ImportFixtures({ comps, onClose }: { comps: Comp[]; onClose: () => void
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title="Import fixtures" description={<>Columns: external_id, competition, season, round, home_team, away_team, venue, kickoff_local, timezone. <a className="text-primary underline" href="/api/v1/imports/fixtures/template.csv">Download template</a></>}
-      footer={result ? <Button variant="primary" onClick={onClose}>Done</Button> : <><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={() => dryRun()} loading={busy && !plan} disabled={!csv}>Preview</Button><Button variant="primary" onClick={commit} loading={busy && !!plan} disabled={!plan?.valid}>Import {plan ? `${plan.summary.create + plan.summary.update} fixture(s)` : ''}</Button></>}>
+      footer={result ? <Button variant="primary" onClick={onClose}>Done</Button> : <><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={() => dryRun()} loading={busy && !plan} disabled={source === 'csv' ? !csv : source === 'ical' ? !ics || !ical.competition || !ical.season : !sheetUrl.trim()}>Preview</Button><Button variant="primary" onClick={commit} loading={busy && !!plan} disabled={!plan?.valid}>Import {plan ? `${plan.summary.create + plan.summary.update} fixture(s)` : ''}</Button></>}>
       {result ? (
         <div className="text-sm">
           <p className="text-healthy">Imported: {result.created.length} created, {result.updated.length} updated, {result.skipped.length} skipped.</p>
@@ -174,10 +190,25 @@ function ImportFixtures({ comps, onClose }: { comps: Comp[]; onClose: () => void
       ) : (
         <div className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="CSV file" htmlFor="csvf"><Input id="csvf" type="file" accept=".csv,text/csv" onChange={async (e) => { const fl = e.target.files?.[0]; if (fl) { setFileName(fl.name); setCsv(await fl.text()); setPlan(null); } }} /></Field>
+            <Field label="Source" htmlFor="isrc">
+              <NativeSelect id="isrc" value={source} onChange={(e) => { setSource(e.target.value as typeof source); setPlan(null); setCsv(''); setFileName(''); setErr(null); }}>
+                <option value="csv">CSV file</option><option value="ical">Calendar file (.ics)</option><option value="sheet">Published Google Sheet or CSV link</option>
+              </NativeSelect>
+            </Field>
+            {source === 'csv' ? <Field label="CSV file" htmlFor="csvf"><Input id="csvf" type="file" accept=".csv,text/csv" onChange={async (e) => { const fl = e.target.files?.[0]; if (fl) { setFileName(fl.name); setCsv(await fl.text()); setPlan(null); } }} /></Field> : null}
+            {source === 'ical' ? <Field label="Calendar file" htmlFor="icsf" hint="Exported from Google Calendar, Outlook, TeamSnap…"><Input id="icsf" type="file" accept=".ics,text/calendar" onChange={async (e) => { const fl = e.target.files?.[0]; if (fl) { setIcs(await fl.text()); setFileName(fl.name); setPlan(null); } }} /></Field> : null}
+            {source === 'sheet' ? <Field label="Link" htmlFor="shu" hint="Google Sheets: File → Share → Publish to web → CSV"><Input id="shu" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/pub?output=csv" value={sheetUrl} onChange={(e) => { setSheetUrl(e.target.value); setPlan(null); }} /></Field> : null}
             <Field label="Sport" htmlFor="isp"><NativeSelect id="isp" value={opts.sport} onChange={(e) => { setOpts({ ...opts, sport: e.target.value }); setPlan(null); }}>{(sports.length ? sports : ['football', 'basketball']).map((s) => <option key={s}>{s}</option>)}</NativeSelect></Field>
             <Field label="Repeat import" htmlFor="imd"><NativeSelect id="imd" value={opts.mode} onChange={(e) => { setOpts({ ...opts, mode: e.target.value }); setPlan(null); }}><option value="skip_duplicates">Skip existing fixtures</option><option value="update_matched_future">Update matched future fixtures</option></NativeSelect></Field>
           </div>
+          {source === 'ical' ? (
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Field label="Competition" htmlFor="ic-c"><NativeSelect id="ic-c" value={ical.competition} onChange={(e) => { const c = comps.find((x) => x.name === e.target.value); setIcal({ ...ical, competition: e.target.value }); if (c) setOpts({ ...opts, sport: c.sport }); setPlan(null); }}>{comps.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect></Field>
+              <Field label="Season" htmlFor="ic-s" hint="Must match a season name"><Input id="ic-s" value={ical.season} onChange={(e) => setIcal({ ...ical, season: e.target.value })} placeholder="2027" /></Field>
+              <Field label="Timezone" htmlFor="ic-t" hint="For events without one"><Input id="ic-t" value={ical.timezone} onChange={(e) => setIcal({ ...ical, timezone: e.target.value })} /></Field>
+              <Field label="Teams separated by" htmlFor="ic-sep" hint="Blank = v, vs, –"><Input id="ic-sep" value={ical.separator} onChange={(e) => setIcal({ ...ical, separator: e.target.value })} placeholder="v" /></Field>
+            </div>
+          ) : null}
           <Switch label="Create teams that do not exist yet" checked={opts.createMissingTeams} onCheckedChange={(v) => { setOpts({ ...opts, createMissingTeams: v }); setPlan(null); }} />
           {fileName ? <p className="text-xs text-muted">{fileName} · {csv.split(/\r?\n/).filter(Boolean).length - 1} data rows. Nothing is saved until you import.</p> : null}
           <ErrorNotice error={err} />

@@ -85,5 +85,7 @@ tests/              integration, e2e, media scripts and fixtures
 * One 720p session with programme **and** clean output runs, but saturates the host (egress ≈250 % CPU,
   ingress ≈105 %). Two concurrent sessions: see A51 in `ACCEPTANCE_RESULTS.md`. Capacity is enforced by
   `MAX_CONCURRENT_PROGRAMMES` (outputs) — set it from your own measurement.
-* RTMP ingest is unencrypted (labelled as such); SRT, programme WebRTC, platform OAuth and billing are P1.
+* RTMP ingest is unencrypted (labelled as such); SRT, programme WebRTC and platform OAuth for destinations are P1.
+* Billing (Stripe), Google/Microsoft sign-in and web push are built and config-gated; they have not been
+  exercised against live provider accounts from this repository. 1080p presets are marked unmeasured.
 * The fake media provider is only for automated tests and explicitly labelled demo mode.

@@ -5,7 +5,7 @@
 import { SportOptions } from '@/components/sport-options';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
-import { gamePlanSchema, type GamePlan, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
+import { gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
 import { Button, Card, Dialog, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx, toast } from '@bs/ui';
 import { ApiError, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
@@ -13,6 +13,7 @@ import { isFull, useMe } from '@/lib/session';
 import { PLAYLIST_KINDS, PRIORITIES } from '@/lib/labels';
 import { TriggerDialog, triggerText, type Sport } from '@/components/automation/trigger-editor';
 import { StepDialog, stepText } from '@/components/automation/step-editor';
+import { GuardDialog, guardText } from '@/components/automation/guard-editor';
 import { RehearsalPreview, type RehearsalCue } from '@/components/automation/rehearsal-preview';
 
 interface Issue { path: string; message: string; severity: 'error' | 'warning' }
@@ -96,6 +97,7 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
   const [saved, setSaved] = useState<string | null>(null);
   const [editTrigger, setEditTrigger] = useState<{ pi: number; ti: number | null } | null>(null);
   const [editStep, setEditStep] = useState<{ pi: number; ii: number | null } | null>(null);
+  const [editGuard, setEditGuard] = useState<{ pi: number; gi: number | null } | null>(null);
   const [newPlaylist, setNewPlaylist] = useState<{ name: string; kind: Playlist['kind'] } | null>(null);
   useEffect(() => {
     if (plan.data && !draft) {
@@ -215,6 +217,21 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
                   {canEdit ? <Button size="sm" variant="ghost" className="mt-1" onClick={() => setEditStep({ pi, ii: null })}><Plus className="size-3.5" /> Add step</Button> : null}
                 </div>
               </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-medium text-muted">Only when</span>
+                {pl.guards.map((g, gi) => (
+                  <span key={gi} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
+                    {guardText(g, sport)}
+                    {canEdit ? <><button className="text-muted hover:text-text" aria-label="Edit condition" onClick={() => setEditGuard({ pi, gi })}><Pencil className="size-3" /></button><button className="text-muted hover:text-live" aria-label="Remove condition" onClick={() => update((d) => { d.playlists[pi]!.guards.splice(gi, 1); })}><Trash2 className="size-3" /></button></> : null}
+                  </span>
+                ))}
+                {!pl.guards.length ? <span className="text-muted">always (no conditions)</span> : null}
+                {canEdit ? <Button size="sm" variant="ghost" onClick={() => setEditGuard({ pi, gi: null })}><Plus className="size-3.5" /> Add condition</Button> : null}
+                <label className="ml-auto flex items-center gap-1">
+                  <input type="checkbox" disabled={!canEdit} checked={pl.approval === 'manual'} onChange={(e) => update((d) => { d.playlists[pi]!.approval = e.target.checked ? 'manual' : 'auto'; })} /> Ask the producer before sending
+                  <InfoTip text="Graphics from this playlist wait in the control room until someone presses Send now. Goals and other urgent graphics usually stay automatic." />
+                </label>
+              </div>
             </Card>
           ))}
           {canEdit ? <Button onClick={() => setNewPlaylist({ name: '', kind: 'in_play' })}><Plus className="size-4" /> Add playlist</Button> : null}
@@ -232,6 +249,11 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
           id={editTrigger.ti == null ? uniqueId('t_' + slug(draft.playlists[editTrigger.pi]!.name), draft.playlists.flatMap((p) => p.triggers.map((t) => t.id))) : draft.playlists[editTrigger.pi]!.triggers[editTrigger.ti]!.id}
           onClose={() => setEditTrigger(null)}
           onSave={(t: Trigger) => { update((d) => { const list = d.playlists[editTrigger.pi]!.triggers; if (editTrigger.ti == null) list.push(t); else list[editTrigger.ti] = t; }); setEditTrigger(null); }} />
+      ) : null}
+      {editGuard ? (
+        <GuardDialog sport={sport} guard={editGuard.gi == null ? null : draft.playlists[editGuard.pi]!.guards[editGuard.gi]!}
+          onClose={() => setEditGuard(null)}
+          onSave={(g: Guard) => { update((d) => { const list = d.playlists[editGuard.pi]!.guards; if (editGuard.gi == null) list.push(g); else list[editGuard.gi] = g; }); setEditGuard(null); }} />
       ) : null}
       {editStep ? (
         <StepDialog sport={sport} playlist={draft.playlists[editStep.pi]!} item={editStep.ii == null ? null : draft.playlists[editStep.pi]!.items[editStep.ii]!}

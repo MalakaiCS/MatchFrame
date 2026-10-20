@@ -1,26 +1,54 @@
 'use client';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { del, patch, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isAdmin, useMe, type Role } from '@/lib/session';
+import { BillingPanel } from '@/components/settings/billing';
+import { BrandingPanel } from '@/components/settings/branding';
+import { WebhooksPanel } from '@/components/settings/webhooks';
+import { NotificationsPanel } from '@/components/settings/notifications';
+import { SecurityPanel } from '@/components/settings/security';
+import { BackupsPanel } from '@/components/settings/backups';
 
 interface Member { id: string; userId: string; name: string; email: string | null; role: Role; status: string; grants: { action: string; scopeType: string; scopeId: string | null }[] }
 interface Org { id: string; name: string; slug: string; timezone: string; locale: string; entitlements: { plan: string; features: Record<string, boolean>; limits: Record<string, number> } | null }
 
 export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsInner />
+    </Suspense>
+  );
+}
+
+function SettingsInner() {
   const me = useMe();
   const admin = isAdmin(me.data?.role);
+  const owner = me.data?.role === 'owner';
+  const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';
+  const qs = useSearchParams();
+  const initial = qs.get('billing') ? 'plan' : (qs.get('tab') ?? 'org');
   return (
     <>
-      <PageHeader title="Settings" subtitle="Organisation, members, entitlements, API keys and audit." />
-      <Tabs defaultValue="org">
-        <TabList className="mb-4"><Tab value="org">Organisation</Tab><Tab value="members">Members</Tab><Tab value="plan">Entitlements & usage</Tab>{admin ? <Tab value="keys">API keys</Tab> : null}<Tab value="audit">Audit log</Tab></TabList>
+      <PageHeader title="Settings" subtitle="Organisation, members, plan, branding, integrations, notifications, security and audit." />
+      <Tabs defaultValue={initial}>
+        <TabList className="mb-4 flex-wrap">
+          <Tab value="org">Organisation</Tab><Tab value="members">Members</Tab><Tab value="plan">Plan & billing</Tab><Tab value="branding">Branding</Tab>
+          {admin ? <Tab value="integrations">Integrations</Tab> : null}<Tab value="notifications">Notifications</Tab><Tab value="security">Security</Tab>
+          {owner ? <Tab value="backups">Backups</Tab> : null}{admin ? <Tab value="keys">API keys</Tab> : null}<Tab value="audit">Audit log</Tab>
+        </TabList>
         <TabPanel value="org"><OrgSettings admin={admin} /></TabPanel>
-        <TabPanel value="members"><Members admin={admin} owner={me.data?.role === 'owner'} selfId={me.data?.user.id} /></TabPanel>
-        <TabPanel value="plan"><Entitlements owner={me.data?.role === 'owner'} /></TabPanel>
+        <TabPanel value="members"><Members admin={admin} owner={owner} selfId={me.data?.user.id} /></TabPanel>
+        <TabPanel value="plan" className="grid gap-6"><BillingPanel owner={owner} tz={tz} /><Entitlements owner={owner} /></TabPanel>
+        <TabPanel value="branding"><BrandingPanel owner={owner} admin={admin} /></TabPanel>
+        {admin ? <TabPanel value="integrations"><WebhooksPanel tz={tz} canEdit={admin} /></TabPanel> : null}
+        <TabPanel value="notifications"><NotificationsPanel tz={tz} /></TabPanel>
+        <TabPanel value="security"><SecurityPanel owner={owner} tz={tz} /></TabPanel>
+        {owner ? <TabPanel value="backups"><BackupsPanel tz={tz} /></TabPanel> : null}
         {admin ? <TabPanel value="keys"><ApiKeys /></TabPanel> : null}
-        <TabPanel value="audit"><Audit tz={me.data?.activeOrganisation?.timezone ?? 'UTC'} /></TabPanel>
+        <TabPanel value="audit"><Audit tz={tz} /></TabPanel>
       </Tabs>
     </>
   );
@@ -114,8 +142,8 @@ function Entitlements({ owner }: { owner: boolean }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="p-4">
-        <h2 className="mb-1 font-medium">Plan: {e?.plan ?? 'self-hosted'}</h2>
-        <p className="mb-3 text-xs text-muted">Self-hosted plans need no payment. Installation ceilings (capacity, destinations) cannot be raised here.</p>
+        <h2 className="mb-1 font-medium">Features on this plan</h2>
+        <p className="mb-3 text-xs text-muted">Installation ceilings (capacity, destinations) cannot be raised here.</p>
         <div className="grid gap-2">{Object.entries(e?.features ?? {}).map(([k, v]) => <Switch key={k} label={k} checked={v} disabled={!owner} onCheckedChange={(nv) => save.mutate({ ...(e?.features ?? {}), [k]: nv })} />)}</div>
         <ErrorNotice error={save.error} />
       </Card>

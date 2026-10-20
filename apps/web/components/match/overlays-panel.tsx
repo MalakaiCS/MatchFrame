@@ -70,6 +70,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
   const rotate = useAction(() => post(`overlays/${o.id}/rotate`, { purpose: 'production' }), [['overlay-urls', o.id], ['overlays', matchId]], { success: 'New OBS link created. Update the Browser Source in OBS.' });
   const apply = useAction(() => post(`overlays/${o.id}/apply-theme`), [['overlays', matchId]], { success: 'New version of the look applied' });
   const setFormat = useAction((format: string) => put(`overlays/${o.id}/format`, { format }), [['overlays', matchId]], { success: 'Output format changed. OBS picks it up on the next refresh.' });
+  const [hk, setHk] = useState(false);
   const format = (o as { format?: string }).format ?? '16:9';
   const size = format === '9:16' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const st = obsStatus(o);
@@ -112,6 +113,14 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
         </ol>
         <p className="mt-2 text-xs text-muted">vMix: add a <b>Web Browser</b> input with the same link. The status above turns green once OBS or vMix is showing the page.</p>
       </details>
+      <details className="mt-2 text-sm" onToggle={(e) => setHk((e.target as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer text-primary">Stream Deck, hotkeys and OBS scenes</summary>
+        <div className="mt-2 grid gap-2 text-xs text-muted">
+          <p className="flex flex-wrap items-center gap-2"><Button asChild size="sm"><a href={`/api/v1/matches/${matchId}/obs-scene-collection.json`} download>Download OBS scene collection</a></Button><span>Import it in OBS (Scene Collection → Import): one scene per output with the Browser Source already sized.</span></p>
+          <p>Each row is a web request a Stream Deck (System → Website, or the API Request plugin) or any automation can send. Create an API key with the overlay.operate scope under Settings → API keys and send it as the Authorization header.</p>
+          <HotkeyTable overlayId={o.id} enabled={hk} />
+        </div>
+      </details>
       {canEdit ? (
         <details className="mt-2 text-xs text-muted">
           <summary className="cursor-pointer">Advanced</summary>
@@ -122,5 +131,25 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
       ) : null}
       <ErrorNotice error={urls.error ?? rotate.error ?? apply.error ?? setFormat.error} />
     </Card>
+  );
+}
+
+interface Hotkey { action: string; label: string; method: string; url: string; header: string }
+function HotkeyTable({ overlayId, enabled }: { overlayId: string; enabled: boolean }) {
+  const hotkeys = useGet<Hotkey[]>(['hotkeys', overlayId], enabled ? `hotkeys/${overlayId}` : null);
+  const copy = useCopy();
+  if (!enabled) return null;
+  if (hotkeys.isLoading) return <Spinner />;
+  if (hotkeys.error) return <ErrorNotice error={hotkeys.error} />;
+  return (
+    <table className="w-full text-xs"><thead><tr className="text-left text-muted"><th className="py-1">Button</th><th>Request</th><th /></tr></thead><tbody>
+      {hotkeys.data?.map((h) => (
+        <tr key={h.action} className="border-t border-border/60">
+          <td className="py-1 text-text">{h.label}</td>
+          <td className="break-all font-mono">{h.method} {h.url}</td>
+          <td className="text-right"><Button size="sm" variant="ghost" aria-label={`Copy request for ${h.label}`} onClick={() => void copy(h.url, 'Request URL')}><Copy className="size-3.5" /></Button></td>
+        </tr>
+      ))}
+    </tbody></table>
   );
 }

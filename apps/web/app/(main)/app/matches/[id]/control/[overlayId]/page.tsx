@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CircleHelp, Copy, Radio, Search } from 'lucide-react';
+import { CircleHelp, Copy, Download, Radio, Search, Users } from 'lucide-react';
 import { findTemplate, reduceOverlay, type Cue, type Layer, type OverlayPublicState, type TemplateDef } from '@bs/graphics';
 import { Keyframes, Renderer, Stage, THEMES, customDefsFrom, renderCustomScene } from '@bs/graphics/react';
 import { getAdapter } from '@bs/domain';
@@ -18,6 +18,11 @@ import { useControl, type PendingCommand } from '@/components/control/use-contro
 import { AutomationPanel } from '@/components/control/automation-panel';
 import { ProgrammeMonitor } from '@/components/control/programme-monitor';
 import { ComingNext } from '@/components/control/coming-next';
+import { ApprovalsPanel } from '@/components/control/approvals';
+import { ExportDialog } from '@/components/control/export-dialog';
+import { usePresence } from '@/components/control/presence';
+import { RunSheet } from '@/components/match/run-sheet';
+import { useMe } from '@/lib/session';
 
 const DEFAULT_KEYS = { take: 'F8', out: 'F9', scorebug: 'F2', search: '/', clear: 'Shift+Escape' };
 type Keys = typeof DEFAULT_KEYS;
@@ -44,6 +49,10 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
   const { id: matchId, overlayId } = use(params);
   const router = useRouter();
   const c = useControl(overlayId);
+  const me = useMe();
+  const presence = usePresence(overlayId, me.data?.user.id);
+  const { hold } = presence;
+  const [exporting, setExporting] = useState(false);
   const conn = useConnectionStatus();
   const wide = useWide();
   const overlays = useGet<{ id: string; name: string }[]>(['overlays', matchId], `matches/${matchId}/overlays`);
@@ -70,6 +79,10 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
     return m;
   }, [state]);
   const selectedOnAir = t ? onAirByTemplate.get(t.key) : undefined;
+  // tell the other desks which layer this one is preparing (advisory lock; the command route refuses a clash)
+  useEffect(() => {
+    hold(t?.layer ?? null);
+  }, [t?.layer, hold]);
 
   const select = useCallback(
     (key: string) => {
@@ -140,6 +153,13 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
   const prodRenderers = d.renderers.filter((r) => r.purpose === 'production' || r.purpose === 'compositor');
   const behind = state.revision > c.displayed;
   const canOp = d.canOperate;
+  const lockedBy = t ? presence.lockedBy(t.layer) : null;
+  const describeVar = (k: string, v: unknown): string | null => {
+    if (v == null || v === '') return null;
+    if (typeof v === 'string' && data.players[v]) return data.players[v]!.displayName;
+    if (k === 'team') return v === 'home' ? data.match.teams.home.shortName : data.match.teams.away.shortName;
+    return `${k.replace(/_/g, ' ')}: ${String(v)}`;
+  };
 
   const header = (
     <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-border bg-panel px-3 py-2">
@@ -159,8 +179,10 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
       {prodRenderers.length ? (behind ? <StatusPill tone="warning">OBS catching up</StatusPill> : <StatusPill tone="healthy">OBS showing the latest</StatusPill>) : <StatusPill tone="offline">OBS not connected</StatusPill>}
       {d.overlay.kind === 'programme' ? <StatusPill tone="live"><Radio className="size-3" /> Cloud programme</StatusPill> : null}
       {state.inhibited ? <StatusPill tone="live">OUTPUT CLEARED</StatusPill> : null}
+      {presence.others.length ? <StatusPill tone="neutral"><Users className="size-3" /> Also here: {presence.others.map((u) => u.name).join(', ')}</StatusPill> : null}
       <div className="ml-auto flex items-center gap-2">
         <Button size="sm" variant="ghost" onClick={async () => { const u = await get<{ production: string }>(`overlays/${overlayId}/urls`); await copy(u.production, 'OBS link'); }}><Copy className="size-4" /> Copy OBS link</Button>
+        <Button size="sm" variant="ghost" onClick={() => setExporting(true)}><Download className="size-4" /> Export</Button>
         <Button size="sm" variant="ghost" aria-label="Keyboard shortcuts" onClick={() => setHelp(true)}><CircleHelp className="size-4" /></Button>
         {state.inhibited ? <Button size="sm" variant="primary" disabled={!canOp} onClick={() => run(() => c.send({ type: 'RESUME' }, 'Resume output'))}>Resume output</Button> : null}
         <EmergencyClear disabled={!canOp} onClear={clear} />
@@ -231,6 +253,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
 
   const right = (
     <div className="flex flex-col gap-3">
+      <ApprovalsPanel overlayId={overlayId} canOperate={canOp} custom={custom} describe={describeVar} />
       {monitor('Preview', previewState ?? state, 'preview')}
       {d.overlay.kind === 'programme' ? <ProgrammeMonitor matchId={matchId} overlayId={overlayId} /> : null}
       {monitor(d.overlay.kind === 'programme' ? 'On air (sent to the cloud programme)' : 'On air', state, 'programme')}
@@ -240,12 +263,13 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
             <div className="mb-2 flex items-center justify-between"><h3 className="font-medium">{t.name}</h3>{selectedOnAir ? <StatusPill tone="live">On air</StatusPill> : <StatusPill tone="neutral">Off air</StatusPill>}</div>
             <VariableForm t={t} data={data} values={vars} onChange={setVars} creatives={Object.values(data.creatives).map((x) => ({ id: x.id, label: x.brandName }))} />
             <div className="sticky bottom-0 -mx-3 -mb-3 mt-3 flex gap-2 border-t border-border bg-panel p-3">
-              <Button variant="live" className="flex-1" disabled={!canOp || state.inhibited} onClick={() => void take()}>{selectedOnAir ? 'Update on air' : 'To air'} <Kbd>{keys.take}</Kbd></Button>
+              <Button variant="live" className="flex-1" disabled={!canOp || state.inhibited || !!lockedBy} onClick={() => void take()}>{selectedOnAir ? 'Update on air' : 'To air'} <Kbd>{keys.take}</Kbd></Button>
               <Button className="flex-1" disabled={!canOp || !selectedOnAir} onClick={() => out()}>Out <Kbd>{keys.out}</Kbd></Button>
             </div>
           </>
         ) : <p className="text-sm text-muted">Pick a graphic from the list to preview it and fill in its details. Nothing goes on air until you press To air.</p>}
         {err ? <p role="alert" className="mt-2 text-sm text-live">{err}</p> : null}
+        {lockedBy ? <p role="status" className="mt-2 text-sm text-warning">{lockedBy.name} is preparing the {layerLabel(lockedBy.layer).toLowerCase()} right now. Wait a moment or pick a graphic on another layer.</p> : null}
         {state.inhibited ? <p className="mt-2 text-sm text-live">Emergency clear is active. Graphics and automation are held until you press Resume output.</p> : null}
       </div>
       <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
@@ -264,6 +288,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
             </li>
           ))}
           {!Object.keys(state.layers).length ? <li className="text-xs text-muted">Nothing on air</li> : null}
+          {presence.locks.map((l) => <li key={`lock:${l.layer}`} className="text-xs text-warning">{l.name} is preparing the {layerLabel(l.layer).toLowerCase()}</li>)}
         </ul>
       </div>
     </div>
@@ -271,8 +296,9 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
 
   const bottom = (
     <Tabs defaultValue="commands">
-      <TabList><Tab value="commands">Sent from this desk</Tab><Tab value="automation">Automation</Tab><Tab value="diagnostics">Diagnostics</Tab></TabList>
+      <TabList><Tab value="commands">Sent from this desk</Tab><Tab value="runsheet">Run sheet</Tab><Tab value="automation">Automation</Tab><Tab value="diagnostics">Diagnostics</Tab></TabList>
       <TabPanel value="commands" className="py-2"><CommandLog pending={c.pending} /></TabPanel>
+      <TabPanel value="runsheet" className="py-2"><RunSheet matchId={matchId} canEdit={canOp} compact /></TabPanel>
       <TabPanel value="automation" className="py-2"><AutomationPanel overlayId={overlayId} gamePlanVersionId={d.overlay.gamePlanVersionId} sport={data.match.sport} canOperate={d.canOperate} onChanged={() => void c.reload?.()} /></TabPanel>
       <TabPanel value="diagnostics" className="py-2 text-xs text-muted">
         <ul className="space-y-1">
@@ -312,6 +338,16 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
             <div className="flex justify-center gap-2"><Button onClick={() => setConfirmClear(false)}>Cancel</Button><EmergencyClear onClear={() => { setConfirmClear(false); void clear(); }} /></div>
           </div>
         </div>
+      ) : null}
+      {exporting ? (
+        <ExportDialog
+          sources={[{ key: 'preview', label: 'Preview (your draft)', state: previewState ?? state }, { key: 'air', label: 'What is on air now', state }]}
+          data={data}
+          custom={custom}
+          serverNow={c.serverNow}
+          onClose={() => setExporting(false)}
+          fileBase={`${data.match.teams.home.abbreviation}-${data.match.teams.away.abbreviation}-${t ? t.key.replace('builtin:', '') : 'graphics'}`.toLowerCase()}
+        />
       ) : null}
       <Dialog open={help} onOpenChange={setHelp} title="Keyboard shortcuts" description="Press ? any time to see this. Change the keys under Settings → preferences.">
         <table className="w-full text-sm"><tbody>

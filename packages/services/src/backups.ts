@@ -6,6 +6,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { desc, eq } from 'drizzle-orm';
 import { backupRuns, type Db } from '@bs/db';
+import { enqueueOutbox } from './outbox';
+import { audit } from './audit';
+import { tx } from './context';
 import type { AppConfig } from '@bs/config';
 import type { Storage } from './storage';
 import { assertCan } from './authz';
@@ -73,6 +76,16 @@ export async function backupTick(d: BackupDeps) {
 }
 
 /** Owners see the run history; the dumps themselves stay in the object store. */
+/** Ask the worker to run a backup now (it has pg_dump and the storage credentials); the API never dumps itself. */
+export async function requestBackup(ctx: Ctx) {
+  assertCan(ctx.actor, 'org.own');
+  return tx(ctx, async (t) => {
+    await enqueueOutbox(t, { organisationId: ctx.actor.organisationId, topic: 'backup.requested', aggregateType: 'installation', aggregateId: ctx.actor.organisationId, payload: { requestedBy: ctx.actor.userId } });
+    await audit(t, ctx.actor, 'backup.request', 'organisation', ctx.actor.organisationId, {});
+    return { queued: true };
+  });
+}
+
 export async function listBackups(ctx: Ctx) {
   assertCan(ctx.actor, 'org.own');
   const rows = await ctx.db.select().from(backupRuns).orderBy(desc(backupRuns.startedAt)).limit(30);

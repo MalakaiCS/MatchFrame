@@ -2,6 +2,8 @@
 import { z } from 'zod';
 import { fixtureTemplateCsv } from '@bs/domain';
 import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring, seasonData } from '@bs/services';
+import { organisations } from '@bs/db';
+import { eq } from 'drizzle-orm';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
@@ -18,14 +20,17 @@ export function registerCoreRoutes(b: AppBundle) {
     let active = mine.find((o) => o.id === s.session.activeOrganisationId) ?? null;
     if (!active && mine.length === 1) active = await orgs.switchOrganisation(deps.db, s.user.id, s.session.id, mine[0]!.id);
     let grants: unknown[] = [];
+    let requireTwoFactor = false;
     if (active) {
       const ctx = await ctxFor(req).catch(() => null);
       grants = ctx?.actor.grants ?? [];
+      const [o] = await deps.db.select({ r: organisations.requireTwoFactor }).from(organisations).where(eq(organisations.id, active.id));
+      requireTwoFactor = !!o?.r;
     }
     return {
-      user: { id: s.user.id, name: s.user.name, email: s.user.email, emailVerified: s.user.emailVerified },
+      user: { id: s.user.id, name: s.user.name, email: s.user.email, emailVerified: s.user.emailVerified, twoFactorEnabled: !!(s.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled },
       organisations: mine,
-      activeOrganisation: active,
+      activeOrganisation: active ? { ...active, requireTwoFactor } : null,
       role: active ? mine.find((o) => o.id === active!.id)?.role : null,
       grants,
       product: { name: deps.config.PRODUCT_NAME, locale: deps.config.DEFAULT_LOCALE, timezone: deps.config.DEFAULT_TIMEZONE },

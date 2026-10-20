@@ -3,7 +3,8 @@
 // Explicitly not audience measurement.
 import { useState } from 'react';
 import { Download } from 'lucide-react';
-import { Button, Card, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Table } from '@bs/ui';
+import { Button, Card, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
+import { AirtimeReport } from '@/components/reports/airtime';
 import { fmtDate, useGet } from '@/lib/hooks';
 import { placementLabel } from '@/lib/labels';
 import { useMe } from '@/lib/session';
@@ -20,7 +21,7 @@ interface Report {
   occurrences: { exposureId: string; firstVisibleAt: string; matchLabel: string; output: string; brand: string; campaign: string; creative: string; placement: string; evidenceType: string; confirmedSeconds: number; closeReason: string; uncertaintySeconds: number }[];
 }
 
-export default function ReportsPage() {
+function SponsorReport() {
   const me = useMe();
   const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';
   const [from, setFrom] = useState('');
@@ -73,5 +74,18 @@ export default function ReportsPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <Tabs defaultValue="sponsors">
+      <TabList className="mb-4"><Tab value="sponsors">Sponsor delivery</Tab><Tab value="airtime">Graphics on air</Tab></TabList>
+      <TabPanel value="sponsors"><SponsorReport /></TabPanel>
+      <TabPanel value="airtime">
+        <PageHeader title="Graphics on air" subtitle="Every graphic an output showed, how often and for how long. Confirmed by the output itself, not by what was sent." />
+        <AirtimeReport />
+      </TabPanel>
+    </Tabs>
   );
 }

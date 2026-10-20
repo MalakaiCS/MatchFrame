@@ -49,7 +49,7 @@ export function CompetitionProduction({ competition: c, canEdit }: Props) {
             </NativeSelect>
           </Field>
         </div>
-        <p className="mt-2 text-xs text-muted">1080p presets stay disabled until measured on this installation.</p>
+        <p className="mt-2 text-xs text-muted">1080p is not offered as a competition default: CPU load, bandwidth and recording sizes at 1080p have not been measured on this installation. A match can still be switched to 1080p on its Streams tab, where it is marked as unmeasured; rehearse it before relying on it.</p>
       </Card>
       <div className="lg:col-span-2"><ErrorNotice error={save.error} />{save.isPending ? <Spinner label="Saving" /> : null}</div>
       {canEdit ? null : <Button disabled>Read only</Button>}

@@ -54,3 +54,19 @@ self.addEventListener('message', (e) => {
     caches.open(SHELL).then((c) => Promise.all(own.filter((u) => new URL(u, self.location.origin).pathname.startsWith('/score')).map((u) => c.add(u).catch(() => undefined)))),
   ]));
 });
+
+// Web push: match reminders and "still live" nudges from the worker. The payload is JSON { title, body, url }.
+self.addEventListener('push', (e) => {
+  let data = { title: 'Broadcast Studio', body: '', url: '/score' };
+  try { data = { ...data, ...(e.data ? e.data.json() : {}) }; } catch { if (e.data) data.body = e.data.text(); }
+  e.waitUntil(self.registration.showNotification(data.title, { body: data.body, data: { url: data.url }, icon: '/icon.svg', badge: '/icon.svg', tag: data.url }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/score';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const open = list.find((c) => 'focus' in c);
+    if (open) { open.navigate(url); return open.focus(); }
+    return self.clients.openWindow(url);
+  }));
+});

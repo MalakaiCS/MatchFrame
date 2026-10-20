@@ -1,19 +1,23 @@
 'use client';
 import Link from 'next/link';
 import { use, useState } from 'react';
-import { Archive, Plus } from 'lucide-react';
+import { Archive, Plus, RefreshCw } from 'lucide-react';
 import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { patch, post } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 import { MatchTable, type MatchRow } from '@/components/match-table';
 import { CompetitionProduction } from '@/components/competition-production';
+import { SeasonPlayers, SeasonResults, SeasonStandings } from '@/components/competition/season-data';
+import { BulkRoundDialog, RolloverDialog, StandingsRulesCard } from '@/components/competition/season-tools';
+import { DemoButton } from '@/components/demo-button';
 
 interface Competition {
   id: string; name: string; shortName: string | null; sport: string; status: string; defaultTimezone: string; rulesVersion: string;
   rulesConfig: Record<string, unknown>; rulesDescription: string[]; presets: { id: string; label: string }[];
   seasons: { id: string; name: string; startsOn: string | null; endsOn: string | null; status: string }[];
   themeProfileId: string | null; gamePlanVersionId: string | null; outputDefaults: Record<string, unknown>;
+  standingsRules?: Record<string, unknown> | null;
 }
 
 export default function CompetitionDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +28,8 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
   const fixtures = useGet<{ items: MatchRow[]; total: number }>(['matches', 'competition', id], `matches?competitionId=${id}&pageSize=100`);
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [season, setSeason] = useState({ name: '', startsOn: '', endsOn: '' });
+  const [rollover, setRollover] = useState<Competition['seasons'][number] | null>(null);
+  const [roundOpen, setRoundOpen] = useState(false);
   const addSeason = useAction((v: typeof season) => post(`competitions/${id}/seasons`, { name: v.name, startsOn: v.startsOn || null, endsOn: v.endsOn || null }), [['competition', id]], { success: 'Season added' });
   const archive = useAction(() => patch(`competitions/${id}`, { status: c.data?.status === 'archived' ? 'active' : 'archived' }), [['competition', id], ['competitions']]);
   const setPreset = useAction((preset: string) => patch(`competitions/${id}`, { rulesPreset: preset }), [['competition', id]], { success: 'Rules updated' });
@@ -38,20 +44,23 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
         crumbs={<><Link href="/app/competitions" className="hover:text-text">Competitions</Link> / {comp.name}</>}
         title={comp.name}
         subtitle={<>{comp.sport} · {comp.shortName ?? 'no short name'} · {tz} <StatusPill className="ml-2" tone={comp.status === 'active' ? 'healthy' : 'neutral'}>{comp.status}</StatusPill></>}
-        actions={full ? <Button variant="ghost" loading={archive.isPending} onClick={() => archive.mutate(undefined)}><Archive className="size-4" /> {comp.status === 'archived' ? 'Restore' : 'Archive'}</Button> : null}
+        actions={full ? <><DemoButton competitionId={id} /><Button variant="ghost" loading={archive.isPending} onClick={() => archive.mutate(undefined)}><Archive className="size-4" /> {comp.status === 'archived' ? 'Restore' : 'Archive'}</Button></> : null}
       />
       <Tabs defaultValue="overview">
         <TabList className="mb-4">
           <Tab value="overview">Overview</Tab>
           <Tab value="fixtures">Fixtures ({fixtures.data?.total ?? 0})</Tab>
+          <Tab value="table">Table</Tab>
+          <Tab value="results">Results & fixtures</Tab>
+          <Tab value="players">Players</Tab>
           <Tab value="production">Graphics & production</Tab>
         </TabList>
         <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between"><h2 className="font-medium">Seasons</h2>{full ? <Button size="sm" onClick={() => setSeasonOpen(true)}><Plus className="size-4" /> Add season</Button> : null}</div>
             {comp.seasons.length ? (
-              <Table><thead><tr><th>Name</th><th>Dates</th><th>Status</th></tr></thead><tbody>
-                {comp.seasons.map((s) => <tr key={s.id}><td>{s.name}</td><td className="text-muted">{s.startsOn ?? '—'} → {s.endsOn ?? '—'}</td><td><StatusPill tone={s.status === 'active' ? 'healthy' : 'neutral'}>{s.status}</StatusPill></td></tr>)}
+              <Table><thead><tr><th>Name</th><th>Dates</th><th>Status</th>{full ? <th /> : null}</tr></thead><tbody>
+                {comp.seasons.map((s) => <tr key={s.id}><td>{s.name}</td><td className="text-muted">{s.startsOn ?? '—'} → {s.endsOn ?? '—'}</td><td><StatusPill tone={s.status === 'active' ? 'healthy' : 'neutral'}>{s.status}</StatusPill></td>{full ? <td className="text-right">{s.status === 'active' ? <Button size="sm" variant="ghost" onClick={() => setRollover(s)}><RefreshCw className="size-3.5" /> Roll over</Button> : null}</td> : null}</tr>)}
               </tbody></Table>
             ) : <p className="text-sm text-muted">No seasons yet. Fixtures need a season.</p>}
           </Card>
@@ -66,11 +75,15 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
             ) : null}
             <ErrorNotice error={setPreset.error} />
           </Card>
+          <div className="lg:col-span-2"><StandingsRulesCard competitionId={id} sport={comp.sport} rules={comp.standingsRules as never} canEdit={full} /></div>
         </TabPanel>
         <TabPanel value="fixtures">
-          <div className="mb-3 flex justify-end gap-2"><Button asChild size="sm"><Link href={`/app/matches?competitionId=${id}&import=1`}>Import CSV</Link></Button><Button asChild size="sm" variant="primary"><Link href={`/app/matches?competitionId=${id}&new=1`}>New fixture</Link></Button></div>
+          <div className="mb-3 flex flex-wrap justify-end gap-2">{full ? <Button size="sm" onClick={() => setRoundOpen(true)}><Plus className="size-4" /> Create a round</Button> : null}<Button asChild size="sm"><Link href={`/app/matches?competitionId=${id}&import=1`}>Import fixtures</Link></Button><Button asChild size="sm" variant="primary"><Link href={`/app/matches?competitionId=${id}&new=1`}>New fixture</Link></Button></div>
           {fixtures.isLoading ? <Spinner /> : <MatchTable rows={fixtures.data?.items ?? []} tz={tz} />}
         </TabPanel>
+        <TabPanel value="table"><SeasonStandings seasons={comp.seasons} /></TabPanel>
+        <TabPanel value="results"><SeasonResults seasons={comp.seasons} tz={tz} /></TabPanel>
+        <TabPanel value="players"><SeasonPlayers seasons={comp.seasons} sport={comp.sport} /></TabPanel>
         <TabPanel value="production">
           <CompetitionProduction competition={comp} canEdit={full} />
         </TabPanel>
@@ -85,6 +98,8 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <ErrorNotice error={addSeason.error && !addSeason.error.fields ? addSeason.error : null} />
         </div>
       </Dialog>
+      {rollover ? <RolloverDialog competitionId={id} season={rollover} onClose={() => setRollover(null)} /> : null}
+      {roundOpen ? <BulkRoundDialog competitionId={id} sport={comp.sport} seasons={comp.seasons.filter((s) => s.status === 'active')} timezone={tz} onClose={() => setRoundOpen(false)} /> : null}
       <p className="mt-6 text-xs text-muted">Times shown in {tz}. Last refreshed {fmtDate(new Date(), tz, { timeStyle: 'short' })}.</p>
     </>
   );

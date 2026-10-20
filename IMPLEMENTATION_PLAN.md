@@ -16,6 +16,7 @@ Source of truth: `MVP_SPEC.md`. P0 = complete first usable release; P1 = backlog
 | M7 Verification | Acceptance matrix, e2e, real-media checks, resilience, soak, restore drill, secret scan, runbooks | Done — `ACCEPTANCE_RESULTS.md` |
 | Hosted graphics-only edition | `STREAMING_ENABLED=false`, single-port container (`scripts/start-hosted.mjs`), Railway config, deploy guide | Done — built image run with env vars only: migrations on start, 5/5 e2e through the single port; not yet deployed to Railway |
 | Operator UI pass | Match-day checklist, OBS link tab with an auto-created output, scorer "Next" flow and grouped events, control-room ergonomics, plain-English wording, visual automation and look editors, dashboard next-match and first-run cards | Done — screenshot tour of every reworked screen (desktop + phone) and 6/6 Playwright specs on the production build |
+| Sixty-feature pass | Six sports, league tables and season data, 28 graphics in three looks and three output formats, look options (scorebug variants, clock, wording, stings, fonts), scorer line-ups/feedback/sunlight/low-data/roles, producer board, approvals and conditions, presence and locks, run sheet, activity, commentator view, public match centre and feed, social exports, hotkeys and OBS scenes, webhooks, reminders, demo match, airtime report, billing, SSO, white-label, 2FA enforcement and sessions, backups, metrics/status, iCal and sheet import, rollover and bulk rounds | Done — see `docs/feature-pass.md` for the item-by-item record and what is config-gated or partial; unit, DB and Playwright suites on the production build |
 
 ## Architecture decisions
 
@@ -38,11 +39,15 @@ Source of truth: `MVP_SPEC.md`. P0 = complete first usable release; P1 = backlog
 Each A-ID in `MVP_SPEC.md §26` has a row in `ACCEPTANCE_RESULTS.md` with the test reference and evidence path.
 
 ## P1 backlog (visible, not implemented)
-1. More sport adapters (netball, rugby, AFL, cricket, tennis, hockey).
+1. Further sport adapters (cricket, tennis, futsal).
 2. Native SRT ingest, programme WebRTC monitoring, adaptive bitrate; RTMPS ingest termination.
 3. Independent language/territory programmes.
 4. Rive import/runtime with typed bindings.
-5. Licensed data-provider adapters.
+5. Licensed data-provider adapters (PlayHQ, Dribl); today fixtures import from CSV, iCal and published sheets.
+6. Measuring 1080p on the hosted installation (presets are offered per match but marked unmeasured).
+7. Verifying the config-gated integrations against live provider accounts (Stripe, Google/Microsoft, web push).
+8. The club look's strip scorebug variant (club keeps the pill); headshots on the top-scorers board for players
+   outside the match line-up.
 6. Platform OAuth/event creation, direct social publishing.
 7. Club self-service sponsor delegation, partner portals.
 8. Advanced timeline editing, audio tracks, automatic compilations.

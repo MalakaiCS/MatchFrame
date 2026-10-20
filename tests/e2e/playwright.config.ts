@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test';
 // Runs against a running stack (pnpm dev or the production build): E2E_BASE_URL, E2E_EMAIL, E2E_PASSWORD.
 export default defineConfig({
   testDir: './specs',
+  // visual baselines live beside the specs, one file per look/sport/graphic, platform-independent names
+  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   timeout: 120_000,
   fullyParallel: false,
   workers: 1,

@@ -4,8 +4,8 @@ import { expect, type Browser, type BrowserContext, type Page } from '@playwrigh
 export const EMAIL = process.env.E2E_EMAIL ?? 'owner@studio.localhost';
 export const PASSWORD = process.env.E2E_PASSWORD ?? '';
 
-export async function login(browser: Browser): Promise<{ ctx: BrowserContext; page: Page }> {
-  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+export async function login(browser: Browser, opts: Parameters<Browser['newContext']>[0] = {}): Promise<{ ctx: BrowserContext; page: Page }> {
+  const ctx = await browser.newContext({ viewport: { width: 1600, height: 1000 }, ...opts });
   const page = await ctx.newPage();
   await page.goto('/login');
   await page.waitForLoadState('networkidle'); // hydrated: the submit is handled by the app, not the native form

@@ -1,9 +1,11 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAdapter, type ClockState, type MatchProjection } from '@bs/domain';
+import { getAdapter, type ClockState, type LineupSnapshot, type MatchProjection } from '@bs/domain';
 import { ApiError, api, get, post, uuid } from './api';
 import { serverNow, useConnectionStatus, useRealtime } from './realtime';
 import { cacheMatch, deleteIntent, deviceId as getDeviceId, getCachedMatch, getIntents, putIntent, type Intent } from './scorer-outbox';
+import { scorerAccess, type ScorerAccess } from './scorer-access';
+import type { Me } from './session';
 
 export interface ScorerMatch {
   id: string;
@@ -11,8 +13,10 @@ export interface ScorerMatch {
   status: string;
   rulesConfig: Record<string, unknown>;
   teams: { home: { id: string; name: string; shortName: string; abbreviation: string; primaryColor: string }; away: { id: string; name: string; shortName: string; abbreviation: string; primaryColor: string } };
-  lineup: { home: { playerId: string; displayName: string; number: number | null; starter: boolean }[]; away: { playerId: string; displayName: string; number: number | null; starter: boolean }[] };
-  competition: { name: string };
+  lineup: LineupSnapshot;
+  lineupLocked: boolean;
+  scheduledAt: string;
+  competition: { id: string; name: string };
 }
 export interface ServerState {
   stateVersion: number;
@@ -42,7 +46,8 @@ async function tabDeviceId() {
   return `${base}:${tab}`;
 }
 
-export function useScorer(matchId: string, userId: string | undefined) {
+export function useScorer(matchId: string, me: Me | null | undefined, opts: { lowData?: boolean } = {}) {
+  const userId = me?.user.id;
   const conn = useConnectionStatus();
   const [match, setMatch] = useState<ScorerMatch | null>(null);
   const [state, setState] = useState<ServerState | null>(null);
@@ -59,10 +64,18 @@ export function useScorer(matchId: string, userId: string | undefined) {
   const flushing = useRef(false);
   /** true only when the current state came from the server in this session (never from the offline cache) */
   const freshState = useRef(false);
+  const matchRef = useRef<ScorerMatch | null>(null);
+  const meRef = useRef(me);
   stateRef.current = state;
   leaseRef.current = lease;
+  meRef.current = me;
+  /** what this person may do here: full scoring (needs the lease), statistics only, or follow along */
+  const access: ScorerAccess = scorerAccess(me, match);
+  const accessNow = () => scorerAccess(meRef.current, matchRef.current);
 
-  const online = conn === 'connected' && netOk && (typeof navigator === 'undefined' || navigator.onLine);
+  // reachability decides whether actions can be sent; live updates come over the socket or, failing that, by polling
+  const online = netOk && (typeof navigator === 'undefined' || navigator.onLine);
+  const transport: 'live' | 'polling' | 'offline' = !online ? 'offline' : conn === 'connected' ? 'live' : 'polling';
   const holding = !!lease && lease.holderUserId === userId && lease.holderDeviceId === device.current && !!lease.expiresAt && new Date(lease.expiresAt).getTime() > Date.now();
 
   const reloadIntents = useCallback(async () => setIntents(await getIntents(matchId)), [matchId]);
@@ -78,6 +91,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
     try {
       const [d, s] = await Promise.all([get<ScorerMatch & { lease: Lease }>(`matches/${matchId}`), get<ServerState>(`matches/${matchId}/state`)]);
       setMatch(d);
+      matchRef.current = d;
       applyServerState({ stateVersion: s.stateVersion, sequence: s.sequence, phase: s.phase, projection: s.projection, clocks: s.clocks });
       setLease((cur) => cur ?? d.lease);
       setFromCache(false);
@@ -92,6 +106,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
         const c = await getCachedMatch(matchId);
         if (c) {
           setMatch(c.detail as ScorerMatch);
+          matchRef.current = c.detail as ScorerMatch;
           applyServerState(c.state as ServerState);
           setFromCache(true);
         } else setLoadError(ae);
@@ -128,8 +143,10 @@ export function useScorer(matchId: string, userId: string | undefined) {
         let l = leaseRef.current;
         const mine = l && l.holderUserId === userId && l.holderDeviceId === device.current && l.expiresAt && new Date(l.expiresAt).getTime() > Date.now();
         if (!mine) {
-          l = await acquire();
-          if (!l) break;
+          if (accessNow() === 'score') {
+            l = await acquire();
+            if (!l) break;
+          } else l = null; // statistics-only scorers send without a lease; the server checks the event group
         }
         const st = stateRef.current;
         if (!st) break;
@@ -137,7 +154,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
         try {
           const r = await api<{ state: ServerState; event: { eventId: string } }>(`/api/v1/matches/${matchId}/commands`, {
             method: 'POST',
-            json: { commandId: next.commandId, expectedStateVersion: st.stateVersion, scorerLeaseVersion: l!.leaseVersion, deviceId: device.current, type: next.type, payload: next.payload, offline: next.offline ? { queuedAt: next.createdAt, reviewed: true } : undefined },
+            json: { commandId: next.commandId, expectedStateVersion: st.stateVersion, scorerLeaseVersion: l?.leaseVersion, deviceId: device.current, type: next.type, payload: next.payload, offline: next.offline ? { queuedAt: next.createdAt, reviewed: true } : undefined },
           });
           applyServerState(r.state);
           setAccepted((a) => ({ ...a, [next.commandId]: r.event.eventId }));
@@ -207,7 +224,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
       await reloadIntents();
       await loadAll();
       await reconcileOffline();
-      if (alive && navigator.onLine) await acquire();
+      if (alive && navigator.onLine && accessNow() === 'score') await acquire();
       if (alive) void flush();
     })();
     return () => {
@@ -263,6 +280,29 @@ export function useScorer(matchId: string, userId: string | undefined) {
     };
   }, [netOk, loadAll, flush, reconcileOffline]);
 
+  // no socket (low-data mode, a blocked WebSocket, or while reconnecting): poll the state instead
+  useEffect(() => {
+    if (conn === 'connected' || !netOk) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    let n = 0;
+    const every = opts.lowData ? 10_000 : 4_000;
+    const t = setInterval(async () => {
+      n++;
+      try {
+        if (n % 8 === 0) await loadAll();
+        else {
+          const st = await get<ServerState>(`matches/${matchId}/state`);
+          applyServerState({ stateVersion: st.stateVersion, sequence: st.sequence, phase: st.phase, projection: st.projection, clocks: st.clocks });
+          setNetOk(true);
+        }
+        void flush();
+      } catch (e) {
+        if ((e as ApiError).status === 0) setNetOk(false);
+      }
+    }, every);
+    return () => clearInterval(t);
+  }, [conn, netOk, opts.lowData, matchId, loadAll, applyServerState, flush]);
+
   useRealtime('match', matchId, (e) => {
     const p = e.payload as Record<string, unknown>;
     if (e.topic === 'match.state.updated') applyServerState({ stateVersion: p.stateVersion as number, sequence: p.sequence as number, phase: p.phase as string, projection: p.projection as MatchProjection, clocks: p.clocks as Record<string, ClockState> });
@@ -282,7 +322,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
         type,
         payload,
         createdAt: Date.now(),
-        offline: !(conn === 'connected' && netOk && navigator.onLine),
+        offline: !(netOk && navigator.onLine),
         basedOnVersion: stateRef.current?.stateVersion ?? 0,
         status: 'queued',
         error: null,
@@ -294,7 +334,7 @@ export function useScorer(matchId: string, userId: string | undefined) {
       void flush();
       return intent.commandId;
     },
-    [matchId, conn, netOk, flush, reloadIntents],
+    [matchId, netOk, flush, reloadIntents],
   );
 
   const review = useCallback(
@@ -349,6 +389,8 @@ export function useScorer(matchId: string, userId: string | undefined) {
     holding,
     leaseProblem,
     online,
+    transport,
+    access,
     fromCache,
     loadError,
     deviceId: device.current,

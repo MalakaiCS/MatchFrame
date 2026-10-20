@@ -68,7 +68,7 @@ export function StreamsPanel({ matchId, canEdit, tz }: { matchId: string; canEdi
                 </NativeSelect>
               </Field>
               <Field label="Preset" htmlFor={`pr-${o.id}`}>
-                <NativeSelect id={`pr-${o.id}`} disabled={!canEdit || !!live} value={o.preset} onChange={(e) => void run(() => put(`matches/${matchId}/outputs`, { ...pick(o), preset: e.target.value }))}>{['720p25', '720p30', '1080p25', '1080p30'].map((p) => <option key={p}>{p}</option>)}</NativeSelect>
+                <NativeSelect id={`pr-${o.id}`} disabled={!canEdit || !!live} value={o.preset} onChange={(e) => void run(() => put(`matches/${matchId}/outputs`, { ...pick(o), preset: e.target.value }))}>{['720p25', '720p30', '1080p25', '1080p30'].map((p) => <option key={p} value={p}>{p}{p.startsWith('1080') ? ' · not yet measured on this installation' : ''}</option>)}</NativeSelect>
               </Field>
               <label className="mt-6 flex items-center gap-2 text-xs"><input type="checkbox" disabled={!canEdit} checked={o.autoSchedule} onChange={(e) => void run(() => put(`matches/${matchId}/outputs`, { ...pick(o), autoSchedule: e.target.checked }))} /> Auto start {Math.round(o.prerollSeconds / 60)} min before kickoff, stop {Math.round(o.postrollSeconds / 60)} min after full time</label>
             </div>

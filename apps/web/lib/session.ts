@@ -4,9 +4,9 @@ import { ApiError, get } from './api';
 
 export type Role = 'owner' | 'admin' | 'producer' | 'operator' | 'scorer' | 'club_manager' | 'viewer';
 export interface Me {
-  user: { id: string; name: string; email: string; emailVerified: boolean };
+  user: { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean };
   organisations: { id: string; name: string; role: Role; timezone: string; locale: string }[];
-  activeOrganisation: { id: string; name: string; timezone: string; locale: string } | null;
+  activeOrganisation: { id: string; name: string; timezone: string; locale: string; requireTwoFactor?: boolean } | null;
   role: Role | null;
   grants: { action: string; scopeType: string; scopeId: string | null }[];
   product: { name: string; locale: string; timezone: string };

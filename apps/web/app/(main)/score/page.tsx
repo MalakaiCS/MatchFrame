@@ -6,6 +6,7 @@ import { ErrorNotice, Spinner, StatusPill } from '@bs/ui';
 import { ApiError, get } from '@/lib/api';
 import { fmtDate } from '@/lib/hooks';
 import { cacheList, getCachedList } from '@/lib/scorer-outbox';
+import { ACCESS_LABEL, scorerAccess } from '@/lib/scorer-access';
 import { useMe } from '@/lib/session';
 import type { MatchRow } from '@/components/match-table';
 
@@ -38,18 +39,22 @@ export default function ScoreList() {
       <section className="mb-4" aria-label={title}>
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">{title}</h2>
         <ul className="grid gap-2">
-          {list.map((m) => (
+          {list.map((m) => {
+            const access = scorerAccess(me.data, { id: m.id, competition: { id: m.competition.id } });
+            return (
             <li key={m.id}>
               <Link href={`/score/${m.id}`} className="flex min-h-16 items-center gap-3 rounded-[var(--radius-card)] border border-border bg-panel p-3 active:bg-elevated">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{m.home?.name} v {m.away?.name}</div>
                   <div className="text-xs text-muted">{fmtDate(m.scheduledAt, tz, tone === 'live' || day(m.scheduledAt) === today ? { timeStyle: 'short' } : undefined)} · {m.competition.name}</div>
                 </div>
+                {access !== 'score' ? <StatusPill tone="primary">{ACCESS_LABEL[access]}</StatusPill> : null}
                 <StatusPill tone={m.status === 'live' ? 'live' : 'neutral'}>{m.status === 'live' ? `${m.score.home}–${m.score.away}` : m.status === 'scheduled' ? 'not started' : m.status}</StatusPill>
                 <ChevronRight className="size-5 text-muted" aria-hidden />
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     ) : null;
@@ -57,7 +62,7 @@ export default function ScoreList() {
   return (
     <div className="mx-auto max-w-xl p-4">
       <h1 className="mb-1 text-lg font-semibold">Your matches</h1>
-      <p className="mb-4 text-sm text-muted">Only matches you are assigned to score are listed.{cachedAt ? ` Offline copy from ${new Date(cachedAt).toLocaleTimeString('en-AU')}.` : ''}</p>
+      <p className="mb-4 text-sm text-muted">Matches you are assigned to score, record statistics for, or follow are listed.{cachedAt ? ` Offline copy from ${new Date(cachedAt).toLocaleTimeString('en-AU')}.` : ''}</p>
       <ErrorNotice error={err} />
       {!rows && !err ? <Spinner /> : rows?.length === 0 ? <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No matches assigned to you yet. Ask your producer to assign you from the match page, or to send you the match link.</p> : null}
       {group('Live now', live, 'live')}

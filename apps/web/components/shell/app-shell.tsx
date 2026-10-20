@@ -5,17 +5,19 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DM from '@radix-ui/react-dropdown-menu';
 import {
-  Bell, BarChart3, Building2, ChevronDown, Clapperboard, Film, Gauge, Image, LayoutGrid, LogOut, Megaphone, Palette, Radio, Search, Settings, Trophy, Workflow,
+  Bell, BarChart3, Building2, ChevronDown, Clapperboard, Film, Gauge, Image, LayoutDashboard, LayoutGrid, LogOut, Megaphone, Palette, Radio, Search, Settings, Trophy, Workflow,
 } from 'lucide-react';
 import { cx, Spinner, StatusPill, Toaster } from '@bs/ui';
 import { api, get, post } from '@/lib/api';
 import { canSee, useMe } from '@/lib/session';
 import { useConnectionStatus } from '@/lib/realtime';
+import { TwoFactorEnrol } from '@/components/settings/security';
 
 const NAV = [
   { href: '/app', label: 'Dashboard', icon: Gauge, area: 'dashboard' },
   { href: '/app/competitions', label: 'Competitions', icon: Trophy, area: 'competitions' },
   { href: '/app/matches', label: 'Matches', icon: LayoutGrid, area: 'matches' },
+  { href: '/app/board', label: 'Producer board', icon: LayoutDashboard, area: 'control' },
   { href: '/app/control-rooms', label: 'Control Rooms', icon: Clapperboard, area: 'control' },
   { href: '/app/streams', label: 'Streams', icon: Radio, area: 'streams' },
   { href: '/app/assets', label: 'Assets', icon: Image, area: 'assets' },
@@ -67,6 +69,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
   const m = me.data;
   const tz = m.activeOrganisation!.timezone;
+  // the organisation requires two-step sign-in and this account has not set it up yet
+  if (m.activeOrganisation?.requireTwoFactor && !m.user.twoFactorEnabled) {
+    return (
+      <main className="grid min-h-screen place-items-center p-4">
+        <div className="w-full max-w-md rounded-[var(--radius-card)] border border-border bg-panel p-6">
+          <h1 className="text-lg font-semibold">Two-step sign-in is required</h1>
+          <p className="mb-4 mt-1 text-sm text-muted">{m.activeOrganisation.name} asks every member to confirm sign-ins with an authenticator app. Set it up once; it takes about a minute.</p>
+          <TwoFactorEnrol onDone={() => void qc.invalidateQueries({ queryKey: ['me'] })} />
+          <button className="mt-4 text-sm text-muted underline" onClick={() => void (async () => { await api('/api/auth/sign-out', { method: 'POST', json: {} }).catch(() => undefined); qc.clear(); router.replace('/login'); })()}>Sign out</button>
+        </div>
+        <Toaster />
+      </main>
+    );
+  }
 
   async function switchOrg(id: string) {
     await post('organisations/switch', { organisationId: id });
@@ -81,6 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-bg">Skip to main content</a>
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-panel lg:flex">
         <Link href="/app" className="flex items-center gap-2 px-4 py-4 font-semibold">
           <span className="grid size-7 place-items-center rounded bg-primary text-bg">▶</span>
@@ -158,7 +175,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link key={n.href} href={n.href} className={cx('whitespace-nowrap rounded px-2.5 py-1.5 text-xs', path.startsWith(n.href) && (n.href !== '/app' || path === '/app') ? 'bg-elevated' : 'text-muted')}>{n.label}</Link>
           ))}
         </nav>
-        <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 p-4 md:p-6 outline-none">{children}</main>
       </div>
       <Toaster />
     </div>

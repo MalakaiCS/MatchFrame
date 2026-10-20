@@ -16,6 +16,8 @@ let status: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
 const listeners = new Set<() => void>();
 const subs = new Map<string, number>();
 let offset = 0; // serverNow - Date.now()
+/** Low-data mode: the socket stays closed and pages that can poll do so. */
+let paused = false;
 
 function setStatus(s: typeof status) {
   status = s;
@@ -24,8 +26,8 @@ function setStatus(s: typeof status) {
 
 export function getSocket(): Socket {
   if (socket) return socket;
-  socket = io(`${process.env.NEXT_PUBLIC_REALTIME_URL}/app`, { withCredentials: true, transports: ['websocket', 'polling'], reconnectionDelayMax: 5000 });
-  setStatus('connecting');
+  socket = io(`${process.env.NEXT_PUBLIC_REALTIME_URL}/app`, { withCredentials: true, transports: ['websocket', 'polling'], reconnectionDelayMax: 5000, autoConnect: !paused });
+  if (!paused) setStatus('connecting');
   socket.on('connect', () => {
     setStatus('connected');
     for (const key of subs.keys()) {
@@ -57,6 +59,24 @@ function syncTime() {
 }
 
 export const serverNow = () => Date.now() + offset;
+
+/**
+ * Pause or resume the realtime socket. While paused nothing is pushed and consumers that can poll do so (the
+ * scorer's low-data mode); resuming reconnects and re-subscribes every room.
+ */
+export function setSocketPaused(p: boolean) {
+  if (paused === p) return;
+  paused = p;
+  if (!socket) return;
+  if (p) {
+    socket.disconnect();
+    setStatus('disconnected');
+  } else {
+    setStatus('connecting');
+    socket.connect();
+  }
+}
+export const isSocketPaused = () => paused;
 
 export function useConnectionStatus() {
   return useSyncExternalStore(

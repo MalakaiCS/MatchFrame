@@ -25,3 +25,31 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Sunlight mode: the scorer's high-contrast palette for a phone used outdoors. Switched on from the match screen. */
+html.sunlight {
+  --color-bg: #ffffff;
+  --color-panel: #ffffff;
+  --color-elevated: #ececec;
+  --color-border: #000000;
+  --color-primary: #0041a8;
+  --color-primary-strong: #002f7a;
+  --color-text: #000000;
+  --color-muted: #2b2b2b;
+  --color-live: #b1001c;
+  --color-warning: #6b4a00;
+  --color-healthy: #0b6b3a;
+  --color-cyan: #005a66;
+}
+html.sunlight body {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Operating systems that ask for more contrast get stronger borders and secondary text. */
+@media (prefers-contrast: more) {
+  :root:not(.sunlight) {
+    --color-border: #8aa0c0;
+    --color-muted: #c9d3e3;
+  }
+}

@@ -1,22 +1,25 @@
 'use client';
 // Touch feedback for the scorer phone: a short vibration and a quiet tone when an action is recorded, both
-// switchable per device, plus the sunlight (high-contrast) preference. Preferences live in the user's saved
-// preferences so they follow the scorer between devices, with a local copy for the offline case.
+// switchable per device, plus the sunlight (high-contrast) and low-data preferences. Preferences live in the
+// user's saved preferences so they follow the scorer between devices, with a local copy for the offline case.
 import { useCallback, useEffect, useState } from 'react';
 import { get, put } from './api';
+import { setSocketPaused } from './realtime';
 
 export interface ScorerPrefs {
   vibrate: boolean;
   sound: boolean;
   sunlight: boolean;
-  /** seconds the "undo last" button stays available after an action */
+  /** no live socket: the match state is polled every few seconds instead (far less data on a poor connection) */
+  lowData: boolean;
+  /** seconds the "undo" button stays available after an action */
   undoWindowS: number;
 }
-export const DEFAULT_SCORER_PREFS: ScorerPrefs = { vibrate: true, sound: true, sunlight: false, undoWindowS: 12 };
+export const DEFAULT_SCORER_PREFS: ScorerPrefs = { vibrate: true, sound: true, sunlight: false, lowData: false, undoWindowS: 12 };
 const LOCAL_KEY = 'bs.scorer.prefs';
 
 let audio: AudioContext | null = null;
-/** A quiet confirmation tone (goal: two rising notes; card: one low note; tick: a short blip; warn: two low blips). */
+/** A quiet confirmation tone (score: two rising notes; card: one low note; tick: a short blip; warn: two low blips). */
 export function tone(kind: 'score' | 'card' | 'tick' | 'warn') {
   try {
     if (typeof window === 'undefined' || !('AudioContext' in window)) return;
@@ -88,5 +91,9 @@ export function useScorerPrefs() {
     document.documentElement.classList.toggle('sunlight', prefs.sunlight);
     return () => document.documentElement.classList.remove('sunlight');
   }, [prefs.sunlight]);
+  useEffect(() => {
+    setSocketPaused(prefs.lowData);
+    return () => setSocketPaused(false);
+  }, [prefs.lowData]);
   return { prefs, update };
 }

@@ -119,6 +119,19 @@ with that platform's connection strings. On Render, `RENDER_EXTERNAL_URL` is pic
 The Postgres user in `DATABASE_ADMIN_URL` must be allowed to create roles (migrations create `bs_app` and
 `bs_worker`).
 
+## Optional integrations
+
+Each of these is off until its variables are set; the matching screen says so until then.
+
+| Feature | Variables | Where to get them |
+| --- | --- | --- |
+| Sign in with Google / Microsoft | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | OAuth app in Google Cloud Console / Microsoft Entra; redirect URL `https://<your address>/api/auth/callback/google` (or `/microsoft`) |
+| Push notifications for reminders | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`; subject is `mailto:` your ops address |
+| Card billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` | Stripe dashboard: two recurring prices, a webhook to `https://<your address>/api/v1/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*` |
+| Scheduled database dumps to R2 | `BACKUP_ENABLED=true`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` | uses the media bucket; see Settings → Backups |
+| Monitoring | `METRICS_TOKEN`, `ERROR_REPORT_URL` | scrape `/metrics` with the bearer token; point error reports at your alerting webhook |
+| Custom domain for an organisation | — | Settings → Branding (owner): add the host, point its CNAME at the Railway domain and add the domain to the Railway service so it gets a certificate |
+
 ## Turning streaming on later
 
 Move to a server with dedicated CPU (see `docs/operations.md`), run LiveKit (`pnpm services:up`), set

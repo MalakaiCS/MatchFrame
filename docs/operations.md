@@ -34,6 +34,22 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
   Single-container hosting (`scripts/start-hosted.mjs`, `railway.json`): [`deploy-hosted.md`](deploy-hosted.md).
 * **Media provider** — `MEDIA_PROVIDER=livekit` (default). `fake` is for automated tests and labelled demo mode;
   the UI and session rows show `demo` when it is active.
+* **Optional integrations** (all off until their keys are set; the UI says so where each would appear):
+  `GOOGLE_CLIENT_ID/SECRET` and `MICROSOFT_CLIENT_ID/SECRET` (+`MICROSOFT_TENANT_ID`) add social sign-in buttons;
+  `VAPID_PUBLIC_KEY/PRIVATE_KEY` (+`VAPID_SUBJECT`) enable web push for reminders; `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` enable card billing (without them the owner
+  sets the plan by hand); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
+  `METRICS_TOKEN` protects `/metrics`; `ERROR_REPORT_URL` receives a JSON report for every unhandled API error.
+* **White-label** — an organisation's `customDomain` (Settings → Branding, owners) resolves a host name to that
+  organisation: point the host at the installation and let the reverse proxy accept it; sign-in and public pages
+  then carry the organisation's name, logo and colours (`GET /api/v1/public/branding`).
+* **Security** — Settings → Security turns on TOTP two-step sign-in per account (backup codes included), lists and
+  revokes sessions, and lets an owner require two-step sign-in for the whole organisation: members without it are
+  held at an enrolment screen until they set it up (`TWO_FACTOR_REQUIRED`). API keys carry scopes.
+* **Webhooks** — Settings → Integrations (admins). Each delivery is signed: `X-Webhook-Signature: t=<unix>,v1=<hex>`
+  where `v1 = HMAC-SHA256(secret, "<t>.<raw body>")`, with `X-Webhook-Event` naming the event. Private, loopback
+  and link-local hosts are refused and `https` is required outside local development. Failed deliveries retry with
+  increasing delays and are marked dead after the last attempt.
 
 ## Deployment with the image
 
@@ -58,6 +74,10 @@ change them) or register through `/register` and create an organisation in onboa
 
 * **Database** — `pg_dumpall --roles-only` plus `pg_dump -Fc` (point-in-time recovery with WAL archiving in
   production). **Objects** — bucket versioning/replication or a periodic mirror.
+* **Built-in scheduled dumps** — with `BACKUP_ENABLED=true` the worker writes a compressed `pg_dump` to the media
+  bucket under `backups/` every `BACKUP_EVERY_HOURS` hours and keeps the last `BACKUP_KEEP`. The runtime image
+  ships `pg_dump`. Owners see the runs under Settings → Backups and can request one now (the worker runs it;
+  the API process never dumps). Restore with `pg_restore` into an empty database, then run the migrations.
 * **Drill** — `node tests/media/run-restore-drill.mjs` restores both into fresh PostgreSQL and MinIO containers,
   starts a separate API and verifies login, match history, RLS isolation and recording playback
   (`docs/evidence/m7/restore-drill.json`, last run: 136 s for 615 kB dump + 4.5 GB objects).
@@ -75,7 +95,18 @@ Structured JSON logs (pino) with request ids; URLs are redacted (`t`, `bt`, `s`,
 params, RTMP keys). Useful signals: outbox lag (`select count(*), min(created_at) from outbox_events where
 state='pending'`), dead letters (`state='dead'`), automation runs/cues tables (control room shows reasons),
 `broadcast_sessions`/`output_sessions` state and `error`, destination `last_status`, export job states,
-`usage_ledger`. A metrics endpoint for scraping is not implemented (P1).
+`usage_ledger`.
+
+* **Metrics** — `GET /metrics` (Prometheus text format; `Authorization: Bearer $METRICS_TOKEN` when set): HTTP
+  request counts and duration, live matches, connected graphics outputs, pending outbox rows, worker liveness,
+  event-loop lag and process memory/uptime.
+* **Status** — `GET /api/v1/status` (and the `/status` page): database, realtime cache, storage, email, streaming
+  mode and worker liveness, plus live-match and renderer counts.
+* **Error reports** — every unhandled API error is logged with its request id and, when `ERROR_REPORT_URL` is
+  set, posted there as JSON (request id, route, message, stack); the client sees only the request id.
+* **Reminders and demo runner** — worker loops: kick-off reminders (email, and web push when configured) an hour
+  before the start and a nudge when a match has been live for three hours; the demo runner advances demo matches
+  through the real scoring commands.
 
 ## Failure runbooks
 

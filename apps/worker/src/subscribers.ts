@@ -25,6 +25,13 @@ export function buildSubscribers(ctx: WorkerCtx): RelayOptions['subscribers'] {
       },
     },
     {
+      name: 'backups.requested',
+      topics: ['backup.requested'],
+      handle: async () => {
+        await backups.runBackup({ db: ctx.db, config: ctx.config, storage: ctx.storage ?? createStorage(ctx.config) });
+      },
+    },
+    {
       name: 'automation.phases',
       topics: ['match.phase.changed'],
       handle: async (e) => {
