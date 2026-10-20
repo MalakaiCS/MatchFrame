@@ -71,7 +71,13 @@ server.on('upgrade', (req, socket, head) => {
   up.on('error', close);
   socket.on('error', close);
 });
-server.listen(PORT, '0.0.0.0', () => console.log(`[start] serving on :${PORT} (api :${API_PORT}, web :${WEB_PORT})`));
+// '::' accepts IPv4 and IPv6 (Railway's edge and private network); fall back to IPv4 where IPv6 is disabled.
+server.once('listening', () => console.log(`[start] serving on :${PORT} (api :${API_PORT}, web :${WEB_PORT})`));
+server.once('error', (err) => {
+  if (err.code !== 'EAFNOSUPPORT' && err.code !== 'EADDRNOTAVAIL') throw err;
+  server.listen(PORT, '0.0.0.0');
+});
+server.listen(PORT, '::');
 
 function shutdown(code = 0) {
   if (stopping) return;
