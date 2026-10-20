@@ -12,6 +12,7 @@ import { api, get, post } from '@/lib/api';
 import { canSee, useMe } from '@/lib/session';
 import { useConnectionStatus } from '@/lib/realtime';
 import { TwoFactorEnrol } from '@/components/settings/security';
+import { MatchFrameMark } from '../site/brand';
 
 const NAV = [
   { href: '/app', label: 'Dashboard', icon: Gauge, area: 'dashboard' },
@@ -100,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-bg">Skip to main content</a>
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-panel lg:flex">
         <Link href="/app" className="flex items-center gap-2 px-4 py-4 font-semibold">
-          <span className="grid size-7 place-items-center rounded bg-primary text-bg">▶</span>
+          <MatchFrameMark size={28} />
           <span className="truncate">{process.env.NEXT_PUBLIC_PRODUCT_NAME}</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4" aria-label="Main">

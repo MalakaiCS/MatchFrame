@@ -21,6 +21,8 @@ const adminCsp = [
   "media-src 'self' blob:",
   "font-src 'self'",
   `connect-src 'self' ${process.env.PUBLIC_REALTIME_URL ?? ''} ${(process.env.PUBLIC_REALTIME_URL ?? '').replace(/^http/, 'ws')} ${process.env.PUBLIC_LIVEKIT_URL ?? ''}`,
+  // the public site's video plays in YouTube's privacy-enhanced player, loaded only when a visitor presses play
+  "frame-src 'self' https://www.youtube-nocookie.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -37,7 +39,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_REALTIME_URL: process.env.PUBLIC_REALTIME_URL ?? 'http://localhost:4000',
     NEXT_PUBLIC_LIVEKIT_URL: process.env.PUBLIC_LIVEKIT_URL ?? 'ws://localhost:7880',
-    NEXT_PUBLIC_PRODUCT_NAME: process.env.PRODUCT_NAME ?? 'Broadcast Studio',
+    NEXT_PUBLIC_PRODUCT_NAME: process.env.PRODUCT_NAME ?? 'MatchFrame',
     NEXT_PUBLIC_RTMP_URL: process.env.PUBLIC_RTMP_URL ?? '',
   },
   async rewrites() {

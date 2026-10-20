@@ -4,6 +4,14 @@
 @source './';
 @source '../../../packages/graphics/src';
 
+/* MatchFrame brand: the wordmark's geometric face for public-site headings, and the logo's cyan and blue */
+@theme {
+  --font-brand: 'Outfit Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-brand-cyan: #00d2ff;
+  --color-brand-blue: #2b5cff;
+  --color-brand-navy: #0a1020;
+}
+
 html,
 body {
   background: var(--color-bg);

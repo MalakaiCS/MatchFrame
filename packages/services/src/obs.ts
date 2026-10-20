@@ -22,7 +22,7 @@ export async function obsSceneCollection(ctx: Ctx, matchId: string) {
       const urls = await overlayUrls(ctx, o.id).catch(() => null);
       if (!urls?.production) continue;
       const { width, height } = size(o.format);
-      const name = `Broadcast Studio · ${o.name}`;
+      const name = `MatchFrame · ${o.name}`;
       sources.push({
         name,
         id: 'browser_source',
@@ -42,10 +42,10 @@ export async function obsSceneCollection(ctx: Ctx, matchId: string) {
       });
       items.push({ name, source_uuid: null, visible: true, locked: false, id: id++, pos: { x: 0, y: 0 }, scale: { x: 1, y: 1 }, align: 5, bounds_type: 0, bounds_align: 0, bounds: { x: 0, y: 0 }, crop_top: 0, crop_bottom: 0, crop_left: 0, crop_right: 0, rot: 0, blend_method: 'default', blend_type: 'normal' });
     }
-    const sceneName = 'Broadcast Studio graphics';
+    const sceneName = 'MatchFrame graphics';
     sources.push({ name: sceneName, id: 'scene', versioned_id: 'scene', settings: { id_counter: id, custom_size: false, items }, enabled: true, muted: false, volume: 1, hotkeys: {}, private_settings: {} });
     return {
-      name: `Broadcast Studio ${m.round ? `round ${m.round} ` : ''}${m.id.slice(0, 8)}`,
+      name: `MatchFrame ${m.round ? `round ${m.round} ` : ''}${m.id.slice(0, 8)}`,
       current_scene: sceneName,
       current_program_scene: sceneName,
       scene_order: [{ name: sceneName }],
@@ -54,7 +54,7 @@ export async function obsSceneCollection(ctx: Ctx, matchId: string) {
       transition_duration: 300,
       quick_transitions: [],
       modules: {},
-      readme: 'Import in OBS via Scene Collection → Import. Each Browser Source is one Broadcast Studio output; put your camera scene below this scene or add these sources to it.',
+      readme: 'Import in OBS via Scene Collection → Import. Each Browser Source is one MatchFrame output; put your camera scene below this scene or add these sources to it.',
     };
   });
 }

@@ -46,8 +46,8 @@ const int = (d: number) => z.coerce.number().int().default(d);
 
 export const configSchema = z.object({
   NODE_ENV: z.string().default('development'),
-  PRODUCT_NAME: z.string().default('Broadcast Studio'),
-  PRODUCT_SHORT_NAME: z.string().default('Studio'),
+  PRODUCT_NAME: z.string().default('MatchFrame'),
+  PRODUCT_SHORT_NAME: z.string().default('MatchFrame'),
   DEFAULT_LOCALE: z.string().default('en-AU'),
   DEFAULT_TIMEZONE: z.string().default('Australia/Brisbane'),
   PUBLIC_WEB_URL: z.string().url(),
@@ -75,7 +75,9 @@ export const configSchema = z.object({
   SMTP_SECURE: bool.default(false),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  MAIL_FROM: z.string().default('Broadcast Studio <no-reply@studio.localhost>'),
+  MAIL_FROM: z.string().default('MatchFrame <no-reply@studio.localhost>'),
+  // where the public contact form sends enquiries; unset = the form says it is not connected yet
+  CONTACT_EMAIL: z.string().email().optional().or(z.literal('').transform(() => undefined)),
   // Resend's HTTPS API (hosts such as Railway block outbound SMTP on lower plans). Defaults to SMTP_PASSWORD with smtp.resend.com.
   RESEND_API_KEY: z.string().optional(),
   S3_ENDPOINT: z.string().url(),

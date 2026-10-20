@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { get } from '@/lib/api';
+import { MatchFrameMark } from './site/brand';
 
 interface Branding { productName: string; logoUrl: string | null }
 
@@ -13,7 +14,7 @@ export function AuthCard({ title, subtitle, children, footer }: { title: string;
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-6 flex items-center gap-2 font-semibold">
-          {brand.data?.logoUrl ? <img src={brand.data.logoUrl} alt="" className="size-7 rounded object-contain" /> : <span className="grid size-7 place-items-center rounded bg-primary text-bg">▶</span>}
+          {brand.data?.logoUrl ? <img src={brand.data.logoUrl} alt="" className="size-7 rounded object-contain" /> : <MatchFrameMark size={28} />}
           {name}
         </Link>
         <div className="rounded-[var(--radius-card)] border border-border bg-panel p-6">

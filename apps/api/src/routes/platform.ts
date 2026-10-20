@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { AppError, activity, airtime, authOptions, automationSvc, backups, billing, demo, hotkeys, imports, importsExtra, metrics, notes, obs, orgs, publicMatch, push, webhooksSvc, overlaysSvc } from '@bs/services';
+import { AppError, activity, airtime, authOptions, automationSvc, backups, billing, contact, demo, hotkeys, imports, importsExtra, metrics, notes, obs, orgs, publicMatch, push, webhooksSvc, overlaysSvc } from '@bs/services';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
@@ -21,6 +21,10 @@ export function registerPlatformRoutes(b: AppBundle) {
     reply.header('cache-control', 'public, max-age=60');
     return b2 ? { ...b2, logoUrl: b2.logoAssetId ? overlaysSvc.signedAssetUrl(deps.config, b2.organisationId, b2.logoAssetId, 3600) : null, logoAssetId: undefined, organisationId: undefined } : { productName: deps.config.PRODUCT_NAME, logoUrl: null, primaryColor: null, accentColor: null, supportEmail: null, hideVendor: false };
   });
+
+  // ---------------------------------------------------------------- public contact form (emails CONTACT_EMAIL)
+  app.get('/api/v1/public/contact', async () => contact.contactStatus(deps.config));
+  app.post('/api/v1/public/contact', async (req) => contact.submitContact(deps.config, deps.mailer, req.body, { ip: req.ip }));
 
   // ---------------------------------------------------------------- outbound webhooks
   app.get('/api/v1/webhook-endpoints', async (req) => webhooksSvc.listWebhooks(await ctxFor(req)));

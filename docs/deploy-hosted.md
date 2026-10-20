@@ -1,6 +1,6 @@
 # Deploying as a website (graphics-only, no server to manage)
 
-This puts Broadcast Studio on the internet at a normal web address. Scorers, operators and producers just open
+This puts MatchFrame on the internet at a normal web address. Scorers, operators and producers just open
 the link in a browser. Nobody installs anything.
 
 **Graphics-only** means everything except cloud video: scoring (including the offline scorer app), the control
@@ -79,9 +79,16 @@ SMTP_PASSWORD=...
 MAIL_FROM="Your Studio <no-reply@yourdomain.com>"
 
 # optional: branding and defaults
-PRODUCT_NAME=Broadcast Studio
+PRODUCT_NAME=MatchFrame
+# the inbox the public contact form sends to (the form says "not connected yet" until this is set)
+CONTACT_EMAIL=
+# let search engines index the public website (leave unset on a staging address); read when the image is built
+# SITE_INDEXING=true
 DEFAULT_TIMEZONE=Australia/Brisbane
 ```
+
+If an earlier deployment set `PRODUCT_NAME=Broadcast Studio`, change it to `MatchFrame` or remove it. The public
+website (homepage, features, FAQ, documentation, contact) always says MatchFrame; see `docs/public-site.md`.
 
 The app connects as two restricted database users (`bs_app` with row-level security, `bs_worker` for the
 background jobs). The migration creates them, and their passwords are derived from the Postgres admin password,
