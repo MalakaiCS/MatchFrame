@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { configSchema, withDerivedDefaults } from './index';
+import { configSchema, roleDatabaseUrls, withDerivedDefaults } from './index';
 
 const base = {
   PUBLIC_WEB_URL: 'https://studio.example.org',
@@ -36,5 +36,30 @@ describe('config', () => {
     expect(streaming.success).toBe(false);
     expect(streaming.error?.issues.map((i) => i.path.join('.'))).toEqual(['LIVEKIT_API_SECRET']);
     expect(configSchema.safeParse(withDerivedDefaults({ ...base, LIVEKIT_API_SECRET: 'secret' })).success).toBe(true);
+  });
+
+  it('derives the role connection URLs from DATABASE_ADMIN_URL when they are unset or have no password', () => {
+    const admin = 'postgres://postgres:adminpw@db.internal:5432/railway';
+    const derived = withDerivedDefaults({ ...base, DATABASE_URL: '', DATABASE_WORKER_URL: undefined, DATABASE_ADMIN_URL: admin });
+    const app = new URL(derived.DATABASE_URL!);
+    const worker = new URL(derived.DATABASE_WORKER_URL!);
+    expect([app.username, app.host, app.pathname]).toEqual(['bs_app', 'db.internal:5432', '/railway']);
+    expect(worker.username).toBe('bs_worker');
+    expect(app.password).not.toBe('');
+    expect(app.password).not.toBe(worker.password);
+    expect(app.password).not.toContain('adminpw');
+    // stable across restarts, and the migration sets the same password
+    expect(withDerivedDefaults({ ...base, DATABASE_URL: '', DATABASE_ADMIN_URL: admin }).DATABASE_URL).toBe(derived.DATABASE_URL);
+    expect(roleDatabaseUrls({ DATABASE_ADMIN_URL: admin })!.app.password).toBe(decodeURIComponent(app.password));
+    // an empty password inside the URL (unresolved ${{DB_APP_PASSWORD}}) is filled the same way
+    expect(withDerivedDefaults({ ...base, DATABASE_ADMIN_URL: admin, DATABASE_URL: 'postgres://bs_app:@db.internal:5432/railway' }).DATABASE_URL).toBe(derived.DATABASE_URL);
+  });
+
+  it('keeps explicit role passwords and URLs', () => {
+    const env = { ...base, DATABASE_ADMIN_URL: 'postgres://o:p@h/d', DATABASE_URL: 'postgres://bs_app:s3cret@h/d', DATABASE_WORKER_URL: '', DB_WORKER_PASSWORD: 'w/pw' };
+    const derived = withDerivedDefaults(env);
+    expect(derived.DATABASE_URL).toBe('postgres://bs_app:s3cret@h/d');
+    expect(roleDatabaseUrls(env)!.worker.password).toBe('w/pw');
+    expect(new URL(derived.DATABASE_WORKER_URL!).username).toBe('bs_worker');
   });
 });

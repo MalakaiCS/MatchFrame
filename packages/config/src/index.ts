@@ -1,5 +1,6 @@
 // Server-side configuration. Loads the repository .env (with ${VAR} interpolation) without overriding
 // variables already present in the process environment, then validates with zod.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -142,7 +143,50 @@ export function withDerivedDefaults(env: Record<string, string | undefined>): Re
   out.PUBLIC_WEB_URL ||= platformUrl;
   out.PUBLIC_API_URL ||= out.PUBLIC_WEB_URL;
   out.PUBLIC_REALTIME_URL ||= out.PUBLIC_WEB_URL;
+  const roles = roleDatabaseUrls(env);
+  if (roles) {
+    out.DATABASE_URL = roles.app.url;
+    out.DATABASE_WORKER_URL = roles.worker.url;
+  }
   return out;
+}
+
+/**
+ * Connection URLs and passwords for the least-privilege roles bs_app and bs_worker, as created by the migration.
+ * Each role's password is DB_*_PASSWORD, else the one inside its connection URL, else derived from the admin
+ * password (HMAC), so a hosted deploy needs only DATABASE_ADMIN_URL. A missing URL is the admin URL with the
+ * role's user. Null without DATABASE_ADMIN_URL (the app processes then use their URLs as given).
+ */
+export function roleDatabaseUrls(env: Record<string, string | undefined>) {
+  if (!env.DATABASE_ADMIN_URL) return null;
+  let admin: URL;
+  try {
+    admin = new URL(env.DATABASE_ADMIN_URL);
+  } catch {
+    return null;
+  }
+  const role = (user: string, urlVar: string, pwVar: string) => {
+    let url: URL;
+    try {
+      url = new URL(env[urlVar] || admin.href);
+    } catch {
+      url = new URL(admin.href);
+    }
+    if (!env[urlVar] || url.href === admin.href) {
+      url.username = user;
+      url.password = '';
+    }
+    const password =
+      env[pwVar] ||
+      decodeURIComponent(url.password) ||
+      crypto.createHmac('sha256', decodeURIComponent(admin.password)).update(`broadcast-studio:${user}`).digest('base64url');
+    url.password = encodeURIComponent(password);
+    return { url: url.href, password };
+  };
+  return {
+    app: role('bs_app', 'DATABASE_URL', 'DB_APP_PASSWORD'),
+    worker: role('bs_worker', 'DATABASE_WORKER_URL', 'DB_WORKER_PASSWORD'),
+  };
 }
 
 export const isProduction = () => process.env.NODE_ENV === 'production';

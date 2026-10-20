@@ -40,9 +40,8 @@ port `465`, secure `true`, user `resend`, password = the API key.
    It finds `railway.json` and builds `infra/Dockerfile`.
 2. In the same project: **+ Create** → **Database** → **PostgreSQL**, then again for **Redis**.
 3. Open the app service → **Settings → Networking → Generate domain** (or add your own domain).
-4. Generate the secrets. On any computer with Node 22: `node scripts/gen-secrets.mjs`. It prints five lines;
-   any long random strings work if you'd rather make them yourself (`ENCRYPTION_KEY` must be 32 random bytes,
-   base64-encoded).
+4. Generate the secrets. On any computer with Node 22: `node scripts/gen-secrets.mjs` prints the three lines
+   (`BETTER_AUTH_SECRET`, `MEDIA_TOKEN_SECRET`, `ENCRYPTION_KEY`). Any long random strings work for the first two, and `ENCRYPTION_KEY` must be 32 random bytes, base64-encoded (`openssl rand -base64 32`).
 5. App service → **Variables** → **Raw editor**, paste and fill in:
 
 ```env
@@ -51,16 +50,12 @@ STREAMING_ENABLED=false
 MIGRATE_ON_START=true
 
 # from scripts/gen-secrets.mjs
-DB_APP_PASSWORD=...
-DB_WORKER_PASSWORD=...
 BETTER_AUTH_SECRET=...
 MEDIA_TOKEN_SECRET=...
 ENCRYPTION_KEY=...
 
 # database: Railway fills in the ${{...}} references
 DATABASE_ADMIN_URL=${{Postgres.DATABASE_URL}}
-DATABASE_URL=postgres://bs_app:${{DB_APP_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
-DATABASE_WORKER_URL=postgres://bs_worker:${{DB_WORKER_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
 REDIS_URL=${{Redis.REDIS_URL}}
 
 # Cloudflare R2
@@ -83,6 +78,11 @@ MAIL_FROM="Your Studio <no-reply@yourdomain.com>"
 PRODUCT_NAME=Broadcast Studio
 DEFAULT_TIMEZONE=Australia/Brisbane
 ```
+
+The app connects as two restricted database users (`bs_app` with row-level security, `bs_worker` for the
+background jobs). The migration creates them, and their passwords are derived from the Postgres admin password,
+so there is nothing to set. To choose them yourself, set `DB_APP_PASSWORD` and `DB_WORKER_PASSWORD` (or full
+`DATABASE_URL` / `DATABASE_WORKER_URL`). Do not import `.env.example`: its values are for local development.
 
 The public address is picked up from Railway's generated domain automatically. **If you use your own domain**,
 also set `PUBLIC_WEB_URL=https://studio.yourdomain.com`. Do not set `PUBLIC_REALTIME_URL`: left empty, live

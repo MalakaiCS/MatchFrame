@@ -3,24 +3,15 @@ import path from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
-import { loadDotEnv } from '@bs/config';
+import { loadDotEnv, roleDatabaseUrls } from '@bs/config';
 
 loadDotEnv();
 const adminUrl = process.env.DATABASE_ADMIN_URL;
 if (!adminUrl) throw new Error('DATABASE_ADMIN_URL is required for migrations');
-// The role passwords are the ones the app connects with: DB_*_PASSWORD, else the password inside the connection URL.
-const urlPassword = (url?: string) => {
-  try {
-    return url ? decodeURIComponent(new URL(url).password) : '';
-  } catch {
-    return '';
-  }
-};
-const appPw = process.env.DB_APP_PASSWORD || urlPassword(process.env.DATABASE_URL);
-const workerPw = process.env.DB_WORKER_PASSWORD || urlPassword(process.env.DATABASE_WORKER_URL);
-const missingPw = [!appPw && 'DB_APP_PASSWORD', !workerPw && 'DB_WORKER_PASSWORD'].filter(Boolean);
-if (missingPw.length)
-  throw new Error(`${missingPw.join(' and ')} empty or not set (any long random string; see docs/deploy-hosted.md)`);
+// The role passwords are the ones the app connects with (explicit, inside the URLs, or derived from the admin password).
+const roles = roleDatabaseUrls(process.env)!;
+const appPw = roles.app.password;
+const workerPw = roles.worker.password;
 
 const client = new pg.Client({ connectionString: adminUrl });
 await client.connect();
