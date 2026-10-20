@@ -25,7 +25,7 @@ import { assertCan, assignedScopes, can, hasWideRead } from './authz';
 import { audit } from './audit';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
-import { createOverlay } from './overlays';
+import { createOverlay, enqueuePlanAttached } from './overlays';
 import { enqueueOutbox } from './outbox';
 
 export const matchInput = z.object({
@@ -119,7 +119,7 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
   await t.insert(matchLineups).values({ matchId: m!.id, organisationId: ctx.actor.organisationId, snapshot: lineup as never, teams: { home: teamSnapshot(home), away: teamSnapshot(away) } as never });
   // Every match gets one graphics output, so the OBS link exists from day one; a second output is an explicit add.
   try {
-    await createOverlay(ctx, m!.id, { name: 'Main graphics' }, t);
+    await createOverlay(ctx, m!.id, { name: 'Main graphics' }, t, { defaultPlan: true });
   } catch (e) {
     if (!(e instanceof AppError && e.status === 403)) throw e;
   }
@@ -429,6 +429,7 @@ export async function copyMatchSetup(ctx: Ctx, matchId: string, fromMatchId: str
         .update(overlays)
         .set({ themeProfileVersionId: srcOverlay.themeProfileVersionId, themeVersionId: srcOverlay.themeVersionId, gamePlanVersionId: srcOverlay.gamePlanVersionId, format: srcOverlay.format, updatedAt: new Date() })
         .where(eq(overlays.id, dstOverlay.id));
+    if (srcOverlay && dstOverlay && srcOverlay.gamePlanVersionId && srcOverlay.gamePlanVersionId !== dstOverlay.gamePlanVersionId) await enqueuePlanAttached(t, target.organisationId, dstOverlay.id, target.id, srcOverlay.gamePlanVersionId);
     await audit(t, ctx.actor, 'match.copy_setup', 'match', target.id, { after: { fromMatchId: source.id, overlay: !!(srcOverlay && dstOverlay) } });
     return { ok: true, copiedOverlay: !!(srcOverlay && dstOverlay) };
   };

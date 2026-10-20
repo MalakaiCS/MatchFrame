@@ -23,8 +23,9 @@ export const FOOTBALL_STARTER: GamePlan = {
   freshnessMs: 10_000,
   playlists: [
     {
-      id: 'pre_match', name: 'Pre-match: animated background and match header', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_pre', type: 'phase', phaseTags: ['pre_match'], phaseIds: [] }],
+      // from the moment the match exists (and again at "Pre-match", where the graphics already on air are left alone)
+      id: 'pre_match', name: 'Before the match: animated background and match header', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+      triggers: [{ id: 't_pre', type: 'phase', phaseTags: ['pre_match'], phaseIds: ['scheduled', 'ready'] }],
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [

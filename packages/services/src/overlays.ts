@@ -2,7 +2,7 @@
 import type { Sport } from '@bs/domain';
 import crypto from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { competitions, matchLineups, matchState, matches, mediaAssets, overlayCommands, overlayCredentials, overlayState, overlays, rendererSessions, themeProfiles, themeProfileVersions, venues, withTenant, type Db, type Tx, matchFacts, teams as teamsTable } from '@bs/db';
+import { competitions, gamePlanVersions, gamePlans, matchLineups, matchState, matches, mediaAssets, overlayCommands, overlayCredentials, overlayState, overlays, rendererSessions, themeProfiles, themeProfileVersions, venues, withTenant, type Db, type Tx, matchFacts, teams as teamsTable } from '@bs/db';
 import { getAdapter, type LineupSnapshot, type MatchProjection } from '@bs/domain';
 import {
   OverlayCommandError,
@@ -63,7 +63,28 @@ export const overlayInput = z.object({
   themeProfileId: z.string().uuid().nullable().optional(),
 });
 
-export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<typeof overlayInput>, t0?: Tx) {
+/** The newest published version of the organisation's most recently published plan for a sport, if any. */
+async function latestPublishedPlan(t: Tx, organisationId: string, sport: string): Promise<string | null> {
+  const [v] = await t
+    .select({ id: gamePlanVersions.id })
+    .from(gamePlanVersions)
+    .innerJoin(gamePlans, and(eq(gamePlans.id, gamePlanVersions.gamePlanId), eq(gamePlans.organisationId, gamePlanVersions.organisationId)))
+    .where(and(eq(gamePlanVersions.organisationId, organisationId), eq(gamePlanVersions.sport, sport), eq(gamePlans.status, 'active'), eq(gamePlanVersions.version, gamePlans.currentVersion)))
+    .orderBy(desc(gamePlanVersions.publishedAt))
+    .limit(1);
+  return v?.id ?? null;
+}
+
+/** Tell automation an output has a plan: it catches up with the match's current phase (after commit). */
+export async function enqueuePlanAttached(t: Tx, organisationId: string, overlayId: string, matchId: string, gamePlanVersionId: string) {
+  await enqueueOutbox(t, { organisationId, topic: 'overlay.plan.attached', aggregateType: 'overlay', aggregateId: overlayId, payload: { matchId, gamePlanVersionId } });
+}
+
+/**
+ * `defaultPlan` (the output every match gets when it is created): with no plan on the match or the competition,
+ * use the organisation's latest published plan for the sport, so automation runs without a set-up step.
+ */
+export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<typeof overlayInput>, t0?: Tx, opts: { defaultPlan?: boolean } = {}) {
   assertCan(ctx.actor, 'theme.use');
   const d = overlayInput.parse(input);
   const run = async (t: Tx) => {
@@ -81,11 +102,14 @@ export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<ty
         themeVersionId = pv.themeVersionId;
       }
     }
+    let gamePlanVersionId = m.gamePlanVersionId ?? comp?.gamePlanVersionId ?? null;
+    if (!gamePlanVersionId && opts.defaultPlan) gamePlanVersionId = await latestPublishedPlan(t, ctx.actor.organisationId, m.sport);
     const [o] = await t
       .insert(overlays)
-      .values({ organisationId: ctx.actor.organisationId, matchId, name: d.name, kind: d.kind, themeProfileVersionId: profileVersionId, themeVersionId, gamePlanVersionId: m.gamePlanVersionId ?? comp?.gamePlanVersionId ?? null, publicId: publicId('ov', 12) })
+      .values({ organisationId: ctx.actor.organisationId, matchId, name: d.name, kind: d.kind, themeProfileVersionId: profileVersionId, themeVersionId, gamePlanVersionId, publicId: publicId('ov', 12) })
       .returning();
     await t.insert(overlayState).values({ overlayId: o!.id, organisationId: ctx.actor.organisationId, layers: {} });
+    if (gamePlanVersionId) await enqueuePlanAttached(t, ctx.actor.organisationId, o!.id, matchId, gamePlanVersionId);
     for (const purpose of PURPOSES) {
       const token = overlayToken(ctx.config.MEDIA_TOKEN_SECRET, o!.id, purpose, 1);
       await t.insert(overlayCredentials).values({ organisationId: ctx.actor.organisationId, overlayId: o!.id, purpose, tokenHash: sha256(token), tokenVersion: 1 });
@@ -200,6 +224,7 @@ export async function setOverlayGamePlan(ctx: Ctx, overlayId: string, gamePlanVe
     const { m } = await loadOverlay(ctx, t, overlayId);
     assertCan(ctx.actor, 'competition.write', { matchId: m.id, competitionId: m.competitionId });
     await t.update(overlays).set({ gamePlanVersionId, updatedAt: new Date() }).where(eq(overlays.id, overlayId));
+    if (gamePlanVersionId) await enqueuePlanAttached(t, ctx.actor.organisationId, overlayId, m.id, gamePlanVersionId);
     await audit(t, ctx.actor, 'overlay.game_plan', 'overlay', overlayId, { after: { gamePlanVersionId } });
     return { ok: true };
   });

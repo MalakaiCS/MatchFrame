@@ -2,7 +2,7 @@
 // dispatcher executes due cues through the same overlay command handler as operators. All decisions are
 // written to automation_runs / automation_cues so the control room can explain what fired, waited or skipped.
 import crypto from 'node:crypto';
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import {
   automationCues,
   automationRuns,
@@ -40,7 +40,7 @@ import {
   type TriggerInput,
   type TriggerMatch,
 } from '@bs/domain';
-import { findTemplate, pruneExpired, type Cue, type Layer, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
+import { findTemplate, pruneExpired, validateVariables, type Cue, type Layer, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
 import type { AppConfig } from '@bs/config';
 import { systemActor } from './authz';
 import { AppError, conflict, notFound } from './errors';
@@ -156,6 +156,8 @@ export interface TriggerSource {
   sourceFactId?: string | null;
   sourceFactRevision?: number | null;
   onlyOverlayId?: string;
+  /** replaying the current phase for an output that has just got a plan (see onOutputReady) */
+  catchUp?: boolean;
 }
 
 /** Evaluate one trigger input against every automated overlay of a match. Idempotent via execution keys. */
@@ -205,7 +207,11 @@ async function triggerForOverlay(t: Tx, d: AutomationDeps, ov: typeof overlays.$
     if (plan.defaultScorebug && input.phaseKind === 'play' && st.mode === 'auto' && !st.inhibited && !st.scorebugVisible) await defaultScorebugRun(t, ov, `phase:${input.phaseId}:${input.seq}`, at);
   }
 
-  const { matches: hits, skipped } = matchTriggers(plan, input, guard);
+  const found = matchTriggers(plan, input, guard);
+  // catching up in the middle of a half: only the scorebug (above); a kick-off banner at minute 30 would be wrong
+  const midPlay = !!src.catchUp && input.kind === 'phase' && input.phaseKind === 'play';
+  const hits = midPlay ? [] : found.matches;
+  const skipped = midPlay ? [] : found.skipped;
   const record = async (pl: Playlist, triggerId: string, iteration: string, state: string, reason: string, extra: Partial<typeof automationRuns.$inferInsert> = {}) => {
     const [row] = await t
       .insert(automationRuns)
@@ -313,6 +319,35 @@ export async function onPhaseChanged(d: AutomationDeps, organisationId: string, 
   return processTrigger(d, organisationId, matchId, { kind: 'phase', phaseId, phaseTags: phase.tags, phaseKind: phase.kind, phaseLabel: phase.label, at: now(d), occurredAt, seq });
 }
 
+/**
+ * An output that has just got a plan (created with the match, or a plan chosen on the checklist) catches up with
+ * the match's current phase: a scheduled match shows its pre-match background and header at once, an output set
+ * up during half time starts the half-time boards. Uses the same execution keys as the live phase trigger, so a
+ * phase already handled for this output and plan version never runs twice.
+ */
+export async function onOutputReady(d: AutomationDeps, organisationId: string, overlayId: string) {
+  const x = await withTenant(d.db, { organisationId }, async (t) => {
+    const [r] = await t
+      .select({ o: overlays, m: matches, ms: matchState })
+      .from(overlays)
+      .innerJoin(matches, eq(matches.id, overlays.matchId))
+      .innerJoin(matchState, eq(matchState.matchId, overlays.matchId))
+      .where(and(eq(overlays.id, overlayId), eq(overlays.organisationId, organisationId)));
+    if (!r?.o.gamePlanVersionId || r.o.status !== 'active') return null;
+    const phase = getAdapter(r.m.sport).phase(r.m.rulesConfig as never, r.ms.phase);
+    const [last] = await t
+      .select({ sequence: matchFacts.sequence, occurredAt: matchFacts.occurredAt })
+      .from(matchFacts)
+      .where(and(eq(matchFacts.matchId, r.m.id), eq(matchFacts.organisationId, organisationId), eq(matchFacts.category, 'phase'), eq(matchFacts.voided, false)))
+      .orderBy(desc(matchFacts.sequence))
+      .limit(1);
+    return { matchId: r.m.id, phase, seq: last?.sequence ?? 0, occurredAt: last?.occurredAt.getTime() ?? r.m.createdAt.getTime() };
+  });
+  if (!x?.phase || x.phase.kind === 'terminal') return [];
+  const input: TriggerInput = { kind: 'phase', phaseId: x.phase.id, phaseTags: x.phase.tags, phaseKind: x.phase.kind, phaseLabel: x.phase.label, at: now(d), occurredAt: x.occurredAt, seq: x.seq };
+  return processTrigger(d, organisationId, x.matchId, input, { onlyOverlayId: overlayId, catchUp: true });
+}
+
 /** A corrected or voided fact withdraws graphics that were driven by its earlier revision (never re-celebrates). */
 export async function onFactCorrected(d: AutomationDeps, organisationId: string, factId: string, toRevision: number) {
   return withTenant(d.db, { organisationId }, async (t) => {
@@ -360,6 +395,13 @@ export async function triggerManualPlaylist(ctx: Ctx, d: AutomationDeps, overlay
 
 // ------------------------------------------------------------------ cue dispatcher
 
+/** Same graphic fields, whatever order they were written in. */
+function sameVariables(a: Record<string, unknown>, b: Record<string, unknown>) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) if (JSON.stringify(a[k] ?? null) !== JSON.stringify(b[k] ?? null)) return false;
+  return true;
+}
+
 const SPONSOR_TEMPLATE: Record<string, string> = { full_frame_image: 'builtin:full_frame_media', full_frame_video: 'builtin:full_frame_media', lower_third_banner: 'builtin:sponsor', detached_logo: 'builtin:sponsor', event_partner: 'builtin:sponsor' };
 
 async function executeCue(t: Tx, d: AutomationDeps, fence: Fence, cue: typeof automationCues.$inferSelect, run: typeof automationRuns.$inferSelect): Promise<{ state: string; reason?: string; revision?: number }> {
@@ -381,6 +423,15 @@ async function executeCue(t: Tx, d: AutomationDeps, fence: Fence, cue: typeof au
         const want = p.variables.team === 'away' ? ['away'] : p.variables.team === 'home' ? ['home'] : ['home', 'away'];
         const missing = want.filter((s) => !(snap?.[s as 'home' | 'away'] ?? []).some((x) => x.starter));
         if (missing.length) return { state: 'skipped', reason: `no line-up entered for the ${missing.join(' and ')} team: not shown` };
+      }
+      // a stay-on graphic that is already showing exactly this is left alone, so a later step that asks for it
+      // again (the pre-match background at "Pre-match" after it went up at match creation) does not re-animate it
+      const tpl = findTemplate(p.item.templateKey ?? '');
+      const lay = p.layer ?? tpl?.layer;
+      const cur = lay ? layers[lay] : undefined;
+      if (cue.durationMs == null && tpl && cur && !cur.outAt && cur.templateKey === tpl.key && cur.durationMs == null) {
+        const v = validateVariables(tpl, p.variables);
+        if (v.ok && sameVariables(v.value, cur.variables)) return { state: 'skipped', reason: 'already on air' };
       }
       return { state: 'done', revision: await send({ type: 'TAKE_IN', templateKey: p.item.templateKey!, variables: p.variables, layer: p.layer ?? undefined, durationMs: cue.durationMs, cueId: cue.id }) };
     }

@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { automationCues, automationRuns, createDb, destinations, mediaAssets, withTenant } from '@bs/db';
+import { automationCues, automationRuns, createDb, destinations, mediaAssets, outboxEvents, overlays, withTenant } from '@bs/db';
 import { createFakeProvider } from '@bs/media';
 import { automationSvc, catalog, gamePlansSvc, matchesSvc, overlaysSvc, scoring, sponsorsSvc, streamsSvc, type Ctx } from '@bs/services';
 import type { GamePlan } from '@bs/domain';
@@ -37,14 +37,15 @@ async function newMatch(planDraft: GamePlan = TEST_PLAN) {
   const plan = await gamePlansSvc.createGamePlan(ctx, { name: `Plan ${m.id.slice(0, 4)}`, sport: 'football', fromStarter: false });
   await gamePlansSvc.updateGamePlanDraft(ctx, plan.id, { draft: planDraft });
   const v = await gamePlansSvc.publishGamePlan(ctx, plan.id);
-  const ov = await overlaysSvc.createOverlay(ctx, m.id, { name: 'Main' });
-  await overlaysSvc.setOverlayGamePlan(ctx, ov.id, v.id);
+  // the output every match gets when it is created (it may already carry the organisation's latest plan)
+  const [ov] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m.id)));
+  await overlaysSvc.setOverlayGamePlan(ctx, ov!.id, v.id);
   const send = async (type: string, payload: Record<string, unknown>) => {
     const lease = await scoring.scorerLease(ctx, m.id, { action: 'acquire', deviceId: 'dev-auto' });
     const st = await scoring.getMatchState(ctx, m.id);
     return scoring.handleMatchCommand(ctx, m.id, { commandId: crypto.randomUUID(), expectedStateVersion: st.stateVersion, scorerLeaseVersion: lease!.leaseVersion, deviceId: 'dev-auto', type, payload });
   };
-  return { m, ov, send, versionId: v.id, season, h, a };
+  return { m, ov: ov!, send, versionId: v.id, season, h, a };
 }
 
 async function phase(x: Awaited<ReturnType<typeof newMatch>>, to: string) {
@@ -119,6 +120,48 @@ describe('automation runtime', () => {
     await pump();
     const s = await state(x.ov.id);
     expect(s.layers.lower).toMatchObject({ templateKey: 'builtin:lower_third', source: 'automation', variables: { heading: 'GOAL', subtitle: 'home' } });
+  });
+
+  it('an output that gets a plan catches up with the match phase; Pre-match leaves the same graphics alone; new matches get the latest plan', async () => {
+    const plan: GamePlan = {
+      version: 1, sport: 'football', defaultScorebug: true, freshnessMs: 10_000,
+      playlists: [{
+        id: 'before', name: 'Before the match', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+        triggers: [{ id: 't_before', type: 'phase', phaseTags: ['pre_match'], phaseIds: ['scheduled'] }], guards: [], repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+        items: [
+          { id: 'bd', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 0, durationMs: null },
+          { id: 'hd', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: true }, offsetMs: 600, durationMs: null },
+        ],
+      }],
+    };
+    const x = await newMatch(plan);
+    // choosing the plan queued the catch-up in the same transaction; the worker delivers it after commit
+    const queued = await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, x.ov.id)));
+    expect(queued.length).toBeGreaterThanOrEqual(1);
+    expect((await automationSvc.onOutputReady(W(), A.org.id, x.ov.id))[0]!.started).toEqual(['before']);
+    await pump();
+    T += 1000;
+    await pump();
+    let s = await state(x.ov.id);
+    expect(s.layers.background).toMatchObject({ templateKey: 'builtin:backdrop', outAt: null });
+    expect(s.layers.fullframe).toMatchObject({ templateKey: 'builtin:ident', outAt: null });
+    const first = { bd: s.layers.background!.cueId, hd: s.layers.fullframe!.cueId };
+    // a second delivery of the same event starts nothing
+    expect((await automationSvc.onOutputReady(W(), A.org.id, x.ov.id))[0]!.started).toEqual([]);
+    // "Pre-match" asks for the same graphics: they stay as they are, no second entrance
+    await phase(x, 'pre_match');
+    await pump();
+    T += 1000;
+    await pump();
+    s = await state(x.ov.id);
+    expect({ bd: s.layers.background!.cueId, hd: s.layers.fullframe!.cueId }).toEqual(first);
+    const cues = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(automationCues).where(eq(automationCues.overlayId, x.ov.id)));
+    expect(cues.filter((c) => c.reason === 'already on air')).toHaveLength(2);
+    // a match created now gets this organisation's latest published football plan on its own output, and the catch-up
+    const m2 = await matchesSvc.createMatch(ctx, { competitionId: x.m.competitionId, seasonId: x.season.id, homeTeamId: x.h.id, awayTeamId: x.a.id, kickoffLocal: '2026-11-14 15:00', timezone: 'Australia/Brisbane' });
+    const [own] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m2.id)));
+    expect(own!.gamePlanVersionId).toBe(x.versionId);
+    expect(await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, own!.id)))).toHaveLength(1);
   });
 
   it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {

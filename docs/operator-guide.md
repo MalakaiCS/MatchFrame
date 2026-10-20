@@ -109,7 +109,8 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 
 | Scorer presses | On air |
 | --- | --- |
-| *Pre-match* | the animated background, then the match header on it: Home v Away, the ground and kick-off time, and a countdown to kick-off |
+| *(nothing yet: the match has just been created)* | the animated background, then the match header on it: Home v Away, the ground and kick-off time; the countdown to kick-off appears in the last 99 minutes |
+| *Pre-match* | the same background and header stay up as they are (no second entrance) |
 | *Players entering* | the background and header fade out at once; 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
 | *1st Half* | scorebug in and the "Kick-off" banner |
 | *Half Time* | scorebug out, the animated background back over everything, then the match stats and the match header (score, HALF TIME, "2nd Half in 14:08") taking turns, 45 s each, until the players come back out |
@@ -126,6 +127,12 @@ rules, and stops at zero rather than going negative.
 in-play graphic: scorebug, event straps, lower thirds, ticker and sponsor logo. Only the stinger wipe plays over
 them, and it no longer takes the header off when it runs. Taking the background in clears the small graphics; the
 scorebug is taken off by its own step.
+
+**Automation is on from the start.** A new match's own output takes the plan set on the match or the
+competition; with neither, it takes the organisation's most recently published plan for that sport. The match-day
+checklist shows which plan it is, and *Change plan…* picks another. Whenever an output gets a plan (at creation or
+later), it catches up with the match straight away: before kick-off the background and header go up, during half
+time the half-time boards start, and mid-half only the scorebug comes back (no kick-off banner at minute 30).
 
 **Plans made before this flow.** A published plan keeps its playlists. To switch an existing football plan,
 open it under Automation, press *Use the latest starter flow*, check it in *Rehearse*, and publish. Any phase

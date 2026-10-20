@@ -1,5 +1,5 @@
-// The football starter plan on a real output, in real time: animated background and match header before the
-// match, both cleared when the players walk out, line-ups 15 s later (8 s each, once, only for a team with a
+// The football starter plan on a real output, in real time: animated background and match header from the moment
+// the output has its plan (the match is still "Scheduled"), left untouched at "Pre-match", both cleared when the players walk out, line-ups 15 s later (8 s each, once, only for a team with a
 // line-up), scorebug and kick-off banner at each half, the half-time background cycling stats and the header
 // with the restart countdown every 45 s, the scorebug back 7 s after the second-half walk-out, and 30 s after
 // full time the final score on the header with "Thank you for watching". Captures of the OBS page are kept as
@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { api, freshMatch, login } from './helpers';
 
-type Layer = { templateKey: string; variables: Record<string, unknown>; outAt: number | null };
+type Layer = { cueId: string; templateKey: string; variables: Record<string, unknown>; outAt: number | null };
 type OvState = { scorebugVisible: boolean; layers: Partial<Record<string, Layer>> };
 
 async function call<T>(page: Page, method: string, path: string, body?: unknown): Promise<{ status: number; body: T }> {
@@ -65,11 +65,18 @@ test('football starter flow on a real output, with the real timings', async ({ b
     return Date.now();
   };
 
-  // pre-match: animated background, the match header with the kick-off countdown on top of it
-  await phase('pre_match');
-  await waitFor('background and header on air', (s) => on(s, 'background')?.templateKey === 'builtin:backdrop' && on(s, 'fullframe')?.templateKey === 'builtin:ident', 10_000);
+  // before anyone presses a button: the match is scheduled and the output has its plan, so the animated background
+  // and the match header are already up
+  await waitFor('background and header on air at once', (s) => on(s, 'background')?.templateKey === 'builtin:backdrop' && on(s, 'fullframe')?.templateKey === 'builtin:ident', 15_000);
   await expect(obs.locator('[data-graphic="backdrop"]')).toBeVisible();
   await capture('1-pre-match');
+  const before = await st();
+  // "Pre-match" leaves them exactly as they are (no second entrance)
+  await phase('pre_match');
+  await obs.waitForTimeout(2500);
+  const after = await st();
+  expect(on(after, 'background')?.cueId).toBe(on(before, 'background')?.cueId);
+  expect(on(after, 'fullframe')?.cueId).toBe(on(before, 'fullframe')?.cueId);
 
   // players entering: both go; 15 s later the home line-up for 8 s; "About to start" does not cut it short
   const t0 = await phase('players_entering');

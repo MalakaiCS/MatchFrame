@@ -194,6 +194,15 @@ describe('phase steps and break timing', () => {
     expect(phaseStepCancellations(plan, [run('goal')], step)).toEqual([]);
   });
 
+  it('the football starter shows the background and header from the moment the match exists, and again at Pre-match', () => {
+    const at = (phaseId: string, tags: string[]) => matchTriggers(FOOTBALL_STARTER, { kind: 'phase', phaseId, phaseTags: tags, phaseKind: 'pre', at: 0, occurredAt: 0, seq: 0 }, guard).matches.map((m) => m.playlist.id);
+    expect(at('scheduled', [])).toEqual(['pre_match']);
+    expect(at('pre_match', ['pre_match'])).toEqual(['pre_match']);
+    expect(at('players_entering', ['players_entering'])).toEqual(['players_entering']);
+    const pre = FOOTBALL_STARTER.playlists.find((p) => p.id === 'pre_match')!;
+    expect(pre.items.map((i) => [i.templateKey, i.durationMs])).toEqual([['builtin:backdrop', null], ['builtin:ident', null]]);
+  });
+
   it('records when each phase and the current break began, through live commands and a rebuild from the log', () => {
     const cfg = footballAdapter.defaultConfig;
     let state: Parameters<typeof applyCommand>[2] = { projection: footballAdapter.initialProjection(cfg), clocks: footballAdapter.initialClocks(cfg), sequence: 0 };

@@ -40,6 +40,13 @@ export function buildSubscribers(ctx: WorkerCtx): RelayOptions['subscribers'] {
       },
     },
     {
+      name: 'automation.outputs',
+      topics: ['overlay.plan.attached'],
+      handle: async (e) => {
+        await automationSvc.onOutputReady(d, e.organisationId, e.aggregateId);
+      },
+    },
+    {
       name: 'automation.corrections',
       topics: ['match.fact.corrected'],
       handle: async (e) => {
