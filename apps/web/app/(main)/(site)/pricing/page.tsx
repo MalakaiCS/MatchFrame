@@ -1,7 +1,6 @@
-import { Check } from 'lucide-react';
 import { OPTIONAL_SERVICES } from '@bs/domain';
 import { PricingPlans } from '@/components/site/pricing-plans';
-import { Badge, ButtonLink, Card, H2, Lead, PageIntro, Section } from '@/components/site/ui';
+import { Badge, ButtonLink, H2, Lead, PageIntro, Section } from '@/components/site/ui';
 import { siteMetadata } from '@/lib/site-meta';
 
 export const metadata = siteMetadata({
@@ -54,22 +53,7 @@ export default function PricingPage() {
       </Section>
 
       <Section>
-        <H2>Hosted or self-hosted</H2>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <Card>
-            <h3 className="font-brand text-xl font-semibold text-white">Hosted plans</h3>
-            <p className="mt-3 text-sm leading-relaxed text-muted">The plans above. We run MatchFrame for you: open it in a browser, with nothing to install. Scoring, graphics, automation and sponsors run on the hosted service, and your stream goes out from OBS on your own computer.</p>
-            <ul className="mt-4 space-y-2 text-sm text-white/90">
-              {['We look after the servers, backups and updates', 'Sign in from any browser; scorers use their phones'].map((x) => <li key={x} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-cyan" aria-hidden />{x}</li>)}
-            </ul>
-          </Card>
-          <Card>
-            <div id="self-hosting" className="flex scroll-mt-24 items-center gap-3"><h3 className="font-brand text-xl font-semibold text-white">Self-hosted</h3><Badge>Terms to come</Badge></div>
-            <p className="mt-3 text-sm leading-relaxed text-muted">You run your own MatchFrame deployment on servers you control: the app, a PostgreSQL database, Redis, file storage and an email service, plus the media server for cloud production. You pay your hosting provider and look after backups, updates and security.</p>
-            <p className="mt-4 text-xs text-muted">Self-hosting terms are not published yet. Contact us before you plan a deployment.</p>
-          </Card>
-        </div>
-        <div className="mt-10 flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3">
           <ButtonLink href="/register">Get started</ButtonLink>
           <ButtonLink href="/contact" variant="secondary">Talk to us about League / Enterprise</ButtonLink>
           <ButtonLink href="/faq#cost" variant="ghost">Pricing questions</ButtonLink>

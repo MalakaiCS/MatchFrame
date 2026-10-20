@@ -40,7 +40,7 @@ The site works without these, but each one controls a claim we do not make yet.
 | Online payment | Settings → Plan | Needs `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and a Stripe price for each plan and period (`STRIPE_PRICE_STARTER_MONTHLY`, `_YEARLY`, `CLUB_…`, `STUDIO_…`). League / Enterprise is quoted. |
 | Cloud video production ($10 per production hour) | `/pricing` optional services | Marked "Coming soon": the hosted service runs without the media server, and 1080p30 has not been measured (A51 showed the test host could not carry two 720p programmes). |
 | "Published business hours" for Studio priority support | Studio plan card | No business hours are published anywhere yet. |
-| Self-hosting terms (licence, access to the code) | `/pricing#self-hosting`, FAQ "What does self-hosting mean?" | "Terms not published yet; contact us". |
+| Self-hosting terms (licence, access to the code) | FAQ "What does self-hosting mean?" | "Terms not published yet; contact us". |
 | Who owns uploaded footage and graphics | Not on the site | The FAQ question is held back until there are approved terms. |
 | Privacy policy and terms of service | Not on the site | The contact page says what happens to a message (emailed to the team, not stored, no mailing list). Approved policy pages are still needed before selling the service. |
 | Support model and response times | `/contact`, FAQ "How do I get help on matchday?" | No response times are promised; no live matchday support. |
