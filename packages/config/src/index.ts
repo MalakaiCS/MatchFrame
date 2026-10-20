@@ -116,7 +116,13 @@ export function getConfig(): AppConfig {
   const r = configSchema.safeParse(withDerivedDefaults(process.env));
   if (!r.success) {
     const missing = r.error.issues.filter((i) => process.env[i.path.join('.')] === undefined).map((i) => i.path.join('.'));
-    const invalid = r.error.issues.map((i) => i.path.join('.')).filter((f) => !missing.includes(f));
+    const invalid = r.error.issues
+      .filter((i) => !missing.includes(i.path.join('.')))
+      .map((i) => {
+        const v = process.env[i.path.join('.')] ?? '';
+        const why = i.code === 'too_small' ? `${v.length} characters, needs at least ${String(i.minimum)}` : i.message;
+        return `${i.path.join('.')} (${/^(\.\.\.|__GENERATE__)$/.test(v) ? 'still a placeholder' : why})`;
+      });
     const parts = [missing.length && `missing: ${missing.join(', ')}`, invalid.length && `invalid: ${invalid.join(', ')}`];
     const hint = missing.includes('PUBLIC_WEB_URL')
       ? ' PUBLIC_WEB_URL comes from the platform domain (Railway: Settings → Networking → Generate domain) or set it.'
