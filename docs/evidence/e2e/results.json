@@ -50,7 +50,7 @@
       }
     ],
     "shard": null,
-    "updateSnapshots": "changed",
+    "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
     "version": "1.56.1",
     "workers": 1,
@@ -79,12 +79,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 8719,
+                  "duration": 5553,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:40:38.594Z",
+                  "startTime": "2026-10-20T09:47:44.694Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -106,6 +106,108 @@
       "line": 0,
       "specs": [
         {
+          "title": "broadcast look: every football graphic",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31249,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:47:50.455Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-d3b15f7fd98e45e01e1e",
+          "file": "visual.spec.ts",
+          "line": 38,
+          "column": 3
+        },
+        {
+          "title": "minimal look: every football graphic",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 30679,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:48:21.775Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-d4ef3d635eaef40a3f87",
+          "file": "visual.spec.ts",
+          "line": 38,
+          "column": 3
+        },
+        {
+          "title": "club look: every football graphic",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31658,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:48:52.499Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-b76d5f160e8b5e1af1b6",
+          "file": "visual.spec.ts",
+          "line": 38,
+          "column": 3
+        },
+        {
           "title": "premier look: every football graphic",
           "ok": true,
           "tags": [],
@@ -121,354 +223,14 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 37443,
+                  "duration": 32769,
                   "errors": [],
-                  "stdout": [
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-scorebug.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-ident.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-kick-off-period-banner.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-break-final-score.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-holding-slate.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-fixtures-and-results.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-summary.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-head-to-head-and-form.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-information-strap.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-team-lineup.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-formation.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-goal-score-event.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-card.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-substitution.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-shoot-out-tracker.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-lower-third.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-card.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-of-the-match.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-statistics.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-league-table.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-live-statistic.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-top-scorers.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-sponsor-graphic.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-full-frame-media.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-ticker.png, writing actual.\n"
-                    },
-                    {
-                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-stinger-wipe.png, writing actual.\n"
-                    }
-                  ],
+                  "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:40:48.009Z",
+                  "startTime": "2026-10-20T09:49:24.227Z",
                   "annotations": [],
-                  "attachments": [
-                    {
-                      "name": "premier-football-scorebug-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-scorebug.png"
-                    },
-                    {
-                      "name": "premier-football-scorebug-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-scorebug-actual.png"
-                    },
-                    {
-                      "name": "premier-football-match-ident-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-ident.png"
-                    },
-                    {
-                      "name": "premier-football-match-ident-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-ident-actual.png"
-                    },
-                    {
-                      "name": "premier-football-kick-off-period-banner-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-kick-off-period-banner.png"
-                    },
-                    {
-                      "name": "premier-football-kick-off-period-banner-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-kick-off-period-banner-actual.png"
-                    },
-                    {
-                      "name": "premier-football-break-final-score-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-break-final-score.png"
-                    },
-                    {
-                      "name": "premier-football-break-final-score-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-break-final-score-actual.png"
-                    },
-                    {
-                      "name": "premier-football-holding-slate-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-holding-slate.png"
-                    },
-                    {
-                      "name": "premier-football-holding-slate-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-holding-slate-actual.png"
-                    },
-                    {
-                      "name": "premier-football-fixtures-and-results-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-fixtures-and-results.png"
-                    },
-                    {
-                      "name": "premier-football-fixtures-and-results-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-fixtures-and-results-actual.png"
-                    },
-                    {
-                      "name": "premier-football-match-summary-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-summary.png"
-                    },
-                    {
-                      "name": "premier-football-match-summary-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-summary-actual.png"
-                    },
-                    {
-                      "name": "premier-football-head-to-head-and-form-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-head-to-head-and-form.png"
-                    },
-                    {
-                      "name": "premier-football-head-to-head-and-form-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-head-to-head-and-form-actual.png"
-                    },
-                    {
-                      "name": "premier-football-match-information-strap-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-information-strap.png"
-                    },
-                    {
-                      "name": "premier-football-match-information-strap-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-information-strap-actual.png"
-                    },
-                    {
-                      "name": "premier-football-team-lineup-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-team-lineup.png"
-                    },
-                    {
-                      "name": "premier-football-team-lineup-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-team-lineup-actual.png"
-                    },
-                    {
-                      "name": "premier-football-formation-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-formation.png"
-                    },
-                    {
-                      "name": "premier-football-formation-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-formation-actual.png"
-                    },
-                    {
-                      "name": "premier-football-goal-score-event-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-goal-score-event.png"
-                    },
-                    {
-                      "name": "premier-football-goal-score-event-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-goal-score-event-actual.png"
-                    },
-                    {
-                      "name": "premier-football-card-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-card.png"
-                    },
-                    {
-                      "name": "premier-football-card-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-card-actual.png"
-                    },
-                    {
-                      "name": "premier-football-substitution-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-substitution.png"
-                    },
-                    {
-                      "name": "premier-football-substitution-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-substitution-actual.png"
-                    },
-                    {
-                      "name": "premier-football-shoot-out-tracker-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-shoot-out-tracker.png"
-                    },
-                    {
-                      "name": "premier-football-shoot-out-tracker-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-shoot-out-tracker-actual.png"
-                    },
-                    {
-                      "name": "premier-football-lower-third-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-lower-third.png"
-                    },
-                    {
-                      "name": "premier-football-lower-third-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-lower-third-actual.png"
-                    },
-                    {
-                      "name": "premier-football-player-card-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-card.png"
-                    },
-                    {
-                      "name": "premier-football-player-card-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-player-card-actual.png"
-                    },
-                    {
-                      "name": "premier-football-player-of-the-match-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-of-the-match.png"
-                    },
-                    {
-                      "name": "premier-football-player-of-the-match-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-player-of-the-match-actual.png"
-                    },
-                    {
-                      "name": "premier-football-match-statistics-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-statistics.png"
-                    },
-                    {
-                      "name": "premier-football-match-statistics-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-statistics-actual.png"
-                    },
-                    {
-                      "name": "premier-football-league-table-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-league-table.png"
-                    },
-                    {
-                      "name": "premier-football-league-table-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-league-table-actual.png"
-                    },
-                    {
-                      "name": "premier-football-live-statistic-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-live-statistic.png"
-                    },
-                    {
-                      "name": "premier-football-live-statistic-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-live-statistic-actual.png"
-                    },
-                    {
-                      "name": "premier-football-top-scorers-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-top-scorers.png"
-                    },
-                    {
-                      "name": "premier-football-top-scorers-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-top-scorers-actual.png"
-                    },
-                    {
-                      "name": "premier-football-sponsor-graphic-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-sponsor-graphic.png"
-                    },
-                    {
-                      "name": "premier-football-sponsor-graphic-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-sponsor-graphic-actual.png"
-                    },
-                    {
-                      "name": "premier-football-full-frame-media-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-full-frame-media.png"
-                    },
-                    {
-                      "name": "premier-football-full-frame-media-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-full-frame-media-actual.png"
-                    },
-                    {
-                      "name": "premier-football-ticker-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-ticker.png"
-                    },
-                    {
-                      "name": "premier-football-ticker-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-ticker-actual.png"
-                    },
-                    {
-                      "name": "premier-football-stinger-wipe-expected.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-stinger-wipe.png"
-                    },
-                    {
-                      "name": "premier-football-stinger-wipe-actual.png",
-                      "contentType": "image/png",
-                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-stinger-wipe-actual.png"
-                    }
-                  ]
+                  "attachments": []
                 }
               ],
               "status": "expected"
@@ -476,7 +238,245 @@
           ],
           "id": "8324bb52c49185e48ff4-cbb3d7c644719566770f",
           "file": "visual.spec.ts",
-          "line": 36,
+          "line": 38,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: vertical (9:16) and venue formats",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15485,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:49:57.064Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-1256327fe2ee17605fbf",
+          "file": "visual.spec.ts",
+          "line": 46,
+          "column": 3
+        },
+        {
+          "title": "premier look: vertical (9:16) and venue formats",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 16339,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:50:12.609Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-a43e9be4571cffd2ec75",
+          "file": "visual.spec.ts",
+          "line": 46,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: basketball sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10807,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:50:29.096Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-e4a0fe71b833f31bfe9b",
+          "file": "visual.spec.ts",
+          "line": 56,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: netball sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11500,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:50:40.026Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-c5e8c35a198ad369e1b2",
+          "file": "visual.spec.ts",
+          "line": 56,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: rugby_league sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 12044,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:50:51.607Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-9ca0bb1439bd452e18c9",
+          "file": "visual.spec.ts",
+          "line": 56,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: afl sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 12872,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:51:03.740Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-bd54eed948a22c5c5033",
+          "file": "visual.spec.ts",
+          "line": 56,
+          "column": 3
+        },
+        {
+          "title": "broadcast look: hockey sport-specific graphics",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14343,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T09:51:16.788Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8324bb52c49185e48ff4-d1af367742c42efe0ed8",
+          "file": "visual.spec.ts",
+          "line": 56,
           "column": 3
         }
       ]
@@ -484,9 +484,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-20T09:40:37.346Z",
-    "duration": 48418.37,
-    "expected": 2,
+    "startTime": "2026-10-20T09:47:43.764Z",
+    "duration": 229034.22,
+    "expected": 12,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0
