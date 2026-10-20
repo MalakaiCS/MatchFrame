@@ -58,6 +58,461 @@
   },
   "suites": [
     {
+      "title": "automation-flow.spec.ts",
+      "file": "automation-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "football starter flow on a real output, with the real timings",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 125896,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:40:38.933Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "62e8ef9c1a07f2130ddd-1de6d5e06cb8d6111f4c",
+          "file": "automation-flow.spec.ts",
+          "line": 24,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "features.spec.ts",
+      "file": "features.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "scorer enters line-ups from the phone and finds the preferences sheet",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2002,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:42:45.119Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-69de1b94a921b2878947",
+          "file": "features.spec.ts",
+          "line": 7,
+          "column": 1
+        },
+        {
+          "title": "run sheet, activity, match information and the public match centre with its feed",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3721,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:42:47.142Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-49600f178c5a6bd3418b",
+          "file": "features.spec.ts",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "control room: export dialog, run sheet tab and presence without a second operator",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2930,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:42:50.889Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-474be507887b2497c4c8",
+          "file": "features.spec.ts",
+          "line": 86,
+          "column": 1
+        },
+        {
+          "title": "producer board, competition tables, round creation and the status page",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5376,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:42:53.861Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-7c32b33e95de7c55b1fa",
+          "file": "features.spec.ts",
+          "line": 103,
+          "column": 1
+        },
+        {
+          "title": "automation editor: conditions and approval per playlist",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3729,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:42:59.275Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-90edc139afc6995f6a32",
+          "file": "features.spec.ts",
+          "line": 133,
+          "column": 1
+        },
+        {
+          "title": "settings: plan, branding, integrations, notifications, security and backups tabs",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2688,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:03.051Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85b3cc1667c06e9efc8f-55defd70890a4230c603",
+          "file": "features.spec.ts",
+          "line": 161,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "graphics-only.spec.ts",
+      "file": "graphics-only.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "graphics-only hides streaming and keeps overlays working",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2900,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:05.804Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "85580dadacb726dcb7d9-a0d8b12f8c366c7578fa",
+          "file": "graphics-only.spec.ts",
+          "line": 8,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "graphics.spec.ts",
+      "file": "graphics.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "preview, take to air, refresh, transparency and rotation (A17, A18, A20, A36)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11861,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "buffer": ""
+                    },
+                    {
+                      "buffer": ""
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:08.751Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b597a74853af235c8d55-bc975c467bcdf89b6a54",
+          "file": "graphics.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "scorer.spec.ts",
+      "file": "scorer.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "running clock is anchor-derived and survives a refresh (A13)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9950,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:20.675Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fe7277dd26f68d2f7004-766f1943fbab3631d9b8",
+          "file": "scorer.spec.ts",
+          "line": 6,
+          "column": 1
+        },
+        {
+          "title": "offline goal survives a refresh and applies exactly once after reconnect (A14)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5745,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:30.681Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fe7277dd26f68d2f7004-d3df1835720fdfcfc2bf",
+          "file": "scorer.spec.ts",
+          "line": 30,
+          "column": 1
+        },
+        {
+          "title": "producer takes over while the scorer is offline; stale offline actions need review (A15)",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8157,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-20T11:43:36.481Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fe7277dd26f68d2f7004-24c0041acbc3e1568d6d",
+          "file": "scorer.spec.ts",
+          "line": 54,
+          "column": 1
+        }
+      ]
+    },
+    {
       "title": "themes.spec.ts",
       "file": "themes.spec.ts",
       "column": 0,
@@ -79,12 +534,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5553,
+                  "duration": 9043,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:47:44.694Z",
+                  "startTime": "2026-10-20T11:43:44.704Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -121,12 +576,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 31249,
+                  "duration": 64803,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:47:50.455Z",
+                  "startTime": "2026-10-20T11:43:53.822Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -155,12 +610,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 30679,
+                  "duration": 61283,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:48:21.775Z",
+                  "startTime": "2026-10-20T11:44:58.763Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -189,12 +644,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 31658,
+                  "duration": 69200,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:48:52.499Z",
+                  "startTime": "2026-10-20T11:46:00.164Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -223,12 +678,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 32769,
+                  "duration": 72218,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:49:24.227Z",
+                  "startTime": "2026-10-20T11:47:09.531Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -257,12 +712,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 15485,
+                  "duration": 27930,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:49:57.064Z",
+                  "startTime": "2026-10-20T11:48:21.897Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -291,12 +746,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 16339,
+                  "duration": 30053,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:50:12.609Z",
+                  "startTime": "2026-10-20T11:48:49.935Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -325,12 +780,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 10807,
+                  "duration": 14899,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:50:29.096Z",
+                  "startTime": "2026-10-20T11:49:20.165Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -359,12 +814,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11500,
+                  "duration": 18810,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:50:40.026Z",
+                  "startTime": "2026-10-20T11:49:35.182Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -393,12 +848,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 12044,
+                  "duration": 19220,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:50:51.607Z",
+                  "startTime": "2026-10-20T11:49:54.150Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -427,12 +882,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 12872,
+                  "duration": 21286,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:51:03.740Z",
+                  "startTime": "2026-10-20T11:50:13.530Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -461,12 +916,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 14343,
+                  "duration": 25420,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T09:51:16.788Z",
+                  "startTime": "2026-10-20T11:50:34.910Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -484,9 +939,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-20T09:47:43.764Z",
-    "duration": 229034.22,
-    "expected": 12,
+    "startTime": "2026-10-20T11:40:37.598Z",
+    "duration": 626090.756,
+    "expected": 24,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

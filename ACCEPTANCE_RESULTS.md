@@ -94,6 +94,23 @@ where a pure function exists, e.g. the Stripe signature check); a 1080p streamin
 labelled unmeasured); WebM export beyond opening the dialog (the PNG path is exercised manually only); an
 external accessibility audit. Evidence: `docs/evidence/e2e/results.json` (JSON reporter of the run above).
 
+## Football automation flow (2026-10-20)
+
+The football starter plan rebuilt to the requested match-day order (operator guide, *What the football starter
+plan does on its own*). Same environment, production build through the single-port launcher, graphics-only mode.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: rehearsal of the new plan (line-ups once and not cut by *About to start*, 15 s / 8 s / 8 s timing, half-time boards alternating 45 s, scorebug 7 s after the second walk-out, thank-you board 30 s after full time); phase-step option; phase and break timestamps through commands and a log rebuild; match header wording and restart countdown; layer order, background keeps the board, stinger keeps the header, slate still clears boards | 95 tests, 16 files, all pass |
+| `pnpm test:db`: a line-up board goes to air for the side with a line-up and is skipped with its reason for the side without; the walk-out playlist survives *About to start* | 52 tests, 6 files, all pass |
+| `tests/e2e/specs/automation-flow.spec.ts`: one match driven through every phase on a real output in real time, overlay state polled and the OBS page captured (`docs/evidence/e2e/flow-*.png`) | pass on the final build (2.1 min): every step went to air at its time; the away board never appeared |
+| Visual regression: new baselines for *Match header* and *Animated background*; 20 orphaned baselines removed (the old *Match ident* names and the cards pushed past the six-card cap) | Before regenerating, every existing baseline still matched; 158 baselines, 11 specs, all pass on each of three later runs, the last on the final build |
+| Full `pnpm test:e2e` on the final build | 24 tests, 24 pass, 0 skipped (`docs/evidence/e2e/results.json`) |
+
+Not claimed: the other five sports' starter plans are unchanged; plans published before this change keep their
+playlists until *Use the latest starter flow* is applied and the plan is republished.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
