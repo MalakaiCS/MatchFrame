@@ -6,9 +6,10 @@
 # by scripts/start-hosted.mjs (hosted platforms: one container, one port, migrations with MIGRATE_ON_START=true).
 FROM node:22.22.0-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-# Optional: behind a TLS-intercepting proxy, pass --secret id=extra_ca,src=<bundle> and HTTPS_PROXY build args.
-RUN --mount=type=secret,id=extra_ca,required=false \
-  if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
+# Optional: behind a TLS-intercepting proxy, pass --build-arg EXTRA_CA_PEM="$(cat <bundle>)" and HTTPS_PROXY.
+# (No BuildKit secret mounts: Railway's builder supports only cache mounts. The CA bundle is public, not a secret.)
+ARG EXTRA_CA_PEM=
+RUN if [ -n "$EXTRA_CA_PEM" ]; then printf '%s\n' "$EXTRA_CA_PEM" > /extra-ca.pem; export NODE_EXTRA_CA_CERTS=/extra-ca.pem; fi; \
   corepack enable && corepack prepare pnpm@10.28.0 --activate
 WORKDIR /app
 COPY . .
@@ -16,8 +17,7 @@ ARG PUBLIC_REALTIME_URL=
 ARG PUBLIC_LIVEKIT_URL=ws://localhost:7880
 ARG PUBLIC_RTMP_URL=rtmp://localhost:1935/live
 ENV PUBLIC_REALTIME_URL=$PUBLIC_REALTIME_URL PUBLIC_LIVEKIT_URL=$PUBLIC_LIVEKIT_URL PUBLIC_RTMP_URL=$PUBLIC_RTMP_URL
-RUN --mount=type=secret,id=extra_ca,required=false \
-  if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
+RUN if [ -f /extra-ca.pem ]; then export NODE_EXTRA_CA_CERTS=/extra-ca.pem; fi; \
   rm -f .env && pnpm install --frozen-lockfile && pnpm -r --filter "./apps/*" run build
 
 FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg

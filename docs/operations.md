@@ -47,7 +47,7 @@ docker compose -f infra/docker-compose.yml --env-file .env --profile app up -d
 ```
 
 `NEXT_PUBLIC_*` values are compiled into the web bundle: rebuild the image when public URLs change.
-Behind a TLS-intercepting proxy pass `--secret id=extra_ca,src=<ca-bundle>` and `--build-arg HTTPS_PROXY=…`.
+Behind a TLS-intercepting proxy pass `--build-arg EXTRA_CA_PEM="$(cat <ca-bundle>)"` and `--build-arg HTTPS_PROXY=…`.
 Put a reverse proxy in front: `/` → web, `/api` and `/socket.io` → api (WebSocket upgrade), and expose the
 LiveKit signalling port and RTMP ingest separately. Health: `GET /api/v1/health/live`, `/api/v1/health/ready`.
 
