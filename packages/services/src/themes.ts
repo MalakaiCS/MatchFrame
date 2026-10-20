@@ -48,13 +48,13 @@ async function latestThemeVersion(t: Tx, key: string) {
     .where(and(eq(themes.key, key), isNull(themes.organisationId)))
     .orderBy(desc(themeVersions.version))
     .limit(1);
-  if (!row) throw invalid('Unknown theme', [{ field: 'themeKey', message: 'Choose Minimal, Broadcast or Club' }]);
+  if (!row) throw invalid('Unknown theme', [{ field: 'themeKey', message: 'Choose Minimal, Broadcast, Club or Premier' }]);
   return row;
 }
 
 export const profileInput = z.object({
   name: z.string().trim().min(1).max(80),
-  themeKey: z.enum(['minimal', 'broadcast', 'club']),
+  themeKey: z.enum(['minimal', 'broadcast', 'club', 'premier']),
   competitionId: z.string().uuid().nullable().optional(),
   config: profileConfigSchema.optional(),
   publish: z.boolean().optional(),
@@ -90,7 +90,7 @@ export async function updateProfileDraft(ctx: Ctx, id: string, input: { name?: s
     if (!p) throw notFound('Theme profile');
     const draft = p.draft as { themeKey: string; config: ProfileConfig };
     const next = {
-      themeKey: input.themeKey ? z.enum(['minimal', 'broadcast', 'club']).parse(input.themeKey) : draft.themeKey,
+      themeKey: input.themeKey ? z.enum(['minimal', 'broadcast', 'club', 'premier']).parse(input.themeKey) : draft.themeKey,
       config: input.config ? { ...draft.config, ...profileConfigSchema.parse(input.config) } : draft.config,
     };
     // Editing a draft never changes a running broadcast: only publish + explicit apply do.

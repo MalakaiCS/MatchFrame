@@ -35,7 +35,7 @@ export interface RenderPlayer {
 }
 
 export interface ThemeConfig {
-  themeKey: 'minimal' | 'broadcast' | 'club';
+  themeKey: 'minimal' | 'broadcast' | 'club' | 'premier';
   primary: string;
   secondary: string;
   accent: string;
@@ -202,6 +202,8 @@ export const DEFAULT_THEMES: Record<ThemeConfig['themeKey'], ThemeConfig> = {
   minimal: { themeKey: 'minimal', primary: '#F3F6FB', secondary: '#0B1220', accent: '#3EA6FF', text: '#0B1220', panel: '#F3F6FB', font: 'Inter Variable', radius: 2, motion: 'subtle', entranceMs: 220, exitMs: 200, safeArea: 0.05 },
   broadcast: { themeKey: 'broadcast', primary: '#3EA6FF', secondary: '#0B1220', accent: '#FFCE66', text: '#F3F6FB', panel: '#131F32', font: 'Inter Variable', radius: 4, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05 },
   club: { themeKey: 'club', primary: '#55D99D', secondary: '#0B1220', accent: '#FFFFFF', text: '#FFFFFF', panel: '#1C2C43', font: 'Inter Variable', radius: 18, motion: 'subtle', entranceMs: 280, exitMs: 240, safeArea: 0.05 },
+  // top-flight football broadcast look: deep purple, hot magenta, electric teal, white paper, condensed uppercase type
+  premier: { themeKey: 'premier', primary: '#E90052', secondary: '#38003C', accent: '#04F5FF', text: '#38003C', panel: '#FFFFFF', font: "'Oswald Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 6, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
 };
 
 export function playerIndex(lineup: LineupSnapshot, photo: (assetId: string | null | undefined) => string | null): Record<string, RenderPlayer> {

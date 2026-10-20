@@ -2,7 +2,7 @@
 
 A self-hostable web application for live sports production: tenant-isolated competitions and fixtures,
 mobile live scoring (football and basketball) that keeps working offline, a shared broadcast graphics
-renderer with three original themes, a production desk and transparent OBS browser sources, durable game-plan
+renderer with four original themes, a production desk and transparent OBS browser sources, durable game-plan
 automation, sponsor campaigns with render-verified delivery reports, cloud programme/clean streaming through
 LiveKit to up to three RTMP destinations, authorised HLS preview, recordings, automatic highlights, a clip
 editor with 16:9/9:16/1:1 exports, compilations and share links.

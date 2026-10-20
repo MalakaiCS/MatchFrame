@@ -56,8 +56,10 @@ records.
 
 ## Looks
 
-Themes → a look is one of three styles (broadcast, minimal, club) with the organisation's colours, logo and
-team colours, previewed on real graphics. A look also sets the **scorebug variant and position**, the **clock
+Themes → a look is one of four styles (broadcast, minimal, club, premier) with the organisation's colours, logo and
+team colours, previewed on real graphics. **Premier** is the top-flight football broadcast look: deep purple panels,
+hot magenta kickers, electric teal accents, white paper for the words and condensed uppercase type on a shared
+slant. It is an original design in that spirit and carries no league marks; a club can retint it like any look. A look also sets the **scorebug variant and position**, the **clock
 style** (hide seconds; added time as "+3" or a label), **wording** overrides for on-air labels (bilingual
 competitions), **audio stings** on goals and cards (the OBS browser source captures them) and a **custom font**
 uploaded through the asset library. When two kits are too close in colour the away side switches to its

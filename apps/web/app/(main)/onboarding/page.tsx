@@ -16,6 +16,7 @@ const THEMES = [
   { key: 'minimal', name: 'Minimal', desc: 'Flat, quiet, high legibility.' },
   { key: 'broadcast', name: 'Broadcast', desc: 'Angled panels and motion accents.' },
   { key: 'club', name: 'Club', desc: 'Team colours forward, rounded badges.' },
+  { key: 'premier', name: 'Premier', desc: 'Purple, magenta and teal; the top-flight football look.' },
 ];
 
 interface Progress {

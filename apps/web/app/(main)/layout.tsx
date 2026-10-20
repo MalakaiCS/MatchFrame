@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/oswald';
 import '../globals.css';
 import { Providers } from '@/lib/providers';
 

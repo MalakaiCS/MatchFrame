@@ -5,7 +5,7 @@ test('theme page previews every graphic and plays entrance and exit', async ({ b
   const { page } = await login(browser);
   await page.goto('/app/themes');
   await page.getByText('View graphics and animations').first().click();
-  await expect(page).toHaveURL(/\/app\/themes\/(minimal|broadcast|club)$/);
+  await expect(page).toHaveURL(/\/app\/themes\/(minimal|broadcast|club|premier)$/);
 
   const stage = page.getByTestId('theme-preview-stage');
   const cards = page.locator('button[aria-pressed]');

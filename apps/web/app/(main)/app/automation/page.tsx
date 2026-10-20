@@ -291,7 +291,7 @@ function RehearsalView({ id, sport, names }: { id: string; sport: Sport; names: 
   const [speed, setSpeed] = useState(5);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [theme, setTheme] = useState<'broadcast' | 'minimal' | 'club'>('broadcast');
+  const [theme, setTheme] = useState<'broadcast' | 'minimal' | 'club' | 'premier'>('broadcast');
   const last = useRef(0);
   const run = async () => {
     setErr(null);
@@ -328,7 +328,7 @@ function RehearsalView({ id, sport, names }: { id: string; sport: Sport; names: 
         <StatusPill tone="warning">Rehearsal</StatusPill>
         <span className="text-xs text-muted">Plays the draft against a made-up {sport} match (pre-match, kick-off, a goal, a card, half time, second half, full time). Nothing goes to any output.</span>
         <div className="ml-auto flex items-center gap-2">
-          <NativeSelect aria-label="Look" className="w-auto" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}><option value="broadcast">Broadcast look</option><option value="minimal">Minimal look</option><option value="club">Club look</option></NativeSelect>
+          <NativeSelect aria-label="Look" className="w-auto" value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}><option value="broadcast">Broadcast look</option><option value="minimal">Minimal look</option><option value="club">Club look</option><option value="premier">Premier look</option></NativeSelect>
           <NativeSelect aria-label="Speed" className="w-auto" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>{SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}</NativeSelect>
           {r ? <Button size="sm" variant="secondary" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause className="size-4" /> : <Play className="size-4" />}</Button> : null}
           <Button variant="primary" className="whitespace-nowrap" onClick={() => void run()}>{r ? 'Rehearse again' : 'Rehearse the draft'}</Button>

@@ -84,7 +84,7 @@ export default function ThemesPage() {
         footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" disabled={!form.name} loading={create.isPending} onClick={() => create.mutate(undefined, { onSuccess: () => setOpen(false) })}>Create & publish</Button></>}>
         <div className="grid gap-3">
           <Field label="Name" htmlFor="pn"><Input id="pn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <Field label="Theme" htmlFor="pt"><NativeSelect id="pt" value={form.themeKey} onChange={(e) => setForm({ ...form, themeKey: e.target.value })}><option value="minimal">Minimal</option><option value="broadcast">Broadcast</option><option value="club">Club</option></NativeSelect></Field>
+          <Field label="Theme" htmlFor="pt"><NativeSelect id="pt" value={form.themeKey} onChange={(e) => setForm({ ...form, themeKey: e.target.value })}><option value="minimal">Minimal</option><option value="broadcast">Broadcast</option><option value="club">Club</option><option value="premier">Premier</option></NativeSelect></Field>
           <Field label="Default for competition" htmlFor="pc"><NativeSelect id="pc" value={form.competitionId} onChange={(e) => setForm({ ...form, competitionId: e.target.value })}><option value="">None</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
           <ErrorNotice error={create.error} />
         </div>
