@@ -213,7 +213,7 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
   );
 }
 
-export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom';
+export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine';
 
 /** Timeline offset when this animation was first rendered (constant afterwards). */
 function firstOffset(p: GraphicProps, key: string): number {
@@ -294,6 +294,8 @@ export const KEYFRAMES = [
   ...['a', 'b'].map((x) => `@keyframes bs-flip-${x}{0%{transform:perspective(400px) rotateX(-90deg);opacity:.2}60%{transform:perspective(400px) rotateX(10deg);opacity:1}100%{transform:none}}`),
   '@keyframes bs-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
   '@keyframes bs-pulse{0%,100%{opacity:1}50%{opacity:.45}}',
+  // one light sweep across a panel as it lands; invisible before and after (the element rests at opacity 0)
+  '@keyframes bs-shine-in{0%{opacity:0;transform:translateX(-110%) skewX(-18deg)}20%{opacity:1}100%{opacity:0;transform:translateX(320%) skewX(-18deg)}}@keyframes bs-shine-out{from{opacity:0}to{opacity:0}}',
   // animated background: slow drifts and a breathing glow, transforms and opacity only (cheap in an OBS browser source)
   '@keyframes bs-bd-drift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}',
   '@keyframes bs-bd-sweep{from{transform:translateX(-30%)}to{transform:translateX(30%)}}',

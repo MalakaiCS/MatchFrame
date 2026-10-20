@@ -18,6 +18,8 @@ export interface Chrome {
   text: (p: GraphicProps) => string;
   muted: (p: GraphicProps) => string;
   rule: (p: GraphicProps) => string;
+  /** the floating card behind the shoot-out tracker and the live statistic (default: the theme's panel colours) */
+  card?: (p: GraphicProps) => CSSProperties;
 }
 
 const OUTCOME_COLOUR: Record<string, string> = { W: '#55D99D', D: '#8a93a3', L: '#E5484D' };
@@ -71,6 +73,7 @@ export function Backdrop(p: GraphicProps) {
   const glow = th.accent;
   const key = th.themeKey;
   const angle = key === 'club' ? -8 : key === 'minimal' ? 0 : -14;
+  const gid = p.cue.cueId.replace(/[^a-zA-Z0-9_-]/g, ''); // SVG gradient ids, unique per background on the page
   const stripes = key === 'minimal'
     ? `repeating-linear-gradient(90deg, ${withAlpha('#ffffff', 0.025)} 0 1px, transparent 1px 96px)`
     : `repeating-linear-gradient(${90 + angle + 45}deg, transparent 0 120px, ${withAlpha(hot, lightBase ? 0.05 : 0.08)} 120px 210px, transparent 210px 400px, ${withAlpha(glow, 0.06)} 400px 440px)`;
@@ -88,13 +91,32 @@ export function Backdrop(p: GraphicProps) {
       {/* breathing glow in the corner */}
       <div style={{ position: 'absolute', right: -260, bottom: -360, width: 1100, height: 1100, borderRadius: '50%', background: `radial-gradient(circle, ${withAlpha(glow, 0.3)}, transparent 68%)`, ...run('bs-bd-glow', 7) }} />
       <div style={{ position: 'absolute', left: -300, top: -420, width: 1000, height: 1000, borderRadius: '50%', background: `radial-gradient(circle, ${withAlpha(hot, 0.22)}, transparent 70%)`, ...run('bs-bd-glow', 9, true) }} />
-      {/* the look's signature edge: a slanted wedge (broadcast, premier) or a soft band (club, minimal) */}
-      {key === 'premier' || key === 'broadcast' ? (
-        <div style={{ position: 'absolute', right: -120, top: 0, bottom: 0, width: 720, background: `linear-gradient(180deg, ${withAlpha(hot, key === 'premier' ? 0.92 : 0.55)}, ${withAlpha(hot, key === 'premier' ? 0.7 : 0.25)})`, clipPath: 'polygon(42% 0, 100% 0, 100% 100%, 0 100%)', ...run('bs-bd-drift', 22, true) }} />
+      {/* the look's signature edge: angular shards (premier), a slanted wedge (broadcast) or a soft band (club, minimal) */}
+      {key === 'premier' ? (
+        <svg aria-hidden viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', ...run('bs-bd-drift', 22, true) }}>
+          <defs>
+            <linearGradient id={`bd-hot-${gid}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={hot} stopOpacity={0.72} />
+              <stop offset="1" stopColor={hot} stopOpacity={0.22} />
+            </linearGradient>
+            <linearGradient id={`bd-line-${gid}`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor={glow} />
+              <stop offset="1" stopColor={hot} />
+            </linearGradient>
+          </defs>
+          <polygon points="1180,0 1920,0 1920,1080 760,1080" fill={`url(#bd-hot-${gid})`} />
+          <polygon points="1500,0 1640,0 1180,1080 1040,1080" fill={withAlpha(glow, 0.16)} />
+          <polygon points="1450,0 1462,0 1002,1080 990,1080" fill={withAlpha(glow, 0.55)} />
+          <polygon points="1640,0 1920,0 1920,520" fill={withAlpha(deep, 0.55)} />
+          <polygon points="0,0 420,0 0,300" fill={withAlpha(hot, 0.14)} />
+          <polygon points="0,760 300,1080 0,1080" fill={withAlpha(glow, 0.12)} />
+          <rect x="0" y="952" width="1920" height="6" fill={`url(#bd-line-${gid})`} opacity={0.7} />
+        </svg>
+      ) : key === 'broadcast' ? (
+        <div style={{ position: 'absolute', right: -120, top: 0, bottom: 0, width: 720, background: `linear-gradient(180deg, ${withAlpha(hot, 0.55)}, ${withAlpha(hot, 0.25)})`, clipPath: 'polygon(42% 0, 100% 0, 100% 100%, 0 100%)', ...run('bs-bd-drift', 22, true) }} />
       ) : (
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 260, background: `linear-gradient(0deg, ${withAlpha(hot, 0.35)}, transparent)` }} />
       )}
-      {key === 'premier' ? <div style={{ position: 'absolute', left: 0, right: 0, bottom: 120, height: 6, background: glow, opacity: 0.55, transform: `rotate(${angle / 4}deg)`, transformOrigin: 'left' }} /> : null}
       {/* fine grid, faded towards the edges, then a vignette */}
       <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${withAlpha('#ffffff', 0.035)} 1px, transparent 1px), linear-gradient(90deg, ${withAlpha('#ffffff', 0.035)} 1px, transparent 1px)`, backgroundSize: '64px 64px', WebkitMaskImage: 'radial-gradient(ellipse at center, #000 25%, transparent 75%)', maskImage: 'radial-gradient(ellipse at center, #000 25%, transparent 75%)' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.42) 100%)' }} />
@@ -374,7 +396,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
       );
     };
     return (
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content', background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '18px 34px', display: 'grid', gap: 12, boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...animStyle(p, 'slide-up') }} data-graphic="shootout">
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content', background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '18px 34px', display: 'grid', gap: 12, boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...C.card?.(p), ...animStyle(p, 'slide-up') }} data-graphic="shootout">
         <div style={{ fontSize: 16, letterSpacing: 4, opacity: 0.75, textAlign: 'center', ...animStyle(p, 'fade', 80, 300) }}>{t(p, p.data.match.sport === 'hockey' ? 'SHOOT-OUT' : 'PENALTY SHOOT-OUT')}</div>
         {row('home', 0)}
         {row('away', 1)}
@@ -392,7 +414,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     const h = team(p, 'home');
     const a = team(p, 'away');
     return (
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 130, marginLeft: 'auto', marginRight: 'auto', width: 1000, background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '16px 28px', boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...animStyle(p, 'slide-up') }} data-graphic="stat_compare">
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 130, marginLeft: 'auto', marginRight: 'auto', width: 1000, background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '16px 28px', boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...C.card?.(p), ...animStyle(p, 'slide-up') }} data-graphic="stat_compare">
         <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 160px', alignItems: 'center', gap: 20 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 10, ...animStyle(p, 'slide-left', 120, 360) }}><Logo url={h.logoUrl} label={h.abbreviation} size={40} color={h.primaryColor} radius={6} /><b style={{ fontSize: 40, fontVariantNumeric: 'tabular-nums', ...changeStyle(p, 'hv', hv) }}>{hv}{row.unit ?? ''}</b></span>
           <div style={{ textAlign: 'center' }}>

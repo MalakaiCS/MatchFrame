@@ -1,8 +1,10 @@
 'use client';
-// "Premier" theme: the top-flight football broadcast look. Deep purple carries the brand, hot magenta shouts,
-// electric teal points, white paper holds the words, and everything is set in condensed uppercase type on a
-// shared slant. An original design in that spirit: no league marks, lions or wordmarks anywhere.
-import type { CSSProperties } from 'react';
+// "Premier" look: the top-flight football broadcast style of a motion graphics pack. Deep purple glass panels cut
+// with angular facets, a cyan-to-magenta signature rule, white plates for the numbers that matter, crests on a soft
+// glow and a geometric sans. Graphics build in layers: the panel wipes in, a light sweep crosses it, the words rise.
+// An original design in that spirit: no league marks, lions or wordmarks anywhere.
+import type { CSSProperties, ReactNode } from 'react';
+import type { RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
@@ -10,45 +12,138 @@ import { lineupPage } from './theme-broadcast';
 
 const SX = 96; // 5% title-safe
 const SY = 54;
-const UPPER: CSSProperties = { textTransform: 'uppercase', letterSpacing: 0.5 };
+const CAPS: CSSProperties = { textTransform: 'uppercase', letterSpacing: 1.5 };
 /** Which graphics show a player photo beside the team badge when one is on file. */
 const PHOTO_EVENTS = ['builtin:goal', 'builtin:card', 'builtin:player_of_match'];
+/** The substitution "on" arrow: a fixed bright green that reads on any of the look's panels. */
+const ON_GREEN = '#00FF85';
 
-/** "#38003C" at 60% → rgba(): the look's ink at reduced strength for secondary copy and rules. */
+function rgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  return m ? [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)] : null;
+}
+/** "#37003C" at 60% → rgba(). */
 function alpha(hex: string, a: number): string {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) return hex;
-  return `rgba(${parseInt(m[1]!, 16)},${parseInt(m[2]!, 16)},${parseInt(m[3]!, 16)},${a})`;
+  const c = rgb(hex);
+  return c ? `rgba(${c[0]},${c[1]},${c[2]},${a})` : hex;
 }
-/** White or deep ink, whichever reads on the given colour (cards keep their own colours). */
-function inkOn(hex: string, deep: string): string {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) return '#fff';
-  const [r, g, b] = [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? deep : '#fff';
+/** a → b by t (0..1), as hex: lighter and darker shades of the look's own colours without color-mix(). */
+function mix(a: string, b: string, k: number): string {
+  const x = rgb(a);
+  const y = rgb(b);
+  if (!x || !y) return a;
+  return `#${x.map((v, i) => Math.round(v + (y[i]! - v) * k).toString(16).padStart(2, '0')).join('')}`;
 }
-/** Both edges cut on the same slant: the parallelogram every strap and kicker in this look is built from. */
-const slant = (cut = 16): CSSProperties => ({ clipPath: `polygon(${cut}px 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)` });
-/** Only the right edge cut, for the leftmost piece of a strap. */
-const slantRight = (cut = 16): CSSProperties => ({ clipPath: `polygon(0 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)` });
+/** White, or the given dark ink, whichever reads on the colour. */
+function inkOn(hex: string, dark: string): string {
+  const c = rgb(hex);
+  if (!c) return '#fff';
+  return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] > 150 ? dark : '#fff';
+}
+const cutRight = (n = 18): CSSProperties => ({ clipPath: `polygon(0 0, 100% 0, calc(100% - ${n}px) 100%, 0 100%)` });
+const cutLeft = (n = 18): CSSProperties => ({ clipPath: `polygon(${n}px 0, 100% 0, 100% 100%, 0 100%)` });
 
-/** Colour roles: deep (secondary) carries the brand, hot (primary) shouts, electric (accent) points, paper holds the words. */
+/**
+ * Colour roles. deep (secondary) is the glass every panel is made of, hot (primary) shouts, electric (accent)
+ * points; paper and ink (panel, text) are the white plates that carry scores. `on` is the text colour on glass.
+ */
 function roles(p: GraphicProps) {
   const th = p.data.theme;
-  return { deep: th.secondary, hot: th.primary, electric: th.accent, paper: th.panel, ink: th.text, muted: alpha(th.text, 0.62), rule: alpha(th.text, 0.12), font: th.font };
+  const deep = th.secondary;
+  const hot = th.primary;
+  const electric = th.accent;
+  const on = inkOn(deep, '#1A0420');
+  return {
+    deep,
+    hot,
+    electric,
+    paper: th.panel,
+    ink: th.text,
+    font: th.font,
+    on,
+    onMuted: alpha(on, 0.68),
+    onRule: alpha(on, 0.14),
+    glass: `linear-gradient(135deg, ${mix(deep, hot, 0.12)} 0%, ${deep} 50%, ${mix(deep, '#000000', 0.3)} 100%)`,
+    signature: `linear-gradient(90deg, ${electric}, ${hot})`,
+  };
 }
+type Roles = ReturnType<typeof roles>;
 
-function Paper({ p, children, style }: { p: GraphicProps; children: React.ReactNode; style?: CSSProperties }) {
+/** The white plate a score or a key number sits on. */
+const plate = (c: Roles, extra?: CSSProperties): CSSProperties => ({ background: c.paper, color: c.ink, borderRadius: 8, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1, ...extra });
+
+/** Angular shards cut across a panel: the look's texture. They move with the panel's own entrance. */
+function Facets({ p, flip = false, strength = 1 }: { p: GraphicProps; flip?: boolean; strength?: number }) {
   const c = roles(p);
-  return <div style={{ background: c.paper, color: c.ink, fontFamily: c.font, ...style }}>{children}</div>;
+  return (
+    <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', transform: flip ? 'scaleX(-1)' : undefined }}>
+      <polygon points="62,0 100,0 100,100 34,100" fill={alpha(c.hot, 0.11 * strength)} />
+      <polygon points="80,0 100,0 100,58" fill={alpha(c.electric, 0.12 * strength)} />
+      <polygon points="44,0 50,0 22,100 16,100" fill={alpha('#ffffff', 0.05 * strength)} />
+      <polygon points="0,70 14,100 0,100" fill={alpha(c.electric, 0.1 * strength)} />
+    </svg>
+  );
 }
 
-/** One-row scorebug: brand tab · HOME · 2–1 · AWAY · clock. The strip variant is the same bug, slimmer. */
+/** One light sweep across a panel as it lands. Nothing is drawn once it has passed (or with motion off). */
+function Shine({ p, delayMs = 300 }: { p: GraphicProps; delayMs?: number }) {
+  if (p.phase === 'out') return null;
+  const a = animStyle(p, 'shine', delayMs, 900);
+  if (!a.animationName) return null;
+  return <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '35%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)', opacity: 0, pointerEvents: 'none', ...a }} />;
+}
+
+/** The signature rule along the bottom edge of a panel. */
+function EdgeRule({ p, delayMs = 280, height = 4 }: { p: GraphicProps; delayMs?: number; height?: number }) {
+  return <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height, background: roles(p).signature, transformOrigin: 'left', ...animStyle(p, 'grow-x', delayMs, 420) }} />;
+}
+
+/** A deep glass panel with the facet texture behind its content. */
+function Glass({ p, children, style, inner, radius = 10, facets = true, flip }: { p: GraphicProps; children: ReactNode; style?: CSSProperties; inner?: CSSProperties; radius?: number | string; facets?: boolean; flip?: boolean }) {
+  const c = roles(p);
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', background: c.glass, color: c.on, fontFamily: c.font, borderRadius: radius, boxShadow: '0 18px 48px rgba(12,0,24,.42)', ...style }}>
+      {facets ? <Facets p={p} flip={flip} /> : null}
+      <div style={{ position: 'relative', height: '100%', ...inner }}>{children}</div>
+    </div>
+  );
+}
+
+/** The look's own mark for the brand tab when the organisation has no logo: two parallel shards. */
+function Mark({ p, size }: { p: GraphicProps; size: number }) {
+  return (
+    <svg aria-hidden viewBox="0 0 40 40" width={size} height={size}>
+      <polygon points="5,34 19,6 26,6 12,34" fill="#ffffff" />
+      <polygon points="16,34 30,6 37,6 23,34" fill={roles(p).electric} />
+    </svg>
+  );
+}
+
+/** A team crest on a soft glow of the team's colour. */
+function Crest({ tm, size }: { tm: RenderTeam; size: number }) {
+  return (
+    <span style={{ display: 'grid', placeItems: 'center', width: Math.round(size * 1.7), height: Math.round(size * 1.7), margin: Math.round(size * -0.1), borderRadius: '50%', background: `radial-gradient(closest-side, ${alpha(tm.primaryColor, 0.7)} 0%, ${alpha(tm.primaryColor, 0.25)} 62%, transparent 100%)` }}>
+      <Logo url={tm.logoUrl} label={tm.abbreviation} size={size} color={tm.primaryColor} radius={Math.round(size * 0.12)} />
+    </span>
+  );
+}
+
+/** A sponsor's logo on a white plate, so a dark logo still reads on the glass. Nothing when there is no sponsor. */
+function SponsorPlate({ p, placement, height, delayMs = 560 }: { p: GraphicProps; placement: string; height: number; delayMs?: number }) {
+  if (!p.creative(placement, p.cue)) return null;
+  return (
+    <span style={{ display: 'inline-grid', placeItems: 'center', background: 'rgba(255,255,255,.96)', padding: '6px 16px', borderRadius: 8, ...animStyle(p, 'fade', delayMs, 300) }}>
+      <SponsorMark p={p} placement={placement} height={height} />
+    </span>
+  );
+}
+
+/** One-row scorebug: brand tab · HOME [2 | 1] AWAY, then the clock. The strip variant is the same bug, slimmer. */
 function Scorebug(p: GraphicProps) {
   const slim = p.data.theme.scorebug?.variant === 'strip';
   const d = p.display;
   const c = roles(p);
-  const H = slim ? 46 : 60;
+  const H = slim ? 46 : 58;
   const stoppage = changeStyle(p, 'stoppage', !!d.stoppageText, 'flip'); // evaluated every render so the appearance itself animates
   const teamCell = (s: 'home' | 'away', i: number) => {
     const tm = team(p, s);
@@ -56,42 +151,52 @@ function Scorebug(p: GraphicProps) {
     const detail = d.scoreDetail?.[s]?.split(' ')[0];
     const fouls = d.fouls ? `F ${d.fouls[s]}${d.bonus?.[s] ? ' ◆' : ''}` : null;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: away ? '0 0 0 12px' : '0 12px 0 0', flexDirection: away ? 'row-reverse' : 'row', ...animStyle(p, away ? 'slide-right' : 'slide-left', 80 + i * 60, 360) }}>
-        <span style={{ width: 9, alignSelf: 'stretch', background: tm.primaryColor, transformOrigin: 'top', ...animStyle(p, 'grow-y', 60 + i * 60, 300) }} />
-        {!slim ? <Logo url={tm.logoUrl} label={tm.abbreviation} size={34} color={tm.primaryColor} radius={4} /> : null}
-        <span style={{ display: 'flex', flexDirection: 'column', alignItems: away ? 'flex-end' : 'flex-start', minWidth: 66 }}>
-          <span style={{ fontSize: slim ? 24 : 30, fontWeight: 700, lineHeight: 1, ...UPPER }}>{tm.abbreviation}</span>
-          {detail || fouls ? <span style={{ fontSize: 13, color: c.muted, letterSpacing: 1, lineHeight: 1.1 }}>{[detail, fouls].filter(Boolean).join(' · ')}</span> : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: away ? '0 16px 0 12px' : '0 12px 0 16px', flexDirection: away ? 'row-reverse' : 'row', ...animStyle(p, away ? 'slide-right' : 'slide-left', 140 + i * 60, 360) }}>
+        <span style={{ width: 6, height: H - 24, borderRadius: 3, background: tm.primaryColor, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 120 + i * 60, 300) }} />
+        {!slim ? <Logo url={tm.logoUrl} label={tm.abbreviation} size={32} color={tm.primaryColor} radius={6} /> : null}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: away ? 'flex-end' : 'flex-start', minWidth: 60 }}>
+          <span style={{ fontSize: slim ? 22 : 26, fontWeight: 700, lineHeight: 1, letterSpacing: 1 }}>{tm.abbreviation}</span>
+          {detail || fouls ? <span style={{ fontSize: 12, color: c.onMuted, letterSpacing: 1, lineHeight: 1.25 }}>{[detail, fouls].filter(Boolean).join(' · ')}</span> : null}
         </span>
-        {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.hot }} /> : null}
+        {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.electric, boxShadow: `0 0 10px ${c.electric}` }} /> : null}
       </div>
     );
   };
-  const scoreCell = (s: 'home' | 'away') => (
-    <span style={{ minWidth: slim ? 38 : 48, textAlign: 'center', fontSize: slim ? 30 : 38, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+  const score = (s: 'home' | 'away') => (
+    <span style={{ minWidth: slim ? 26 : 32, textAlign: 'center' }}>
       <span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span>
     </span>
   );
+  const tab: CSSProperties = { display: 'grid', placeItems: 'center', borderRadius: 8, fontWeight: 800 };
   return (
-    <div style={{ top: SY, display: 'flex', alignItems: 'stretch', height: H, fontFamily: c.font, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
-      <div style={{ width: 26, background: c.hot, borderLeft: `6px solid ${c.electric}`, ...slantRight(12), ...animStyle(p, 'grow-y', 0, 320) }} />
-      <Paper p={p} style={{ display: 'flex', alignItems: 'stretch', marginLeft: -10, paddingLeft: 12, borderRadius: '0 6px 6px 0', overflow: 'hidden' }}>
+    <div style={{ top: SY, display: 'flex', alignItems: 'stretch', gap: 6, height: H, fontFamily: c.font, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+      <Glass p={p} radius={8} facets={false} inner={{ display: 'flex', alignItems: 'stretch' }}>
+        <span style={{ minWidth: H, display: 'grid', placeItems: 'center', padding: p.data.theme.logoUrl ? '0 8px' : 0, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.45)})`, transformOrigin: 'top', ...animStyle(p, 'grow-y', 0, 320) }}>
+          {p.data.theme.logoUrl ? <ThemeBadge p={p} height={H - 18} /> : <Mark p={p} size={H - 20} />}
+        </span>
         {teamCell('home', 0)}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: c.deep, color: '#fff', padding: '0 10px', ...animStyle(p, 'drop', 200, 360) }}>
-          {scoreCell('home')}
-          <span style={{ opacity: 0.55, fontSize: 22, lineHeight: 1 }}>–</span>
-          {scoreCell('away')}
-        </div>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 2, margin: '7px 0', padding: '0 6px', fontSize: slim ? 26 : 32, ...plate(c), ...animStyle(p, 'drop', 220, 380) }}>
+          {score('home')}
+          <span style={{ width: 2, height: '50%', background: alpha(c.ink, 0.22) }} />
+          {score('away')}
+        </span>
         {teamCell('away', 1)}
-      </Paper>
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', marginLeft: 6, padding: '0 16px', minWidth: 96, background: c.paper, color: c.ink, borderTop: `5px solid ${c.hot}`, borderRadius: 6, fontFamily: c.font, ...animStyle(p, 'drop', 260, 380) }}>
-        <span style={{ fontSize: slim ? 24 : 30, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
-        <span style={{ fontSize: 12, letterSpacing: 2, color: c.hot, fontWeight: 700, lineHeight: 1.2, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
-      </div>
-      {d.stoppageText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 6, padding: '0 12px', background: c.electric, color: c.deep, fontSize: slim ? 20 : 24, fontWeight: 700, borderRadius: 6, ...animStyle(p, 'zoom', 320, 360) }}><span style={stoppage}>{stoppageLabel(p)}</span></div> : null}
-      {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 6, width: 66, background: c.hot, color: '#fff', fontSize: 32, fontWeight: 700, borderRadius: 6, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
-      {d.shootout ? <Paper p={p} style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 6, padding: '0 14px', fontSize: 20, fontWeight: 700, borderRadius: 6, ...UPPER, ...animStyle(p, 'zoom', 300, 360) }}><span style={{ color: c.hot, fontSize: 14, letterSpacing: 2 }}>{t(p, 'PENS')}</span><span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Paper> : null}
-      {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 6, padding: '0 12px', background: 'rgba(255,255,255,.96)', borderRadius: 6, ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={slim ? 30 : 40} /></div> : null}
+        <EdgeRule p={p} delayMs={260} height={3} />
+        <Shine p={p} delayMs={380} />
+      </Glass>
+      <Glass p={p} radius={8} facets={false} style={animStyle(p, 'drop', 280, 380)} inner={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 16px', minWidth: 104 }}>
+        <span style={{ fontSize: slim ? 23 : 28, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
+        <span style={{ fontSize: 11, letterSpacing: 2, color: c.electric, fontWeight: 700, lineHeight: 1.3, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
+      </Glass>
+      {d.stoppageText ? <div style={{ ...tab, padding: '0 12px', background: c.electric, color: inkOn(c.electric, c.deep), fontSize: slim ? 20 : 24, ...animStyle(p, 'zoom', 320, 360) }}><span style={stoppage}>{stoppageLabel(p)}</span></div> : null}
+      {d.shotClockText ? <div style={{ ...tab, width: 66, background: c.hot, color: inkOn(c.hot, c.deep), fontSize: 32, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
+      {d.shootout ? (
+        <Glass p={p} radius={8} facets={false} style={animStyle(p, 'zoom', 300, 360)} inner={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', fontSize: 20, fontWeight: 700 }}>
+          <span style={{ color: c.electric, fontSize: 13, letterSpacing: 2 }}>{t(p, 'PENS')}</span>
+          <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span>
+        </Glass>
+      ) : null}
+      {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ ...tab, padding: '0 12px', background: 'rgba(255,255,255,.96)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={slim ? 30 : 40} /></div> : null}
     </div>
   );
 }
@@ -99,27 +204,45 @@ function Scorebug(p: GraphicProps) {
 function SponsorBox({ p, placement, delayMs = 400 }: { p: GraphicProps; placement: string; delayMs?: number }) {
   const c = p.creative(placement, p.cue);
   if (!c) return null;
-  return <div style={{ display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.96)', padding: '4px 18px', marginLeft: 8, borderRadius: 6, ...animStyle(p, 'zoom', delayMs, 400) }}><PresentedBy p={p} placement={placement} height={52} /></div>;
-}
-
-/** Kicker word on a slanted block, white paper body with the team's colour bar, electric tail. */
-function EventBar(p: GraphicProps, label: string, accent: string, body: React.ReactNode) {
-  const c = roles(p);
-  const tm = team(p);
   return (
-    <div style={{ position: 'absolute', left: SX, bottom: SY + 70, display: 'flex', alignItems: 'stretch', fontFamily: c.font, ...animStyle(p, 'slide-left') }} data-graphic={p.t.key}>
-      <div style={{ background: accent, color: inkOn(accent, c.deep), fontSize: 34, fontWeight: 700, ...UPPER, letterSpacing: 2, padding: '0 34px 0 26px', display: 'grid', placeItems: 'center', zIndex: 1, ...slantRight(20), ...animStyle(p, 'zoom', 0, 420) }}>{label}</div>
-      <Paper p={p} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '14px 44px 14px 36px', marginLeft: -16, minWidth: 640, ...slant(20), ...animStyle(p, 'wipe', 120, 380) }}>
-        <span style={{ width: 10, alignSelf: 'stretch', background: tm.primaryColor, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 220, 300) }} />
-        <span style={animStyle(p, 'zoom', 260, 400)}><Logo url={tm.logoUrl} label={tm.abbreviation} size={64} color={tm.primaryColor} /></span>
-        {PHOTO_EVENTS.includes(p.t.key) && player(p)?.photoUrl ? <span style={animStyle(p, 'zoom', 300, 400)}><Photo url={player(p)!.photoUrl} size={76} name={player(p)!.displayName} /></span> : null}
-        <div style={{ display: 'flex', flexDirection: 'column', ...UPPER, ...animStyle(p, 'rise', 320, 360) }}>{body}</div>
-      </Paper>
-      <div style={{ width: 10, background: c.electric, marginLeft: -8, ...slant(20), ...animStyle(p, 'wipe', 200, 380) }} />
-      <SponsorBox p={p} placement="event_partner" delayMs={460} />
+    <div style={{ position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.96)', padding: '4px 18px 8px', marginLeft: 8, borderRadius: 10, ...animStyle(p, 'zoom', delayMs, 400) }}>
+      <PresentedBy p={p} placement={placement} height={52} />
+      <EdgeRule p={p} delayMs={delayMs + 120} />
     </div>
   );
 }
+
+/** Kicker word on a faceted block, then a glass body with the team's colour bar and badge. */
+function EventBar(p: GraphicProps, label: string, accent: string, body: ReactNode) {
+  const c = roles(p);
+  const tm = team(p);
+  const pl = PHOTO_EVENTS.includes(p.t.key) ? player(p) : null;
+  return (
+    <div style={{ position: 'absolute', left: SX, bottom: SY + 64, display: 'flex', alignItems: 'stretch', fontFamily: c.font, ...animStyle(p, 'slide-left') }} data-graphic={p.t.key}>
+      <div style={{ position: 'relative', zIndex: 1, ...animStyle(p, 'zoom', 0, 460) }}>
+        <div style={{ position: 'relative', overflow: 'hidden', height: '100%', display: 'grid', placeItems: 'center', padding: '0 46px 0 30px', borderRadius: '10px 0 0 10px', background: `linear-gradient(135deg, ${mix(accent, '#ffffff', 0.12)}, ${mix(accent, c.deep, 0.3)})`, color: inkOn(accent, c.deep), fontSize: 46, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', ...cutRight(24) }}>
+          <Facets p={p} strength={0.7} />
+          <span style={{ position: 'relative' }}>{label}</span>
+        </div>
+      </div>
+      <div style={{ marginLeft: -24, ...animStyle(p, 'wipe', 120, 420) }}>
+        <Glass p={p} radius="0 10px 10px 0" style={{ height: '100%', minWidth: 680, ...cutLeft(24) }} inner={{ display: 'flex', alignItems: 'center', gap: 18, padding: '16px 46px 20px 50px' }}>
+          <span style={{ width: 8, alignSelf: 'stretch', borderRadius: 4, background: tm.primaryColor, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 220, 300) }} />
+          <span style={animStyle(p, 'zoom', 260, 420)}><Logo url={tm.logoUrl} label={tm.abbreviation} size={68} color={tm.primaryColor} /></span>
+          {pl?.photoUrl ? <span style={animStyle(p, 'zoom', 300, 420)}><Photo url={pl.photoUrl} size={78} name={pl.displayName} /></span> : null}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...animStyle(p, 'rise', 320, 360) }}>{body}</div>
+          <EdgeRule p={p} delayMs={300} />
+          <Shine p={p} delayMs={460} />
+        </Glass>
+      </div>
+      <SponsorBox p={p} placement="event_partner" delayMs={480} />
+    </div>
+  );
+}
+
+const subline = (c: Roles, p: GraphicProps, text: string, delayMs = 420): ReactNode => (
+  <span style={{ fontSize: 21, color: c.electric, fontWeight: 600, ...CAPS, ...animStyle(p, 'rise', delayMs, 320) }}>{text}</span>
+);
 
 function Goal(p: GraphicProps) {
   const c = roles(p);
@@ -127,8 +250,11 @@ function Goal(p: GraphicProps) {
   const sc = p.data.match.projection.score;
   return EventBar(p, eventWord(p), c.hot, (
     <>
-      <Fitted full={who.primary} short={who.short} width={460} fontPx={42} measure={p.measure} />
-      <span style={{ fontSize: 22, color: c.hot, fontWeight: 600, letterSpacing: 1, ...animStyle(p, 'rise', 420, 320) }}>{team(p).shortName} {minute(p)} · {team(p, 'home').abbreviation} {sc.home}–{sc.away} {team(p, 'away').abbreviation}</span>
+      <Fitted full={who.primary} short={who.short} width={480} fontPx={44} measure={p.measure} />
+      <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {subline(c, p, `${team(p).shortName} ${minute(p)}`)}
+        <span style={{ fontSize: 20, padding: '4px 10px', ...plate(c, { borderRadius: 6 }), ...animStyle(p, 'zoom', 480, 340) }}>{team(p, 'home').abbreviation} {sc.home}–{sc.away} {team(p, 'away').abbreviation}</span>
+      </span>
     </>
   ));
 }
@@ -139,8 +265,8 @@ function Score(p: GraphicProps) {
   const pts = p.cue.variables.points;
   return EventBar(p, `+${typeof pts === 'number' ? pts : ''}`, c.hot, (
     <>
-      <Fitted full={who.primary} short={who.short} width={460} fontPx={40} measure={p.measure} />
-      <span style={{ fontSize: 22, color: c.hot, fontWeight: 600, letterSpacing: 1, ...animStyle(p, 'rise', 420, 320) }}>{team(p).shortName}</span>
+      <Fitted full={who.primary} short={who.short} width={480} fontPx={42} measure={p.measure} />
+      {subline(c, p, team(p).shortName)}
     </>
   ));
 }
@@ -151,8 +277,8 @@ function Card(p: GraphicProps) {
   const who = personOrTeam(p);
   return EventBar(p, cs.word, cs.colour, (
     <>
-      <Fitted full={who.primary} short={who.short} width={460} fontPx={40} measure={p.measure} />
-      <span style={{ fontSize: 22, color: c.hot, fontWeight: 600, letterSpacing: 1, ...animStyle(p, 'rise', 420, 320) }}>{team(p).shortName} {minute(p)}</span>
+      <Fitted full={who.primary} short={who.short} width={480} fontPx={42} measure={p.measure} />
+      {subline(c, p, `${team(p).shortName} ${minute(p)}`)}
     </>
   ));
 }
@@ -163,16 +289,16 @@ function Substitution(p: GraphicProps) {
   const on = player(p, 'playerIn');
   const line = (arrow: string, colour: string, pl: typeof off, i: number) => (
     <span style={{ display: 'flex', gap: 12, alignItems: 'center', fontSize: 30, ...animStyle(p, i ? 'slide-right' : 'slide-left', 360 + i * 120, 360) }}>
-      <span style={{ color: colour, fontWeight: 700 }}>{arrow}</span>
-      <span style={{ width: 44, color: c.muted, fontVariantNumeric: 'tabular-nums' }}>{pl?.number ?? ''}</span>
-      <Fitted full={pl?.displayName ?? team(p).name} short={pl?.shortName} width={400} fontPx={30} measure={p.measure} />
+      <span style={{ color: colour, fontWeight: 800 }}>{arrow}</span>
+      <span style={{ width: 44, color: c.onMuted, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{pl?.number ?? ''}</span>
+      <Fitted full={pl?.displayName ?? team(p).name} short={pl?.shortName} width={420} fontPx={30} measure={p.measure} />
     </span>
   );
-  return EventBar(p, t(p, 'SUB'), c.deep, (
+  return EventBar(p, t(p, 'SUB'), c.electric, (
     <>
-      {line('▲', '#1DB954', on, 0)}
+      {line('▲', ON_GREEN, on, 0)}
       {line('▼', c.hot, off, 1)}
-      <span style={{ fontSize: 20, color: c.muted, letterSpacing: 1, ...animStyle(p, 'rise', 600, 300) }}>{team(p).shortName} {minute(p)}</span>
+      {subline(c, p, `${team(p).shortName} ${minute(p)}`, 600)}
     </>
   ));
 }
@@ -182,13 +308,16 @@ function LowerThird(p: GraphicProps) {
   const img = p.cue.variables.image as string | undefined;
   return (
     <div style={{ position: 'absolute', left: SX, bottom: SY + 40, display: 'flex', alignItems: 'stretch', fontFamily: c.font, ...animStyle(p, 'slide-left') }} data-graphic="lower_third">
-      <div style={{ width: 28, background: c.deep, borderLeft: `6px solid ${c.hot}`, ...slantRight(12), transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 0, 300) }} />
-      {img && p.data.assets[img] ? <img alt="" src={p.data.assets[img]} style={{ width: 120, height: 120, objectFit: 'cover', ...animStyle(p, 'zoom', 120, 380) }} /> : null}
-      <Paper p={p} style={{ padding: '16px 56px 14px 32px', minWidth: 720, marginLeft: -10, ...slant(24), ...animStyle(p, 'wipe', 100, 400) }}>
-        <div style={{ ...UPPER, ...animStyle(p, 'rise', 220, 340) }}><Fitted full={String(p.cue.variables.heading ?? '')} width={880} fontPx={48} measure={p.measure} /></div>
-        <div style={{ height: 4, width: 120, background: c.electric, margin: '6px 0 6px', transformOrigin: 'left', ...animStyle(p, 'grow-x', 300, 360) }} />
-        {p.cue.variables.subtitle ? <div style={{ fontSize: 26, color: c.hot, fontWeight: 600, letterSpacing: 1, ...UPPER, ...animStyle(p, 'rise', 340, 340) }}><Fitted full={String(p.cue.variables.subtitle)} width={880} fontPx={26} weight={600} measure={p.measure} /></div> : null}
-      </Paper>
+      <div style={{ width: 16, borderRadius: '10px 0 0 10px', background: `linear-gradient(180deg, ${c.electric}, ${c.hot})`, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 0, 300) }} />
+      {img && p.data.assets[img] ? <img alt="" src={p.data.assets[img]} style={{ width: 124, height: 124, objectFit: 'cover', ...animStyle(p, 'zoom', 120, 380) }} /> : null}
+      <div style={animStyle(p, 'wipe', 100, 420)}>
+        <Glass p={p} radius="0 10px 10px 0" style={{ height: '100%', minWidth: 760 }} inner={{ padding: '18px 64px 20px 30px' }}>
+          <div style={animStyle(p, 'rise', 220, 340)}><Fitted full={String(p.cue.variables.heading ?? '')} width={900} fontPx={50} measure={p.measure} /></div>
+          <div style={{ height: 4, width: 150, borderRadius: 2, background: c.signature, margin: '8px 0', transformOrigin: 'left', ...animStyle(p, 'grow-x', 300, 380) }} />
+          {p.cue.variables.subtitle ? <div style={{ color: c.electric, ...animStyle(p, 'rise', 340, 340) }}><Fitted full={String(p.cue.variables.subtitle).toUpperCase()} width={900} fontPx={24} weight={600} measure={p.measure} style={{ letterSpacing: 1.5 }} /></div> : null}
+          <Shine p={p} delayMs={420} />
+        </Glass>
+      </div>
       <SponsorBox p={p} placement="lower_third_banner" delayMs={420} />
     </div>
   );
@@ -202,49 +331,72 @@ function PlayerCard(p: GraphicProps) {
   const tally = pl ? p.data.match.projection.players[pl.playerId] : null;
   const statVal = stat && tally ? (tally as Record<string, unknown>)[stat] : null;
   return (
-    <div style={{ position: 'absolute', right: SX, bottom: SY + 60, width: 560, fontFamily: c.font, ...animStyle(p, 'slide-right') }} data-graphic="player_card">
-      <div style={{ height: 8, background: `linear-gradient(90deg, ${tm.primaryColor} 0 70%, ${c.hot} 70% 100%)`, transformOrigin: 'left', ...animStyle(p, 'grow-x', 60, 380) }} />
-      <Paper p={p} style={{ padding: 28, display: 'flex', gap: 24, alignItems: 'center', borderRadius: '0 0 6px 6px' }}>
-        <span style={animStyle(p, 'zoom', 160, 420)}><Photo url={pl?.photoUrl} size={150} name={pl?.displayName ?? tm.name} /></span>
-        <div style={UPPER}>
-          <div style={{ fontSize: 64, fontWeight: 700, color: c.hot, lineHeight: 1, ...animStyle(p, 'drop', 240, 400) }}>{pl?.number ?? ''}</div>
+    <div style={{ position: 'absolute', right: SX, bottom: SY + 60, width: 580, fontFamily: c.font, ...animStyle(p, 'slide-right') }} data-graphic="player_card">
+      <div style={{ height: 6, borderRadius: '10px 10px 0 0', background: `linear-gradient(90deg, ${tm.primaryColor} 0 55%, ${c.electric} 55%, ${c.hot} 100%)`, transformOrigin: 'left', ...animStyle(p, 'grow-x', 60, 380) }} />
+      <Glass p={p} radius="0 0 10px 10px" inner={{ padding: 28, display: 'flex', gap: 24, alignItems: 'center' }}>
+        <span style={{ padding: 4, borderRadius: '50%', background: c.signature, display: 'grid', ...animStyle(p, 'zoom', 160, 420) }}><Photo url={pl?.photoUrl} size={146} name={pl?.displayName ?? tm.name} /></span>
+        <div>
+          <div style={{ fontSize: 68, fontWeight: 800, color: c.electric, lineHeight: 1, ...animStyle(p, 'drop', 240, 400) }}>{pl?.number ?? ''}</div>
           <div style={animStyle(p, 'rise', 320, 340)}><Fitted full={pl?.displayName ?? tm.name} short={pl?.shortName} width={320} fontPx={40} measure={p.measure} /></div>
-          <div style={{ fontSize: 20, color: c.muted, letterSpacing: 1, ...animStyle(p, 'rise', 390, 320) }}>{pl?.position ?? ''} · {tm.shortName}</div>
-          {statVal != null ? <div style={{ fontSize: 26, marginTop: 8, ...animStyle(p, 'rise', 460, 320) }}>{stat}: <b style={{ color: c.hot, ...changeStyle(p, 'stat', statVal) }}>{String(statVal)}</b></div> : null}
+          <div style={{ fontSize: 18, color: c.onMuted, fontWeight: 600, ...CAPS, ...animStyle(p, 'rise', 390, 320) }}>{[pl?.position, tm.shortName].filter(Boolean).join(' · ')}</div>
+          {statVal != null ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, fontSize: 18, color: c.onMuted, ...CAPS, ...animStyle(p, 'rise', 460, 320) }}>
+              {stat}
+              <b style={{ fontSize: 24, padding: '4px 10px', ...plate(c, { borderRadius: 6 }), ...changeStyle(p, 'stat', statVal) }}>{String(statVal)}</b>
+            </div>
+          ) : null}
         </div>
-      </Paper>
+        <EdgeRule p={p} delayMs={360} />
+        <Shine p={p} delayMs={420} />
+      </Glass>
     </div>
   );
 }
 
-/** Full-frame board: deep title bar with a hot sweep, electric rule, white paper body. */
-function FullPanel({ p, title, children, width = 1100 }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number }) {
+/** Full-frame board: a faceted title bar with a light sweep, the signature rule, then the glass body. */
+function FullPanel({ p, title, children, width = 1100 }: { p: GraphicProps; title: ReactNode; children: ReactNode; width?: number }) {
   const c = roles(p);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', top: 140, width, fontFamily: c.font, ...animStyle(p, 'slide-up') }} data-graphic={p.t.key}>
-      <div style={{ background: `linear-gradient(100deg, ${c.deep} 0%, ${c.deep} 64%, ${c.hot} 64%, ${c.hot} 100%)`, color: '#fff', padding: '16px 40px 16px 32px', fontSize: 34, fontWeight: 700, ...UPPER, letterSpacing: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderRadius: '6px 6px 0 0', ...animStyle(p, 'wipe', 60, 420) }}>
-        <div style={animStyle(p, 'rise', 160, 320)}>{title}</div>
-        <ThemeBadge p={p} height={40} />
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', top: 130, width, fontFamily: c.font, ...animStyle(p, 'slide-up') }} data-graphic={p.t.key}>
+      <div style={{ display: 'flex', alignItems: 'stretch', height: 74 }}>
+        <div style={{ width: 22, borderRadius: '10px 0 0 0', background: `linear-gradient(180deg, ${c.electric}, ${c.hot})`, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 0, 320) }} />
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '0 10px 0 0', background: `linear-gradient(100deg, ${mix(c.deep, '#000000', 0.18)} 0%, ${c.deep} 52%, ${mix(c.deep, c.hot, 0.6)} 100%)`, color: c.on, ...animStyle(p, 'wipe', 60, 460) }}>
+          <Facets p={p} strength={0.8} />
+          <div style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 34px 0 26px', fontSize: 32, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase' }}>
+            <div style={animStyle(p, 'rise', 180, 340)}>{title}</div>
+            <ThemeBadge p={p} height={42} />
+          </div>
+          <Shine p={p} delayMs={380} />
+        </div>
       </div>
-      <div style={{ height: 6, background: c.electric, transformOrigin: 'left', ...animStyle(p, 'grow-x', 140, 360) }} />
-      <Paper p={p} style={{ padding: 32, transformOrigin: 'top', borderRadius: '0 0 6px 6px', ...animStyle(p, 'grow-y', 120, 380) }}>{children}</Paper>
+      <div style={{ height: 5, background: c.signature, transformOrigin: 'left', ...animStyle(p, 'grow-x', 160, 380) }} />
+      <div style={{ transformOrigin: 'top', ...animStyle(p, 'grow-y', 120, 400) }}>
+        <Glass p={p} radius="0 0 12px 12px" inner={{ padding: 34 }}>{children}</Glass>
+      </div>
     </div>
   );
 }
 
-function TeamsHeader({ p, delayMs = 220, centre = 'v', score = false }: { p: GraphicProps; delayMs?: number; centre?: string; score?: boolean }) {
+function TeamsHeader({ p, delayMs = 220, centre = 'VS', score = false, crest = 96 }: { p: GraphicProps; delayMs?: number; centre?: string; score?: boolean; crest?: number }) {
   const c = roles(p);
-  const h = team(p, 'home');
-  const a = team(p, 'away');
+  const side = (s: 'home' | 'away') => {
+    const tm = team(p, s);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center', ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', delayMs, 440) }}>
+        <Crest tm={tm} size={crest} />
+        <Fitted full={tm.name} short={tm.shortName} width={340} fontPx={38} measure={p.measure} />
+      </div>
+    );
+  };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 24, ...UPPER }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'flex-end', ...animStyle(p, 'slide-left', delayMs, 420) }}><Fitted full={h.name} short={h.shortName} width={330} fontPx={40} measure={p.measure} /><Logo url={h.logoUrl} label={h.abbreviation} size={96} color={h.primaryColor} /></div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 28 }}>
+      {side('home')}
       {score ? (
-        <span style={{ background: c.deep, color: '#fff', fontSize: 70, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1, padding: '10px 26px', borderRadius: 6, ...animStyle(p, 'zoom', delayMs + 120, 380) }}><span style={changeStyle(p, 'score', centre)}>{centre}</span></span>
+        <span style={{ fontSize: 76, padding: '10px 30px', ...plate(c, { borderRadius: 12 }), ...animStyle(p, 'zoom', delayMs + 120, 400) }}><span style={changeStyle(p, 'score', centre)}>{centre}</span></span>
       ) : (
-        <span style={{ fontSize: centre === 'v' ? 28 : 34, color: c.hot, fontWeight: 700, ...(centre === 'v' ? {} : { letterSpacing: 2 }), ...animStyle(p, 'zoom', delayMs + 120, 380) }}>{centre}</span>
+        <span style={{ minWidth: 88, height: 88, padding: '0 18px', borderRadius: 44, display: 'grid', placeItems: 'center', background: c.signature, color: '#fff', fontSize: centre.length > 3 ? 24 : 32, fontWeight: 800, letterSpacing: 1, boxShadow: `0 0 40px ${alpha(c.hot, 0.45)}`, ...animStyle(p, 'zoom', delayMs + 120, 400) }}>{centre}</span>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, ...animStyle(p, 'slide-right', delayMs, 420) }}><Logo url={a.logoUrl} label={a.abbreviation} size={96} color={a.primaryColor} /><Fitted full={a.name} short={a.shortName} width={330} fontPx={40} measure={p.measure} /></div>
+      {side('away')}
     </div>
   );
 }
@@ -253,17 +405,22 @@ function Ident(p: GraphicProps) {
   const c = roles(p);
   const info = identInfo(p);
   return (
-    <FullPanel p={p} title={p.data.match.competition.name}>
-      <TeamsHeader p={p} centre={info.centre} score={info.started} />
-      <div style={{ textAlign: 'center', marginTop: 26, fontSize: info.started ? 30 : 26, fontWeight: info.started ? 700 : 400, color: info.started ? c.hot : c.muted, letterSpacing: info.started ? 3 : 1, ...UPPER, ...animStyle(p, 'rise', 420, 340) }}>{info.line}</div>
+    <FullPanel p={p} title={p.data.match.competition.name} width={1160}>
+      <TeamsHeader p={p} centre={info.centre} score={info.started} crest={120} />
+      <div style={{ textAlign: 'center', marginTop: 24, fontSize: info.started ? 28 : 22, fontWeight: info.started ? 800 : 500, color: info.started ? c.electric : c.onMuted, letterSpacing: info.started ? 4 : 1.5, textTransform: 'uppercase', ...animStyle(p, 'rise', 420, 340) }}>{info.line}</div>
       {info.countdown ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 14, ...UPPER, ...animStyle(p, 'zoom', 500, 420) }}>
-          <span style={{ background: c.hot, color: '#fff', fontSize: 20, fontWeight: 700, letterSpacing: 2, padding: '6px 22px', ...slant(12) }}>{info.countdown.label}</span>
-          <span style={{ fontSize: 60, fontWeight: 700, color: c.deep, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{info.countdown.text}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 16, ...animStyle(p, 'zoom', 500, 420) }}>
+          <span style={{ background: c.hot, color: inkOn(c.hot, c.deep), fontSize: 18, fontWeight: 800, letterSpacing: 2.5, padding: '8px 22px', borderRadius: 8, ...cutRight(10) }}>{info.countdown.label}</span>
+          <span style={{ fontSize: 62, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{info.countdown.text}</span>
         </div>
       ) : null}
-      {info.message ? <div style={{ textAlign: 'center', marginTop: 18, fontSize: 40, fontWeight: 700, letterSpacing: 3, color: c.deep, ...UPPER, ...animStyle(p, 'rise', 520, 360) }}>{info.message}<div style={{ height: 5, width: 160, margin: '10px auto 0', background: c.electric, transformOrigin: 'center', ...animStyle(p, 'grow-x', 640, 360) }} /></div> : null}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18, ...animStyle(p, 'fade', 580, 300) }}><SponsorMark p={p} placement="detached_logo" height={70} /></div>
+      {info.message ? (
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 42, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 520, 360) }}>
+          {info.message}
+          <div style={{ height: 5, width: 180, margin: '12px auto 0', borderRadius: 3, background: c.signature, transformOrigin: 'center', ...animStyle(p, 'grow-x', 640, 360) }} />
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18 }}><SponsorPlate p={p} placement="detached_logo" height={62} delayMs={580} /></div>
     </FullPanel>
   );
 }
@@ -272,19 +429,32 @@ function Lineup(p: GraphicProps) {
   const c = roles(p);
   const { s, starters, bench, page, pages } = lineupPage(p);
   const tm = team(p, s);
+  const formation = p.data.match.lineup.formations?.[s];
   return (
-    <FullPanel p={p} width={980} title={<span style={{ display: 'flex', alignItems: 'center', gap: 16 }}><span style={animStyle(p, 'zoom', 200, 400)}><Logo url={tm.logoUrl} label={tm.abbreviation} size={44} color={tm.primaryColor} /></span> {tm.name}{pages > 1 ? ` (${page}/${pages})` : ''}</span>}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 40px', ...UPPER }}>
-        {starters.map((x, i) => (
-          <div key={x.playerId} style={{ display: 'flex', gap: 16, alignItems: 'baseline', fontSize: 30, ...stagger(p, i, 'slide-left', 240, 45) }}>
-            <span style={{ width: 48, textAlign: 'right', color: c.hot, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{x.number ?? ''}</span>
-            <Fitted full={x.displayName} short={x.shortName} width={330} fontPx={30} measure={p.measure} />
-            {x.captain ? <span style={{ fontSize: 16, color: c.muted }}>(C)</span> : null}
-          </div>
-        ))}
+    <FullPanel p={p} width={1160} title={`${t(p, 'STARTING LINE-UP')}${pages > 1 ? ` (${page}/${pages})` : ''}`}>
+      <div style={{ display: 'grid', gridTemplateColumns: '330px 1fr', gap: 40, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 14, paddingTop: 10, ...animStyle(p, 'slide-left', 200, 440) }}>
+          <Crest tm={tm} size={150} />
+          <Fitted full={tm.name} short={tm.shortName} width={320} fontPx={36} measure={p.measure} />
+          {formation ? <span style={{ fontSize: 18, letterSpacing: 2, color: c.onMuted, fontWeight: 600 }}>{t(p, 'FORMATION')} <b style={{ color: c.electric }}>{formation}</b></span> : null}
+        </div>
+        <div>
+          {starters.map((x, i) => (
+            <div key={x.playerId} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderBottom: `1px solid ${c.onRule}`, ...stagger(p, i, 'slide-right', 260, 45) }}>
+              <span style={{ width: 52, height: 36, flex: 'none', display: 'grid', placeItems: 'center', borderRadius: 6, background: alpha(c.electric, 0.16), color: c.electric, fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{x.number ?? ''}</span>
+              <Fitted full={x.displayName} short={x.shortName} width={520} fontPx={28} weight={600} measure={p.measure} />
+              {x.captain ? <span style={{ width: 26, height: 26, flex: 'none', borderRadius: '50%', background: c.hot, color: inkOn(c.hot, c.deep), fontSize: 14, fontWeight: 800, display: 'grid', placeItems: 'center' }}>C</span> : null}
+              {x.position ? <span style={{ marginLeft: 'auto', color: c.onMuted, fontSize: 15, fontWeight: 600, ...CAPS }}>{x.position}</span> : null}
+            </div>
+          ))}
+          {!starters.length ? <div style={{ fontSize: 26, color: c.onMuted, paddingTop: 20 }}>{t(p, 'Lineup to be confirmed')}</div> : null}
+        </div>
       </div>
-      {bench.length ? <div style={{ marginTop: 20, fontSize: 20, color: c.muted, letterSpacing: 1, ...UPPER, ...stagger(p, starters.length + 1, 'rise', 240, 45) }}><span style={{ color: c.hot, fontWeight: 700 }}>{t(p, 'BENCH')}</span> {bench.map((x) => `${x.number ?? ''} ${x.shortName ?? x.displayName}`).join(' · ')}</div> : null}
-      {!starters.length ? <div style={{ fontSize: 26, color: c.muted }}>{t(p, 'Lineup to be confirmed')}</div> : null}
+      {bench.length ? (
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${c.onRule}`, fontSize: 19, color: c.onMuted, ...stagger(p, starters.length + 1, 'rise', 260, 45) }}>
+          <span style={{ color: c.electric, fontWeight: 800, letterSpacing: 2 }}>{t(p, 'SUBSTITUTES')}</span> {bench.map((x) => `${x.number ?? ''} ${x.shortName ?? x.displayName}`.trim()).join(' · ')}
+        </div>
+      ) : null}
     </FullPanel>
   );
 }
@@ -295,34 +465,51 @@ function Stats(p: GraphicProps) {
   const h = team(p, 'home');
   const a = team(p, 'away');
   const d = p.display;
+  const head = (tm: RenderTeam, s: 'home' | 'away') => (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 12, flexDirection: s === 'home' ? 'row' : 'row-reverse', ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', 220, 360) }}>
+      <Logo url={tm.logoUrl} label={tm.abbreviation} size={48} color={tm.primaryColor} />
+      <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
+    </span>
+  );
   return (
-    <FullPanel p={p} width={900} title={t(p, 'MATCH STATS')}>
-      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 120px', fontSize: 30, gap: '10px 0', ...UPPER }}>
-        <span style={{ fontWeight: 700, color: h.primaryColor, ...animStyle(p, 'slide-left', 220, 340) }}>{h.abbreviation}</span>
-        <span style={{ textAlign: 'center', fontSize: 44, fontWeight: 700, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'zoom', 260, 400) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></span>
-        <span style={{ fontWeight: 700, color: a.primaryColor, textAlign: 'right', ...animStyle(p, 'slide-right', 220, 340) }}>{a.abbreviation}</span>
+    <FullPanel p={p} width={960} title={t(p, 'MATCH STATS')}>
+      <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr 170px', alignItems: 'center', gap: '12px 0' }}>
+        {head(h, 'home')}
+        <span style={{ justifySelf: 'center', fontSize: 40, padding: '6px 20px', ...plate(c), ...animStyle(p, 'zoom', 260, 400) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></span>
+        {head(a, 'away')}
         {rows.map((r, i) => {
           const hv = Number(r.home ?? 0);
           const av = Number(r.away ?? 0);
           const tot = hv + av || 1;
+          const lead = hv === av ? null : hv > av ? 'home' : 'away';
           const row = stagger(p, i, 'rise', 300, 70);
+          const val = (s: 'home' | 'away', v: unknown) => (
+            <span style={{ fontSize: 30, fontWeight: 800, fontVariantNumeric: 'tabular-nums', textAlign: s === 'home' ? 'left' : 'right', color: lead === s || !lead ? c.on : c.onMuted, ...row }}>
+              <span style={changeStyle(p, `${s === 'home' ? 'h' : 'a'}-${r.key}`, v)}>{v == null ? '—' : String(v)}</span>{r.unit ?? ''}
+            </span>
+          );
+          const bar = (s: 'home' | 'away', share: number, colour: string) => (
+            <span style={{ flex: 1, display: 'flex', justifyContent: s === 'home' ? 'flex-end' : 'flex-start', background: c.onRule, borderRadius: 4, overflow: 'hidden' }}>
+              <span style={{ width: `${share * 100}%`, background: colour, borderRadius: 4, transformOrigin: s === 'home' ? 'right' : 'left', ...animStyle(p, 'grow-x', 380 + i * 70, 420) }} />
+            </span>
+          );
           return (
             <div key={r.key} style={{ display: 'contents' }}>
-              <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', ...row }}><span style={changeStyle(p, `h-${r.key}`, r.home)}>{r.home ?? '—'}</span>{r.unit ?? ''}</span>
-              <span style={{ textAlign: 'center', fontSize: 20, color: c.muted, letterSpacing: 1.5, ...row }}>
-                {r.label}
-                <span style={{ display: 'flex', height: 6, gap: 3, marginTop: 5, background: c.rule, borderRadius: 3, overflow: 'hidden' }}>
-                  <span style={{ flex: hv / tot, background: h.primaryColor, transformOrigin: 'right', ...animStyle(p, 'grow-x', 380 + i * 70, 420) }} />
-                  <span style={{ flex: av / tot, background: a.primaryColor, transformOrigin: 'left', ...animStyle(p, 'grow-x', 380 + i * 70, 420) }} />
+              {val('home', r.home)}
+              <span style={{ textAlign: 'center', ...row }}>
+                <span style={{ fontSize: 16, letterSpacing: 2, color: c.onMuted, fontWeight: 600 }}>{r.label.toUpperCase()}</span>
+                <span style={{ display: 'flex', height: 8, gap: 4, marginTop: 6 }}>
+                  {bar('home', hv / tot, h.primaryColor)}
+                  {bar('away', av / tot, a.primaryColor)}
                 </span>
               </span>
-              <span style={{ fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', ...row }}><span style={changeStyle(p, `a-${r.key}`, r.away)}>{r.away ?? '—'}</span>{r.unit ?? ''}</span>
+              {val('away', r.away)}
             </div>
           );
         })}
       </div>
-      {!rows.length ? <div style={{ color: c.muted, fontSize: 26 }}>{t(p, 'No statistics recorded yet')}</div> : null}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, ...animStyle(p, 'fade', 300 + rows.length * 70, 300) }}><SponsorMark p={p} placement="detached_logo" height={50} /></div>
+      {!rows.length ? <div style={{ color: c.onMuted, fontSize: 26 }}>{t(p, 'No statistics recorded yet')}</div> : null}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}><SponsorPlate p={p} placement="detached_logo" height={44} delayMs={300 + rows.length * 70} /></div>
     </FullPanel>
   );
 }
@@ -331,16 +518,27 @@ function BreakScore(p: GraphicProps) {
   const c = roles(p);
   const d = p.display;
   const label = t(p, ((p.cue.variables.label as string) || d.periodLabel).toUpperCase());
-  return (
-    <FullPanel p={p} title={label} width={1000}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 30, ...UPPER }}>
-        <div style={{ textAlign: 'right', ...animStyle(p, 'slide-left', 220, 420) }}><Fitted full={team(p, 'home').name} short={team(p, 'home').shortName} width={330} fontPx={40} measure={p.measure} /></div>
-        <div style={{ fontSize: 100, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1, ...animStyle(p, 'zoom', 300, 460) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}<span style={{ color: c.hot }}>–</span>{d.score.away}</span></div>
-        <div style={animStyle(p, 'slide-right', 220, 420)}><Fitted full={team(p, 'away').name} short={team(p, 'away').shortName} width={330} fontPx={40} measure={p.measure} /></div>
+  const side = (s: 'home' | 'away') => {
+    const tm = team(p, s);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center', ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', 220, 420) }}>
+        <Crest tm={tm} size={110} />
+        <Fitted full={tm.name} short={tm.shortName} width={330} fontPx={36} measure={p.measure} />
       </div>
-      {d.shootout ? <div style={{ textAlign: 'center', fontSize: 28, color: c.hot, fontWeight: 600, ...UPPER, ...animStyle(p, 'rise', 420, 320) }}>{t(p, 'Penalties')} {d.shootout.home}–{d.shootout.away}</div> : null}
-      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 22, color: c.muted, letterSpacing: 1.5, ...UPPER, ...animStyle(p, 'rise', 460, 320) }}>{p.data.match.competition.name}</div>
-      {p.cue.variables.showSponsor !== false ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, ...animStyle(p, 'fade', 540, 300) }}><SponsorMark p={p} placement="detached_logo" height={64} /></div> : null}
+    );
+  };
+  return (
+    <FullPanel p={p} title={label} width={1080}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 30 }}>
+        {side('home')}
+        <div style={{ fontSize: 104, padding: '12px 34px', ...plate(c, { borderRadius: 14 }), ...animStyle(p, 'zoom', 300, 460) }}>
+          <span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}<span style={{ color: c.hot, margin: '0 6px' }}>–</span>{d.score.away}</span>
+        </div>
+        {side('away')}
+      </div>
+      {d.shootout ? <div style={{ textAlign: 'center', marginTop: 14, fontSize: 26, color: c.electric, fontWeight: 700, ...CAPS, ...animStyle(p, 'rise', 420, 320) }}>{t(p, 'Penalties')} {d.shootout.home}–{d.shootout.away}</div> : null}
+      <div style={{ textAlign: 'center', marginTop: 18, fontSize: 20, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 460, 320) }}>{p.data.match.competition.name}</div>
+      {p.cue.variables.showSponsor !== false ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}><SponsorPlate p={p} placement="detached_logo" height={58} delayMs={540} /></div> : null}
     </FullPanel>
   );
 }
@@ -349,23 +547,36 @@ function PeriodBanner(p: GraphicProps) {
   const c = roles(p);
   const { heading, period } = periodBanner(p);
   const d = p.display;
-  const h = team(p, 'home');
-  const a = team(p, 'away');
-  const W = 940;
-  return (
-    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: SY + 50, width: W, fontFamily: c.font, ...UPPER, ...animStyle(p, 'slide-up') }} data-graphic="period_banner">
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ background: c.hot, color: '#fff', fontSize: 38, fontWeight: 700, letterSpacing: 4, padding: '8px 44px', ...slant(18), ...animStyle(p, 'zoom', 0, 460) }}>{t(p, heading)}</div>
+  const side = (s: 'home' | 'away') => {
+    const tm = team(p, s);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'flex-end', flexDirection: s === 'home' ? 'row' : 'row-reverse', ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', 260, 400) }}>
+        <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
+        <Logo url={tm.logoUrl} label={tm.abbreviation} size={58} color={tm.primaryColor} />
       </div>
-      <Paper p={p} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 24, padding: '18px 34px', marginTop: -4, borderTop: `5px solid ${c.deep}`, borderRadius: 6, ...animStyle(p, 'wipe', 140, 420) }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'flex-end', ...animStyle(p, 'slide-left', 260, 400) }}><span style={{ fontSize: 34, fontWeight: 700 }}>{h.abbreviation}</span><Logo url={h.logoUrl} label={h.abbreviation} size={56} color={h.primaryColor} /></div>
-        <div style={{ textAlign: 'center', ...animStyle(p, 'flip', 320, 460) }}>
-          <div style={{ fontSize: 48, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></div>
-          <div style={{ fontSize: 18, color: c.hot, fontWeight: 700, letterSpacing: 3 }}>{period}</div>
+    );
+  };
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: SY + 50, width: 980, fontFamily: c.font, ...animStyle(p, 'slide-up') }} data-graphic="period_banner">
+      <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'relative', overflow: 'hidden', background: `linear-gradient(90deg, ${c.hot}, ${mix(c.hot, c.deep, 0.35)})`, color: inkOn(c.hot, c.deep), fontSize: 36, fontWeight: 800, letterSpacing: 5, padding: '10px 52px', borderRadius: '10px 10px 0 0', ...animStyle(p, 'zoom', 0, 460) }}>
+          <Facets p={p} strength={0.6} />
+          <span style={{ position: 'relative' }}>{t(p, heading)}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, ...animStyle(p, 'slide-right', 260, 400) }}><Logo url={a.logoUrl} label={a.abbreviation} size={56} color={a.primaryColor} /><span style={{ fontSize: 34, fontWeight: 700 }}>{a.abbreviation}</span></div>
-      </Paper>
-      {p.creative('lower_third_banner', p.cue) ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8, ...animStyle(p, 'fade', 480, 300) }}><span style={{ background: 'rgba(255,255,255,.96)', padding: '6px 16px', borderRadius: 6 }}><SponsorMark p={p} placement="lower_third_banner" height={40} /></span></div> : null}
+      </div>
+      <div style={animStyle(p, 'wipe', 140, 440)}>
+        <Glass p={p} radius={12} inner={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 26, padding: '20px 36px 24px' }}>
+          {side('home')}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, ...animStyle(p, 'flip', 320, 460) }}>
+            <span style={{ fontSize: 50, padding: '6px 20px', ...plate(c) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></span>
+            <span style={{ fontSize: 16, color: c.electric, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase' }}>{period}</span>
+          </div>
+          {side('away')}
+          <EdgeRule p={p} delayMs={300} />
+          <Shine p={p} delayMs={440} />
+        </Glass>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}><SponsorPlate p={p} placement="lower_third_banner" height={40} delayMs={480} /></div>
     </div>
   );
 }
@@ -375,10 +586,12 @@ function Sponsor(p: GraphicProps) {
   const c = p.creative(placement, p.cue) ?? (p.cue.variables.creative ? p.data.creatives[p.cue.variables.creative as string] : null);
   if (!c) return null;
   if (placement === 'full_frame_image') return <FullFrameMedia p={{ ...p, cue: { ...p.cue, variables: { ...p.cue.variables, creative: c.id } } }} />;
-  const box: CSSProperties = placement === 'lower_third_banner' ? { left: SX, bottom: SY, height: 110 } : { right: SX, top: SY, height: 100 };
+  const h = placement === 'lower_third_banner' ? 110 : 100;
+  const box: CSSProperties = placement === 'lower_third_banner' ? { left: SX, bottom: SY, height: h } : { right: SX, top: SY, height: h };
   return (
-    <div style={{ position: 'absolute', ...box, background: 'rgba(255,255,255,.96)', padding: 14, display: 'grid', placeItems: 'center', borderRadius: 6, borderTop: `5px solid ${roles(p).hot}`, ...animStyle(p, placement === 'lower_third_banner' ? 'wipe' : 'zoom') }} data-graphic="sponsor">
-      <img alt={c.brandName} src={c.url} style={{ height: '100%', objectFit: 'contain', ...animStyle(p, 'fade', 150, 300) }} data-sponsor-creative={c.id} />
+    <div style={{ position: 'absolute', ...box, overflow: 'hidden', background: 'rgba(255,255,255,.96)', padding: '14px 14px 18px', display: 'grid', placeItems: 'center', borderRadius: 10, boxShadow: '0 12px 36px rgba(12,0,24,.35)', ...animStyle(p, placement === 'lower_third_banner' ? 'wipe' : 'zoom') }} data-graphic="sponsor">
+      <img alt={c.brandName} src={c.url} style={{ height: h - 32, maxWidth: (h - 32) * 4, objectFit: 'contain', ...animStyle(p, 'fade', 150, 300) }} data-sponsor-creative={c.id} />
+      <EdgeRule p={p} delayMs={200} />
     </div>
   );
 }
@@ -387,10 +600,11 @@ function Ticker(p: GraphicProps) {
   const c = roles(p);
   const text = tickerText(p);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: SY - 10, height: 56, background: c.deep, color: '#fff', overflow: 'hidden', fontFamily: c.font, display: 'flex', alignItems: 'center', ...animStyle(p, 'slide-up') }} data-graphic="ticker">
-      <div style={{ background: c.hot, color: '#fff', fontWeight: 700, ...UPPER, letterSpacing: 2, padding: '0 28px 0 22px', height: '100%', display: 'grid', placeItems: 'center', zIndex: 1, ...slantRight(14), ...animStyle(p, 'wipe', 100, 340) }}>{t(p, 'LATEST')}</div>
-      <div style={{ ...animStyle(p, 'fade', 240, 400) }}>
-        <div style={{ whiteSpace: 'nowrap', fontSize: 28, fontWeight: 600, ...UPPER, letterSpacing: 1, animation: `bs-ticker ${tickerSpeed(p)}s linear infinite`, paddingLeft: 40 }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: SY - 10, height: 58, background: c.glass, color: c.on, overflow: 'hidden', fontFamily: c.font, display: 'flex', alignItems: 'center', ...animStyle(p, 'slide-up') }} data-graphic="ticker">
+      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 3, background: c.signature, transformOrigin: 'left', ...animStyle(p, 'grow-x', 60, 420) }} />
+      <div style={{ background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.35)})`, color: inkOn(c.hot, c.deep), fontWeight: 800, letterSpacing: 2.5, padding: '0 34px 0 24px', height: '100%', display: 'grid', placeItems: 'center', zIndex: 1, ...cutRight(16), ...animStyle(p, 'wipe', 100, 340) }}>{t(p, 'LATEST')}</div>
+      <div style={animStyle(p, 'fade', 240, 400)}>
+        <div style={{ whiteSpace: 'nowrap', fontSize: 26, fontWeight: 600, ...CAPS, letterSpacing: 1, animation: `bs-ticker ${tickerSpeed(p)}s linear infinite`, paddingLeft: 40 }}>
           {text} &nbsp;&nbsp;<span style={{ color: c.electric }}>◆</span>&nbsp;&nbsp; {text} &nbsp;&nbsp;<span style={{ color: c.electric }}>◆</span>&nbsp;&nbsp;
         </div>
       </div>
@@ -401,24 +615,34 @@ function Ticker(p: GraphicProps) {
 function Slate(p: GraphicProps) {
   const c = roles(p);
   return (
-    <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(118deg, ${c.deep} 0%, ${c.deep} 58%, ${c.hot} 58%, ${c.hot} 100%)`, color: '#fff', fontFamily: c.font, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 40, ...UPPER, ...animStyle(p, 'fade') }} data-graphic="slate">
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: '11%', height: 6, background: c.electric, opacity: 0.6, transformOrigin: 'left', ...animStyle(p, 'grow-x', 80, 600) }} />
-      <div style={{ position: 'relative', ...animStyle(p, 'fade', 100, 400) }}><ThemeBadge p={p} height={80} /></div>
-      <div style={{ position: 'relative', width: 1100, background: 'rgba(255,255,255,.08)', padding: '24px 32px', borderRadius: 8 }}><TeamsHeader p={p} delayMs={200} /></div>
-      <div style={{ position: 'relative', fontSize: 54, fontWeight: 700, letterSpacing: 2, ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
-      <div style={{ position: 'relative', fontSize: 24, opacity: 0.8, letterSpacing: 2, ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: `radial-gradient(ellipse at 72% 28%, ${mix(c.deep, c.hot, 0.35)} 0%, ${c.deep} 55%, ${mix(c.deep, '#000000', 0.35)} 100%)`, color: c.on, fontFamily: c.font, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 36, ...animStyle(p, 'fade') }} data-graphic="slate">
+      <Facets p={p} strength={1.2} />
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: '12%', height: 6, background: c.signature, opacity: 0.8, transformOrigin: 'left', ...animStyle(p, 'grow-x', 80, 600) }} />
+      <div style={{ position: 'relative', ...animStyle(p, 'fade', 100, 400) }}><ThemeBadge p={p} height={84} /></div>
+      <div style={{ position: 'relative', width: 1160 }}>
+        <Glass p={p} radius={14} inner={{ padding: '30px 36px' }}><TeamsHeader p={p} delayMs={200} crest={100} centre={t(p, 'VS')} /></Glass>
+      </div>
+      <div style={{ position: 'relative', fontSize: 54, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
+      <div style={{ position: 'relative', fontSize: 22, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>
       <div style={{ position: 'relative', ...animStyle(p, 'fade', 600, 400) }}><SponsorMark p={p} placement="detached_logo" height={80} light /></div>
     </div>
   );
 }
 
-/** Lower-anchored strip (vertical kicker + paper) used by the shared match-information graphic. */
-function LowerStrip(p: GraphicProps, kicker: string, color: string, body: React.ReactNode, sponsorPlacement?: string) {
+/** Lower-anchored strip (vertical kicker + glass) used by the shared match-information graphic. */
+function LowerStrip(p: GraphicProps, kicker: string, color: string, body: ReactNode, sponsorPlacement?: string) {
   const c = roles(p);
   return (
     <div style={{ position: 'absolute', left: SX, bottom: SY + 40, display: 'flex', alignItems: 'stretch', fontFamily: c.font, ...animStyle(p, 'slide-left') }} data-graphic={p.t.key}>
-      <div style={{ background: color, color: inkOn(color, c.deep), fontSize: 20, fontWeight: 700, ...UPPER, letterSpacing: 3, padding: '0 20px', display: 'grid', placeItems: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', ...animStyle(p, 'wipe', 0, 360) }}>{kicker}</div>
-      <Paper p={p} style={{ padding: '16px 44px 16px 30px', minWidth: 700, maxWidth: 1300, borderTop: `5px solid ${c.deep}`, ...slant(22), ...animStyle(p, 'wipe', 100, 400) }}>{body}</Paper>
+      {/* rotated half a turn, so its right-hand corners are the ones on the left */}
+      <div style={{ background: `linear-gradient(0deg, ${color}, ${mix(color, c.deep, 0.35)})`, color: inkOn(color, c.deep), fontSize: 18, fontWeight: 800, letterSpacing: 3, padding: '0 18px', display: 'grid', placeItems: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', borderRadius: '0 10px 10px 0', ...animStyle(p, 'wipe', 0, 360) }}>{kicker}</div>
+      <div style={animStyle(p, 'wipe', 100, 420)}>
+        <Glass p={p} radius="0 10px 10px 0" style={{ height: '100%', minWidth: 720, maxWidth: 1340 }} inner={{ padding: '18px 46px 22px 30px' }}>
+          {body}
+          <EdgeRule p={p} delayMs={300} />
+          <Shine p={p} delayMs={420} />
+        </Glass>
+      </div>
       {sponsorPlacement ? <SponsorBox p={p} placement={sponsorPlacement} delayMs={420} /> : null}
     </div>
   );
@@ -428,9 +652,13 @@ export const premierChrome: Chrome = {
   frame: (p, title, children, width) => <FullPanel p={p} title={title} width={width}>{children}</FullPanel>,
   strip: LowerStrip,
   event: EventBar,
-  text: (p) => p.data.theme.text,
-  muted: (p) => alpha(p.data.theme.text, 0.62),
-  rule: (p) => alpha(p.data.theme.text, 0.12),
+  text: (p) => roles(p).on,
+  muted: (p) => roles(p).onMuted,
+  rule: (p) => roles(p).onRule,
+  card: (p) => {
+    const c = roles(p);
+    return { background: c.glass, color: c.on, borderRadius: 12, boxShadow: '0 18px 48px rgba(12,0,24,.42)', borderBottom: `4px solid ${c.electric}` };
+  },
 };
 
 export const premierTheme: ThemeComponents = {

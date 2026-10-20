@@ -35,7 +35,8 @@ export type ProfileConfig = z.infer<typeof profileConfigSchema>;
 export async function listThemes(ctx: Ctx) {
   return tx(ctx, async (t) => {
     const ts = await t.select().from(themes).where(or(isNull(themes.organisationId), eq(themes.organisationId, ctx.actor.organisationId)));
-    const vs = await t.select().from(themeVersions).where(inArray(themeVersions.themeId, ts.map((x) => x.id)));
+    // newest first: pages read versions[0] as the current version of a look
+    const vs = await t.select().from(themeVersions).where(inArray(themeVersions.themeId, ts.map((x) => x.id))).orderBy(desc(themeVersions.version));
     return ts.map((th) => ({ ...th, versions: vs.filter((v) => v.themeId === th.id).map((v) => ({ id: v.id, version: v.version, supportedSports: v.supportedSports, config: v.config })) }));
   });
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/oswald';
+import '@fontsource-variable/outfit';
 import './render.css';
 
 export const metadata: Metadata = { title: 'Output', robots: { index: false, follow: false }, referrer: 'no-referrer' };

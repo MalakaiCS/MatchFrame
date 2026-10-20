@@ -57,9 +57,12 @@ records.
 ## Looks
 
 Themes → a look is one of four styles (broadcast, minimal, club, premier) with the organisation's colours, logo and
-team colours, previewed on real graphics. **Premier** is the top-flight football broadcast look: deep purple panels,
-hot magenta kickers, electric teal accents, white paper for the words and condensed uppercase type on a shared
-slant. It is an original design in that spirit and carries no league marks; a club can retint it like any look. A look also sets the **scorebug variant and position**, the **clock
+team colours, previewed on real graphics. **Premier** is the top-flight football broadcast look, in the style of a
+motion graphics pack: deep purple glass panels cut with angular facets, hot magenta kickers, electric teal accents, a
+cyan-to-magenta rule, scores on white plates, crests on a glow of the team's colour and a geometric typeface (Outfit);
+each graphic wipes in and a light sweep crosses it as it lands. It is an original design in that spirit and carries
+no league marks; a club can retint it like any look. A Premier look published before 20 October 2026 keeps its old
+typeface until it is published again. A look also sets the **scorebug variant and position**, the **clock
 style** (hide seconds; added time as "+3" or a label), **wording** overrides for on-air labels (bilingual
 competitions), **audio stings** on goals and cards (the OBS browser source captures them) and a **custom font**
 uploaded through the asset library. When two kits are too close in colour the away side switches to its

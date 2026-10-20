@@ -11,7 +11,7 @@ import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-pr
 type Look = 'broadcast' | 'premier' | 'club' | 'minimal';
 const LOOKS: { key: Look; label: string; note: string }[] = [
   { key: 'broadcast', label: 'Broadcast', note: 'Clean sports-network panels on a shared slant' },
-  { key: 'premier', label: 'Premier', note: 'Top-flight football style: deep purple, magenta and teal' },
+  { key: 'premier', label: 'Premier', note: 'Top-flight football style: purple glass, angular facets, magenta and teal' },
   { key: 'club', label: 'Club', note: 'Rounded pills with lively motion' },
   { key: 'minimal', label: 'Minimal', note: 'Light cards and restrained type' },
 ];
