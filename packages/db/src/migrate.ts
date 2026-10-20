@@ -8,9 +8,19 @@ import { loadDotEnv } from '@bs/config';
 loadDotEnv();
 const adminUrl = process.env.DATABASE_ADMIN_URL;
 if (!adminUrl) throw new Error('DATABASE_ADMIN_URL is required for migrations');
-const appPw = process.env.DB_APP_PASSWORD;
-const workerPw = process.env.DB_WORKER_PASSWORD;
-if (!appPw || !workerPw) throw new Error('DB_APP_PASSWORD and DB_WORKER_PASSWORD are required');
+// The role passwords are the ones the app connects with: DB_*_PASSWORD, else the password inside the connection URL.
+const urlPassword = (url?: string) => {
+  try {
+    return url ? decodeURIComponent(new URL(url).password) : '';
+  } catch {
+    return '';
+  }
+};
+const appPw = process.env.DB_APP_PASSWORD || urlPassword(process.env.DATABASE_URL);
+const workerPw = process.env.DB_WORKER_PASSWORD || urlPassword(process.env.DATABASE_WORKER_URL);
+const missingPw = [!appPw && 'DB_APP_PASSWORD', !workerPw && 'DB_WORKER_PASSWORD'].filter(Boolean);
+if (missingPw.length)
+  throw new Error(`${missingPw.join(' and ')} empty or not set (any long random string; see docs/deploy-hosted.md)`);
 
 const client = new pg.Client({ connectionString: adminUrl });
 await client.connect();
