@@ -2,14 +2,15 @@ import crypto from 'node:crypto';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import { fromNodeHeaders } from 'better-auth/node';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import type { AppConfig } from '@bs/config';
-import type { Db } from '@bs/db';
+import { organisations, users, type Db } from '@bs/db';
 import type { MediaProvider } from '@bs/media';
 import {
   AppError,
   createAuth,
+  metrics,
   redact,
   resolveActor,
   orgs,
@@ -75,6 +76,21 @@ export async function buildApp(deps: ApiDeps) {
   await app.register(cookie);
   app.addContentTypeParser(['text/csv', 'text/plain'], { parseAs: 'string' }, (_req, body, done) => done(null, body));
   app.addContentTypeParser('application/webhook+json', { parseAs: 'string' }, (_req, body, done) => done(null, body));
+  // JSON is parsed from the raw string so signed webhooks (Stripe) can verify the exact bytes they received.
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    (req as FastifyRequest & { rawBody?: string }).rawBody = body as string;
+    if (!(body as string).length) return done(null, undefined);
+    try {
+      done(null, JSON.parse(body as string));
+    } catch (e) {
+      done(e as Error, undefined);
+    }
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    const route = req.routeOptions?.url ?? 'unmatched';
+    metrics.inc('bs_http_requests_total', { route, method: req.method, status: reply.statusCode });
+    metrics.observe('bs_http_request_duration_seconds', { route, method: req.method }, reply.elapsedTime / 1000);
+  });
 
   app.addHook('onSend', async (req, reply) => {
     reply.header('x-request-id', req.id);
@@ -107,6 +123,7 @@ export async function buildApp(deps: ApiDeps) {
       return reply.code(e.statusCode).send(errorBody(e.code ?? 'BAD_REQUEST', e.statusCode === 413 ? 'Request body is too large' : 'The request could not be processed', req.id));
     }
     req.log.error({ err: { message: redact(String(e.message)), code: e.code } }, 'unhandled error');
+    metrics.reportError(config.ERROR_REPORT_URL, { message: (err as Error).message, stack: (err as Error).stack, route: req.routeOptions?.url, requestId: req.id });
     return reply.code(500).send(errorBody('INTERNAL', `Something failed on our side. Retry, and quote reference ${req.id} if it persists.`, req.id));
   });
 
@@ -131,6 +148,17 @@ export async function buildApp(deps: ApiDeps) {
       return reply.send(text || null);
     },
   });
+
+  const TWO_FACTOR_EXEMPT = /^\/api\/v1\/(me(\/|$|\?)|organisations\/(current|switch)|auth-options|status)/;
+  const twoFactorCache = new Map<string, { v: boolean; at: number }>();
+  async function orgRequiresTwoFactor(orgId: string) {
+    const c = twoFactorCache.get(orgId);
+    if (c && Date.now() - c.at < 30_000) return c.v;
+    const [o] = await deps.db.select({ r: organisations.requireTwoFactor }).from(organisations).where(eq(organisations.id, orgId));
+    const v = !!o?.r;
+    twoFactorCache.set(orgId, { v, at: Date.now() });
+    return v;
+  }
 
   async function loadSession(req: FastifyRequest): Promise<SessionInfo | null> {
     if (req.sessionInfo !== undefined) return req.sessionInfo;
@@ -160,6 +188,11 @@ export async function buildApp(deps: ApiDeps) {
     }
     const actor = await resolveActor(deps.db, s.user.id, orgId!, req.id);
     if (!actor) throw new AppError('NOT_A_MEMBER', 403, 'Your access to this organisation has ended');
+    // Organisations may require two-step sign-in: everything but the account routes waits until it is on.
+    if (await orgRequiresTwoFactor(orgId!)) {
+      const [u] = await deps.db.select({ tf: users.twoFactorEnabled }).from(users).where(eq(users.id, s.user.id));
+      if (!u?.tf && !TWO_FACTOR_EXEMPT.test(req.url)) throw new AppError('TWO_FACTOR_REQUIRED', 403, 'This organisation requires two-step sign-in. Turn it on under Settings → Account to continue.');
+    }
     req.actorCache = actor;
     return actor;
   }

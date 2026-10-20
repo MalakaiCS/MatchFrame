@@ -75,12 +75,14 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'lineup'], entranceMs: 350, holdMs: 10000, exitMs: 300, sponsorSlots: [], bounds: { x: 0.2, y: 0.12, w: 0.6, h: 0.76 },
   },
   {
-    key: 'builtin:goal', name: 'Goal / score event', category: 'Events', sports: ['football'], layer: 'event',
+    key: 'builtin:goal', name: 'Goal / score event', category: 'Events', sports: ['football', 'netball', 'rugby_league', 'afl', 'hockey'], layer: 'event',
     variables: [
       { key: 'team', label: 'Team', type: 'team', required: true },
       { key: 'player', label: 'Scorer', type: 'player', required: false },
+      { key: 'assist', label: 'Assist', type: 'player', required: false },
       { key: 'minute', label: 'Minute', type: 'text', required: false, maxLength: 8 },
-      { key: 'eventType', label: 'Type', type: 'select', options: ['goal', 'own_goal', 'penalty_scored'], required: false, default: 'goal' },
+      { key: 'eventType', label: 'Type', type: 'select', options: ['goal', 'own_goal', 'penalty_scored', 'try', 'penalty_try', 'conversion', 'penalty_goal', 'field_goal', 'behind'], required: false, default: 'goal' },
+      { key: 'points', label: 'Points', type: 'number', required: false },
     ],
     requiredData: ['teams', 'score'], entranceMs: 300, holdMs: 7000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
   },
@@ -94,11 +96,11 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'score'], entranceMs: 250, holdMs: 5000, exitMs: 200, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
   },
   {
-    key: 'builtin:card', name: 'Card', category: 'Events', sports: ['football'], layer: 'event',
+    key: 'builtin:card', name: 'Card', category: 'Events', sports: ['football', 'hockey', 'rugby_league'], layer: 'event',
     variables: [
       { key: 'team', label: 'Team', type: 'team', required: true },
       { key: 'player', label: 'Player', type: 'player', required: false },
-      { key: 'cardType', label: 'Card', type: 'select', options: ['yellow', 'second_yellow', 'red'], required: true, default: 'yellow' },
+      { key: 'cardType', label: 'Card', type: 'select', options: ['yellow', 'second_yellow', 'red', 'green', 'sin_bin'], required: true, default: 'yellow' },
       { key: 'minute', label: 'Minute', type: 'text', required: false, maxLength: 8 },
     ],
     requiredData: ['teams'], entranceMs: 300, holdMs: 6000, exitMs: 250, sponsorSlots: [], bounds: { x: 0.05, y: 0.72, w: 0.45, h: 0.14 },
@@ -167,8 +169,9 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
   {
     key: 'builtin:ticker', name: 'Ticker', category: 'Media', sports: both, layer: 'ticker',
     variables: [
-      { key: 'text', label: 'Text', type: 'text', required: true, maxLength: 280 },
-      { key: 'speed', label: 'Speed', type: 'select', options: ['slow', 'normal', 'fast'], default: 'normal' },
+      { key: 'text', label: 'Text', type: 'text', required: false, maxLength: 500 },
+      { key: 'speed', label: 'Speed', type: 'select', options: ['slow', 'normal', 'fast'], required: false, default: 'normal' },
+      { key: 'mode', label: 'Content', type: 'select', options: ['text', 'scores'], required: false, default: 'text' },
     ],
     requiredData: [], entranceMs: 250, holdMs: null, exitMs: 250, sponsorSlots: [], bounds: { x: 0, y: 0.9, w: 1, h: 0.05 },
   },
@@ -176,6 +179,80 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     key: 'builtin:slate', name: 'Holding slate', category: 'Match', sports: both, layer: 'background',
     variables: [{ key: 'message', label: 'Message', type: 'select', options: ['waiting', 'pre_game', 'interval', 'end'], required: true, default: 'waiting' }, { key: 'text', label: 'Custom text', type: 'text', maxLength: 80, required: false }],
     requiredData: ['teams'], entranceMs: 400, holdMs: null, exitMs: 400, sponsorSlots: ['detached_logo'], bounds: { x: 0, y: 0, w: 1, h: 1 },
+  },
+  {
+    key: 'builtin:league_table', name: 'League table', category: 'Stats', sports: both, layer: 'fullframe',
+    variables: [
+      { key: 'rows', label: 'Rows', type: 'number', required: false, default: 10 },
+      { key: 'highlight', label: 'Highlight', type: 'select', options: ['both', 'home', 'away', 'none'], required: false, default: 'both' },
+      { key: 'title', label: 'Title', type: 'text', required: false, maxLength: 40 },
+    ],
+    requiredData: ['teams'], entranceMs: 350, holdMs: 12000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.1, w: 0.6, h: 0.8 },
+  },
+  {
+    key: 'builtin:fixtures', name: 'Fixtures and results', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [
+      { key: 'mode', label: 'Show', type: 'select', options: ['round', 'results', 'next'], required: false, default: 'round' },
+      { key: 'title', label: 'Title', type: 'text', required: false, maxLength: 40 },
+    ],
+    requiredData: ['teams'], entranceMs: 350, holdMs: 12000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.1, w: 0.6, h: 0.8 },
+  },
+  {
+    key: 'builtin:formation', name: 'Formation', category: 'Teams', sports: both, layer: 'fullframe',
+    variables: [{ key: 'team', label: 'Team', type: 'team', required: true, default: 'home' }],
+    requiredData: ['teams', 'lineup'], entranceMs: 400, holdMs: 10000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.08, w: 0.6, h: 0.84 },
+  },
+  {
+    key: 'builtin:match_summary', name: 'Match summary', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [{ key: 'label', label: 'Heading', type: 'text', required: false, maxLength: 24 }],
+    requiredData: ['teams', 'score'], entranceMs: 350, holdMs: null, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.15, y: 0.1, w: 0.7, h: 0.8 },
+  },
+  {
+    key: 'builtin:head_to_head', name: 'Head to head and form', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [],
+    requiredData: ['teams'], entranceMs: 350, holdMs: 10000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.1, w: 0.6, h: 0.8 },
+  },
+  {
+    key: 'builtin:match_info', name: 'Match information strap', category: 'Match', sports: both, layer: 'lower',
+    variables: [],
+    requiredData: ['teams'], entranceMs: 300, holdMs: 8000, exitMs: 250, sponsorSlots: ['lower_third_banner'], bounds: { x: 0.05, y: 0.76, w: 0.7, h: 0.12 },
+  },
+  {
+    key: 'builtin:shootout', name: 'Shoot-out tracker', category: 'Events', sports: ['football', 'hockey'], layer: 'lower',
+    variables: [],
+    requiredData: ['teams', 'score'], entranceMs: 300, holdMs: null, exitMs: 250, sponsorSlots: [], bounds: { x: 0.2, y: 0.74, w: 0.6, h: 0.16 },
+  },
+  {
+    key: 'builtin:stat_compare', name: 'Live statistic', category: 'Stats', sports: both, layer: 'lower',
+    variables: [{ key: 'stat', label: 'Statistic', type: 'stat', required: false }],
+    requiredData: ['teams', 'stats'], entranceMs: 300, holdMs: 8000, exitMs: 250, sponsorSlots: ['lower_third_banner'], bounds: { x: 0.2, y: 0.76, w: 0.6, h: 0.12 },
+  },
+  {
+    key: 'builtin:top_scorers', name: 'Top scorers', category: 'Stats', sports: both, layer: 'fullframe',
+    variables: [
+      { key: 'rows', label: 'Rows', type: 'number', required: false, default: 5 },
+      { key: 'metric', label: 'Ranked by', type: 'select', options: ['goals', 'points', 'assists'], required: false, default: 'goals' },
+    ],
+    requiredData: ['teams'], entranceMs: 350, holdMs: 10000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.25, y: 0.12, w: 0.5, h: 0.76 },
+  },
+  {
+    key: 'builtin:player_of_match', name: 'Player of the match', category: 'People', sports: both, layer: 'event',
+    variables: [
+      { key: 'team', label: 'Team', type: 'team', required: true },
+      { key: 'player', label: 'Player', type: 'player', required: true },
+      { key: 'caption', label: 'Caption', type: 'text', required: false, maxLength: 30, default: 'PLAYER OF THE MATCH' },
+    ],
+    requiredData: ['teams', 'player'], entranceMs: 350, holdMs: 8000, exitMs: 300, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.62, w: 0.5, h: 0.26 },
+  },
+  {
+    key: 'builtin:timeout', name: 'Timeout', category: 'Events', sports: ['basketball'], layer: 'event',
+    variables: [{ key: 'team', label: 'Team', type: 'team', required: true }],
+    requiredData: ['teams'], entranceMs: 300, holdMs: 6000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
+  },
+  {
+    key: 'builtin:stinger', name: 'Stinger wipe', category: 'Media', sports: both, layer: 'fullframe',
+    variables: [{ key: 'text', label: 'Text', type: 'text', required: false, maxLength: 30 }],
+    requiredData: [], entranceMs: 450, holdMs: 500, exitMs: 450, sponsorSlots: ['detached_logo'], bounds: { x: 0, y: 0, w: 1, h: 1 },
   },
 ];
 

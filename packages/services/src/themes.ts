@@ -21,6 +21,12 @@ export const profileConfigSchema = z.object({
   exitMs: z.number().int().min(150).max(600).optional(),
   safeArea: z.number().min(0.03).max(0.1).optional(),
   logoAssetId: z.string().uuid().nullable().optional(),
+  /** a club typeface (woff2 / ttf / otf) uploaded as a font asset */
+  fontAssetId: z.string().uuid().nullable().optional(),
+  scorebug: z.object({ variant: z.enum(['box', 'strip']).optional(), position: z.enum(['left', 'centre', 'right']).optional() }).optional(),
+  clock: z.object({ hideSeconds: z.boolean().optional(), stoppage: z.enum(['plus', 'label']).optional() }).optional(),
+  wording: z.record(z.string().max(40), z.string().max(60)).optional(),
+  stings: z.boolean().optional(),
   sponsorSlots: z.record(z.string(), z.boolean()).optional(),
   controlRoomLayoutId: z.string().uuid().nullable().optional(),
 });
@@ -121,21 +127,21 @@ export async function publishProfile(ctx: Ctx, id: string) {
 }
 
 /** Effective theme config for a pinned profile version (theme version defaults + profile overrides). */
-export async function effectiveTheme(t: Tx, profileVersionId: string | null, themeVersionId: string | null): Promise<{ config: ThemeConfig; logoAssetId: string | null; sponsorSlots: Record<string, boolean> }> {
+export async function effectiveTheme(t: Tx, profileVersionId: string | null, themeVersionId: string | null): Promise<{ config: ThemeConfig; logoAssetId: string | null; fontAssetId: string | null; sponsorSlots: Record<string, boolean> }> {
   if (profileVersionId) {
     const [pv] = await t.select({ pv: themeProfileVersions, tv: themeVersions }).from(themeProfileVersions).innerJoin(themeVersions, eq(themeVersions.id, themeProfileVersions.themeVersionId)).where(eq(themeProfileVersions.id, profileVersionId));
     if (pv) {
       const c = pv.pv.config as ProfileConfig & { themeKey: ThemeConfig['themeKey'] };
       const base = pv.tv.config as unknown as ThemeConfig;
-      const { logoAssetId, sponsorSlots, controlRoomLayoutId: _l, ...overrides } = c;
-      return { config: { ...base, ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)) } as ThemeConfig, logoAssetId: logoAssetId ?? null, sponsorSlots: sponsorSlots ?? {} };
+      const { logoAssetId, fontAssetId, sponsorSlots, controlRoomLayoutId: _l, ...overrides } = c;
+      return { config: { ...base, ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)) } as ThemeConfig, logoAssetId: logoAssetId ?? null, fontAssetId: fontAssetId ?? null, sponsorSlots: sponsorSlots ?? {} };
     }
   }
   if (themeVersionId) {
     const [tv] = await t.select().from(themeVersions).where(eq(themeVersions.id, themeVersionId));
-    if (tv) return { config: tv.config as unknown as ThemeConfig, logoAssetId: null, sponsorSlots: {} };
+    if (tv) return { config: tv.config as unknown as ThemeConfig, logoAssetId: null, fontAssetId: null, sponsorSlots: {} };
   }
-  return { config: DEFAULT_THEMES.broadcast, logoAssetId: null, sponsorSlots: {} };
+  return { config: DEFAULT_THEMES.broadcast, logoAssetId: null, fontAssetId: null, sponsorSlots: {} };
 }
 
 // ------------------------------------------------------------------ designer templates

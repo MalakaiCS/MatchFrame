@@ -104,6 +104,30 @@ export const configSchema = z.object({
   DEV_DESTINATION_ALLOWLIST: z.string().default(''),
   RTMP_SINK_PASSWORD: z.string().optional(),
   MEDIA_TMP_DIR: z.string().optional(),
+  // ---- platform features (all optional; a feature stays off until its keys are set)
+  /** Web Push (reminders to scorers' phones): generate with `npx web-push generate-vapid-keys` */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:ops@example.com'),
+  /** Google / Microsoft sign-in */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_TENANT_ID: z.string().default('common'),
+  /** Stripe billing: secret key, webhook signing secret and the price IDs of the paid plans */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_CLUB: z.string().optional(),
+  STRIPE_PRICE_LEAGUE: z.string().optional(),
+  /** scheduled database backups to object storage (pg_dump, custom format) */
+  BACKUP_ENABLED: bool.default(false),
+  BACKUP_EVERY_HOURS: int(24),
+  BACKUP_KEEP: int(14),
+  /** /metrics bearer token (unset = metrics served to anyone who can reach the API: fine behind a private network only) */
+  METRICS_TOKEN: z.string().optional(),
+  /** generic error-report webhook (JSON POST per batch of unhandled errors) */
+  ERROR_REPORT_URL: z.string().url().optional(),
 }).superRefine((c, ctx) => {
   if (c.STREAMING_ENABLED && c.MEDIA_PROVIDER === 'livekit' && !c.LIVEKIT_API_SECRET)
     ctx.addIssue({ code: 'custom', path: ['LIVEKIT_API_SECRET'], message: 'required while STREAMING_ENABLED=true' });

@@ -32,6 +32,15 @@ export const guardSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('min_data'), require: z.array(z.enum(['lineup', 'player'])) }),
   z.object({ type: z.literal('freshness'), maxAgeMs: z.number().int().min(1000).max(600_000) }),
   z.object({ type: z.literal('sponsor_available'), placement: z.string() }),
+  /** fire only when a match condition holds: "score gap >= 3", "home shots_on_target >= 5", "minute > 80", "quiet for 120 s" */
+  z.object({
+    type: z.literal('condition'),
+    metric: z.enum(['score_gap', 'total_score', 'stat', 'minute', 'since_last_graphic_s']),
+    stat: z.string().max(40).optional(),
+    side: z.enum(['home', 'away', 'either', 'leader']).optional(),
+    op: z.enum(['>=', '<=', '==', '>', '<']),
+    value: z.number(),
+  }),
 ]);
 export type Guard = z.infer<typeof guardSchema>;
 
@@ -56,6 +65,8 @@ export const playlistSchema = z.object({
   id: z.string().max(40),
   name: z.string().max(80),
   kind: z.enum(['pre', 'in_play', 'break', 'post']),
+  /** manual: cues wait in the control room for a producer's approval before going to air */
+  approval: z.enum(['auto', 'manual']).optional(),
   priority: z.number().int().min(1).max(4),
   triggers: z.array(triggerSchema).min(1),
   guards: z.array(guardSchema).default([]),
@@ -146,6 +157,46 @@ export interface GuardContext {
   hasLineup: boolean;
   sponsorAvailable: (placement: string) => boolean;
   now: number;
+  /** current match projection, for condition guards */
+  projection?: { score: { home: number; away: number }; stats: { home: Record<string, number>; away: Record<string, number> } } | null;
+  /** main clock position in ms, for the minute condition */
+  clockMs?: number | null;
+  /** when the last graphic went to air on this output (ms), for the "quiet for" condition */
+  lastGraphicAt?: number | null;
+}
+
+const compare = (a: number, op: string, b: number) => (op === '>=' ? a >= b : op === '<=' ? a <= b : op === '==' ? a === b : op === '>' ? a > b : a < b);
+
+/** Evaluate one condition guard against the context; returns a skip reason or null. */
+export function evaluateCondition(g: Extract<Guard, { type: 'condition' }>, input: TriggerInput, c: GuardContext): string | null {
+  const p = c.projection;
+  let value: number | null = null;
+  switch (g.metric) {
+    case 'score_gap':
+      value = p ? Math.abs(p.score.home - p.score.away) : null;
+      break;
+    case 'total_score':
+      value = p ? p.score.home + p.score.away : null;
+      break;
+    case 'stat': {
+      if (!p || !g.stat) break;
+      const h = Number(p.stats.home?.[g.stat] ?? 0);
+      const a = Number(p.stats.away?.[g.stat] ?? 0);
+      const side = g.side === 'leader' ? (p.score.home >= p.score.away ? 'home' : 'away') : g.side ?? (input.kind === 'event' ? input.side ?? 'either' : 'either');
+      value = side === 'home' ? h : side === 'away' ? a : Math.max(h, a);
+      break;
+    }
+    case 'minute': {
+      const ms = input.kind === 'event' ? input.clockMs : c.clockMs;
+      value = ms == null ? null : Math.floor(ms / 60_000) + 1;
+      break;
+    }
+    case 'since_last_graphic_s':
+      value = c.lastGraphicAt == null ? Number.POSITIVE_INFINITY : (c.now - c.lastGraphicAt) / 1000;
+      break;
+  }
+  if (value == null) return `condition: ${g.metric} not available`;
+  return compare(value, g.op, g.value) ? null : `condition: ${g.metric} ${g.op} ${g.value} not met (${Number.isFinite(value) ? value : 'never'})`;
 }
 
 export function checkGuards(pl: Playlist, input: TriggerInput, g: GuardContext): string | null {
@@ -171,6 +222,11 @@ export function checkGuards(pl: Playlist, input: TriggerInput, g: GuardContext):
       case 'sponsor_available':
         if (!g.sponsorAvailable(guard.placement)) return `no eligible sponsor for ${guard.placement}`;
         break;
+      case 'condition': {
+        const r = evaluateCondition(guard, input, g);
+        if (r) return r;
+        break;
+      }
     }
   }
   return null;

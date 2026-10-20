@@ -1,4 +1,5 @@
 'use client';
+import { SportOptions } from '@/components/sport-options';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LayoutGrid, List, Plus, Upload } from 'lucide-react';
@@ -55,7 +56,7 @@ function MatchesInner() {
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <Field label="From" htmlFor="ff"><Input id="ff" type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></Field>
         <Field label="To" htmlFor="ft"><Input id="ft" type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} /></Field>
-        <Field label="Sport" htmlFor="fs"><NativeSelect id="fs" value={f.sport} onChange={(e) => set({ sport: e.target.value })}><option value="">All</option><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
+        <Field label="Sport" htmlFor="fs"><NativeSelect id="fs" value={f.sport} onChange={(e) => set({ sport: e.target.value })}><option value="">All</option><SportOptions /></NativeSelect></Field>
         <Field label="Competition" htmlFor="fc"><NativeSelect id="fc" value={f.competitionId} onChange={(e) => set({ competitionId: e.target.value })}><option value="">All</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
         <Field label="Status" htmlFor="fst"><NativeSelect id="fst" value={f.status} onChange={(e) => set({ status: e.target.value })}><option value="">Active</option>{['scheduled', 'live', 'completed', 'postponed', 'cancelled', 'abandoned', 'archived'].map((s) => <option key={s}>{s}</option>)}</NativeSelect></Field>
         <Field label="Order" htmlFor="fo"><NativeSelect id="fo" value={f.sort} onChange={(e) => set({ sort: e.target.value as Filters['sort'] })}><option value="scheduledAt">Earliest first</option><option value="-scheduledAt">Latest first</option></NativeSelect></Field>

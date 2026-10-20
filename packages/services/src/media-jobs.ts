@@ -164,6 +164,21 @@ async function normaliseAsset(d: MediaJobDeps, job: typeof exportJobs.$inferSele
   const kind = sniff(head);
   const text = head.toString('utf8').trimStart().toLowerCase();
   if (text.startsWith('<') || text.includes('<svg') || text.includes('<script')) throw new Error('Rejected: markup/script content is not an accepted media file');
+  if (a.kind === 'font') {
+    // Fonts are served as uploaded (no transcoding); only the container is checked.
+    const tag = head.subarray(0, 4).toString('latin1');
+    const fontMime = tag === 'wOF2' ? 'font/woff2' : tag === 'wOFF' ? 'font/woff' : tag === 'OTTO' ? 'font/otf' : tag === 'true' || head.readUInt32BE(0) === 0x00010000 ? 'font/ttf' : null;
+    if (!fontMime) throw new Error('Rejected: file content is not a WOFF2, WOFF, TTF or OTF font');
+    const ext = fontMime.split('/')[1]!;
+    const key = keys.assetDerivative(a.organisationId, a.id, 'broadcast', ext);
+    const bytes = await d.storage.putFile(key, src, fontMime);
+    await withTenant(d.db, { organisationId: a.organisationId }, async (t) => {
+      await t.delete(assetDerivatives).where(eq(assetDerivatives.assetId, a.id));
+      await t.insert(assetDerivatives).values({ organisationId: a.organisationId, assetId: a.id, purpose: 'broadcast', objectKey: key, mime: fontMime, bytes, width: null, height: null, durationMs: null, checksum: crypto.createHash('sha256').update(fs.readFileSync(src)).digest('hex') });
+      await t.update(mediaAssets).set({ state: 'READY', detectedMime: fontMime, width: null, height: null, durationMs: null, error: null, updatedAt: new Date() }).where(eq(mediaAssets.id, a.id));
+    });
+    return;
+  }
   const imageKinds = ['png', 'jpeg', 'webp'];
   const videoKinds = ['mp4', 'webm'];
   const audioKinds = ['mp3', 'wav', 'mp4'];

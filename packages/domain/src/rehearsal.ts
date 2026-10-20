@@ -1,7 +1,7 @@
 // Rehearsal: replay a fact timeline against a game plan with the production decision functions, in isolation.
 // Produces an explained decision log and the cue schedule for a local preview. No I/O.
 import type { Sport } from './types';
-import { clockCrossings, decidePriority, matchTriggers, phaseBoundCancellations, phaseStepCancellations, planRun, playlistLayers, type ActiveRun, type GamePlan, type TriggerInput, type TriggerMatch } from './automation';
+import { clockCrossings, decidePriority, matchTriggers, phaseBoundCancellations, phaseStepCancellations, planRun, playlistLayers, type ActiveRun, type GamePlan, type TriggerInput, type TriggerMatch, type GuardContext } from './automation';
 import { getAdapter } from './engine';
 import type { MatchProjection, Side } from './types';
 
@@ -131,7 +131,18 @@ export function simulateRehearsal(plan: GamePlan, rulesConfig: unknown, timeline
   let clockBase = 0;
   let lastClock = 0;
   const freshness = opts.freshnessMs ?? plan.freshnessMs;
-  const guard = { hasLineup: true, sponsorAvailable: opts.sponsorAvailable ?? (() => true), now: 0 };
+  const guard: GuardContext = {
+    hasLineup: true,
+    sponsorAvailable: opts.sponsorAvailable ?? (() => true),
+    now: 0,
+    get projection() {
+      return proj;
+    },
+    get clockMs() {
+      return lastClock;
+    },
+    lastGraphicAt: null,
+  };
 
   const cancelRun = (runId: string, now: number, reason: string) => {
     const r = active.find((x) => x.runId === runId);

@@ -1,4 +1,5 @@
 'use client';
+import { SportOptions } from '@/components/sport-options';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
@@ -58,7 +59,7 @@ function Teams({ full }: { full: boolean }) {
           <Field label="Full name" htmlFor="tn" className="sm:col-span-2" error={create.error?.fieldError('name')}><Input id="tn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Short name" htmlFor="ts" hint="Approved label for tight graphics"><Input id="ts" maxLength={24} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
           <Field label="Abbreviation" htmlFor="ta" error={create.error?.fieldError('abbreviation')}><Input id="ta" maxLength={5} value={form.abbreviation} onChange={(e) => setForm({ ...form, abbreviation: e.target.value.toUpperCase() })} /></Field>
-          <Field label="Sport" htmlFor="tsp"><NativeSelect id="tsp" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
+          <Field label="Sport" htmlFor="tsp"><NativeSelect id="tsp" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><SportOptions /></NativeSelect></Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Primary" htmlFor="tc1"><input id="tc1" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value.toUpperCase() })} /></Field>
             <Field label="Secondary" htmlFor="tc2"><input id="tc2" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value.toUpperCase() })} /></Field>

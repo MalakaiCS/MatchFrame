@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm';
 import { matches, overlays, withTenant } from '@bs/db';
 import { can, resolveActor, type Actor } from '@bs/services';
 import type { AppBundle } from './app';
+import * as presence from './presence';
 
 export const EVENTS_CHANNEL = 'bs:events';
 
@@ -64,11 +65,12 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
   const users = io.of('/app');
   users.use(async (socket, next) => {
     try {
-      const s = (await b.auth.api.getSession({ headers: fromNodeHeaders(socket.request.headers) })) as { user: { id: string; emailVerified: boolean }; session: { activeOrganisationId?: string } } | null;
+      const s = (await b.auth.api.getSession({ headers: fromNodeHeaders(socket.request.headers) })) as { user: { id: string; name?: string; emailVerified: boolean }; session: { activeOrganisationId?: string } } | null;
       if (!s?.user?.emailVerified || !s.session.activeOrganisationId) return next(new Error('UNAUTHENTICATED'));
       const actor = await resolveActor(deps.db, s.user.id, s.session.activeOrganisationId);
       if (!actor) return next(new Error('NOT_A_MEMBER'));
       socket.data.actor = actor;
+      socket.data.name = s.user.name ?? 'Operator';
       socket.join(userRoom(actor.organisationId, s.user.id));
       next();
     } catch {
@@ -102,6 +104,10 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
         });
         if (!allowed) return ack?.({ ok: false, code: 'NOT_FOUND' }); // do not reveal existence
         socket.join(msg.kind === 'match' ? matchRoom(fresh.organisationId, msg.id) : overlayRoom(fresh.organisationId, msg.id));
+        if (msg.kind === 'overlay' && fresh.userId) {
+          presence.join(msg.id, socket.id, { userId: fresh.userId, name: String(socket.data.name ?? 'Operator') });
+          users.to(overlayRoom(fresh.organisationId, msg.id)).emit('presence', { overlayId: msg.id, ...presence.snapshot(msg.id) });
+        }
         ack?.({ ok: true });
       } catch {
         ack?.({ ok: false, code: 'ERROR' });
@@ -109,7 +115,22 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
     });
     socket.on('unsubscribe', (msg: { kind: string; id: string }) => {
       if (msg.kind === 'match') socket.leave(matchRoom(actor.organisationId, msg.id));
-      if (msg.kind === 'overlay') socket.leave(overlayRoom(actor.organisationId, msg.id));
+      if (msg.kind === 'overlay') {
+        socket.leave(overlayRoom(actor.organisationId, msg.id));
+        presence.leave(msg.id, socket.id);
+        users.to(overlayRoom(actor.organisationId, msg.id)).emit('presence', { overlayId: msg.id, ...presence.snapshot(msg.id) });
+      }
+    });
+    socket.on('disconnect', () => {
+      for (const overlayId of presence.leaveAll(socket.id)) users.to(overlayRoom(actor.organisationId, overlayId)).emit('presence', { overlayId, ...presence.snapshot(overlayId) });
+    });
+    // layer locks: "I am preparing a lower third" — others see it and the command path refuses a clash
+    socket.on('lock', (msg: { overlayId: string; layer: string; release?: boolean }, ack?: (r: unknown) => void) => {
+      if (!actor.userId || !msg?.overlayId || !msg.layer) return ack?.({ ok: false });
+      if (msg.release) presence.unlock(msg.overlayId, msg.layer, actor.userId);
+      const r = msg.release ? { ok: true as const } : presence.lock(msg.overlayId, msg.layer, { userId: actor.userId, name: String(socket.data.name ?? 'Operator') });
+      users.to(overlayRoom(actor.organisationId, msg.overlayId)).emit('presence', { overlayId: msg.overlayId, ...presence.snapshot(msg.overlayId) });
+      ack?.(r);
     });
     socket.on('time', (_: unknown, ack?: (r: unknown) => void) => ack?.({ serverNow: Date.now() }));
   });

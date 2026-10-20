@@ -21,7 +21,7 @@ import {
 } from '@bs/db';
 import { getAdapter, isValidTimeZone, resolveLocalTime, type LineupPlayer, type LineupSnapshot, type TeamSnapshot } from '@bs/domain';
 import { z } from 'zod';
-import { assertCan, assignedScopes, hasWideRead } from './authz';
+import { assertCan, assignedScopes, can, hasWideRead } from './authz';
 import { audit } from './audit';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
@@ -324,10 +324,11 @@ export const lineupInput = z.object({
 
 /** Set the lineup; player identity (names/numbers/photos) is snapshotted for historical consistency. */
 export async function setLineup(ctx: Ctx, matchId: string, input: z.input<typeof lineupInput>) {
-  assertCan(ctx.actor, 'competition.write');
   const d = lineupInput.parse(input);
   return tx(ctx, async (t) => {
     const m = await getMatchRow(ctx, t, matchId);
+    // operators edit any lineup; the match's scorer may enter and change lineups from the phone
+    if (!can(ctx.actor, 'competition.write')) assertCan(ctx.actor, 'match.score', { matchId: m.id, competitionId: m.competitionId }, 'You are not assigned to score this match');
     const [cur] = await t.select().from(matchLineups).where(eq(matchLineups.matchId, matchId));
     if (cur?.lockedAt && m.status !== 'scheduled') throw conflict('LINEUP_LOCKED', 'The lineup is locked for this match');
     const ids = [...d.home, ...d.away].map((p) => p.playerId);
@@ -366,6 +367,22 @@ export async function assignScorer(ctx: Ctx, matchId: string, membershipId: stri
     if (!existing.length) await t.insert(permissionGrants).values({ organisationId: ctx.actor.organisationId, membershipId: m.id, action: 'match.score', scopeType: 'match', scopeId: matchId });
     await audit(t, ctx.actor, 'match.assign_scorer', 'match', matchId, { after: { membershipId } });
     return { ok: true };
+  });
+}
+
+/** Both teams' season rosters, for the lineup editor (names, numbers, positions, photos; nothing private). */
+export async function matchRoster(ctx: Ctx, matchId: string) {
+  return tx(ctx, async (t) => {
+    const m = await getMatchRow(ctx, t, matchId);
+    assertCan(ctx.actor, 'competition.read', { matchId: m.id, competitionId: m.competitionId, teamIds: [m.homeTeamId, m.awayTeamId] });
+    const rows = await t
+      .select({ r: rosterMemberships, p: players })
+      .from(rosterMemberships)
+      .innerJoin(players, eq(players.id, rosterMemberships.playerId))
+      .where(and(eq(rosterMemberships.seasonId, m.seasonId), eq(rosterMemberships.status, 'active'), inArray(rosterMemberships.teamId, [m.homeTeamId, m.awayTeamId])))
+      .orderBy(asc(rosterMemberships.number));
+    const pick = (teamId: string) => rows.filter((x) => x.r.teamId === teamId).map((x) => ({ playerId: x.p.id, displayName: x.p.displayName, shortName: x.p.shortName, number: x.r.number ?? x.p.defaultNumber, position: x.r.position ?? x.p.position, photoAssetId: x.p.photoAssetId }));
+    return { home: pick(m.homeTeamId), away: pick(m.awayTeamId) };
   });
 }
 

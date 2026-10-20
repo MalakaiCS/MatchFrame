@@ -209,7 +209,7 @@ export const hockeyAdapter: SportAdapter<HockeyConfig> = {
   },
 
   capabilities: () => ({
-    graphics: ['scorebug', 'ident', 'lineup', 'goal', 'card', 'substitution', 'period_banner', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate'],
+    graphics: ['scorebug', 'ident', 'lineup', 'goal', 'card', 'substitution', 'period_banner', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate', 'league_table', 'fixtures', 'formation', 'match_summary', 'head_to_head', 'match_info', 'stat_compare', 'top_scorers', 'player_of_match', 'stinger', 'shootout'],
     scorebugFields: ['score', 'clock', 'period', 'shootout'],
     statRows: [
       { key: 'shots', label: 'Shots' },

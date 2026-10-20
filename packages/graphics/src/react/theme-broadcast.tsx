@@ -3,7 +3,8 @@
 // Every graphic builds in parts (panel, stripe, badge, text) on a short stagger and exits as one.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 
 const SX = 96; // 5% title-safe
 const SY = 54;
@@ -13,7 +14,49 @@ function Panel({ p, children, style }: { p: GraphicProps; children: React.ReactN
   return <div style={{ background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, ...style }}>{children}</div>;
 }
 
+/** Which graphics show a player photo beside the team badge when one is on file. */
+const PHOTO_EVENTS = ['builtin:goal', 'builtin:card', 'builtin:player_of_match'];
+
 function Scorebug(p: GraphicProps) {
+  return p.data.theme.scorebug?.variant === 'strip' ? ScorebugStrip(p) : ScorebugBox(p);
+}
+
+/** One-row scorebug: HOME 2 · 63:12 · 1 AWAY, for looks that want a slimmer bug. */
+function ScorebugStrip(p: GraphicProps) {
+  const d = p.display;
+  const th = p.data.theme;
+  const stoppage = changeStyle(p, 'stoppage', !!d.stoppageText, 'flip');
+  const cell = (s: 'home' | 'away', i: number) => {
+    const tm = team(p, s);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px', flexDirection: s === 'away' ? 'row-reverse' : 'row', ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', 80 + i * 60, 360) }}>
+        <span style={{ width: 8, alignSelf: 'stretch', background: tm.primaryColor }} />
+        <Logo url={tm.logoUrl} label={tm.abbreviation} size={34} color={tm.primaryColor} radius={4} />
+        <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
+        <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'center' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
+        {d.scoreDetail ? <span style={{ fontSize: 16, opacity: 0.75 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
+      </div>
+    );
+  };
+  return (
+    <div style={{ top: SY, display: 'flex', alignItems: 'stretch', height: 56, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+      <Panel p={p} style={{ display: 'flex', alignItems: 'stretch', ...angled() }}>
+        {cell('home', 0)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px', background: th.primary, color: th.secondary, ...animStyle(p, 'drop', 200, 360) }}>
+          <span style={{ fontSize: 16, fontWeight: 700, opacity: 0.85, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
+          <span style={{ fontSize: 32, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{clockLabel(p)}</span>
+          {d.stoppageText ? <span style={{ fontSize: 18, fontWeight: 800, color: '#7a0010', ...stoppage }}>{stoppageLabel(p)}</span> : null}
+        </div>
+        {cell('away', 1)}
+      </Panel>
+      {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, width: 64, background: '#FF5263', color: '#fff', fontSize: 30, fontWeight: 800, ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
+      {d.shootout ? <Panel p={p} style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 14px', fontSize: 20, fontWeight: 700, ...animStyle(p, 'zoom', 300, 360) }}>{t(p, 'PENS')} <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Panel> : null}
+      {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 12px', background: 'rgba(255,255,255,.95)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={34} /></div> : null}
+    </div>
+  );
+}
+
+function ScorebugBox(p: GraphicProps) {
   const d = p.display;
   const th = p.data.theme;
   const stoppage = changeStyle(p, 'stoppage', !!d.stoppageText, 'flip'); // evaluated every render so the appearance itself animates
@@ -26,12 +69,13 @@ function Scorebug(p: GraphicProps) {
         <span style={{ width: 84, fontSize: 30, fontWeight: 800, letterSpacing: 1 }}>{t.abbreviation}</span>
         {d.possession === s ? <span style={{ color: th.accent, fontSize: 22 }}>●</span> : <span style={{ width: 14 }} />}
         <span style={{ minWidth: 52, textAlign: 'right', fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
+        {d.scoreDetail ? <span style={{ fontSize: 15, opacity: 0.75, width: 48 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
         {d.fouls ? <span style={{ fontSize: 16, opacity: 0.8, width: 64 }}>F {d.fouls[s]}{d.bonus?.[s] ? ' ◆' : ''}</span> : null}
       </div>
     );
   };
   return (
-    <div style={{ position: 'absolute', left: SX, top: SY, display: 'flex', alignItems: 'stretch', ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+    <div style={{ top: SY, display: 'flex', alignItems: 'stretch', ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
       <Panel p={p} style={{ ...angled(), paddingRight: 24 }}>
         {row('home', 0)}
         <div style={{ height: 2, background: 'rgba(255,255,255,.08)' }} />
@@ -39,8 +83,8 @@ function Scorebug(p: GraphicProps) {
       </Panel>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginLeft: -10, background: th.primary, color: th.secondary, padding: '0 22px 0 30px', ...angled(), ...animStyle(p, 'drop', 220, 380) }}>
         <span style={{ fontSize: 18, fontWeight: 700, opacity: 0.85, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
-        <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{d.clockText}</span>
-        {d.stoppageText ? <span style={{ fontSize: 20, fontWeight: 800, color: '#7a0010', ...stoppage }}>{d.stoppageText}</span> : null}
+        <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{clockLabel(p)}</span>
+        {d.stoppageText ? <span style={{ fontSize: 20, fontWeight: 800, color: '#7a0010', ...stoppage }}>{stoppageLabel(p)}</span> : null}
       </div>
       {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, width: 70, background: '#FF5263', color: '#fff', fontSize: 34, fontWeight: 800, ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
       {d.shootout ? <Panel p={p} style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 16px', fontSize: 22, fontWeight: 700, ...animStyle(p, 'zoom', 300, 360) }}>PENS <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Panel> : null}
@@ -57,6 +101,7 @@ function EventBar(p: GraphicProps, label: string, accent: string, body: React.Re
       <Panel p={p} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '14px 40px 14px 30px', marginLeft: -12, minWidth: 620, ...angled(22), ...animStyle(p, 'wipe', 120, 380) }}>
         <span style={{ width: 10, alignSelf: 'stretch', background: t.primaryColor, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 220, 300) }} />
         <span style={animStyle(p, 'zoom', 260, 400)}><Logo url={t.logoUrl} label={t.abbreviation} size={64} color={t.primaryColor} /></span>
+        {PHOTO_EVENTS.includes(p.t.key) && player(p)?.photoUrl ? <span style={animStyle(p, 'zoom', 300, 400)}><Photo url={player(p)!.photoUrl} size={76} name={player(p)!.displayName} /></span> : null}
         <div style={{ display: 'flex', flexDirection: 'column', ...animStyle(p, 'rise', 320, 360) }}>{body}</div>
       </Panel>
       <SponsorBox p={p} placement="event_partner" delayMs={460} />
@@ -67,12 +112,12 @@ function EventBar(p: GraphicProps, label: string, accent: string, body: React.Re
 function SponsorBox({ p, placement, delayMs = 400 }: { p: GraphicProps; placement: string; delayMs?: number }) {
   const c = p.creative(placement, p.cue);
   if (!c) return null;
-  return <div style={{ display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.95)', padding: '0 18px', marginLeft: 8, ...animStyle(p, 'zoom', delayMs, 400) }}><SponsorMark p={p} placement={placement} height={60} /></div>;
+  return <div style={{ display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,.95)', padding: '4px 18px', marginLeft: 8, ...animStyle(p, 'zoom', delayMs, 400) }}><PresentedBy p={p} placement={placement} height={52} /></div>;
 }
 
 function Goal(p: GraphicProps) {
   const who = personOrTeam(p);
-  const label = p.cue.variables.eventType === 'own_goal' ? 'OWN GOAL' : p.cue.variables.eventType === 'penalty_scored' ? 'PENALTY' : 'GOAL';
+  const label = eventWord(p);
   const sc = p.data.match.projection.score;
   return EventBar(p, label, p.data.theme.accent, (
     <>
@@ -94,10 +139,9 @@ function Score(p: GraphicProps) {
 }
 
 function Card(p: GraphicProps) {
-  const ct = p.cue.variables.cardType;
-  const color = ct === 'red' || ct === 'second_yellow' ? '#E5484D' : '#FFCE66';
+  const cs = cardStyle(p);
   const who = personOrTeam(p);
-  return EventBar(p, ct === 'red' ? 'RED CARD' : ct === 'second_yellow' ? '2ND YELLOW' : 'YELLOW CARD', color, (
+  return EventBar(p, cs.word, cs.colour, (
     <>
       <Fitted full={who.primary} short={who.short} width={460} fontPx={40} measure={p.measure} />
       <span style={{ fontSize: 22, opacity: 0.8, ...animStyle(p, 'rise', 420, 320) }}>{team(p).shortName} {minute(p)}</span>
@@ -164,7 +208,7 @@ function PlayerCard(p: GraphicProps) {
 
 function FullPanel({ p, title, children, width = 1100 }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number }) {
   return (
-    <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 140, width, fontFamily: p.data.theme.font, ...animStyle(p, 'slide-up') }} data-graphic={p.t.key}>
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', top: 140, width, fontFamily: p.data.theme.font, ...animStyle(p, 'slide-up') }} data-graphic={p.t.key}>
       <div style={{ background: p.data.theme.primary, color: p.data.theme.secondary, padding: '16px 48px 16px 32px', fontSize: 34, fontWeight: 900, letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, ...angled(30), ...animStyle(p, 'wipe', 60, 420) }}>
         <div style={animStyle(p, 'rise', 160, 320)}>{title}</div>
         <ThemeBadge p={p} height={40} />
@@ -268,7 +312,7 @@ function Stats(p: GraphicProps) {
 
 function BreakScore(p: GraphicProps) {
   const d = p.display;
-  const label = (p.cue.variables.label as string) || d.periodLabel.toUpperCase();
+  const label = t(p, ((p.cue.variables.label as string) || d.periodLabel).toUpperCase());
   return (
     <FullPanel p={p} title={label} width={1000}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 30 }}>
@@ -290,9 +334,9 @@ function PeriodBanner(p: GraphicProps) {
   const a = team(p, 'away');
   const W = 940;
   return (
-    <div style={{ position: 'absolute', left: (1920 - W) / 2, bottom: SY + 50, width: W, fontFamily: p.data.theme.font, color: p.data.theme.text, ...animStyle(p, 'slide-up') }} data-graphic="period_banner">
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: SY + 50, width: W, fontFamily: p.data.theme.font, color: p.data.theme.text, ...animStyle(p, 'slide-up') }} data-graphic="period_banner">
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ background: p.data.theme.accent, color: '#0B1220', fontSize: 40, fontWeight: 900, letterSpacing: 4, padding: '8px 36px', ...angled(20), ...animStyle(p, 'zoom', 0, 460) }}>{heading}</div>
+        <div style={{ background: p.data.theme.accent, color: '#0B1220', fontSize: 40, fontWeight: 900, letterSpacing: 4, padding: '8px 36px', ...angled(20), ...animStyle(p, 'zoom', 0, 460) }}>{t(p, heading)}</div>
       </div>
       <Panel p={p} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 24, padding: '18px 34px', marginTop: -6, ...animStyle(p, 'wipe', 140, 420) }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'flex-end', ...animStyle(p, 'slide-left', 260, 400) }}><span style={{ fontSize: 34, fontWeight: 800 }}>{h.abbreviation}</span><Logo url={h.logoUrl} label={h.abbreviation} size={56} color={h.primaryColor} /></div>
@@ -321,7 +365,7 @@ function Sponsor(p: GraphicProps) {
 }
 
 function Ticker(p: GraphicProps) {
-  const text = String(p.cue.variables.text ?? '');
+  const text = tickerText(p);
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: SY - 10, height: 56, background: p.data.theme.panel, color: p.data.theme.text, overflow: 'hidden', fontFamily: p.data.theme.font, display: 'flex', alignItems: 'center', ...animStyle(p, 'slide-up') }} data-graphic="ticker">
       <div style={{ background: p.data.theme.primary, color: p.data.theme.secondary, fontWeight: 900, padding: '0 24px', height: '100%', display: 'grid', placeItems: 'center', zIndex: 1, ...animStyle(p, 'wipe', 100, 340) }}>LATEST</div>
@@ -346,7 +390,28 @@ function Slate(p: GraphicProps) {
   );
 }
 
+/** Lower-anchored strip (kicker + panel) used by the shared match-information graphic. */
+function LowerStrip(p: GraphicProps, kicker: string, color: string, body: React.ReactNode, sponsorPlacement?: string) {
+  return (
+    <div style={{ position: 'absolute', left: SX, bottom: SY + 40, display: 'flex', alignItems: 'stretch', fontFamily: p.data.theme.font, ...animStyle(p, 'slide-left') }} data-graphic={p.t.key}>
+      <div style={{ background: color, color: p.data.theme.secondary, fontSize: 22, fontWeight: 900, letterSpacing: 3, padding: '0 22px', display: 'grid', placeItems: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', ...angled(12), ...animStyle(p, 'wipe', 0, 360) }}>{kicker}</div>
+      <Panel p={p} style={{ padding: '16px 40px 16px 28px', minWidth: 700, maxWidth: 1300, ...angled(26), ...animStyle(p, 'wipe', 100, 400) }}>{body}</Panel>
+      {sponsorPlacement ? <SponsorBox p={p} placement={sponsorPlacement} delayMs={420} /> : null}
+    </div>
+  );
+}
+
+export const broadcastChrome: Chrome = {
+  frame: (p, title, children, width) => <FullPanel p={p} title={title} width={width}>{children}</FullPanel>,
+  strip: LowerStrip,
+  event: EventBar,
+  text: (p) => p.data.theme.text,
+  muted: () => 'rgba(255,255,255,.65)',
+  rule: () => 'rgba(255,255,255,.12)',
+};
+
 export const broadcastTheme: ThemeComponents = {
+  ...sharedGraphics(broadcastChrome),
   scorebug: Scorebug,
   ident: Ident,
   lineup: Lineup,

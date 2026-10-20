@@ -328,3 +328,92 @@ export async function listSeasons(ctx: Ctx, competitionId: string) {
 }
 
 export const _test = { isFinal, invalid };
+
+// ---------------------------------------------------------------- renderer context (no actor: called from the overlay snapshot)
+
+type UrlFor = (assetId: string | null | undefined) => string | null;
+
+/** Season context and pre-match preview for one match, shaped for the renderer. */
+export async function renderSeasonTx(t: Tx, organisationId: string, m: MatchRow, url: UrlFor) {
+  const [comp] = await t.select().from(competitions).where(eq(competitions.id, m.competitionId));
+  const [season] = await t.select().from(seasons).where(eq(seasons.id, m.seasonId));
+  if (!comp || !season) return { season: null, preview: null };
+  const sport = comp.sport as Sport;
+  const adapter = getAdapter(sport);
+  const rules = standingsRules(sport, comp.standingsRules as Partial<StandingsRules>);
+  const rows = await t
+    .select({ m: matches, phase: matchState.phase, projection: matchState.projection, clocks: matchState.clocks })
+    .from(matches)
+    .innerJoin(matchState, eq(matchState.matchId, matches.id))
+    .where(and(eq(matches.organisationId, organisationId), eq(matches.seasonId, m.seasonId)))
+    .orderBy(asc(matches.scheduledAt));
+  const results: StandingsResult[] = [];
+  for (const r of rows) {
+    if (!isFinal(r.m, r.phase) || r.m.isDemo) continue;
+    const proj = r.projection as unknown as MatchProjection;
+    results.push({ matchId: r.m.id, homeTeamId: r.m.homeTeamId, awayTeamId: r.m.awayTeamId, homeScore: proj.score.home, awayScore: proj.score.away, playedAt: r.m.scheduledAt.toISOString(), round: r.m.round });
+  }
+  const ts = await seasonTeams(t, organisationId, m.seasonId, rows);
+  const ref = (x: typeof teams.$inferSelect) => ({ id: x.id, name: x.name, shortName: x.shortName, abbreviation: x.abbreviation, primaryColor: x.primaryColor, logoUrl: url(x.logoAssetId) });
+  const byId = new Map(ts.map((x) => [x.id, ref(x)]));
+  const unknown = (id: string) => ({ id, name: 'Unknown', shortName: '?', abbreviation: '???', primaryColor: '#888888', logoUrl: null });
+  const table = computeStandings(ts.map((x) => x.id), results, rules, Object.fromEntries(ts.map((x) => [x.id, x.name])));
+  const standings = table.map((r) => ({ position: r.position, team: byId.get(r.teamId) ?? unknown(r.teamId), played: r.played, won: r.won, drawn: r.drawn, lost: r.lost, for: r.for, against: r.against, difference: r.difference, percentage: r.percentage, points: r.points, winPct: r.winPct, form: r.form }));
+  const started = (r: (typeof rows)[number]) => r.m.status === 'live' || r.m.status === 'completed' || !['scheduled', 'ready', 'pre_match', 'players_entering', 'about_to_start'].includes(r.phase);
+  const fixture = (r: (typeof rows)[number]) => {
+    const proj = r.projection as unknown as MatchProjection;
+    const on = started(r);
+    const detail = on ? adapter.display(r.m.rulesConfig as never, proj, r.clocks as never, Date.now()).scoreDetail ?? null : null;
+    return { id: r.m.id, round: r.m.round, scheduledAt: r.m.scheduledAt.toISOString(), status: r.m.status, live: r.m.status === 'live', home: byId.get(r.m.homeTeamId) ?? unknown(r.m.homeTeamId), away: byId.get(r.m.awayTeamId) ?? unknown(r.m.awayTeamId), score: on ? { ...proj.score } : null, scoreDetail: detail };
+  };
+  const live = rows.filter((r) => !r.m.isDemo);
+  const roundOrder = [...new Set(live.map((r) => r.m.round ?? ''))];
+  const thisIdx = roundOrder.indexOf(m.round ?? '');
+  const wanted = new Set([m.round ?? '', roundOrder[thisIdx + 1] ?? '\u0000']);
+  const fixtures = live.filter((r) => wanted.has(r.m.round ?? '')).map(fixture);
+  const day = m.scheduledAt.toISOString().slice(0, 10);
+  const otherScores = live.filter((r) => r.m.id !== m.id && r.m.scheduledAt.toISOString().slice(0, 10) === day).map(fixture);
+  // top scorers from stored tallies
+  const tallies = new Map<string, { goals: number; assists: number; points: number; teamId: string | null }>();
+  const lineups = await t.select({ matchId: matchLineups.matchId, snapshot: matchLineups.snapshot }).from(matchLineups).where(inArray(matchLineups.matchId, live.map((r) => r.m.id).length ? live.map((r) => r.m.id) : ['00000000-0000-0000-0000-000000000000']));
+  const sideOf = new Map<string, Map<string, 'home' | 'away'>>();
+  for (const l of lineups) {
+    const snap = l.snapshot as unknown as LineupSnapshot;
+    const mm = new Map<string, 'home' | 'away'>();
+    for (const s of ['home', 'away'] as const) for (const pl of snap[s] ?? []) mm.set(pl.playerId, s);
+    sideOf.set(l.matchId, mm);
+  }
+  for (const r of live) {
+    if (r.m.status !== 'live' && r.m.status !== 'completed') continue;
+    const proj = r.projection as unknown as MatchProjection;
+    for (const [id, tally] of Object.entries(proj.players as Record<string, PlayerTally>)) {
+      const cur = tallies.get(id) ?? { goals: 0, assists: 0, points: 0, teamId: null };
+      cur.goals += tally.goals ?? 0;
+      cur.assists += tally.assists ?? 0;
+      cur.points += tally.points ?? 0;
+      const s = sideOf.get(r.m.id)?.get(id);
+      if (s) cur.teamId = s === 'home' ? r.m.homeTeamId : r.m.awayTeamId;
+      tallies.set(id, cur);
+    }
+  }
+  const top = [...tallies.entries()].filter(([, v]) => v.goals || v.points || v.assists).sort((a, b) => b[1].goals - a[1].goals || b[1].points - a[1].points).slice(0, 12);
+  const ps = top.length ? await t.select().from(players).where(inArray(players.id, top.map(([id]) => id))) : [];
+  const topScorers = top
+    .map(([id, v]) => {
+      const pl = ps.find((x) => x.id === id);
+      if (!pl) return null;
+      const tm = v.teamId ? byId.get(v.teamId) : null;
+      return { playerId: id, displayName: pl.displayName, shortName: pl.shortName, photoUrl: url(pl.photoAssetId), team: tm ? { id: tm.id, abbreviation: tm.abbreviation, primaryColor: tm.primaryColor, logoUrl: tm.logoUrl } : null, goals: v.goals, assists: v.assists, points: v.points };
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x);
+  // preview: meetings across the competition, form this season, table positions
+  const compResults = (await resultsFor(t, organisationId, and(eq(matches.competitionId, m.competitionId), lt(matches.scheduledAt, m.scheduledAt))!)).results;
+  const before = results.filter((r) => r.playedAt < m.scheduledAt.toISOString());
+  const h2h = headToHead(m.homeTeamId, m.awayTeamId, compResults, 5);
+  const preview = {
+    headToHead: { played: h2h.played, homeWins: h2h.aWins, awayWins: h2h.bWins, draws: h2h.draws, homeFor: h2h.aFor, awayFor: h2h.bFor, meetings: h2h.meetings.map((x) => ({ matchId: x.matchId, playedAt: x.playedAt, homeTeamId: x.homeTeamId, awayTeamId: x.awayTeamId, homeScore: x.homeScore, awayScore: x.awayScore })) },
+    form: { home: formGuide(m.homeTeamId, before).map((f) => f.result), away: formGuide(m.awayTeamId, before).map((f) => f.result) },
+    positions: table.length ? { home: table.find((r) => r.teamId === m.homeTeamId)?.position ?? null, away: table.find((r) => r.teamId === m.awayTeamId)?.position ?? null } : null,
+  };
+  return { season: { name: season.name, standings, standingsUnit: rules.unit, rankBy: rules.rankBy, fixtures, otherScores, topScorers }, preview };
+}

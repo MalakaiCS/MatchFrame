@@ -1,11 +1,12 @@
 'use client';
 // The match's graphics outputs, led by the OBS link. One output is created with every match; more are an
 // explicit "Add another output" so most people never meet the concept.
+import { OUTPUT_FORMATS } from '@bs/graphics';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Clapperboard, Copy, ExternalLink, Plus } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, type Tone } from '@bs/ui';
-import { post } from '@/lib/api';
+import { post, put } from '@/lib/api';
 import { useAction, useCopy, useGet } from '@/lib/hooks';
 import { layerLabel } from '@/lib/labels';
 
@@ -68,6 +69,9 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
   const copy = useCopy();
   const rotate = useAction(() => post(`overlays/${o.id}/rotate`, { purpose: 'production' }), [['overlay-urls', o.id], ['overlays', matchId]], { success: 'New OBS link created. Update the Browser Source in OBS.' });
   const apply = useAction(() => post(`overlays/${o.id}/apply-theme`), [['overlays', matchId]], { success: 'New version of the look applied' });
+  const setFormat = useAction((format: string) => put(`overlays/${o.id}/format`, { format }), [['overlays', matchId]], { success: 'Output format changed. OBS picks it up on the next refresh.' });
+  const format = (o as { format?: string }).format ?? '16:9';
+  const size = format === '9:16' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const st = obsStatus(o);
   const link = urls.data?.production ?? null;
   return (
@@ -86,6 +90,13 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
       <p className="mt-2 text-xs text-muted">
         Look: {o.theme ? `${o.theme.profile} v${o.theme.version}` : 'default'} · On air now: {o.state.onAir.length ? o.state.onAir.map(layerLabel).join(', ') : 'nothing'}
       </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+        <span>Format</span>
+        <NativeSelect aria-label="Output format" className="w-auto" value={format} disabled={!canEdit || setFormat.isPending} onChange={(e) => setFormat.mutate(e.target.value)}>
+          {OUTPUT_FORMATS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+        </NativeSelect>
+        {format === '9:16' ? <span>Vertical stream: scorebug at the top, events at the bottom, boards scaled to the width.</span> : format === 'venue' ? <span>Big-screen layout: scorebug and events scaled up, no ticker needed.</span> : null}
+      </div>
       {o.pendingTheme ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
           A newer version of this look (v{o.pendingTheme.version}) is published. This output keeps its current version until you apply it.
@@ -96,7 +107,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
         <summary className="cursor-pointer text-primary">How to add it to OBS</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
           <li>In OBS, under <b className="text-text">Sources</b>, press <b className="text-text">+</b> and choose <b className="text-text">Browser</b>.</li>
-          <li>Paste the link. Set width <b className="text-text">1920</b> and height <b className="text-text">1080</b>. Leave the custom CSS box empty: the background is already transparent.</li>
+          <li>Paste the link. Set width <b className="text-text">{size.w}</b> and height <b className="text-text">{size.h}</b>. Leave the custom CSS box empty: the background is already transparent.</li>
           <li>Untick <b className="text-text">Shutdown source when not visible</b>, so the graphics stay current. Move the source above your camera.</li>
         </ol>
         <p className="mt-2 text-xs text-muted">vMix: add a <b>Web Browser</b> input with the same link. The status above turns green once OBS or vMix is showing the page.</p>
@@ -109,7 +120,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
           </p>
         </details>
       ) : null}
-      <ErrorNotice error={urls.error ?? rotate.error ?? apply.error} />
+      <ErrorNotice error={urls.error ?? rotate.error ?? apply.error ?? setFormat.error} />
     </Card>
   );
 }

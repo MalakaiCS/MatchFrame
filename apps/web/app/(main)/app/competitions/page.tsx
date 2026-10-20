@@ -1,4 +1,5 @@
 'use client';
+import { SportOptions } from '@/components/sport-options';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
@@ -24,7 +25,7 @@ export default function CompetitionsPage() {
       <PageHeader title="Competitions" subtitle="Leagues and cups with their seasons, rules, graphics and production defaults." actions={isFull(me.data?.role) ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New competition</Button> : null} />
       <div className="mb-4 flex flex-wrap gap-2">
         <Input className="max-w-xs" placeholder="Search competitions" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search competitions" />
-        <NativeSelect className="max-w-40" value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Sport filter"><option value="">All sports</option><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect>
+        <NativeSelect className="max-w-40" value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Sport filter"><option value="">All sports</option><SportOptions /></NativeSelect>
       </div>
       <ErrorNotice error={list.error} onRetry={() => list.refetch()} />
       {list.isLoading ? <Spinner /> : !list.data?.length ? (
@@ -53,7 +54,7 @@ export default function CompetitionsPage() {
           <Field label="Name" htmlFor="cname" error={create.error?.fieldError('name')}><Input id="cname" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Short name" htmlFor="cshort"><Input id="cshort" maxLength={24} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
-            <Field label="Sport" htmlFor="csport"><NativeSelect id="csport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value, rulesPreset: '' })}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
+            <Field label="Sport" htmlFor="csport"><NativeSelect id="csport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value, rulesPreset: '' })}><SportOptions /></NativeSelect></Field>
           </div>
           <Field label="Rules preset" htmlFor="crules" hint="Presets are conveniences; adjust settings on the competition page. Not an official certification."><NativeSelect id="crules" value={form.rulesPreset} onChange={(e) => setForm({ ...form, rulesPreset: e.target.value })}>{presets.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</NativeSelect></Field>
           <Field label="Default timezone" htmlFor="ctz" error={create.error?.fieldError('defaultTimezone')}><Input id="ctz" value={form.defaultTimezone} onChange={(e) => setForm({ ...form, defaultTimezone: e.target.value })} /></Field>

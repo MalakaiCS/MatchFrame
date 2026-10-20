@@ -327,7 +327,7 @@ export const basketballAdapter: SportAdapter<BasketballConfig> = {
   },
 
   capabilities: (c) => ({
-    graphics: ['scorebug', 'ident', 'lineup', 'score', 'substitution', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate', 'timeout'],
+    graphics: ['scorebug', 'ident', 'lineup', 'score', 'substitution', 'lower_third', 'player_card', 'stats', 'break_score', 'sponsor', 'full_frame', 'ticker', 'slate', 'timeout', 'league_table', 'fixtures', 'formation', 'match_summary', 'head_to_head', 'match_info', 'stat_compare', 'top_scorers', 'player_of_match', 'stinger'],
     scorebugFields: ['score', 'clock', 'period', 'fouls', 'timeouts', 'possession', ...(c.shotClock.enabled ? ['shot_clock'] : [])],
     statRows: [
       { key: 'points', label: 'Points' },

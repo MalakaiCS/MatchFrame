@@ -49,7 +49,7 @@ export function Photo({ url, size, name }: { url: string | null | undefined; siz
   const [broken, setBroken] = useState(false);
   if (!url || broken)
     return (
-      <span aria-hidden style={{ width: size, height: size, borderRadius: '50%', background: 'rgba(255,255,255,.12)', display: 'inline-grid', placeItems: 'center', color: 'rgba(255,255,255,.75)', fontSize: size * 0.32, fontWeight: 700 }}>
+      <span aria-hidden style={{ width: size, height: size, borderRadius: '50%', background: '#8a93a3', display: 'inline-grid', placeItems: 'center', color: '#ffffff', fontSize: size * 0.32, fontWeight: 700 }}>
         {name.split(' ').map((w) => w[0]).slice(0, 2).join('')}
       </span>
     );
@@ -143,4 +143,110 @@ export function periodBanner(p: GraphicProps): { heading: string; period: string
   const heading = typeof p.cue.variables.heading === 'string' && p.cue.variables.heading ? p.cue.variables.heading : 'KICK-OFF';
   const period = typeof p.cue.variables.period === 'string' && p.cue.variables.period ? p.cue.variables.period : p.display.periodLabel;
   return { heading: heading.toUpperCase(), period };
+}
+
+// ---------------------------------------------------------------- wording, clock and score helpers shared by every theme
+
+/** On-air wording with the look's overrides applied (keyed by the default English label). */
+export function t(p: GraphicProps, label: string): string {
+  return p.data.theme.wording?.[label] ?? label;
+}
+
+/** The clock as the look wants it: "63:12", or "63'" when seconds are hidden. */
+export function clockLabel(p: GraphicProps): string {
+  const txt = p.display.clockText;
+  if (p.data.theme.clock?.hideSeconds) {
+    const m = /^(\d+):(\d\d)$/.exec(txt);
+    if (m) return `${m[1]}'`;
+  }
+  return txt;
+}
+
+/** Added time as "+2:14" or, with the label style, "ADDED TIME 2:14". */
+export function stoppageLabel(p: GraphicProps): string | null {
+  const s = p.display.stoppageText;
+  if (!s) return null;
+  return p.data.theme.clock?.stoppage === 'label' ? `${t(p, 'ADDED TIME')} ${s.replace(/^\+/, '')}` : s;
+}
+
+/** The score as the sport prints it (AFL "12.7 (79)"), else the number. */
+export function scoreText(p: GraphicProps, s: 'home' | 'away'): string {
+  return p.display.scoreDetail?.[s] ?? String(p.display.score[s]);
+}
+
+const EVENT_WORDS: Record<string, string> = {
+  goal: 'GOAL', own_goal: 'OWN GOAL', penalty_scored: 'PENALTY', try: 'TRY', penalty_try: 'PENALTY TRY', conversion: 'CONVERSION',
+  penalty_goal: 'PENALTY GOAL', field_goal: 'FIELD GOAL', behind: 'BEHIND', rushed_behind: 'RUSHED BEHIND',
+};
+/** The headline word for a scoring event, by code: GOAL, TRY, PENALTY GOAL, SUPER SHOT… */
+export function eventWord(p: GraphicProps): string {
+  const et = String(p.cue.variables.eventType ?? 'goal');
+  const pts = Number(p.cue.variables.points ?? 0);
+  if (p.data.match.sport === 'netball' && pts === 2) return t(p, 'SUPER SHOT');
+  if (et === 'field_goal' && pts === 2) return `${t(p, 'FIELD GOAL')} (2)`;
+  return t(p, EVENT_WORDS[et] ?? 'GOAL');
+}
+
+const CARDS: Record<string, { word: string; colour: string; dark: boolean }> = {
+  yellow: { word: 'YELLOW CARD', colour: '#FFCE66', dark: true },
+  second_yellow: { word: 'SECOND YELLOW', colour: '#E5484D', dark: false },
+  red: { word: 'RED CARD', colour: '#E5484D', dark: false },
+  green: { word: 'GREEN CARD', colour: '#55D99D', dark: true },
+  sin_bin: { word: 'SIN BIN', colour: '#FFCE66', dark: true },
+};
+/** Card wording and colour for football, hockey and rugby league cards. */
+export function cardStyle(p: GraphicProps): { word: string; colour: string; dark: boolean } {
+  const c = CARDS[String(p.cue.variables.cardType ?? 'yellow')] ?? CARDS.yellow!;
+  return { ...c, word: t(p, c.word) };
+}
+
+const shortTime = (iso: string, tz: string) => {
+  try {
+    return new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+};
+/** Ticker content: the operator's text, or the other scores around the grounds. */
+export function tickerText(p: GraphicProps): string {
+  if (p.cue.variables.mode === 'scores') {
+    const list = p.data.season?.otherScores ?? [];
+    if (!list.length) return t(p, 'No other matches today');
+    return list
+      .map((f) => (f.score ? `${f.home.abbreviation} ${f.scoreDetail?.home ?? f.score.home}–${f.scoreDetail?.away ?? f.score.away} ${f.away.abbreviation}${f.live ? ` (${t(p, 'LIVE')})` : ''}` : `${f.home.abbreviation} v ${f.away.abbreviation} ${shortTime(f.scheduledAt, p.data.match.timezone)}`))
+      .join('   •   ');
+  }
+  return String(p.cue.variables.text ?? '');
+}
+
+const WEATHER_GLYPH: Record<string, string> = { sunny: '☀', cloudy: '☁', rain: '☂', wind: '≋', storm: '⚡', snow: '❄', indoor: '⌂' };
+/** "Bayside Oval · Referee: Sam Lee · 1,204 · ☀ 24°" from the match information fields. */
+export function matchInfoItems(p: GraphicProps): { label: string; value: string }[] {
+  const m = p.data.match;
+  const out: { label: string; value: string }[] = [];
+  if (m.venue) out.push({ label: t(p, 'VENUE'), value: m.venue });
+  const offs = m.officials ?? [];
+  const ref = offs.find((o) => o.role === 'referee' || o.role === 'umpire');
+  if (ref) out.push({ label: t(p, ref.role === 'umpire' ? 'UMPIRE' : 'REFEREE'), value: ref.name });
+  const assistants = offs.filter((o) => o.role.startsWith('assistant') || o.role === 'touch_judge').map((o) => o.name);
+  if (assistants.length) out.push({ label: t(p, 'ASSISTANTS'), value: assistants.join(', ') });
+  if (m.attendance != null) out.push({ label: t(p, 'ATTENDANCE'), value: m.attendance.toLocaleString('en-AU') });
+  if (m.weather && (m.weather.tempC != null || m.weather.condition || m.weather.summary)) {
+    const g = m.weather.condition ? WEATHER_GLYPH[m.weather.condition] ?? '' : '';
+    out.push({ label: t(p, 'WEATHER'), value: [g, m.weather.tempC != null ? `${Math.round(m.weather.tempC)}°` : '', m.weather.summary ?? ''].filter(Boolean).join(' ') });
+  }
+  return out;
+}
+
+/** Scorebug anchoring from the look's position setting (left is the default). */
+export function scorebugPosition(p: GraphicProps, inset: number): CSSProperties {
+  const pos = p.data.theme.scorebug?.position ?? 'left';
+  if (pos === 'right') return { position: 'absolute', right: inset };
+  if (pos === 'centre') return { position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' };
+  return { position: 'absolute', left: inset };
+}
+
+/** "PRESENTED BY" caption used beside moment sponsors (goals, cards, player of the match). */
+export function presentedBy(p: GraphicProps): string {
+  return t(p, 'PRESENTED BY');
 }

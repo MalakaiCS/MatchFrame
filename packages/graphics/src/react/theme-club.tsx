@@ -3,7 +3,8 @@
 // Lively motion: pills zoom and drop in with a little overshoot, badges pop, rows cascade.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed } from './common';
+import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
 const SY = 54;
@@ -11,6 +12,12 @@ const pill = (p: GraphicProps, bg: string): CSSProperties => ({ background: bg, 
 // Centred graphics use auto margins rather than translateX(-50%): the entrance/exit transforms would otherwise
 // replace the centring transform and knock the graphic off centre while it animates.
 const centred: CSSProperties = { position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' };
+/** The club scorebug sits centred unless the look asks for a corner. */
+const scorebugAnchor = (p: GraphicProps): CSSProperties => {
+  const pos = p.data.theme.scorebug?.position;
+  return pos === 'left' ? { position: 'absolute', left: 120 } : pos === 'right' ? { position: 'absolute', right: 120 } : centred;
+};
+const PHOTO_EVENTS = ['builtin:goal', 'builtin:card', 'builtin:player_of_match'];
 
 function Scorebug(p: GraphicProps) {
   const d = p.display;
@@ -29,11 +36,11 @@ function Scorebug(p: GraphicProps) {
     );
   };
   return (
-    <div style={{ ...centred, top: SY, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontFamily: p.data.theme.font, ...animStyle(p, 'drop') }} data-graphic="scorebug">
+    <div style={{ ...scorebugAnchor(p), top: SY, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontFamily: p.data.theme.font, ...animStyle(p, 'drop') }} data-graphic="scorebug">
       <div style={{ display: 'flex', alignItems: 'stretch', height: 64, color: '#fff', borderRadius: 999, boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...animStyle(p, 'zoom', 0, 420) }}>
         {side('home')}
         <span style={{ display: 'grid', placeItems: 'center', background: '#0B1220', padding: '0 22px', fontSize: 30, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 130 }}>
-          {d.clockText}
+          {clockLabel(p)}
         </span>
         {side('away')}
       </div>
@@ -52,12 +59,13 @@ function Burst(p: GraphicProps, title: string, lines: React.ReactNode, color?: s
   const t = team(p);
   return (
     <div style={{ ...centred, bottom: SY + 70, display: 'flex', alignItems: 'center', gap: 22, ...pill(p, color ?? t.primaryColor), padding: '16px 44px 16px 16px', ...animStyle(p, 'zoom') }} data-graphic={p.t.key}>
+      {PHOTO_EVENTS.includes(p.t.key) && player(p)?.photoUrl ? <span style={animStyle(p, 'zoom', 160, 420)}><Photo url={player(p)!.photoUrl} size={120} name={player(p)!.displayName} /></span> : null}
       <span style={{ width: 120, height: 120, borderRadius: '50%', background: 'rgba(0,0,0,.2)', display: 'grid', placeItems: 'center', ...animStyle(p, 'zoom', 160, 420) }}><Logo url={t.logoUrl} label={t.abbreviation} size={84} color="transparent" radius={42} /></span>
       <div>
         <div style={{ fontSize: 46, fontWeight: 900, letterSpacing: 2, ...animStyle(p, 'drop', 240, 400) }}>{title}</div>
         <div style={animStyle(p, 'rise', 340, 360)}>{lines}</div>
       </div>
-      {p.creative('event_partner', p.cue) ? <span style={{ background: '#fff', borderRadius: 999, padding: '10px 20px', marginLeft: 10, ...animStyle(p, 'zoom', 460, 400) }}><SponsorMark p={p} placement="event_partner" height={50} /></span> : null}
+      {p.creative('event_partner', p.cue) ? <span style={{ background: '#fff', borderRadius: 999, padding: '8px 20px', marginLeft: 10, ...animStyle(p, 'zoom', 460, 400) }}><PresentedBy p={p} placement="event_partner" height={44} dark /></span> : null}
     </div>
   );
 }
@@ -65,7 +73,7 @@ function Burst(p: GraphicProps, title: string, lines: React.ReactNode, color?: s
 function Goal(p: GraphicProps) {
   const who = personOrTeam(p);
   const sc = p.data.match.projection.score;
-  return Burst(p, p.cue.variables.eventType === 'own_goal' ? 'OWN GOAL' : 'GOAL!', (
+  return Burst(p, eventWord(p), (
     <div style={{ fontSize: 30 }}>
       <Fitted full={who.primary} short={who.short} width={520} fontPx={32} measure={p.measure} style={{ color: '#fff' }} /> <span style={{ opacity: 0.85 }}>{minute(p)}</span>
       <div style={{ fontSize: 24, opacity: 0.9, ...animStyle(p, 'rise', 460, 320) }}>{team(p, 'home').abbreviation} {sc.home} – {sc.away} {team(p, 'away').abbreviation}</div>
@@ -77,9 +85,9 @@ function Score(p: GraphicProps) {
   return Burst(p, `+${String(p.cue.variables.points ?? '')}`, <Fitted full={who.primary} short={who.short} width={520} fontPx={30} measure={p.measure} style={{ color: '#fff' }} />);
 }
 function Card(p: GraphicProps) {
-  const ct = p.cue.variables.cardType;
+  const cs = cardStyle(p);
   const who = personOrTeam(p);
-  return Burst(p, ct === 'red' ? 'RED CARD' : ct === 'second_yellow' ? 'SECOND YELLOW' : 'YELLOW CARD', <div style={{ fontSize: 28 }}><Fitted full={who.primary} short={who.short} width={480} fontPx={30} measure={p.measure} style={{ color: ct === 'yellow' ? '#0B1220' : '#fff' }} /> {minute(p)}</div>, ct === 'yellow' ? '#FFCE66' : '#E5484D');
+  return Burst(p, cs.word, <div style={{ fontSize: 28 }}><Fitted full={who.primary} short={who.short} width={480} fontPx={30} measure={p.measure} style={{ color: '#fff' }} /> <span style={{ opacity: 0.85 }}>{minute(p)}</span></div>, cs.colour === '#E5484D' ? '#B3261E' : cs.colour === '#55D99D' ? '#1E7A4D' : '#A66B00');
 }
 function Substitution(p: GraphicProps) {
   const on = player(p, 'playerIn');
@@ -117,7 +125,7 @@ function PlayerCard(p: GraphicProps) {
 
 function Big({ p, title, children, width = 1100, color }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number; color?: string }) {
   return (
-    <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 130, width, borderRadius: 40, overflow: 'hidden', fontFamily: p.data.theme.font, color: '#fff', boxShadow: '0 10px 50px rgba(0,0,0,.45)', ...animStyle(p, 'zoom') }} data-graphic={p.t.key}>
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', top: 130, width, borderRadius: 40, overflow: 'hidden', fontFamily: p.data.theme.font, color: '#fff', boxShadow: '0 10px 50px rgba(0,0,0,.45)', ...animStyle(p, 'zoom') }} data-graphic={p.t.key}>
       <div style={{ background: color ?? p.data.theme.primary, color: color ? '#fff' : p.data.theme.secondary, padding: '22px 40px', fontSize: 38, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, ...animStyle(p, 'slide-down', 100, 400) }}><ThemeBadge p={p} height={44} />{title}</div>
       <div style={{ background: p.data.theme.panel, padding: '30px 44px', transformOrigin: 'top', ...animStyle(p, 'grow-y', 160, 400) }}>{children}</div>
     </div>
@@ -189,7 +197,7 @@ function BreakScore(p: GraphicProps) {
   const h = team(p, 'home');
   const a = team(p, 'away');
   return (
-    <Big p={p} width={1100} title={(p.cue.variables.label as string) || d.periodLabel}>
+    <Big p={p} width={1100} title={t(p, (p.cue.variables.label as string) || d.periodLabel)}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', textAlign: 'center' }}>
         <div style={animStyle(p, 'zoom', 300, 460)}><Logo url={h.logoUrl} label={h.abbreviation} size={120} color={h.primaryColor} radius={60} /><div style={animStyle(p, 'rise', 400, 340)}><Fitted full={h.shortName} width={320} fontPx={34} measure={p.measure} /></div></div>
         <div style={{ fontSize: 110, fontWeight: 900, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'drop', 380, 480) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></div>
@@ -208,7 +216,7 @@ function PeriodBanner(p: GraphicProps) {
   const a = team(p, 'away');
   return (
     <div style={{ ...centred, bottom: SY + 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, fontFamily: p.data.theme.font, ...animStyle(p, 'rise') }} data-graphic="period_banner">
-      <span style={{ ...pill(p, p.data.theme.primary), color: p.data.theme.secondary, padding: '10px 40px', fontSize: 40, fontWeight: 900, letterSpacing: 4, ...animStyle(p, 'zoom', 0, 460) }}>{heading}</span>
+      <span style={{ ...pill(p, p.data.theme.primary), color: p.data.theme.secondary, padding: '10px 40px', fontSize: 40, fontWeight: 900, letterSpacing: 4, ...animStyle(p, 'zoom', 0, 460) }}>{t(p, heading)}</span>
       <div style={{ display: 'flex', alignItems: 'stretch', height: 70, color: '#fff', borderRadius: 999, overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...animStyle(p, 'drop', 200, 420) }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', background: h.primaryColor, ...animStyle(p, 'slide-left', 300, 380) }}><Logo url={h.logoUrl} label={h.abbreviation} size={44} color="rgba(0,0,0,.25)" radius={22} /><b style={{ fontSize: 28 }}>{h.abbreviation}</b></span>
         <span style={{ display: 'grid', placeItems: 'center', background: '#0B1220', padding: '0 26px', fontSize: 36, fontWeight: 900, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'flip', 360, 440) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home}–{d.score.away}</span></span>
@@ -232,7 +240,7 @@ function Sponsor(p: GraphicProps) {
 }
 
 function Ticker(p: GraphicProps) {
-  const text = String(p.cue.variables.text ?? '');
+  const text = tickerText(p);
   return (
     <div style={{ position: 'absolute', left: 120, right: 120, bottom: SY, height: 54, ...pill(p, p.data.theme.panel), overflow: 'hidden', display: 'flex', alignItems: 'center', ...animStyle(p, 'rise') }} data-graphic="ticker">
       <div style={animStyle(p, 'fade', 220, 400)}>
@@ -262,7 +270,17 @@ function Slate(p: GraphicProps) {
   );
 }
 
+export const clubChrome: Chrome = {
+  frame: (p, title, children, width) => <Big p={p} title={title} width={width}>{children}</Big>,
+  strip: (p, kicker, colour, body) => Burst(p, kicker, body, colour),
+  event: (p, label, accent, body) => Burst(p, label, body, accent),
+  text: () => '#FFFFFF',
+  muted: () => 'rgba(255,255,255,.7)',
+  rule: () => 'rgba(255,255,255,.15)',
+};
+
 export const clubTheme: ThemeComponents = {
+  ...sharedGraphics(clubChrome),
   scorebug: Scorebug,
   ident: Ident,
   lineup: Lineup,

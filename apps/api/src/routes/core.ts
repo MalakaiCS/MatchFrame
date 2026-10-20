@@ -156,6 +156,7 @@ export function registerCoreRoutes(b: AppBundle) {
     return matchesSvc.suggestLineup(await ctxFor(req), P(id, req.params).id, q.side, q.source);
   });
   app.get('/api/v1/matches/:id/preview', async (req) => seasonData.getMatchPreview(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/matches/:id/roster', async (req) => matchesSvc.matchRoster(await ctxFor(req), P(id, req.params).id));
 
   // ---------------------------------------------------------------- scoring
   app.get('/api/v1/matches/:id/state', async (req) => scoring.getMatchState(await ctxFor(req), P(id, req.params).id));

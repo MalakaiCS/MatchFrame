@@ -223,8 +223,8 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
   const monitor = (label: string, st: OverlayPublicState, tone: 'preview' | 'programme') => (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs"><span className={cx('font-semibold uppercase tracking-wide', tone === 'programme' ? 'text-live' : 'text-healthy')}>{label}</span>{tone === 'programme' ? <span className="text-muted">{behind ? 'OBS is catching up' : 'what OBS is showing'}</span> : <span className="text-muted">Your draft — not on air yet</span>}</div>
-      <div className={cx('relative aspect-video overflow-hidden rounded-md border-2 bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]', tone === 'programme' ? 'border-live' : 'border-healthy')}>
-        <Stage><Renderer state={st} data={data} themes={THEMES} serverNow={c.serverNow} customDefs={custom} renderCustom={renderCustomScene} /></Stage>
+      <div className={cx(data.format === '9:16' ? 'relative mx-auto aspect-[9/16] max-h-[60vh]' : 'relative aspect-video', 'overflow-hidden rounded-md border-2 bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]', tone === 'programme' ? 'border-live' : 'border-healthy')}>
+        <Stage format={data.format}><Renderer state={st} data={data} themes={THEMES} serverNow={c.serverNow} customDefs={custom} renderCustom={renderCustomScene} /></Stage>
       </div>
     </div>
   );

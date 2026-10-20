@@ -1,6 +1,7 @@
 'use client';
 // Edit a look (theme profile) with the graphics it affects in view: colours named by what they do, a club or
 // league logo, and a one-click copy of a team's colours.
+import { SportOptions } from '@/components/sport-options';
 import type { Sport } from '@bs/domain';
 import { useMemo, useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
@@ -11,7 +12,7 @@ import { ApiError, patch, post } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
 
-type Config = Partial<ThemeConfig> & { logoAssetId?: string | null; sponsorSlots?: Record<string, boolean>; controlRoomLayoutId?: string | null };
+type Config = Partial<ThemeConfig> & { logoAssetId?: string | null; fontAssetId?: string | null; sponsorSlots?: Record<string, boolean>; controlRoomLayoutId?: string | null };
 export interface EditableProfile { id: string; name: string; competitionId: string | null; currentVersion: number; draft: { themeKey: string; config: Config } }
 interface Team { id: string; name: string; sport: string; primaryColor: string; secondaryColor: string }
 
@@ -28,7 +29,9 @@ const PREVIEWS: { title: string; keys: string[]; scorebug: boolean }[] = [
   { title: 'Half-time board', keys: ['builtin:break_score'], scorebug: false },
   { title: 'Lower third and kick-off banner', keys: ['builtin:period_banner'], scorebug: true },
 ];
-const SAVED_KEYS = ['primary', 'secondary', 'accent', 'text', 'panel', 'motion', 'entranceMs', 'exitMs', 'safeArea', 'logoAssetId', 'sponsorSlots', 'controlRoomLayoutId'] as const;
+const SAVED_KEYS = ['primary', 'secondary', 'accent', 'text', 'panel', 'motion', 'entranceMs', 'exitMs', 'safeArea', 'logoAssetId', 'fontAssetId', 'scorebug', 'clock', 'wording', 'stings', 'sponsorSlots', 'controlRoomLayoutId'] as const;
+/** On-air words a look may change (translations, house style). Keys are the default wording. */
+const WORDING_KEYS = ['GOAL', 'PENALTY', 'OWN GOAL', 'YELLOW CARD', 'RED CARD', 'HALF TIME', 'FULL TIME', 'KICK-OFF', 'ABOUT TO START', 'MATCH STATS', 'TABLE', 'LADDER', 'PRESENTED BY', 'TRY', 'TIMEOUT'];
 const PITCH = 'linear-gradient(180deg, #24476b 0%, #1d3b2a 55%, #2f6b3c 100%)';
 
 /** A still frame of the given graphics (started a minute ago, so no entrance animation plays). */
@@ -79,23 +82,39 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
     setCfg({ ...cfg, primary: t.primaryColor.toUpperCase(), secondary: t.secondaryColor.toUpperCase() });
     toast(`Colours taken from ${t.name}`);
   };
-  const upload = async (f: File) => {
+  const fontFile = useRef<HTMLInputElement>(null);
+  const [fontName, setFontName] = useState<string | null>(cfg.fontAssetId ? 'Uploaded font' : null);
+  const upload = async (f: File, kind: 'logo' | 'font' = 'logo') => {
     setUploadErr(null);
     setUploading(true);
     try {
-      const u = await post<{ assetId: string; uploadUrl: string; headers: Record<string, string> }>('assets/uploads', { name: f.name, kind: 'logo', mime: f.type, bytes: f.size });
+      const mime = f.type || (kind === 'font' ? (f.name.endsWith('.woff2') ? 'font/woff2' : f.name.endsWith('.woff') ? 'font/woff' : f.name.endsWith('.otf') ? 'font/otf' : 'font/ttf') : 'application/octet-stream');
+      const u = await post<{ assetId: string; uploadUrl: string; headers: Record<string, string> }>('assets/uploads', { name: f.name, kind, mime, bytes: f.size });
       const r = await fetch(u.uploadUrl, { method: 'PUT', headers: u.headers, body: f });
       if (!r.ok) throw new ApiError(r.status, 'UPLOAD_FAILED', 'Upload to storage failed');
       await post(`assets/${u.assetId}/complete`);
-      setCfg((c) => ({ ...c, logoAssetId: u.assetId }));
-      setLogoPreview(URL.createObjectURL(f));
-      toast('Logo uploaded. It is checked and converted in the background.');
+      if (kind === 'font') {
+        setCfg((c) => ({ ...c, fontAssetId: u.assetId }));
+        setFontName(f.name);
+        toast('Font uploaded. Graphics use it once it has been checked (a few seconds).');
+      } else {
+        setCfg((c) => ({ ...c, logoAssetId: u.assetId }));
+        setLogoPreview(URL.createObjectURL(f));
+        toast('Logo uploaded. It is checked and converted in the background.');
+      }
     } catch (e) {
       setUploadErr(e as ApiError);
     } finally {
       setUploading(false);
     }
   };
+  const setNested = <K extends 'scorebug' | 'clock'>(key: K, patch: NonNullable<Config[K]>) => setCfg((c) => ({ ...c, [key]: { ...(c[key] as object), ...patch } }));
+  const setWord = (k: string, v: string) => setCfg((c) => {
+    const w = { ...(c.wording ?? {}) };
+    if (v.trim()) w[k] = v;
+    else delete w[k];
+    return { ...c, wording: w };
+  });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} size="xl" title={`Edit ${profile.name}`} description="Changes here are a draft. Publishing makes a new version; matches switch to it when you choose to."
@@ -104,7 +123,7 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <NativeSelect aria-label="Preview sport" className="w-auto" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect>
+            <NativeSelect aria-label="Preview sport" className="w-auto" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><SportOptions /></NativeSelect>
             <span className="text-xs text-muted">Sample teams and players; your own logos and names appear on real matches.</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -150,6 +169,43 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
           </div>
           <Field label="Motion" htmlFor="mo"><NativeSelect id="mo" value={cfg.motion ?? base.motion} onChange={(e) => setCfg({ ...cfg, motion: e.target.value as ThemeConfig['motion'] })}><option value="full">Full (slides, zooms, pops)</option><option value="subtle">Subtle (fades and small moves)</option><option value="none">None (graphics cut in)</option></NativeSelect></Field>
           <Field label={`Entrance speed: ${cfg.entranceMs ?? base.entranceMs} ms`} htmlFor="en"><input id="en" type="range" min={150} max={600} step={10} value={cfg.entranceMs ?? base.entranceMs} onChange={(e) => setCfg({ ...cfg, entranceMs: Number(e.target.value) })} /></Field>
+          <details className="rounded-md border border-border p-2">
+            <summary className="cursor-pointer text-sm font-medium">Scorebug, clock and sounds</summary>
+            <div className="mt-2 grid gap-3">
+              <Field label="Scorebug style" htmlFor="sbv" hint="Box stacks the teams; strip is one slim row. Club keeps its pill in both.">
+                <NativeSelect id="sbv" value={cfg.scorebug?.variant ?? 'box'} onChange={(e) => setNested('scorebug', { variant: e.target.value as 'box' | 'strip' })}><option value="box">Box</option><option value="strip">Strip</option></NativeSelect>
+              </Field>
+              <Field label="Scorebug position" htmlFor="sbp">
+                <NativeSelect id="sbp" value={cfg.scorebug?.position ?? (themeKey === 'club' ? 'centre' : 'left')} onChange={(e) => setNested('scorebug', { position: e.target.value as 'left' | 'centre' | 'right' })}><option value="left">Top left</option><option value="centre">Top centre</option><option value="right">Top right</option></NativeSelect>
+              </Field>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={!!cfg.clock?.hideSeconds} onChange={(e) => setNested('clock', { hideSeconds: e.target.checked })} /> Hide seconds on the clock (63&apos;)</label>
+              <Field label="Added time" htmlFor="ast">
+                <NativeSelect id="ast" value={cfg.clock?.stoppage ?? 'plus'} onChange={(e) => setNested('clock', { stoppage: e.target.value as 'plus' | 'label' })}><option value="plus">+2:14</option><option value="label">ADDED TIME 2:14</option></NativeSelect>
+              </Field>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={!!cfg.stings} onChange={(e) => setCfg({ ...cfg, stings: e.target.checked })} /> Play a short sting on goals and cards (OBS captures it when audio is on)</label>
+            </div>
+          </details>
+          <details className="rounded-md border border-border p-2">
+            <summary className="cursor-pointer text-sm font-medium">Typeface</summary>
+            <div className="mt-2 grid gap-2">
+              <p className="text-xs text-muted">Upload the club&apos;s font (WOFF2, WOFF, TTF or OTF). Every graphic uses it; the built-in font remains the fallback.</p>
+              <div className="flex items-center gap-2">
+                <input ref={fontFile} type="file" hidden accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0], 'font')} />
+                <Button size="sm" loading={uploading} onClick={() => fontFile.current?.click()}><Upload className="size-4" /> {fontName ? 'Replace font' : 'Upload font'}</Button>
+                {fontName ? <span className="text-xs text-muted">{fontName}</span> : null}
+                {cfg.fontAssetId ? <Button size="sm" variant="ghost" onClick={() => { setCfg({ ...cfg, fontAssetId: null }); setFontName(null); }}>Remove</Button> : null}
+              </div>
+            </div>
+          </details>
+          <details className="rounded-md border border-border p-2">
+            <summary className="cursor-pointer text-sm font-medium">Wording</summary>
+            <div className="mt-2 grid gap-1.5">
+              <p className="text-xs text-muted">Change what the graphics say, for another language or your house style. Leave a field empty to keep the default.</p>
+              {WORDING_KEYS.map((k) => (
+                <label key={k} className="grid grid-cols-[9rem_1fr] items-center gap-2 text-xs"><span className="text-muted">{k}</span><Input className="h-7 text-xs" value={cfg.wording?.[k] ?? ''} placeholder={k} onChange={(e) => setWord(k, e.target.value)} /></label>
+              ))}
+            </div>
+          </details>
           <ErrorNotice error={save.error ?? publish.error ?? uploadErr} />
         </div>
       </div>

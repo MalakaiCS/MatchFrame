@@ -91,12 +91,38 @@ export const updateOrgInput = z.object({
   locale: z.string().max(20).optional(),
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   onboarding: z.record(z.string(), z.unknown()).optional(),
+  /** white-label: what the operator app and public pages call themselves and look like */
+  branding: z
+    .object({
+      productName: z.string().trim().min(1).max(40).nullable().optional(),
+      logoAssetId: z.string().uuid().nullable().optional(),
+      primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+      accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+      supportEmail: z.string().email().nullable().optional(),
+      hideVendor: z.boolean().optional(),
+    })
+    .optional(),
+  /** a host (e.g. graphics.yourclub.org) pointed at this installation; resolved to this organisation */
+  customDomain: z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, 'Enter a host name such as graphics.yourclub.org').nullable().optional(),
+  requireTwoFactor: z.boolean().optional(),
 });
+
+/** Branding for a host name (white-label), or null when the host is not a custom domain. Public, no secrets. */
+export async function brandingForHost(db: Db, host: string | undefined) {
+  const h = (host ?? '').toLowerCase().split(':')[0]!;
+  if (!h) return null;
+  const r = await db.execute<{ id: string; name: string; branding: Record<string, unknown> | null; logo_asset_id: string | null; brand_color: string | null }>(sql`select * from resolve_branding_host(${h})`);
+  const o = r.rows[0];
+  if (!o) return null;
+  const b = (o.branding ?? {}) as Record<string, unknown>;
+  return { organisationId: o.id, productName: (b.productName as string | null) ?? o.name, logoAssetId: (b.logoAssetId as string | null) ?? o.logo_asset_id, primaryColor: (b.primaryColor as string | null) ?? o.brand_color, accentColor: (b.accentColor as string | null) ?? null, supportEmail: (b.supportEmail as string | null) ?? null, hideVendor: !!b.hideVendor };
+}
 
 export async function updateOrganisation(ctx: Ctx, input: z.input<typeof updateOrgInput>) {
   const data = updateOrgInput.parse(input);
   if (data.onboarding && Object.keys(data).length === 1) assertCan(ctx.actor, 'competition.write');
   else assertCan(ctx.actor, 'org.manage');
+  if (data.customDomain !== undefined || data.requireTwoFactor !== undefined) assertCan(ctx.actor, 'org.own');
   return tx(ctx, async (t) => {
     const [before] = await t.select().from(organisations).where(eq(organisations.id, ctx.actor.organisationId));
     const [o] = await t

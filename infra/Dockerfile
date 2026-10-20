@@ -26,6 +26,8 @@ FROM node:22.22.0-bookworm-slim
 # static FFmpeg/ffprobe (no distro package mirror needed at build time)
 COPY --from=ffmpeg /ffmpeg /ffprobe /usr/local/bin/
 RUN groupadd -r bs && useradd -r -g bs -d /app bs
+# pg_dump for scheduled database backups (BACKUP_ENABLED=true)
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build --chown=bs:bs /app /app
 USER bs

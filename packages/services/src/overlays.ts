@@ -2,24 +2,7 @@
 import type { Sport } from '@bs/domain';
 import crypto from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import {
-  competitions,
-  matchLineups,
-  matchState,
-  matches,
-  mediaAssets,
-  overlayCommands,
-  overlayCredentials,
-  overlayState,
-  overlays,
-  rendererSessions,
-  themeProfiles,
-  themeProfileVersions,
-  venues,
-  withTenant,
-  type Db,
-  type Tx,
-} from '@bs/db';
+import { competitions, matchLineups, matchState, matches, mediaAssets, overlayCommands, overlayCredentials, overlayState, overlays, rendererSessions, themeProfiles, themeProfileVersions, venues, withTenant, type Db, type Tx, matchFacts, teams as teamsTable } from '@bs/db';
 import { getAdapter, type LineupSnapshot, type MatchProjection } from '@bs/domain';
 import {
   OverlayCommandError,
@@ -41,6 +24,7 @@ import { hmac, publicId, sha256, signToken, verifyToken } from './crypto';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
+import { renderSeasonTx } from './season-data';
 import { effectiveTheme, publishedCustomTemplates } from './themes';
 
 export type Purpose = 'production' | 'monitor' | 'rehearsal';
@@ -195,6 +179,19 @@ export async function setOverlayThemeProfile(ctx: Ctx, overlayId: string, profil
     await enqueueOutbox(t, { organisationId: ctx.actor.organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: overlayId, payload: { ...publicState(s!, next), themeChanged: true } });
     await audit(t, ctx.actor, 'overlay.theme_profile', 'overlay', overlayId, { before: { themeProfileVersionId: o.themeProfileVersionId }, after: next });
     return { ok: true, version: pv?.version ?? null };
+  });
+}
+
+/** Output format: broadcast 16:9, vertical 9:16 for a social stream, or the venue screen layout. */
+export async function setOverlayFormat(ctx: Ctx, overlayId: string, format: '16:9' | '9:16' | 'venue') {
+  return tx(ctx, async (t) => {
+    const { o, m } = await loadOverlay(ctx, t, overlayId);
+    assertCan(ctx.actor, 'overlay.operate', { matchId: m.id, competitionId: m.competitionId, overlayId });
+    await t.update(overlays).set({ format, updatedAt: new Date() }).where(eq(overlays.id, overlayId));
+    const [s] = await t.update(overlayState).set({ revision: sql`${overlayState.revision} + 1`, updatedAt: new Date() }).where(eq(overlayState.overlayId, overlayId)).returning();
+    await enqueueOutbox(t, { organisationId: ctx.actor.organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: overlayId, payload: { ...publicState(s!, o), themeChanged: true } });
+    await audit(t, ctx.actor, 'overlay.format', 'overlay', overlayId, { before: { format: o.format }, after: { format } });
+    return { ok: true, format };
   });
 }
 
@@ -386,16 +383,36 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
     const lineup = lu!.snapshot as unknown as LineupSnapshot;
     // approved resources: team logos, lineup photos, competition logo, theme logo, published template images
     const assetIds = new Set<string>();
-    for (const x of [teams.home.logoAssetId, teams.away.logoAssetId, comp?.logoAssetId, theme.logoAssetId]) if (x) assetIds.add(x);
+    for (const x of [teams.home.logoAssetId, teams.away.logoAssetId, comp?.logoAssetId, theme.logoAssetId, theme.fontAssetId]) if (x) assetIds.add(x);
+    // other teams' logos for tables, fixtures and the ticker; top scorers' photos
+    const otherTeams = await t.select({ logoAssetId: teamsTable.logoAssetId }).from(teamsTable).where(and(eq(teamsTable.organisationId, scope.organisationId), eq(teamsTable.sport, m!.sport)));
+    for (const x of otherTeams) if (x.logoAssetId) assetIds.add(x.logoAssetId);
     for (const p of [...lineup.home, ...lineup.away]) if (p.photoAssetId) assetIds.add(p.photoAssetId);
     for (const c of custom) for (const a of c.assetIds) assetIds.add(a);
     const ready = assetIds.size ? await t.select({ id: mediaAssets.id }).from(mediaAssets).where(and(inArray(mediaAssets.id, [...assetIds]), eq(mediaAssets.state, 'READY'))) : [];
     const assets: Record<string, string> = {};
     for (const a of ready) assets[a.id] = signedAssetUrl(cfg, scope.organisationId, a.id);
     const url = (id?: string | null) => (id && assets[id]) || null;
-    const statRows = getAdapter(m!.sport).capabilities(m!.rulesConfig as never).statRows;
+    const adapter = getAdapter(m!.sport);
+    const statRows = adapter.capabilities(m!.rulesConfig as never).statRows;
     const now = Date.now();
     const pruned = pruneExpired(publicState(s!, o!), now, []);
+    // accepted scoring, discipline and change events for the summary board
+    const eventDefs = adapter.eventTypes(m!.rulesConfig as never);
+    const factRows = await t.select().from(matchFacts).where(and(eq(matchFacts.matchId, m!.id), eq(matchFacts.category, 'event'), eq(matchFacts.voided, false))).orderBy(asc(matchFacts.sequence));
+    const mainClock = (st!.clocks as Record<string, { direction?: string }>).main;
+    const minuteOf = (clockMs: number | null) => (clockMs == null ? null : mainClock?.direction === 'down' ? `${Math.floor(clockMs / 60000)}:${String(Math.floor((clockMs % 60000) / 1000)).padStart(2, '0')}` : `${Math.floor(clockMs / 60000) + 1}'`);
+    const events = factRows
+      .map((f) => {
+        const def = eventDefs.find((e) => e.type === f.type);
+        const group: 'score' | 'discipline' | 'change' | 'other' = def?.group === 'score' || def?.group === 'discipline' || def?.group === 'change' ? def.group : 'other';
+        return { id: f.id, type: f.type, group, side: (f.side as 'home' | 'away' | null) ?? null, playerId: f.playerId, minute: minuteOf(f.clockMs), periodId: f.periodId, payload: f.payload };
+      })
+      .filter((e) => e.group !== 'other')
+      .slice(-80);
+    const season = await renderSeasonTx(t, scope.organisationId, m!, url);
+    const extraPhotos = season.season?.topScorers.map((x) => x.playerId) ?? [];
+    void extraPhotos;
     const data: RenderData = {
       match: {
         id: m!.id,
@@ -411,12 +428,20 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
         clocks: st!.clocks as never,
         stateVersion: st!.stateVersion,
         statRows,
+        round: m!.round,
+        attendance: m!.attendance,
+        weather: (m!.weather as RenderData['match']['weather']) ?? null,
+        officials: (m!.officials as { role: string; name: string }[]) ?? [],
+        events,
       },
       players: playerIndex(lineup, url),
       assets,
       creatives: {},
-      theme: { ...theme.config, logoUrl: url(theme.logoAssetId) },
+      theme: { ...theme.config, logoUrl: url(theme.logoAssetId), fontUrl: url(theme.fontAssetId) },
       customTemplates: custom.map((c) => ({ key: c.key, scene: c.scene })),
+      format: (o!.format as RenderData['format']) ?? '16:9',
+      season: season.season,
+      preview: season.preview,
     };
     if (extra) await extra(t, data, pruned.state, scope);
     return { overlay: { id: o!.id, name: o!.name, purpose: scope.purpose, matchId: m!.id }, state: pruned.state, data, serverNow: now };

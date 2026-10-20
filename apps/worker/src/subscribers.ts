@@ -1,7 +1,7 @@
 import type { AppConfig } from '@bs/config';
 import type { Db } from '@bs/db';
 import type { Redis } from 'ioredis';
-import { automationSvc, library, type RelayOptions } from '@bs/services';
+import { airtime, automationSvc, backups, createMailer, createStorage, demo, library, push as pushSvc, reminders, webhooksSvc, type Mailer, type RelayOptions, type Storage } from '@bs/services';
 import { startMedia } from './media';
 
 export interface WorkerCtx {
@@ -9,6 +9,8 @@ export interface WorkerCtx {
   config: AppConfig;
   workerId: string;
   redis: Redis;
+  mailer?: Mailer;
+  storage?: Storage;
 }
 
 /** Outbox subscribers run before Redis publication; each effect is idempotent (execution keys, unique rows). */
@@ -54,6 +56,20 @@ export function buildSubscribers(ctx: WorkerCtx): RelayOptions['subscribers'] {
       },
     },
     {
+      name: 'webhooks.fanout',
+      topics: ['match.fact.accepted', 'match.phase.changed', 'match.lineup.updated', 'match.rescheduled'],
+      handle: async (e) => {
+        await webhooksSvc.enqueueWebhookDeliveries(ctx.db, e);
+      },
+    },
+    {
+      name: 'airtime.meter',
+      topics: ['overlay.state.updated'],
+      handle: async (e) => {
+        await airtime.meterOverlayState(ctx.db, e);
+      },
+    },
+    {
       name: 'automation.overlay',
       topics: ['overlay.command.accepted'],
       handle: async (e) => {
@@ -86,7 +102,18 @@ function loop(name: string, everyMs: number, fn: () => Promise<unknown>) {
 
 export async function startBackground(ctx: WorkerCtx) {
   const d = { db: ctx.db, config: ctx.config, workerId: ctx.workerId };
-  const stops = [loop('automation', 150, () => automationSvc.automationTick(d)), loop('housekeeping', 250, () => automationSvc.housekeepingTick(d))];
+  const mailer = ctx.mailer ?? createMailer(ctx.config);
+  const storage = ctx.storage ?? createStorage(ctx.config);
+  const push = pushSvc.createPushSender(ctx.config);
+  const stops = [
+    loop('automation', 150, () => automationSvc.automationTick(d)),
+    loop('housekeeping', 250, () => automationSvc.housekeepingTick(d)),
+    loop('webhooks', 2000, () => webhooksSvc.deliverWebhooks(ctx.db, ctx.config)),
+    loop('reminders', 60_000, () => reminders.reminderTick({ db: ctx.db, config: ctx.config, mailer, push })),
+    loop('demo', 1000, () => demo.demoTick(d)),
+    loop('airtime', 30_000, () => airtime.closeExpiredAirtime(ctx.db)),
+    loop('backups', 5 * 60_000, () => backups.backupTick({ db: ctx.db, config: ctx.config, storage })),
+  ];
   const media = ctx.config.STREAMING_ENABLED ? await startMedia(ctx) : { stop: async () => undefined };
   return {
     stop: async () => {

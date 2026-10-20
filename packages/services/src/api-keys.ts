@@ -12,7 +12,7 @@ import { tx, type Ctx } from './context';
 export const apiKeyInput = z.object({
   name: z.string().trim().min(1).max(60),
   scopes: z
-    .array(z.object({ action: z.enum(['match.score', 'competition.read', 'overlay.operate', 'media.read', 'reports.read']), resourceType: z.enum(['organisation', 'competition', 'match']).default('organisation'), resourceId: z.string().uuid().optional() }))
+    .array(z.object({ action: z.enum(['match.score', 'match.stats', 'match.view', 'competition.read', 'overlay.operate', 'sponsor.trigger', 'media.read', 'reports.read']), resourceType: z.enum(['organisation', 'competition', 'match']).default('organisation'), resourceId: z.string().uuid().optional() }))
     .min(1)
     .max(20),
   expiresInDays: z.number().int().min(1).max(365).default(90),

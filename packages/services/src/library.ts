@@ -76,9 +76,11 @@ const ALLOWED_UPLOADS: Record<string, string[]> = {
   logo: ['image/png', 'image/jpeg', 'image/webp'],
   video: ['video/mp4', 'video/quicktime', 'video/webm'],
   audio: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac'],
+  /** a club typeface for the look; stored as uploaded (no re-encoding) and served to the renderer */
+  font: ['font/woff2', 'font/woff', 'font/ttf', 'font/otf', 'application/font-woff', 'application/x-font-ttf', 'application/octet-stream'],
 };
 
-export const uploadInput = z.object({ name: z.string().trim().min(1).max(120), kind: z.enum(['image', 'logo', 'video', 'audio']), mime: z.string().max(80), bytes: z.number().int().min(1), tags: z.array(z.string().max(30)).max(20).default([]), ownerTeamId: z.string().uuid().nullable().optional() });
+export const uploadInput = z.object({ name: z.string().trim().min(1).max(120), kind: z.enum(['image', 'logo', 'video', 'audio', 'font']), mime: z.string().max(80), bytes: z.number().int().min(1), tags: z.array(z.string().max(30)).max(20).default([]), ownerTeamId: z.string().uuid().nullable().optional() });
 
 export async function createUpload(ctx: Ctx, input: z.input<typeof uploadInput>) {
   const d = uploadInput.parse(input);

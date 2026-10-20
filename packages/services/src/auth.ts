@@ -80,8 +80,20 @@ export function createAuth({ db, config, mailer, onEmailLink }: AuthDeps) {
       defaultCookieAttributes: { sameSite: 'lax', httpOnly: true },
       database: { generateId: () => crypto.randomUUID() },
     },
+    socialProviders: {
+      ...(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET ? { google: { clientId: config.GOOGLE_CLIENT_ID, clientSecret: config.GOOGLE_CLIENT_SECRET } } : {}),
+      ...(config.MICROSOFT_CLIENT_ID && config.MICROSOFT_CLIENT_SECRET ? { microsoft: { clientId: config.MICROSOFT_CLIENT_ID, clientSecret: config.MICROSOFT_CLIENT_SECRET, tenantId: config.MICROSOFT_TENANT_ID } } : {}),
+    },
     plugins: [twoFactor({ issuer: config.PRODUCT_NAME })],
   });
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** Which sign-in buttons the login page should show. */
+export function authOptions(config: AppConfig) {
+  return {
+    password: true,
+    providers: [...(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET ? ['google'] : []), ...(config.MICROSOFT_CLIENT_ID && config.MICROSOFT_CLIENT_SECRET ? ['microsoft'] : [])],
+  };
+}

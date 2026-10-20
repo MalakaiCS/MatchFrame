@@ -3,7 +3,8 @@
 // Quiet motion: panels fade and rise, rules draw across, text settles in on a short stagger.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, kickoffCountdown, minute, periodBanner, personOrTeam, player, side, slateMessage, statRows, team, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
 const SX = 96;
@@ -25,13 +26,13 @@ function Scorebug(p: GraphicProps) {
     );
   };
   return (
-    <div style={{ position: 'absolute', left: SX, top: SY, display: 'flex', alignItems: 'center', height: 52, ...light(p), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+    <div style={{ top: SY, display: 'flex', alignItems: 'center', height: 52, ...light(p), ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
       {cell('home', 0)}
       {cell('away', 1)}
       <span style={{ padding: '0 18px', borderLeft: '1px solid #d5dbe5', fontSize: 26, fontWeight: 600, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'rise', 260, 320) }}>
         <span style={{ fontSize: 16, color: '#5b6577', marginRight: 10, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
-        {d.clockText}
-        {d.stoppageText ? <span style={{ color: '#c0182d', marginLeft: 8, ...stoppage }}>{d.stoppageText}</span> : null}
+        {clockLabel(p)}
+        {d.stoppageText ? <span style={{ color: '#c0182d', marginLeft: 8, ...stoppage }}>{stoppageLabel(p)}</span> : null}
       </span>
       {d.shotClockText ? <span style={{ padding: '0 14px', borderLeft: '1px solid #d5dbe5', color: '#c0182d', fontSize: 26, fontWeight: 800 }}>{d.shotClockText}</span> : null}
       {d.fouls ? <span style={{ padding: '0 14px', borderLeft: '1px solid #d5dbe5', fontSize: 16, color: '#5b6577' }}>FOULS {d.fouls.home}{d.bonus?.home ? '•' : ''}–{d.fouls.away}{d.bonus?.away ? '•' : ''}</span> : null}
@@ -41,16 +42,22 @@ function Scorebug(p: GraphicProps) {
   );
 }
 
+const PHOTO_EVENTS = ['builtin:goal', 'builtin:card', 'builtin:player_of_match'];
+
 function Strip(p: GraphicProps, kicker: string, kickerColor: string, title: React.ReactNode, sub: React.ReactNode, sponsorPlacement?: string) {
-  const t = team(p);
+  const tm = team(p);
+  const pl = PHOTO_EVENTS.includes(p.t.key) ? player(p) : null;
   return (
-    <div style={{ position: 'absolute', left: SX, bottom: SY + 50, minWidth: 640, ...light(p), padding: '18px 28px', borderLeft: `6px solid ${t.primaryColor}`, ...animStyle(p, 'rise') }} data-graphic={p.t.key}>
+    <div style={{ position: 'absolute', left: SX, bottom: SY + 50, minWidth: 640, ...light(p), padding: '18px 28px', borderLeft: `6px solid ${tm.primaryColor}`, display: 'flex', gap: 22, alignItems: 'center', ...animStyle(p, 'rise') }} data-graphic={p.t.key}>
+      {pl?.photoUrl ? <span style={animStyle(p, 'zoom', 160, 400)}><Photo url={pl.photoUrl} size={84} name={pl.displayName} /></span> : null}
+      <div style={{ flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 18, letterSpacing: 3, fontWeight: 700, color: kickerColor, ...animStyle(p, 'wipe', 120, 360) }}>
         {kicker}
         {sponsorPlacement && p.creative(sponsorPlacement, p.cue) ? <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, color: '#5b6577', letterSpacing: 1, fontWeight: 500, ...animStyle(p, 'fade', 420, 320) }}>with <SponsorMark p={p} placement={sponsorPlacement} height={30} /></span> : null}
       </div>
       <div style={{ marginTop: 6, ...animStyle(p, 'rise', 200, 340) }}>{title}</div>
       <div style={{ fontSize: 22, color: '#5b6577', marginTop: 2, ...animStyle(p, 'rise', 280, 320) }}>{sub}</div>
+      </div>
     </div>
   );
 }
@@ -58,7 +65,7 @@ function Strip(p: GraphicProps, kicker: string, kickerColor: string, title: Reac
 function Goal(p: GraphicProps) {
   const who = personOrTeam(p);
   const sc = p.data.match.projection.score;
-  const kind = p.cue.variables.eventType === 'own_goal' ? 'OWN GOAL' : p.cue.variables.eventType === 'penalty_scored' ? 'PENALTY GOAL' : 'GOAL';
+  const kind = eventWord(p);
   return Strip(p, kind, p.data.theme.accent, <Fitted full={who.primary} short={who.short} width={560} fontPx={40} measure={p.measure} />, <>{team(p).name} {minute(p)} — {sc.home}–{sc.away}</>, 'event_partner');
 }
 function Score(p: GraphicProps) {
@@ -66,9 +73,9 @@ function Score(p: GraphicProps) {
   return Strip(p, `+${String(p.cue.variables.points ?? '')} POINTS`, p.data.theme.accent, <Fitted full={who.primary} short={who.short} width={560} fontPx={38} measure={p.measure} />, team(p).name, 'event_partner');
 }
 function Card(p: GraphicProps) {
-  const ct = p.cue.variables.cardType;
+  const cs = cardStyle(p);
   const who = personOrTeam(p);
-  return Strip(p, ct === 'red' ? 'RED CARD' : ct === 'second_yellow' ? 'SECOND YELLOW' : 'YELLOW CARD', ct === 'yellow' ? '#b88a00' : '#c0182d', <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}><span style={{ width: 22, height: 30, borderRadius: 3, background: ct === 'yellow' ? '#FFCE66' : '#E5484D', ...animStyle(p, 'flip', 260, 420) }} /><Fitted full={who.primary} short={who.short} width={520} fontPx={38} measure={p.measure} /></span>, <>{team(p).name} {minute(p)}</>);
+  return Strip(p, cs.word, cs.dark ? '#b88a00' : '#c0182d', <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}><span style={{ width: 18, height: 26, borderRadius: 3, background: cs.colour }} /><Fitted full={who.primary} short={who.short} width={520} fontPx={40} measure={p.measure} /></span>, <>{team(p).name} {minute(p)}</>);
 }
 function Substitution(p: GraphicProps) {
   const on = player(p, 'playerIn');
@@ -107,9 +114,9 @@ function PlayerCard(p: GraphicProps) {
   );
 }
 
-function Card2({ p, title, children, width = 1000 }: { p: GraphicProps; title: string; children: React.ReactNode; width?: number }) {
+function Card2({ p, title, children, width = 1000 }: { p: GraphicProps; title: React.ReactNode; children: React.ReactNode; width?: number }) {
   return (
-    <div style={{ position: 'absolute', left: (1920 - width) / 2, top: 150, width, ...light(p), padding: '34px 44px', ...animStyle(p, 'rise') }} data-graphic={p.t.key}>
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', top: 150, width, ...light(p), padding: '34px 44px', ...animStyle(p, 'rise') }} data-graphic={p.t.key}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, ...animStyle(p, 'wipe', 100, 380) }}>
         <div style={{ fontSize: 20, letterSpacing: 4, color: '#5b6577' }}>{title}</div>
         <ThemeBadge p={p} height={34} />
@@ -194,7 +201,7 @@ function Stats(p: GraphicProps) {
 function BreakScore(p: GraphicProps) {
   const d = p.display;
   return (
-    <Card2 p={p} width={1000} title={((p.cue.variables.label as string) || d.periodLabel).toUpperCase()}>
+    <Card2 p={p} width={1000} title={t(p, ((p.cue.variables.label as string) || d.periodLabel).toUpperCase())}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
         <span style={animStyle(p, 'rise', 180, 360)}><Fitted full={team(p, 'home').name} short={team(p, 'home').shortName} width={340} fontPx={40} measure={p.measure} /></span>
         <span style={{ fontSize: 88, fontWeight: 300, fontVariantNumeric: 'tabular-nums', padding: '0 30px', ...animStyle(p, 'fade', 260, 460) }}><span style={changeStyle(p, 'score', `${d.score.home}-${d.score.away}`)}>{d.score.home} – {d.score.away}</span></span>
@@ -213,7 +220,7 @@ function PeriodBanner(p: GraphicProps) {
   const a = team(p, 'away');
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, bottom: SY + 50, margin: '0 auto', width: 760, ...light(p), padding: '22px 36px', textAlign: 'center', ...animStyle(p, 'rise') }} data-graphic="period_banner">
-      <div style={{ fontSize: 20, letterSpacing: 6, color: p.data.theme.accent, fontWeight: 700, ...animStyle(p, 'wipe', 100, 400) }}>{heading}</div>
+      <div style={{ fontSize: 20, letterSpacing: 6, color: p.data.theme.accent, fontWeight: 700, ...animStyle(p, 'wipe', 100, 400) }}>{t(p, heading)}</div>
       <div style={{ height: 1, background: '#d5dbe5', margin: '12px 0', ...animStyle(p, 'grow-x', 180, 420) }} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 20 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end', ...animStyle(p, 'rise', 240, 340) }}><b style={{ fontSize: 28, letterSpacing: 2 }}>{h.abbreviation}</b><span style={{ width: 4, height: 28, background: h.primaryColor }} /></span>
@@ -238,7 +245,7 @@ function Sponsor(p: GraphicProps) {
 }
 
 function Ticker(p: GraphicProps) {
-  const text = String(p.cue.variables.text ?? '');
+  const text = tickerText(p);
   return (
     <div style={{ position: 'absolute', left: SX, right: SX, bottom: SY, height: 46, ...light(p), overflow: 'hidden', display: 'flex', alignItems: 'center', ...animStyle(p, 'wipe') }} data-graphic="ticker">
       <div style={animStyle(p, 'fade', 200, 400)}>
@@ -259,7 +266,17 @@ function Slate(p: GraphicProps) {
   );
 }
 
+export const minimalChrome: Chrome = {
+  frame: (p, title, children, width) => <Card2 p={p} title={title} width={width}>{children}</Card2>,
+  strip: (p, kicker, colour, body, sponsorPlacement) => Strip(p, kicker, colour, body, '', sponsorPlacement),
+  event: (p, label, accent, body) => Strip(p, label, accent, body, '', 'event_partner'),
+  text: () => '#0B1220',
+  muted: () => '#5b6577',
+  rule: () => '#d5dbe5',
+};
+
 export const minimalTheme: ThemeComponents = {
+  ...sharedGraphics(minimalChrome),
   scorebug: Scorebug,
   ident: Ident,
   lineup: Lineup,

@@ -1,10 +1,11 @@
 'use client';
+import { SportOptions } from '@/components/sport-options';
 import type { Sport } from '@bs/domain';
 import Link from 'next/link';
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, LogOut, Play, Repeat } from 'lucide-react';
-import { BUILTIN_TEMPLATES, DEFAULT_THEMES, emptyState, type Category, type OverlayPublicState, type TemplateDef, type ThemeConfig } from '@bs/graphics';
+import { BUILTIN_TEMPLATES, DEFAULT_THEMES, OUTPUT_FORMATS, emptyState, type Category, type OutputFormat, type OverlayPublicState, type TemplateDef, type ThemeConfig } from '@bs/graphics';
 import { CHECKERBOARD, Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { Button, Card, ErrorNotice, NativeSelect, PageHeader, Spinner, StatusPill, Switch } from '@bs/ui';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
@@ -55,6 +56,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
 
   const [sport, setSport] = useState<Sport>('football');
   const [backdrop, setBackdrop] = useState<Backdrop>('pitch');
+  const [format, setFormat] = useState<OutputFormat>('16:9');
   const [withScorebug, setWithScorebug] = useState(true);
   const [loop, setLoop] = useState(true);
   const graphics = useMemo(() => BUILTIN_TEMPLATES.filter((t) => t.sports.includes(sport)), [sport]);
@@ -82,7 +84,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
     return () => clearTimeout(id);
   }, [loop, run, selected]);
 
-  const data = useMemo(() => (theme ? sampleData(theme, sport) : null), [theme, sport]);
+  const data = useMemo(() => (theme ? sampleData(theme, sport, { shootout: selectedKey === 'builtin:shootout', format }) : null), [theme, sport, selectedKey, format]);
   const state = useMemo(() => cueState(selected, sport, run.startedAt, durationMs, run.outAt, withScorebug), [selected, sport, run, durationMs, withScorebug]);
 
   if (themes.isLoading) return <Spinner />;
@@ -107,7 +109,8 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
         crumbs={<Link href="/app/themes" className="inline-flex items-center gap-1 hover:underline"><ArrowLeft className="size-3" /> Themes</Link>}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <NativeSelect aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect>
+            <NativeSelect aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><SportOptions /></NativeSelect>
+            <NativeSelect aria-label="Format" value={format} onChange={(e) => setFormat(e.target.value as OutputFormat)}>{OUTPUT_FORMATS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}</NativeSelect>
             <NativeSelect aria-label="Background" value={backdrop} onChange={(e) => setBackdrop(e.target.value as Backdrop)}><option value="pitch">Background: pitch</option><option value="transparent">Background: transparent</option><option value="dark">Background: dark</option></NativeSelect>
           </div>
         }
@@ -115,8 +118,8 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
 
       <div ref={previewRef} className="grid scroll-mt-4 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>
-          <div className="relative aspect-video overflow-hidden rounded-md border border-border" data-testid="theme-preview-stage">
-            <Stage background={BACKDROPS[backdrop]}>
+          <div className={format === '9:16' ? 'relative mx-auto aspect-[9/16] max-h-[72vh] overflow-hidden rounded-md border border-border' : 'relative aspect-video overflow-hidden rounded-md border border-border'} data-testid="theme-preview-stage">
+            <Stage background={BACKDROPS[backdrop]} format={format}>
               <Renderer state={state} data={data} themes={THEMES} serverNow={Date.now} slots={SAMPLE_SLOTS} />
             </Stage>
           </div>
@@ -168,7 +171,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
 
 /** Static (holding) frame of one graphic; clicking plays it in the large preview. */
 function GraphicThumb({ t, sport, theme, backdrop, active, onSelect }: { t: TemplateDef; sport: Sport; theme: ThemeConfig; backdrop: string; active: boolean; onSelect: () => void }) {
-  const data = useMemo(() => sampleData(theme, sport), [theme, sport]);
+  const data = useMemo(() => sampleData(theme, sport, { shootout: t.key === 'builtin:shootout' }), [theme, sport, t.key]);
   const state = useMemo(() => cueState(t, sport, Date.now() - 60_000, null, null, false), [t, sport]);
   return (
     <button type="button" onClick={onSelect} aria-pressed={active} className={`group rounded-md border p-2 text-left transition ${active ? 'border-primary ring-2 ring-primary/40' : 'border-border hover:border-primary/60'}`}>

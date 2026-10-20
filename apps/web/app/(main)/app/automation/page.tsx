@@ -2,6 +2,7 @@
 // Automation plans: playlists that run graphics from the scorer's phases and events. Edited in plain language
 // (when it runs, which steps, how long); the JSON view stays for power users. Rehearsal plays the plan through
 // the real renderer against a synthetic match.
+import { SportOptions } from '@/components/sport-options';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
 import { gamePlanSchema, type GamePlan, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
@@ -69,7 +70,7 @@ export default function AutomationPage() {
       <Dialog open={open} onOpenChange={setOpen} title="New automation plan" footer={<Button variant="primary" disabled={!form.name || create.isPending} onClick={async () => { const r = await create.mutateAsync(undefined as never); setSel(r.id); setOpen(false); }}>Create</Button>}>
         <div className="space-y-3">
           <Field label="Name" htmlFor="gp-name"><Input id="gp-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Saturday league" /></Field>
-          <Field label="Sport" htmlFor="gp-sport"><NativeSelect id="gp-sport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
+          <Field label="Sport" htmlFor="gp-sport"><NativeSelect id="gp-sport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><SportOptions /></NativeSelect></Field>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.fromStarter} onChange={(e) => setForm({ ...form, fromStarter: e.target.checked })} /> Start from the {form.sport} starter plan (pre-match, lineups, kick-off, goals, cards, half time, full time)</label>
           <ErrorNotice error={create.error} />
         </div>

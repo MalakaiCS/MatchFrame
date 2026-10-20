@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { assetDerivatives, mediaAssets, withTenant } from '@bs/db';
 import { AppError, layoutsSvc, overlaysSvc, themesSvc } from '@bs/services';
+import { findTemplate } from '@bs/graphics';
 import type { AppBundle } from '../app';
+import * as presence from '../presence';
 import { snapshotExtras } from '../snapshot-extras';
 
 const id = z.object({ id: z.string().uuid() });
@@ -33,10 +35,27 @@ export function registerGraphicsRoutes(b: AppBundle) {
   app.post('/api/v1/matches/:id/overlays', async (req, reply) => reply.code(201).send(await overlaysSvc.createOverlay(await ctxFor(req), P(id, req.params).id, req.body as never)));
   app.get('/api/v1/overlays/:id', async (req) => overlaysSvc.getOverlay(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/overlays/:id/urls', async (req) => overlaysSvc.overlayUrls(await ctxFor(req), P(id, req.params).id));
-  app.post('/api/v1/overlays/:id/commands', async (req) => overlaysSvc.overlayCommand(await ctxFor(req), P(id, req.params).id, req.body as never, { source: 'operator' }));
+  app.post('/api/v1/overlays/:id/commands', async (req) => {
+    const ctx = await ctxFor(req);
+    const overlayId = P(id, req.params).id;
+    const body = req.body as { command?: { type?: string; layer?: string; templateKey?: string } };
+    const layer = body?.command?.layer ?? (body?.command?.templateKey ? findTemplate(body.command.templateKey, [])?.layer : undefined);
+    if (layer && ['TAKE_IN', 'UPDATE', 'CLEAR_LAYER'].includes(body.command?.type ?? '')) {
+      const held = presence.heldByOther(overlayId, layer, ctx.actor.userId);
+      if (held) throw new AppError('LAYER_LOCKED', 409, `${held.name} is preparing that layer right now. Wait a moment or ask them to release it.`, undefined, { holder: held });
+    }
+    return overlaysSvc.overlayCommand(ctx, overlayId, body as never, { source: 'operator' });
+  });
+  app.get('/api/v1/overlays/:id/presence', async (req) => {
+    const ctx = await ctxFor(req);
+    const overlayId = P(id, req.params).id;
+    await overlaysSvc.getOverlay(ctx, overlayId);
+    return presence.snapshot(overlayId);
+  });
   app.post('/api/v1/overlays/:id/rotate', async (req) => overlaysSvc.rotateOverlayCredential(await ctxFor(req), P(id, req.params).id, (P(z.object({ purpose: z.enum(['production', 'monitor', 'rehearsal']).default('production') }), req.body ?? {})).purpose));
   app.post('/api/v1/overlays/:id/apply-theme', async (req) => overlaysSvc.applyPendingTheme(await ctxFor(req), P(id, req.params).id));
   app.put('/api/v1/overlays/:id/theme-profile', async (req) => overlaysSvc.setOverlayThemeProfile(await ctxFor(req), P(id, req.params).id, P(z.object({ themeProfileId: z.string().uuid().nullable() }), req.body).themeProfileId));
+  app.put('/api/v1/overlays/:id/format', async (req) => overlaysSvc.setOverlayFormat(await ctxFor(req), P(id, req.params).id, P(z.object({ format: z.enum(['16:9', '9:16', 'venue']) }), req.body).format));
   app.put('/api/v1/overlays/:id/game-plan', async (req) => overlaysSvc.setOverlayGamePlan(await ctxFor(req), P(id, req.params).id, P(z.object({ gamePlanVersionId: z.string().uuid().nullable() }), req.body).gamePlanVersionId));
   // Operator preview data: same snapshot the production renderer gets, authorised by session.
   app.get('/api/v1/overlays/:id/render-data', async (req) => {

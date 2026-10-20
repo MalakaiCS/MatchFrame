@@ -1,29 +1,30 @@
 'use client';
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { getAdapter, type DisplayModel } from '@bs/domain';
 import { findTemplate, LAYER_Z, type Layer, type TemplateDef } from '../catalog';
 import type { Cue, OverlayPublicState } from '../state';
-import type { RenderCreative, RenderData } from '../data';
+import { formatSize, resolveColourClash, type OutputFormat, type RenderCreative, type RenderData } from '../data';
 import { canvasMeasure, type Measure } from '../fit';
 
 export const STAGE_W = 1920;
 export const STAGE_H = 1080;
 
 /** Scales the 1920×1080 logical stage into its container without changing placement. */
-export function Stage({ children, background = 'transparent', className, style }: { children: ReactNode; background?: string; className?: string; style?: CSSProperties }) {
+export function Stage({ children, background = 'transparent', className, style, format = '16:9' }: { children: ReactNode; background?: string; className?: string; style?: CSSProperties; format?: OutputFormat }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const { width: W, height: H } = formatSize(format);
   useLayoutEffect(() => {
     const el = ref.current?.parentElement;
     if (!el) return;
-    const fit = () => setScale(Math.min(el.clientWidth / STAGE_W, el.clientHeight / STAGE_H) || 1);
+    const fit = () => setScale(Math.min(el.clientWidth / W, el.clientHeight / H) || 1);
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [W, H]);
   return (
-    <div ref={ref} className={className} style={{ position: 'absolute', left: '50%', top: '50%', width: STAGE_W, height: STAGE_H, marginLeft: -STAGE_W / 2, marginTop: -STAGE_H / 2, transform: `scale(${scale})`, transformOrigin: '50% 50%', background, overflow: 'hidden', ...style }}>
+    <div ref={ref} className={className} data-format={format} style={{ position: 'absolute', left: '50%', top: '50%', width: W, height: H, marginLeft: -W / 2, marginTop: -H / 2, transform: `scale(${scale})`, transformOrigin: '50% 50%', background, overflow: 'hidden', ...style }}>
       {children}
     </div>
   );
@@ -98,9 +99,62 @@ function phaseOf(c: Cue, t: TemplateDef, now: number): { phase: 'in' | 'hold' | 
   return { phase: off < t.entranceMs ? 'in' : 'hold', offset: off };
 }
 
+const CUSTOM_FONT = 'BS Custom Font';
+
+/**
+ * Where a layer's 1920×1080 design lands in each output format. Anchored layers (scorebug, events, lower thirds,
+ * ticker, sponsor) keep their edges, so in the vertical format they simply hug the 1080×1920 frame; full-frame
+ * boards are scaled to the width and centred; the venue format enlarges the scorebug and events for a big screen.
+ */
+export function layerBox(layer: Layer, format: OutputFormat): CSSProperties {
+  if (format === '9:16') {
+    if (layer === 'fullframe') return { position: 'absolute', left: 0, top: (1920 - 1080 * (1080 / 1920)) / 2, width: 1920, height: 1080, transform: 'scale(0.5625)', transformOrigin: 'top left' };
+    if (layer === 'background') return { position: 'absolute', left: (1080 - 1920 * (1920 / 1080)) / 2, top: 0, width: 1920, height: 1080, transform: 'scale(1.7778)', transformOrigin: 'top left' };
+    return { position: 'absolute', inset: 0 };
+  }
+  if (format === 'venue') {
+    if (layer === 'scoreboard') return { position: 'absolute', inset: 0, transform: 'scale(1.5)', transformOrigin: 'top left' };
+    if (layer === 'event' || layer === 'lower') return { position: 'absolute', inset: 0, transform: 'scale(1.45)', transformOrigin: 'bottom left' };
+  }
+  return { position: 'absolute', inset: 0 };
+}
+
+const STING_KEYS: Record<string, 'score' | 'card' | 'tick'> = { 'builtin:goal': 'score', 'builtin:score': 'tick', 'builtin:card': 'card', 'builtin:player_of_match': 'tick', 'builtin:timeout': 'tick' };
+let audioCtx: AudioContext | null = null;
+/** Short synthesised sting (no asset needed); the OBS browser source captures it when audio is enabled. */
+export function playSting(kind: 'score' | 'card' | 'tick') {
+  try {
+    if (typeof window === 'undefined' || !('AudioContext' in window)) return;
+    audioCtx ??= new AudioContext();
+    const ctx = audioCtx;
+    const notes = kind === 'score' ? [[523, 0, 0.16], [659, 0.14, 0.16], [784, 0.28, 0.3]] : kind === 'card' ? [[330, 0, 0.26], [262, 0.2, 0.3]] : [[880, 0, 0.1]];
+    for (const [freq, at, dur] of notes as [number, number, number][]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = kind === 'card' ? 'triangle' : 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + at);
+      o.stop(ctx.currentTime + at + dur + 0.05);
+    }
+  } catch {
+    // audio is best-effort: never let a sting break the output
+  }
+}
+
 /** Renders the on-air state from an explicit snapshot. Shared by overlay, preview, rehearsal and programme. */
-export function Renderer({ state, data, themes, serverNow, customDefs = [], renderCustom, onVisible, slots, monitor }: RendererProps) {
-  const now = useNow(serverNow);
+export function Renderer({ state, data: rawData, themes, serverNow, customDefs = [], renderCustom, onVisible, slots, monitor }: RendererProps) {
+  // Colour clash resolution and the custom font are applied once per snapshot, so every graphic reads the same teams.
+  const data = useMemo(() => {
+    const { home, away } = resolveColourClash(rawData.match.teams.home, rawData.match.teams.away);
+    const font = rawData.theme.fontUrl ? `'${CUSTOM_FONT}', ${rawData.theme.font}` : rawData.theme.font;
+    return { ...rawData, match: { ...rawData.match, teams: { home, away } }, theme: { ...rawData.theme, font } };
+  }, [rawData]);
+  const format = data.format ?? '16:9';
+  const now = useNow(serverNow, data.theme.motion === 'none' ? 5 : 20);
   const adapter = getAdapter(data.match.sport);
   const display = adapter.display(data.match.rulesConfig as never, data.match.projection, data.match.clocks, now);
   const measure = useRef<Measure>(canvasMeasure(data.theme.font)).current;
@@ -126,7 +180,7 @@ export function Renderer({ state, data, themes, serverNow, customDefs = [], rend
     const Comp = cue.templateKey.startsWith('custom:') ? renderCustom : comps[cue.templateKey.replace('builtin:', '')];
     if (!Comp) return null;
     return (
-      <div key={`${layer}:${cue.cueId}`} data-layer={layer} data-cue={cue.cueId} style={{ position: 'absolute', inset: 0, zIndex: LAYER_Z[layer], pointerEvents: 'none' }}>
+      <div key={`${layer}:${cue.cueId}`} data-layer={layer} data-cue={cue.cueId} style={{ ...layerBox(layer, format), zIndex: LAYER_Z[layer], pointerEvents: 'none' }}>
         {Comp(props)}
       </div>
     );
@@ -134,12 +188,25 @@ export function Renderer({ state, data, themes, serverNow, customDefs = [], rend
   const visKey = visible.map((c) => c.cueId).join(',');
   const cb = useRef(onVisible);
   cb.current = onVisible;
+  const seen = useRef<Set<string>>(new Set());
+  const stings = data.theme.stings === true;
   useEffect(() => {
     cb.current?.(visible, now);
+    if (stings) {
+      for (const c of visible) {
+        const key = `${c.cueId}:${c.startedAt}`;
+        if (seen.current.has(key)) continue;
+        seen.current.add(key);
+        const kind = STING_KEYS[c.templateKey];
+        if (kind && now - c.startedAt < 2000) playSting(kind);
+      }
+      if (seen.current.size > 500) seen.current.clear();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visKey]);
   return (
     <>
+      {rawData.theme.fontUrl ? <style>{`@font-face{font-family:'${CUSTOM_FONT}';src:url(${JSON.stringify(rawData.theme.fontUrl)});font-display:swap;}`}</style> : null}
       {monitor ? <div style={{ position: 'absolute', inset: 0, background: CHECKERBOARD }} /> : null}
       {nodes}
     </>

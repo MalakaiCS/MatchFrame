@@ -4,6 +4,7 @@ import { registerGraphicsRoutes } from './routes/graphics';
 import { registerAutomationRoutes } from './routes/automation';
 import { registerStreamRoutes } from './routes/streams';
 import { registerMediaRoutes } from './routes/media';
+import { registerPlatformRoutes } from './routes/platform';
 
 export function registerRoutes(b: AppBundle) {
   registerCoreRoutes(b);
@@ -11,4 +12,5 @@ export function registerRoutes(b: AppBundle) {
   registerAutomationRoutes(b);
   if (b.deps.config.STREAMING_ENABLED) registerStreamRoutes(b);
   registerMediaRoutes(b);
+  registerPlatformRoutes(b);
 }

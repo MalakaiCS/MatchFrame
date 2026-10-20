@@ -1,4 +1,5 @@
 'use client';
+import { SportOptions } from '@/components/sport-options';
 import type { Sport } from '@bs/domain';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -98,7 +99,7 @@ function Onboarding() {
               <Field label="Short name" htmlFor="cs"><Input id="cs" value={comp.shortName} maxLength={24} onChange={(e) => setComp({ ...comp, shortName: e.target.value })} /></Field>
               <Field label="Season" htmlFor="cy"><Input id="cy" value={comp.season} onChange={(e) => setComp({ ...comp, season: e.target.value })} /></Field>
             </div>
-            <Field label="Sport" htmlFor="sp"><NativeSelect id="sp" value={comp.sport} onChange={(e) => setComp({ ...comp, sport: e.target.value as 'football' })}><option value="football">Football</option><option value="basketball">Basketball</option></NativeSelect></Field>
+            <Field label="Sport" htmlFor="sp"><NativeSelect id="sp" value={comp.sport} onChange={(e) => setComp({ ...comp, sport: e.target.value as 'football' })}><SportOptions /></NativeSelect></Field>
             <Button variant="primary" type="submit" loading={busy} disabled={!comp.name.trim() || !comp.season.trim()}>Continue</Button>
           </form>
         );

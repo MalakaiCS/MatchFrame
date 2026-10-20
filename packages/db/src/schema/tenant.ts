@@ -1363,6 +1363,8 @@ export const webhookDeliveries = pgTable(
     endpointId: uuid('endpoint_id').notNull().references(() => webhookEndpoints.id, { onDelete: 'cascade' }),
     eventId: uuid('event_id').notNull(),
     eventType: text('event_type').notNull(),
+    /** the body that was (or will be) signed and sent */
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
     attempts: integer('attempts').notNull().default(0),
     state: text('state').notNull(), // pending | delivered | failed | dead
     lastStatus: integer('last_status'),

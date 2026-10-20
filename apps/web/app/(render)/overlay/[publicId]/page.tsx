@@ -26,7 +26,7 @@ function OverlayOutput({ publicId }: { publicId: string }) {
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
       <Keyframes />
-      <Stage>
+      <Stage format={out.snap.data.format}>
         <Renderer state={out.snap.state} data={out.snap.data} themes={THEMES} serverNow={out.serverNow} customDefs={custom} renderCustom={renderCustomScene} monitor={monitor} slots={out.snap.state.slots ?? out.snap.slots} onVisible={report} />
       </Stage>
       {monitor ? (

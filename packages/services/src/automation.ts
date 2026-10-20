@@ -31,6 +31,7 @@ import {
   replay,
   type ActiveRun,
   type ClockState,
+  type MatchProjection,
   type GamePlan,
   type LineupSnapshot,
   type LogEntry,
@@ -42,8 +43,9 @@ import {
 import { pruneExpired, type Cue, type Layer, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
 import type { AppConfig } from '@bs/config';
 import { systemActor } from './authz';
-import { AppError } from './errors';
-import type { Ctx } from './context';
+import { AppError, conflict, notFound } from './errors';
+import { tx, type Ctx } from './context';
+import { audit } from './audit';
 import { applyOverlayCommandTx, customDefs, mutateOverlayStateTx, type CommandOpts } from './overlays';
 import { loadPlanVersion, templateLayerMap } from './gameplans';
 import { availablePlacements, closeStaleExposures, decide, fixedDecision } from './sponsors';
@@ -134,7 +136,8 @@ async function insertCues(t: Tx, run: typeof automationRuns.$inferSelect, pl: Pl
       dueAt: new Date(c.dueAt),
       deadlineAt: c.deadlineAt ? new Date(c.deadlineAt) : null,
       durationMs: c.durationMs,
-      state: 'pending',
+      // manual playlists park their graphics until a producer approves them in the control room
+      state: pl.approval === 'manual' && ['show', 'media', 'creative', 'sponsor'].includes(c.item.action) ? 'awaiting_approval' : 'pending',
     })),
   ).onConflictDoNothing();
 }
@@ -143,7 +146,7 @@ async function insertCues(t: Tx, run: typeof automationRuns.$inferSelect, pl: Pl
 async function stopRun(t: Tx, runId: string, state: 'cancelled' | 'preempted', reason: string, at: number, cleanup = true) {
   const [r] = await t.update(automationRuns).set({ state, reason, endedAt: new Date(at) }).where(and(eq(automationRuns.id, runId), inArray(automationRuns.state, ['running', 'queued']))).returning();
   if (!r) return;
-  await t.update(automationCues).set({ state: 'cancelled', reason, updatedAt: new Date(at) }).where(and(eq(automationCues.runId, runId), eq(automationCues.state, 'pending')));
+  await t.update(automationCues).set({ state: 'cancelled', reason, updatedAt: new Date(at) }).where(and(eq(automationCues.runId, runId), inArray(automationCues.state, ['pending', 'awaiting_approval'])));
   if (cleanup && r.startedAt) await t.insert(automationCues).values({ organisationId: r.organisationId, runId, overlayId: r.overlayId, cueKey: `${runId}:cleanup`, itemIndex: -1, action: 'cleanup', params: { reason }, dueAt: new Date(at), state: 'pending' }).onConflictDoNothing();
 }
 
@@ -181,7 +184,18 @@ async function triggerForOverlay(t: Tx, d: AutomationDeps, ov: typeof overlays.$
   const snap = lu?.snapshot as unknown as LineupSnapshot | undefined;
   const sponsorGuards = plan.playlists.flatMap((p) => p.guards.filter((g) => g.type === 'sponsor_available').map((g) => (g as { placement: string }).placement));
   const avail = await availablePlacements(t, ov.organisationId, ov.matchId, [...new Set(sponsorGuards)], at);
-  const guard = { hasLineup: !!snap && snap.home.length > 0 && snap.away.length > 0, sponsorAvailable: (p: string) => avail.has(p), now: at };
+  const [ms] = await t.select().from(matchState).where(eq(matchState.matchId, ov.matchId));
+  const liveLayers = Object.entries((st.layers ?? {}) as Record<string, { startedAt?: number; outAt?: number | null } | null>).filter(([layer, c]) => c && layer !== 'scoreboard' && !c.outAt);
+  const lastGraphicAt = liveLayers.length ? Math.max(...liveLayers.map(([, c]) => Number(c!.startedAt ?? 0))) : null;
+  const mainClock = (ms?.clocks as Record<string, ClockState> | undefined)?.main;
+  const guard = {
+    hasLineup: !!snap && snap.home.length > 0 && snap.away.length > 0,
+    sponsorAvailable: (p: string) => avail.has(p),
+    now: at,
+    projection: (ms?.projection as unknown as MatchProjection) ?? null,
+    clockMs: mainClock ? clockDisplayMs(mainClock, at) : null,
+    lastGraphicAt,
+  };
 
   if (input.kind === 'phase') {
     const act = await activeRuns(t, ov.id, ['running', 'queued']);
@@ -648,5 +662,38 @@ export async function automationLog(ctx: Ctx, overlayId: string, limit = 60) {
       endedAt: r.endedAt?.toISOString() ?? null,
       cues: cues.filter((c) => c.runId === r.id).map((c) => ({ id: c.id, action: c.action, state: c.state, reason: c.reason, dueAt: c.dueAt.toISOString(), templateKey: (c.params as { item?: { templateKey?: string } }).item?.templateKey ?? null })),
     }));
+  });
+}
+
+
+// ------------------------------------------------------------------ approval mode
+
+/** Cues parked by a manual playlist, for the control room's approval list. */
+export async function awaitingCues(ctx: Ctx, overlayId: string) {
+  return tx(ctx, async (t) => {
+    const rows = await t
+      .select({ c: automationCues, playlistId: automationRuns.playlistId })
+      .from(automationCues)
+      .innerJoin(automationRuns, eq(automationRuns.id, automationCues.runId))
+      .where(and(eq(automationCues.overlayId, overlayId), eq(automationCues.organisationId, ctx.actor.organisationId), eq(automationCues.state, 'awaiting_approval')))
+      .orderBy(asc(automationCues.dueAt));
+    return rows.map((r) => {
+      const params = r.c.params as { item?: { templateKey?: string; action?: string; placement?: string }; variables?: Record<string, unknown> };
+      return { cueId: r.c.id, playlistId: r.playlistId, action: r.c.action, templateKey: params.item?.templateKey ?? null, placement: params.item?.placement ?? null, variables: params.variables ?? {}, durationMs: r.c.durationMs, queuedAt: r.c.createdAt };
+    });
+  });
+}
+
+/** A producer approves (sends now) or skips a parked cue. */
+export async function decideCue(ctx: Ctx, overlayId: string, cueId: string, decision: 'approve' | 'skip') {
+  return tx(ctx, async (t) => {
+    const [c] = await t.select().from(automationCues).where(and(eq(automationCues.id, cueId), eq(automationCues.overlayId, overlayId), eq(automationCues.organisationId, ctx.actor.organisationId)));
+    if (!c) throw notFound('Cue');
+    if (c.state !== 'awaiting_approval') throw conflict('CUE_NOT_WAITING', 'This cue is no longer waiting for approval');
+    const at = new Date();
+    if (decision === 'approve') await t.update(automationCues).set({ state: 'pending', dueAt: at, deadlineAt: null, reason: `approved by ${ctx.actor.userId ?? 'operator'}`, updatedAt: at }).where(eq(automationCues.id, cueId));
+    else await t.update(automationCues).set({ state: 'skipped', reason: `skipped by ${ctx.actor.userId ?? 'operator'}`, updatedAt: at }).where(eq(automationCues.id, cueId));
+    await audit(t, ctx.actor, decision === 'approve' ? 'automation.cue.approve' : 'automation.cue.skip', 'overlay', overlayId, { after: { cueId, action: c.action } });
+    return { ok: true, decision };
   });
 }
