@@ -2,11 +2,12 @@
 // sport pages and FAQ never disagree. Every "available" claim points at a check in ACCEPTANCE_RESULTS.md or a
 // test in the repository; anything not yet run end to end is labelled beta or "needs the media server".
 
-export type Availability = 'available' | 'beta' | 'media-server';
+export type Availability = 'available' | 'beta' | 'media-server' | 'planned';
 export const AVAILABILITY_LABEL: Record<Availability, string> = {
   available: 'Available',
   beta: 'Beta',
   'media-server': 'Needs the media server',
+  planned: 'Coming soon',
 };
 
 /** The hosted service runs the graphics edition; cloud video needs a deployment with the media server. */
@@ -30,6 +31,8 @@ export interface Capability {
   points: string[];
   hosted: Availability | 'no';
   media: Availability;
+  /** which hosted plans include it */
+  plans: string;
   evidence: string;
   guide: { label: string; href: string };
 }
@@ -45,6 +48,7 @@ export const CAPABILITIES: Capability[] = [
       'Undo straight away, or correct an event later with a reason. Graphics and statistics follow the correction.',
       'One device controls a match at a time; a producer can take over. Statistics-only scorers can help without touching the score.',
     ],
+    plans: 'All plans',
     hosted: 'available',
     media: 'available',
     evidence: 'Offline scoring, refreshes and takeovers are covered by browser tests (A13–A16); corrections by A12.',
@@ -60,6 +64,7 @@ export const CAPABILITIES: Capability[] = [
       'Widescreen 16:9, vertical 9:16 for social streams, and a large-type venue screen layout.',
       'A transparent graphics page you add to OBS as a Browser Source, controlled live from the control room.',
     ],
+    plans: 'All plans. Starter has the scoreboard, clock and basic match graphics; Club and above have the full graphics package',
     hosted: 'available',
     media: 'available',
     evidence: 'Every graphic in every look is compared against 158 reference images on each test run; the transparent OBS page is checked pixel by pixel (A36).',
@@ -75,6 +80,7 @@ export const CAPABILITIES: Capability[] = [
       'Switch an output to Manual at any time, or hold Emergency clear to take everything off and pause automation.',
       'Ask the producer first: a playlist can wait for a person to press Send now.',
     ],
+    plans: 'Club, Studio and League / Enterprise (Starter has manual controls)',
     hosted: 'available',
     media: 'available',
     evidence: 'Priorities, duplicates, manual mode, emergency clear and worker restarts are covered by A23–A29; the football flow is checked in real time on a live output.',
@@ -90,6 +96,7 @@ export const CAPABILITIES: Capability[] = [
       'Delivery reports count confirmed on-air seconds per output and say what the evidence was. They do not estimate audiences.',
       'CSV export for partners, safe to open in a spreadsheet.',
     ],
+    plans: 'Starter: one static placement. Club and above: multiple placements with rotation and delivery reports',
     hosted: 'available',
     media: 'available',
     evidence: 'Expiry, caps, priority, disconnections and CSV safety are covered by A30–A34.',
@@ -105,7 +112,8 @@ export const CAPABILITIES: Capability[] = [
       'A programme monitor shows what actually went out, with its delay.',
       'If the camera feed drops, a holding slate goes up and the stream recovers when the feed returns.',
     ],
-    hosted: 'no',
+    plans: 'Optional service, $10 per production hour, coming to the hosted service',
+    hosted: 'planned',
     media: 'media-server',
     evidence: 'RTMP in to programme out, three destinations and source-loss recovery were measured (A33, A35, A37, A39). Two simultaneous 720p sessions overloaded the 4-core test server (A51): capacity depends on your server.',
     guide: { label: 'Choose a production workflow', href: '/docs/production/choose-a-workflow' },
@@ -120,6 +128,7 @@ export const CAPABILITIES: Capability[] = [
       'Trim, crop to 16:9, 9:16 or 1:1, add intro and outro artwork, then download or share a link that expires.',
       'Uploaded media and still exports work without the media server.',
     ],
+    plans: 'Self-hosted with the media server',
     hosted: 'no',
     media: 'media-server',
     evidence: 'A clip was ready 27 seconds after a goal while the stream was live (A43); exports in three shapes were checked (A44).',

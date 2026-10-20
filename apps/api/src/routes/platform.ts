@@ -67,7 +67,7 @@ export function registerPlatformRoutes(b: AppBundle) {
   app.get('/api/v1/billing', async (req) => billing.getBilling(await ctxFor(req)));
   app.post('/api/v1/billing/checkout', async (req) => billing.createCheckout(await ctxFor(req), req.body as never));
   app.post('/api/v1/billing/portal', async (req) => billing.createPortal(await ctxFor(req)));
-  app.post('/api/v1/billing/plan', async (req) => billing.setPlanManually(await ctxFor(req), P(z.object({ plan: z.enum(['free', 'club', 'league']) }), req.body).plan));
+  app.post('/api/v1/billing/plan', async (req) => billing.setPlanManually(await ctxFor(req), P(z.object({ plan: z.enum(billing.PLAN_KEYS) }), req.body).plan));
   app.post('/api/v1/webhooks/stripe', { config: { rawBody: true } }, async (req, reply) => {
     const secret = deps.config.STRIPE_WEBHOOK_SECRET;
     if (!secret) return reply.code(404).send({ error: 'billing not configured' });

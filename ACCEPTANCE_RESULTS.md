@@ -119,16 +119,16 @@ pointed at the local Mailpit inbox.
 | Check | Result |
 | --- | --- |
 | `pnpm typecheck`, `pnpm lint` | clean |
-| `pnpm test`: contact form (connected or not, one email with reply-to, header-safe subject, field errors, spam trap, five per connection per hour, failed sends reported); the starter's pre-match playlist answering the Scheduled phase | 100 tests, 17 files, all pass |
+| `pnpm test`: contact form (connected or not, one email with reply-to, header-safe subject, field errors, spam trap, five per connection per hour, failed sends reported); the starter's pre-match playlist answering the Scheduled phase; the published plans, prices, allowances and yearly saving, and the Stripe price for each plan and period | 101 tests, 17 files, all pass |
 | `pnpm test:db`: an output given a plan queues the catch-up in the same transaction; the catch-up puts the background and header up at Scheduled; a duplicate delivery starts nothing; Pre-match leaves the same graphics untouched (`already on air`); a new match's own output takes the organisation's latest published plan | 53 tests, 6 files, all pass |
-| `tests/e2e/specs/public-site.spec.ts` (signed out): branding and one heading per page, every header and footer link 200, robots and sitemap, mobile menu, the interactive sample driving the real renderer, FAQ search and deep links, docs search, the contact form validating, sending and arriving in Mailpit with reply-to | 4 tests, all pass |
+| `tests/e2e/specs/public-site.spec.ts` (signed out): branding and one heading per page, every header and footer link 200, robots and sitemap, mobile menu, the interactive sample driving the real renderer, FAQ search and deep links, docs search, the contact form validating, sending and arriving in Mailpit with reply-to; pricing monthly and yearly with the optional services | 5 tests, all pass |
 | `tests/e2e/specs/automation-flow.spec.ts`: background and header on air before any phase button, unchanged after Pre-match, then the full football flow in real time | pass |
-| Full `pnpm test:e2e` on the final build | 28 tests, 28 pass (`docs/evidence/e2e/results.json`) |
+| Full `pnpm test:e2e` on the final build | 29 tests, 29 pass (`docs/evidence/e2e/results.json`); the pricing card alignment change after it was rechecked with the public-site spec |
 | Manual review: every public page at 1280 px and 390 px wide, no script errors, no sideways scrolling; share image rendered | reviewed |
 
 Not executed: the YouTube video could not be loaded from this environment (YouTube is unreachable here), so only
 the click-to-play frame and the content-security rule were checked, not playback. Search-engine indexing was not
-switched on (`SITE_INDEXING` unset). Open owner decisions are listed in `docs/public-site.md`.
+switched on (`SITE_INDEXING` unset). Stripe Checkout for the new plans was not exercised (no Stripe account here), and plan allowances are recorded but not enforced. Open owner decisions are listed in `docs/public-site.md`.
 
 ## A51 and measured capacity
 

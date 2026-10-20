@@ -169,7 +169,7 @@ export const FAQS: Faq[] = [
     category: 'graphics-scoring',
     q: 'Can I run more than one match at once?',
     a: [
-      'Yes. Each match has its own scorer, graphics outputs and automation, kept separate from the others, and the producer board shows every live match on one screen.',
+      'Yes. Each match has its own scorer, graphics outputs and automation, kept separate from the others, and the producer board shows every live match on one screen. Plans include 1 (Starter), 2 (Club) or 5 (Studio) simultaneous live matches; League / Enterprise allowances are agreed in the quote.',
       'Graphics-only matches need little from the server. Cloud production is different: each programme uses real processing power, and how many can run together depends on the media server\'s hardware. Two 720p programmes overloaded our four-core test server, so measure on your own hardware first.',
     ],
     basis: 'Producer board; capacity check A51 (failed on a 4-core host).',
@@ -201,7 +201,7 @@ export const FAQS: Faq[] = [
     q: 'Can MatchFrame stream directly?',
     a: [
       'On a self-hosted deployment with the media server, yes: your camera or encoder sends an RTMP feed to MatchFrame, the graphics are added in the cloud, and the programme is streamed to your destinations and recorded. A programme monitor shows what actually went out.',
-      'The hosted graphics edition does not stream; you stream from OBS on your own computer with the graphics page added.',
+      'The hosted service does not stream yet: cloud video production is coming to it as an optional service at $10 per production hour. Until then you stream from OBS on your own computer with the graphics page added.',
     ],
     basis: 'RTMP in to programme out (A35); hosted edition has streaming turned off.',
   },
@@ -312,18 +312,18 @@ export const FAQS: Faq[] = [
     category: 'accounts-pricing',
     q: 'How much does MatchFrame cost?',
     a: [
-      'Hosted pricing is being finalised, so we are not publishing prices yet. [Tell us about your setup](/contact) and we will come back to you.',
-      'If you run MatchFrame yourself, what you pay is your hosting provider\'s bill for servers, storage and email. See [pricing](/pricing) for what is involved.',
+      '**Starter** is $29 a month, **Club** $79 and **Studio** $199, or ten times the monthly price if you pay yearly (two months free). **League / Enterprise** plans start from $499 a month and are quoted. Compare what each includes on the [pricing page](/pricing).',
+      'Optional extras: guided onboarding is $149 once, and custom graphics design is quoted per project. Cloud video production ($10 per production hour) is coming to the hosted service.',
     ],
     home: true,
-    basis: 'No approved prices; self-hosting costs are infrastructure.',
+    basis: 'Published plans and optional services (packages/domain/src/pricing.ts).',
   },
   {
     id: 'free-trial',
     category: 'accounts-pricing',
     q: 'Is there a free plan or a free trial?',
-    a: ['Not announced yet. We will publish the plans, what each includes and any trial terms together with prices.'],
-    basis: 'No approved commercial terms.',
+    a: ['There is no free plan; the smallest plan is Starter at $29 a month. No free trial is advertised at the moment, so [contact us](/contact) if you would like to see MatchFrame working on your setup first.'],
+    basis: 'Published plans; no trial terms supplied.',
   },
   {
     id: 'self-hosting',
@@ -339,8 +339,8 @@ export const FAQS: Faq[] = [
     id: 'cancel-change',
     category: 'accounts-pricing',
     q: 'Can I cancel or change plans?',
-    a: ['Plan, billing and cancellation terms will be published together with prices.'],
-    basis: 'No approved commercial terms.',
+    a: ['The plan screen under Settings shows your plan and lets the organisation owner choose another. Terms for changing plans and cancelling (when a change takes effect, and what happens to a paid period) have not been published yet; [contact us](/contact) if you need to change or cancel.'],
+    basis: 'Plan screen; no cancellation terms supplied.',
   },
   {
     id: 'storage-time',

@@ -35,7 +35,11 @@ The site works without these, but each one controls a claim we do not make yet.
 
 | Decision | Where it shows | Today |
 | --- | --- | --- |
-| Hosted prices, currency and GST, billing period, included usage, trial, cancellation | `/pricing`, FAQ "How much does MatchFrame cost?", "Is there a free plan?", "Can I cancel?" | "Being finalised", with the list of what will be published. Draft tiers exist in `packages/services/src/billing.ts` but are not shown and their limits are not enforced. |
+| Currency, GST, trials and cancellation terms | `/pricing`, FAQ "Is there a free plan?", "Can I cancel?" | Prices are published as supplied (`$29`, `$79`, `$199`, from `$499`, yearly at ten months) without a currency code or GST statement; no trial is advertised; cancellation terms are "not published yet". |
+| Plan allowances and features | Plan screen, `/pricing` | Recorded on the organisation when a plan is chosen, but not enforced yet: any account can run more live matches, add more staff and use automation and sponsor rotation regardless of plan. |
+| Online payment | Settings → Plan | Needs `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and a Stripe price for each plan and period (`STRIPE_PRICE_STARTER_MONTHLY`, `_YEARLY`, `CLUB_…`, `STUDIO_…`). League / Enterprise is quoted. |
+| Cloud video production ($10 per production hour) | `/pricing` optional services | Marked "Coming soon": the hosted service runs without the media server, and 1080p30 has not been measured (A51 showed the test host could not carry two 720p programmes). |
+| "Published business hours" for Studio priority support | Studio plan card | No business hours are published anywhere yet. |
 | Self-hosting terms (licence, access to the code) | `/pricing#self-hosting`, FAQ "What does self-hosting mean?" | "Terms not published yet; contact us". |
 | Who owns uploaded footage and graphics | Not on the site | The FAQ question is held back until there are approved terms. |
 | Privacy policy and terms of service | Not on the site | The contact page says what happens to a message (emailed to the team, not stored, no mailing list). Approved policy pages are still needed before selling the service. |

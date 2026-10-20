@@ -3,6 +3,7 @@ import { ArrowRight, Clapperboard, MonitorPlay, Radio, Share2, Smartphone, Troph
 import { GraphicsSample } from '@/components/site/graphics-sample';
 import { AvailabilityBadge, Badge, ButtonLink, Card, Container, Eyebrow, H1, H2, Lead, Rich, Section } from '@/components/site/ui';
 import { VideoEmbed } from '@/components/site/video-embed';
+import { PRICE_PLANS } from '@bs/domain';
 import { CAPABILITIES, SPORTS, SPORT_STATUS_LABEL, VIDEOS } from '@/content/site';
 import { FAQS } from '@/content/faq';
 import { siteMetadata } from '@/lib/site-meta';
@@ -207,16 +208,27 @@ export default function Home() {
 
       {/* pricing preview */}
       <Section tone="panel">
-        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Eyebrow>Pricing</Eyebrow>
-            <H2 className="mt-3">Hosted pricing is being finalised</H2>
-            <Lead className="mt-4">We are not publishing prices until they are settled. Tell us about your setup and we will come back to you. Running MatchFrame yourself is a separate option: you pay your own hosting provider.</Lead>
+            <H2 className="mt-3">Plans from $29 a month</H2>
+            <Lead className="mt-3">Every plan includes all supported sports, unlimited rehearsals and watermark-free graphics. Pay yearly and get two months free.</Lead>
           </div>
-          <div className="flex flex-wrap gap-3 md:justify-end">
-            <ButtonLink href="/pricing" variant="secondary">How pricing works</ButtonLink>
-            <ButtonLink href="/contact">Contact us</ButtonLink>
-          </div>
+          <ButtonLink href="/pricing" variant="ghost">
+            Compare plans <ArrowRight className="size-4" aria-hidden />
+          </ButtonLink>
+        </div>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {PRICE_PLANS.map((p) => (
+            <Card key={p.key} className={p.popular ? 'border-brand-cyan' : ''}>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-brand text-lg font-semibold text-white">{p.name}</h3>
+                {p.popular ? <Badge tone="media-server">Most popular</Badge> : null}
+              </div>
+              <p className="mt-2 font-brand text-2xl font-bold text-white">{p.monthly != null ? `$${p.monthly}` : `From $${p.fromMonthly}`}<span className="text-sm font-normal text-muted">/month</span></p>
+              <p className="mt-2 text-sm text-muted">{p.limits.liveMatches != null ? `${p.limits.liveMatches} simultaneous live ${p.limits.liveMatches === 1 ? 'match' : 'matches'}, ${p.limits.staffAccounts} staff accounts` : 'Allowances agreed in your quote'}</p>
+            </Card>
+          ))}
         </div>
       </Section>
 

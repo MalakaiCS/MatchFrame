@@ -120,6 +120,13 @@ export const configSchema = z.object({
   /** Stripe billing: secret key, webhook signing secret and the price IDs of the paid plans */
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // one Stripe price per plan and billing period (STRIPE_PRICE_CLUB is the older name for Club monthly)
+  STRIPE_PRICE_STARTER_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_STARTER_YEARLY: z.string().optional(),
+  STRIPE_PRICE_CLUB_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_CLUB_YEARLY: z.string().optional(),
+  STRIPE_PRICE_STUDIO_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_STUDIO_YEARLY: z.string().optional(),
   STRIPE_PRICE_CLUB: z.string().optional(),
   STRIPE_PRICE_LEAGUE: z.string().optional(),
   /** scheduled database backups to object storage (pg_dump, custom format) */

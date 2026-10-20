@@ -19,3 +19,4 @@ export * from './rehearsal';
 export * from './timeline';
 export * from './standings';
 export * from './lineup';
+export * from './pricing';

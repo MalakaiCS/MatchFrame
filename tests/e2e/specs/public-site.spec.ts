@@ -95,3 +95,18 @@ test('contact form: sends to the configured inbox, or says it is not connected',
   const msg = (await (await request.get(`${MAILPIT}/api/v1/message/${found.messages[0]!.ID}`)).json()) as { ReplyTo: { Address: string }[] };
   expect(msg.ReplyTo[0]!.Address).toBe('ana@club.example');
 });
+
+test('pricing: the published plans, monthly and yearly, and the optional services', async ({ page }) => {
+  await page.goto('/pricing');
+  const card = (name: string) => page.locator('article', { has: page.getByRole('heading', { name, exact: true }) });
+  await expect(card('Starter')).toContainText('$29/month');
+  await expect(card('Club')).toContainText('Most popular');
+  await expect(card('Studio')).toContainText('$199/month');
+  await expect(card('League / Enterprise')).toContainText('From $499/month');
+  await page.getByRole('button', { name: /Yearly/ }).click();
+  await expect(card('Starter')).toContainText('$290/year');
+  await expect(card('Club')).toContainText('$790/year');
+  await expect(card('Studio')).toContainText('$1,990/year');
+  await expect(page.getByRole('row', { name: /Cloud video production/ })).toContainText('Coming soon');
+  await expect(page.getByRole('row', { name: /Guided onboarding/ })).toContainText('$149 once');
+});

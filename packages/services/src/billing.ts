@@ -1,9 +1,12 @@
-// Plans and billing. Plans and their limits are defined here; Stripe is the payment adapter (Checkout for
-// upgrades, the customer portal for changes, webhooks for truth). Without Stripe keys everything stays on the
-// free plan and the billing page explains why.
+// Plans and billing. The plans and their prices come from the shared pricing catalogue (@bs/domain/pricing), so
+// the public pricing page and the plan screen always agree. Stripe is the payment adapter (Checkout for a new
+// subscription, the customer portal for changes, webhooks for truth), with one Stripe price per plan and billing
+// period. Without Stripe the owner sets the plan by hand. Plan allowances are recorded on the organisation's
+// entitlements; they are not yet enforced when a match goes live.
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { billingAccounts, entitlements, type Db } from '@bs/db';
+import { PRICE_PLANS, priceLabel, type BillingInterval, type PaidPlanKey, type PlanKey } from '@bs/domain';
 import { z } from 'zod';
 import type { AppConfig } from '@bs/config';
 import { assertCan } from './authz';
@@ -11,29 +14,63 @@ import { audit } from './audit';
 import { AppError, conflict, invalid } from './errors';
 import { tx, type Ctx } from './context';
 
-export type PlanKey = 'free' | 'club' | 'league';
+export type { PlanKey };
 export interface Plan {
   key: PlanKey;
   name: string;
   priceLabel: string;
-  limits: { liveMatches: number; outputsPerMatch: number; storageGb: number; members: number; webhooks: number };
+  audience: string;
+  popular: boolean;
+  /** online checkout available for this plan (quoted plans go through a conversation) */
+  selfServe: boolean;
+  /** null: agreed in the quote; members = staff accounts */
+  limits: { liveMatches: number | null; members: number | null };
   features: string[];
 }
-export const PLANS: Record<PlanKey, Plan> = {
-  free: { key: 'free', name: 'Starter', priceLabel: 'Free', limits: { liveMatches: 1, outputsPerMatch: 1, storageGb: 2, members: 5, webhooks: 1 }, features: ['One live match at a time', 'All graphics and looks', 'Scorer app', 'OBS link'] },
-  club: { key: 'club', name: 'Club', priceLabel: 'per month', limits: { liveMatches: 3, outputsPerMatch: 3, storageGb: 25, members: 25, webhooks: 5 }, features: ['Three live matches at once', 'Vertical and venue outputs', 'Sponsor delivery reports', 'Webhooks and reminders'] },
-  league: { key: 'league', name: 'League', priceLabel: 'per month', limits: { liveMatches: 12, outputsPerMatch: 6, storageGb: 200, members: 200, webhooks: 20 }, features: ['Twelve live matches at once', 'White-label domain and branding', 'Priority support', 'Everything in Club'] },
-};
 
-export const billingConfigured = (cfg: AppConfig) => !!(cfg.STRIPE_SECRET_KEY && cfg.STRIPE_WEBHOOK_SECRET && cfg.STRIPE_PRICE_CLUB && cfg.STRIPE_PRICE_LEAGUE);
+const NO_PLAN: Plan = { key: 'free', name: 'No plan yet', priceLabel: 'Choose a plan to subscribe', audience: '', popular: false, selfServe: false, limits: { liveMatches: null, members: null }, features: [] };
+
+export const PLANS: Record<PlanKey, Plan> = {
+  free: NO_PLAN,
+  ...(Object.fromEntries(
+    PRICE_PLANS.map((p) => [p.key, { key: p.key, name: p.name, priceLabel: priceLabel(p), audience: p.audience, popular: !!p.popular, selfServe: p.selfServe, limits: { liveMatches: p.limits.liveMatches, members: p.limits.staffAccounts }, features: p.features }]),
+  ) as Record<PaidPlanKey, Plan>),
+};
+export const PLAN_KEYS = Object.keys(PLANS) as [PlanKey, ...PlanKey[]];
+const planOf = (key: string | null | undefined) => PLANS[(key ?? 'free') as PlanKey] ?? NO_PLAN;
+
+/** The plan's allowances as entitlement limits (numbers only; quoted allowances are left as they are). */
+function planLimits(plan: Plan): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (plan.limits.liveMatches != null) out.liveMatches = plan.limits.liveMatches;
+  if (plan.limits.members != null) out.members = plan.limits.members;
+  return out;
+}
+
+/** The Stripe price for a plan and billing period, from the environment. */
+export function stripePrice(cfg: AppConfig, plan: PaidPlanKey, interval: BillingInterval): string | undefined {
+  const table: Record<string, string | undefined> = {
+    'starter:monthly': cfg.STRIPE_PRICE_STARTER_MONTHLY,
+    'starter:yearly': cfg.STRIPE_PRICE_STARTER_YEARLY,
+    'club:monthly': cfg.STRIPE_PRICE_CLUB_MONTHLY ?? cfg.STRIPE_PRICE_CLUB,
+    'club:yearly': cfg.STRIPE_PRICE_CLUB_YEARLY,
+    'studio:monthly': cfg.STRIPE_PRICE_STUDIO_MONTHLY,
+    'studio:yearly': cfg.STRIPE_PRICE_STUDIO_YEARLY,
+  };
+  return table[`${plan}:${interval}`] || undefined;
+}
+
+const selfServePlans = () => PRICE_PLANS.filter((p) => p.selfServe).map((p) => p.key);
+export const billingConfigured = (cfg: AppConfig) => !!(cfg.STRIPE_SECRET_KEY && cfg.STRIPE_WEBHOOK_SECRET && selfServePlans().some((k) => stripePrice(cfg, k, 'monthly') || stripePrice(cfg, k, 'yearly')));
 
 export async function getBilling(ctx: Ctx) {
   assertCan(ctx.actor, 'org.read');
   return tx(ctx, async (t) => {
     const [acct] = await t.select().from(billingAccounts).where(eq(billingAccounts.organisationId, ctx.actor.organisationId));
     const [ent] = await t.select().from(entitlements).where(eq(entitlements.organisationId, ctx.actor.organisationId));
-    const plan = (acct?.plan as PlanKey | undefined) ?? (ent?.plan as PlanKey | undefined) ?? 'free';
-    return { configured: billingConfigured(ctx.config), plan: PLANS[plan] ?? PLANS.free, status: acct?.status ?? 'none', currentPeriodEnd: acct?.currentPeriodEnd ?? null, plans: Object.values(PLANS), canManage: !!acct?.customerId };
+    const plan = planOf(acct?.plan ?? ent?.plan);
+    const checkout = Object.fromEntries(selfServePlans().map((k) => [k, { monthly: !!stripePrice(ctx.config, k, 'monthly'), yearly: !!stripePrice(ctx.config, k, 'yearly') }]));
+    return { configured: billingConfigured(ctx.config), plan, status: acct?.status ?? 'none', currentPeriodEnd: acct?.currentPeriodEnd ?? null, plans: PRICE_PLANS.map((p) => PLANS[p.key]), checkout, canManage: !!acct?.customerId };
   });
 }
 
@@ -45,14 +82,15 @@ async function stripe(cfg: AppConfig, path: string, form: Record<string, string>
   return json;
 }
 
-export const checkoutInput = z.object({ plan: z.enum(['club', 'league']) });
+export const checkoutInput = z.object({ plan: z.enum(['starter', 'club', 'studio']), interval: z.enum(['monthly', 'yearly']).default('monthly') });
 
-/** Start a Checkout session for a paid plan; the webhook moves the organisation onto the plan. */
+/** Start a Checkout session for a self-serve plan; the webhook moves the organisation onto the plan. */
 export async function createCheckout(ctx: Ctx, input: z.input<typeof checkoutInput>, fetchImpl: typeof fetch = fetch) {
   assertCan(ctx.actor, 'org.own');
   if (!billingConfigured(ctx.config)) throw conflict('BILLING_NOT_CONFIGURED', 'Billing is not set up on this installation');
   const d = checkoutInput.parse(input);
-  const price = d.plan === 'club' ? ctx.config.STRIPE_PRICE_CLUB! : ctx.config.STRIPE_PRICE_LEAGUE!;
+  const price = stripePrice(ctx.config, d.plan, d.interval);
+  if (!price) throw conflict('PRICE_NOT_CONFIGURED', `${PLANS[d.plan].name} is not available ${d.interval === 'yearly' ? 'yearly' : 'monthly'} on this installation yet`);
   const [acct] = await ctx.db.select().from(billingAccounts).where(eq(billingAccounts.organisationId, ctx.actor.organisationId));
   const form: Record<string, string> = {
     mode: 'subscription',
@@ -63,8 +101,10 @@ export async function createCheckout(ctx: Ctx, input: z.input<typeof checkoutInp
     client_reference_id: ctx.actor.organisationId,
     'metadata[organisationId]': ctx.actor.organisationId,
     'metadata[plan]': d.plan,
+    'metadata[interval]': d.interval,
     'subscription_data[metadata][organisationId]': ctx.actor.organisationId,
     'subscription_data[metadata][plan]': d.plan,
+    'subscription_data[metadata][interval]': d.interval,
   };
   if (acct?.customerId) form.customer = acct.customerId;
   const session = await stripe(ctx.config, 'checkout/sessions', form, fetchImpl);
@@ -114,11 +154,14 @@ export async function handleStripeEvent(db: Db, event: { id: string; type: strin
     .insert(billingAccounts)
     .values({ organisationId, provider: 'stripe', ...next, plan: next.plan ?? 'free', status: next.status ?? 'none' })
     .onConflictDoUpdate({ target: billingAccounts.organisationId, set: next });
-  const plan = PLANS[(next.plan as PlanKey) ?? 'free'] ?? PLANS.free;
+  const plan = planOf(next.plan);
+  // the plan's allowances join the organisation's other limits (storage, programmes) rather than replacing them
+  const [cur] = await db.select().from(entitlements).where(eq(entitlements.organisationId, organisationId));
+  const limits = { ...(cur?.limits ?? {}), ...planLimits(plan) };
   await db
     .insert(entitlements)
-    .values({ organisationId, plan: plan.key, features: Object.fromEntries(plan.features.map((f) => [f, true])), limits: plan.limits, updatedBy: 'billing' })
-    .onConflictDoUpdate({ target: entitlements.organisationId, set: { plan: plan.key, limits: plan.limits, updatedBy: 'billing', updatedAt: new Date() } });
+    .values({ organisationId, plan: plan.key, features: cur?.features ?? {}, limits, updatedBy: 'billing' })
+    .onConflictDoUpdate({ target: entitlements.organisationId, set: { plan: plan.key, limits, updatedBy: 'billing', updatedAt: new Date() } });
   return { applied: event.type, plan: plan.key };
 }
 
@@ -128,8 +171,9 @@ export async function setPlanManually(ctx: Ctx, plan: PlanKey) {
   if (!PLANS[plan]) throw invalid('Unknown plan', [{ field: 'plan', message: 'Unknown plan' }]);
   return tx(ctx, async (t) => {
     await t.insert(billingAccounts).values({ organisationId: ctx.actor.organisationId, provider: 'manual', plan, status: 'active' }).onConflictDoUpdate({ target: billingAccounts.organisationId, set: { provider: 'manual', plan, status: 'active', updatedAt: new Date() } });
-    const p = PLANS[plan];
-    await t.insert(entitlements).values({ organisationId: ctx.actor.organisationId, plan, features: Object.fromEntries(p.features.map((f) => [f, true])), limits: p.limits, updatedBy: ctx.actor.userId }).onConflictDoUpdate({ target: entitlements.organisationId, set: { plan, limits: p.limits, updatedBy: ctx.actor.userId, updatedAt: new Date() } });
+    const [cur] = await t.select().from(entitlements).where(eq(entitlements.organisationId, ctx.actor.organisationId));
+    const limits = { ...(cur?.limits ?? {}), ...planLimits(PLANS[plan]) };
+    await t.insert(entitlements).values({ organisationId: ctx.actor.organisationId, plan, features: cur?.features ?? {}, limits, updatedBy: ctx.actor.userId }).onConflictDoUpdate({ target: entitlements.organisationId, set: { plan, limits, updatedBy: ctx.actor.userId, updatedAt: new Date() } });
     await audit(t, ctx.actor, 'billing.plan', 'organisation', ctx.actor.organisationId, { after: { plan } });
     return { ok: true, plan };
   });

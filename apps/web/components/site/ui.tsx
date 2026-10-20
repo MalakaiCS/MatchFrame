@@ -53,6 +53,7 @@ const TONE: Record<string, string> = {
   tested: 'border-healthy/40 bg-healthy/10 text-healthy',
   beta: 'border-warning/40 bg-warning/10 text-warning',
   'media-server': 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-cyan',
+  planned: 'border-warning/40 bg-warning/10 text-warning',
   no: 'border-white/15 bg-white/5 text-muted',
   neutral: 'border-white/15 bg-white/5 text-muted',
 };

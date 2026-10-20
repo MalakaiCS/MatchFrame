@@ -1,65 +1,78 @@
 import { Check } from 'lucide-react';
+import { OPTIONAL_SERVICES } from '@bs/domain';
+import { PricingPlans } from '@/components/site/pricing-plans';
 import { Badge, ButtonLink, Card, H2, Lead, PageIntro, Section } from '@/components/site/ui';
 import { siteMetadata } from '@/lib/site-meta';
 
 export const metadata = siteMetadata({
   title: 'Pricing',
-  description: 'MatchFrame hosted pricing is being finalised. How the hosted service and self-hosting differ, and what we will publish with prices.',
+  description: 'MatchFrame plans: Starter $29/month, Club $79/month, Studio $199/month, League / Enterprise from $499/month, with two months free on yearly billing.',
   path: '/pricing',
 });
 
-const WILL_PUBLISH = [
-  'The currency, and whether prices include GST',
-  'The billing period and how renewal works',
-  'How many people, matches at once and outputs each plan includes',
-  'Storage and export allowances, and what happens at a limit',
-  'Any free plan or trial, and whether it needs a payment card',
-  'How to change plans or cancel, and what happens to your data afterwards',
-];
+/** Optional services the hosted service cannot deliver yet, with why (shown beside the proposed price). */
+const NOT_YET: Record<string, string> = {
+  'cloud-production': 'Coming to the hosted service. Cloud production runs today on self-hosted deployments with the media server; 1080p30 output is still being measured.',
+};
 
 export default function PricingPage() {
   return (
     <>
-      <PageIntro eyebrow="Pricing" title="Hosted pricing is being finalised">
-        <Lead>We would rather publish nothing than a price that changes next month. If you are planning a season, tell us about your setup and we will come back to you.</Lead>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <ButtonLink href="/contact">Tell us about your setup</ButtonLink>
-          <ButtonLink href="/features" variant="secondary">See what is included</ButtonLink>
-        </div>
+      <PageIntro eyebrow="Pricing" title="Plans for every kind of broadcast">
+        <Lead>From one team streaming its home games to production companies covering several matches at once. Every plan includes all supported sports, unlimited fixture preparation and rehearsals, and watermark-free graphics.</Lead>
       </PageIntro>
 
       <Section>
-        <H2>Two ways to run MatchFrame</H2>
+        <PricingPlans />
+        <p className="mt-6 text-center text-xs text-muted">Allowances are per organisation. Yearly billing is charged once a year.</p>
+      </Section>
+
+      <Section tone="panel">
+        <H2>Optional services</H2>
+        <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full min-w-[36rem] text-left text-sm">
+            <thead className="bg-white/[0.03] text-xs uppercase tracking-[0.12em] text-muted">
+              <tr><th scope="col" className="px-4 py-3">Service</th><th scope="col" className="px-4 py-3">Price</th><th scope="col" className="px-4 py-3">What it covers</th></tr>
+            </thead>
+            <tbody>
+              {OPTIONAL_SERVICES.map((s) => (
+                <tr key={s.key} className="border-t border-white/5 align-top">
+                  <th scope="row" className="px-4 py-3 font-medium text-white">
+                    {s.name}
+                    {NOT_YET[s.key] ? <span className="ml-2 align-middle"><Badge tone="beta">Coming soon</Badge></span> : null}
+                  </th>
+                  <td className="whitespace-nowrap px-4 py-3 text-white/90">{s.price}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {s.covers}
+                    {NOT_YET[s.key] ? <span className="mt-1 block text-xs text-warning/90">{NOT_YET[s.key]}</span> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section>
+        <H2>Hosted or self-hosted</H2>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Card>
-            <div className="flex items-center gap-3"><h3 className="font-brand text-xl font-semibold text-white">Hosted</h3><Badge tone="beta">Pricing to come</Badge></div>
-            <p className="mt-3 text-sm leading-relaxed text-muted">We run MatchFrame for you. Open it in a browser; there is nothing to install. The hosted service is the graphics edition: scoring, graphics, automation, sponsors and reports, with your stream going out from OBS on your own computer.</p>
+            <h3 className="font-brand text-xl font-semibold text-white">Hosted plans</h3>
+            <p className="mt-3 text-sm leading-relaxed text-muted">The plans above. We run MatchFrame for you: open it in a browser, with nothing to install. Scoring, graphics, automation and sponsors run on the hosted service, and your stream goes out from OBS on your own computer.</p>
             <ul className="mt-4 space-y-2 text-sm text-white/90">
-              {['We look after the servers, backups and updates', 'Sign in from any browser; scorers use their phones', 'Cloud production is not part of the hosted service'].map((x) => <li key={x} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-cyan" aria-hidden />{x}</li>)}
+              {['We look after the servers, backups and updates', 'Sign in from any browser; scorers use their phones'].map((x) => <li key={x} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-cyan" aria-hidden />{x}</li>)}
             </ul>
           </Card>
           <Card>
             <div id="self-hosting" className="flex scroll-mt-24 items-center gap-3"><h3 className="font-brand text-xl font-semibold text-white">Self-hosted</h3><Badge>Terms to come</Badge></div>
-            <p className="mt-3 text-sm leading-relaxed text-muted">You run your own MatchFrame deployment on servers you control: the app, a PostgreSQL database, Redis, file storage and an email service. Add the media server for cloud production, recordings and automatic highlights.</p>
-            <ul className="mt-4 space-y-2 text-sm text-white/90">
-              {['You pay your hosting provider for servers, storage and email', 'You are responsible for backups, updates and security', 'Cloud production needs a media server sized for your programmes'].map((x) => <li key={x} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-brand-cyan" aria-hidden />{x}</li>)}
-            </ul>
+            <p className="mt-3 text-sm leading-relaxed text-muted">You run your own MatchFrame deployment on servers you control: the app, a PostgreSQL database, Redis, file storage and an email service, plus the media server for cloud production. You pay your hosting provider and look after backups, updates and security.</p>
             <p className="mt-4 text-xs text-muted">Self-hosting terms are not published yet. Contact us before you plan a deployment.</p>
           </Card>
         </div>
-      </Section>
-
-      <Section tone="panel">
-        <H2>What we will publish with prices</H2>
-        <p className="mt-3 max-w-3xl text-muted">So you can decide without an email exchange, the pricing page will answer all of these when it goes live:</p>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-          {WILL_PUBLISH.map((x) => (
-            <li key={x} className="flex gap-3 rounded-lg border border-white/10 bg-panel/60 p-4 text-sm text-white/90"><Check className="mt-0.5 size-4 shrink-0 text-brand-cyan" aria-hidden />{x}</li>
-          ))}
-        </ul>
         <div className="mt-10 flex flex-wrap gap-3">
-          <ButtonLink href="/contact">Contact us</ButtonLink>
-          <ButtonLink href="/faq#cost" variant="secondary">Pricing questions</ButtonLink>
+          <ButtonLink href="/register">Get started</ButtonLink>
+          <ButtonLink href="/contact" variant="secondary">Talk to us about League / Enterprise</ButtonLink>
+          <ButtonLink href="/faq#cost" variant="ghost">Pricing questions</ButtonLink>
         </div>
       </Section>
     </>

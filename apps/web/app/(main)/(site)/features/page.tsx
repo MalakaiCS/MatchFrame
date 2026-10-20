@@ -76,6 +76,7 @@ export default function FeaturesPage() {
                       <span className="text-xs text-muted">Hosted:</span> <AvailabilityBadge value={c.hosted} />
                       <span className="ml-2 text-xs text-muted">Media server:</span> <AvailabilityBadge value={c.media} />
                     </div>
+                    <p className="mt-3 text-sm text-muted"><strong className="text-white/90">Plans:</strong> {c.plans}</p>
                     <Link href={c.guide.href} className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">
                       {c.guide.label} <ArrowRight className="size-3.5" aria-hidden />
                     </Link>
