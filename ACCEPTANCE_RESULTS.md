@@ -73,6 +73,27 @@ running stack, 4 specs), and the real-media scripts in `tests/media/` (LiveKit +
 | A53 | Secrets after secret operations | PASS | `scripts/secret-scan.mjs` → `docs/evidence/m7/secret-scan.json`: 31 secret values (env + decrypted stream keys) absent from 61 client files, logs, 96 API responses, outbox/socket payloads and audit rows. The scan first **found share tokens in API request logs**; fixed in `redact()` (unit test) and re-run clean. |
 | A54 | Inspect claimed test completion | PASS | This document: every PASS cites an executed test or script with stored output; partial/blocked items are labelled. |
 
+
+## Feature pass (2026-10-20): sixty items from the two improvement lists
+
+Same environment as above, on the production build served by the single-port launcher (`scripts/start-hosted.mjs`,
+graphics-only mode). Item-by-item record: `docs/feature-pass.md`. Checks executed for this pass:
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` (unit: domain rules for six sports, standings and form, on-field tracking, automation guards, graphics data, iCal/sheet import, billing signatures) | 89 tests, 15 files, all pass |
+| `pnpm test:db` (integration on PostgreSQL as `bs_app` / `bs_worker`, incl. the new tables and RLS) | 51 tests, 6 files, all pass |
+| `pnpm test:e2e` (Playwright, production build): scorer (A13–A15), graphics desk (A17, A18, A20, A36), theme page, six feature specs (phone line-ups and preferences; run sheet, activity, match information, public match centre and feed; control-room export, run sheet and presence; producer board, competition tables, round creation, status page; automation conditions and approval; settings tabs incl. security sessions and backups) | 20 pass; `graphics-only.spec.ts` skips itself in graphics-only mode as before |
+| Visual regression (`tests/e2e/specs/visual.spec.ts`): every football graphic in the broadcast, minimal and club looks, the vertical and venue formats, and the sport-specific graphics of basketball, netball, rugby league, AFL and hockey, compared with the committed baselines in `tests/e2e/specs/__screenshots__/` (2% pixel tolerance, reduced motion) | 9 specs, 118 baselines, all stable across two runs on the same build |
+| Backups: `GET /api/v1/admin/backups` as an owner after migration 0008 | 200 (previously 500: the API role had no read grant) |
+
+Not executed in this environment, and therefore not claimed: Stripe Checkout/portal/webhooks, Google and
+Microsoft sign-in, and web push against live provider accounts (the code paths are config-gated and unit-tested
+where a pure function exists, e.g. the Stripe signature check); a 1080p streaming measurement (presets stay
+labelled unmeasured); WebM export beyond opening the dialog (the PNG path is exercised manually only); an
+external accessibility audit. Evidence: `docs/evidence/e2e/results.json` (JSON reporter of the run above).
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
