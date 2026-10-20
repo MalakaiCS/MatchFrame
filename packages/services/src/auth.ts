@@ -23,7 +23,12 @@ export function createAuth({ db, config, mailer, onEmailLink }: AuthDeps) {
       kind === 'verify'
         ? emailLayout(config, 'Verify your email', `Confirm this address to finish creating your ${config.PRODUCT_NAME} account.`, { label: 'Verify email', url })
         : emailLayout(config, 'Reset your password', 'Use this link within 1 hour to choose a new password. If you did not ask for this, ignore this email.', { label: 'Reset password', url });
-    await mailer.send(email, kind === 'verify' ? 'Verify your email' : 'Reset your password', m.text, m.html);
+    try {
+      await mailer.send(email, kind === 'verify' ? 'Verify your email' : 'Reset your password', m.text, m.html);
+    } catch (e) {
+      console.error(`[auth] ${kind} email to ${email} failed: ${(e as Error).message}`);
+      throw e;
+    }
   };
 
   return betterAuth({

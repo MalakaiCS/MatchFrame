@@ -5,12 +5,36 @@ export interface Mailer {
   send(to: string, subject: string, text: string, html?: string): Promise<void>;
 }
 
-export function createMailer(cfg: AppConfig): Mailer {
+/** The Resend API key to send with over HTTPS: RESEND_API_KEY, else the SMTP password when SMTP_HOST is Resend. */
+export function resendApiKey(cfg: Pick<AppConfig, 'RESEND_API_KEY' | 'SMTP_HOST' | 'SMTP_PASSWORD'>) {
+  if (cfg.RESEND_API_KEY) return cfg.RESEND_API_KEY;
+  return /(^|\.)resend\.com$/i.test(cfg.SMTP_HOST) && cfg.SMTP_PASSWORD?.startsWith('re_') ? cfg.SMTP_PASSWORD : undefined;
+}
+
+export function createMailer(cfg: AppConfig, fetchImpl: typeof fetch = fetch): Mailer {
+  const apiKey = resendApiKey(cfg);
+  if (apiKey) {
+    return {
+      async send(to, subject, text, html) {
+        const r = await fetchImpl('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+          body: JSON.stringify({ from: cfg.MAIL_FROM, to: [to], subject, text, html }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!r.ok) {
+          const detail = await r.text().catch(() => '');
+          throw new Error(`Resend rejected the email (HTTP ${r.status}): ${detail.slice(0, 300)}`);
+        }
+      },
+    };
+  }
   const transport = nodemailer.createTransport({
     host: cfg.SMTP_HOST,
     port: cfg.SMTP_PORT,
     secure: cfg.SMTP_SECURE,
     auth: cfg.SMTP_USER ? { user: cfg.SMTP_USER, pass: cfg.SMTP_PASSWORD } : undefined,
+    connectionTimeout: 15_000,
   });
   return {
     async send(to, subject, text, html) {

@@ -34,6 +34,10 @@ Sign-up verification and password resets are sent by email, so this is required.
 Resend → *Domains* → add and verify your domain → *API keys* → create one. SMTP settings: host `smtp.resend.com`,
 port `465`, secure `true`, user `resend`, password = the API key.
 
+With Resend the app sends over Resend's HTTPS API (using that key), not SMTP: Railway blocks outbound SMTP below
+the Pro plan. `MAIL_FROM` must use the domain you verified in Resend (an unverified domain or a Gmail address is
+rejected). A failed send is logged as `[auth] verify email to … failed: Resend rejected the email (HTTP …): <reason>`.
+
 ## 3. Railway
 
 1. Sign in to Railway with GitHub → **New project** → **Deploy from GitHub repo** → choose this repository.

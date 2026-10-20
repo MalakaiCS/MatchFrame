@@ -76,6 +76,8 @@ export const configSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().default('Broadcast Studio <no-reply@studio.localhost>'),
+  // Resend's HTTPS API (hosts such as Railway block outbound SMTP on lower plans). Defaults to SMTP_PASSWORD with smtp.resend.com.
+  RESEND_API_KEY: z.string().optional(),
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string(),
