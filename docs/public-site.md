@@ -7,7 +7,7 @@ documentation and contact. Built from the MatchFrame public website expansion pl
 
 | What | File | Notes |
 | --- | --- | --- |
-| Capabilities, availability per edition, sports, the site video | `apps/web/content/site.ts` | One source for the homepage, features, sport pages and FAQ. `evidence` says how each claim was checked. |
+| Capabilities, availability per edition, sports, the site video (`VIDEOS`) | `apps/web/content/site.ts` | One source for the homepage, features, sport pages and FAQ. `evidence` says how each claim was checked. |
 | FAQ | `apps/web/content/faq.ts` | `basis` records where each answer came from; `home: true` puts it on the homepage. |
 | Documentation | `apps/web/content/docs.ts` | Bold text is the product's own labels. Update `verified` when a guide is re-checked against the interface. |
 | Navigation and footer | `apps/web/components/site/nav.ts` | The sitemap and the link test use the same list. |
@@ -44,14 +44,26 @@ The site works without these, but each one controls a claim we do not make yet.
 | Who owns uploaded footage and graphics | Not on the site | The FAQ question is held back until there are approved terms. |
 | Privacy policy and terms of service | Not on the site | The contact page says what happens to a message (emailed to the team, not stored, no mailing list). Approved policy pages are still needed before selling the service. |
 | Support model and response times | `/contact`, FAQ "How do I get help on matchday?" | No response times are promised; no live matchday support. |
-| The video on the homepage and showcase | `VIDEOS.graphics` in `content/site.ts` | YouTube `k4ET0z97tz8`, as requested. It could not be viewed from the build environment, so its caption is neutral ("Graphics in action"). Its YouTube title is "Premier League Motion Graphics Pack — Expanded Edition", which suggests a third-party graphics pack rather than MatchFrame's output; it was the reference for the Premier look's restyle. Replace it with a recording of MatchFrame's own graphics, or remove it, before launch. |
 | Original logo files | Header, favicon, share image | A vector redraw of the supplied logo. Replace with the master files if they differ. |
 | Launch indexing and the public address | `SITE_INDEXING`, `PUBLIC_WEB_URL` | Indexing is off. |
 | First-setup time | FAQ "How long does the first setup take?" | Not measured, and the answer says so. Time a representative new user before publishing a number. |
+
+## The graphics video
+
+The homepage and showcase play `apps/web/public/media/matchframe-looks.mp4` (with `matchframe-looks.jpg` as its
+poster): about 54 seconds of MatchFrame's own renderer playing the Premier, Liga, Major, Southern, Continental,
+Primetime and Meister looks with fictional teams, recorded from the `/reel` page. It plays muted on a loop while on
+screen, never for visitors who prefer reduced motion, and stays paused once a visitor pauses it. Nothing loads from a
+third party; the content-security policy no longer allows any outside frame.
+
+After changing a look or the reel's sequence (`apps/web/app/(render)/reel/page.tsx`), record it again with the app
+running and ffmpeg installed: `BASE_URL=http://localhost:3000 pnpm record:reel`. The recorder plays the reel at a
+quarter speed while Chromium captures it and puts each frame back on the reel's own time, so the video is a smooth
+30 frames a second. Open `/reel` to watch the sequence live.
 
 ## Checks
 
 `tests/e2e/specs/public-site.spec.ts` (signed out): MatchFrame branding and one heading on every page; every
 header and footer link returns 200; robots and sitemap; the mobile menu; the interactive graphics sample (a goal
 changes the score and puts the goal graphic on air); FAQ search and deep links; docs search; the contact form
-validating, sending and arriving in Mailpit with the sender as reply-to (or saying it is not connected).
+validating, sending and arriving in Mailpit with the sender as reply-to (or saying it is not connected). The homepage video and its poster are served from the site.

@@ -1,6 +1,6 @@
 import { GraphicsShowcase } from '@/components/site/graphics-showcase';
 import { ButtonLink, H2, Lead, PageIntro, Section } from '@/components/site/ui';
-import { VideoEmbed } from '@/components/site/video-embed';
+import { LooksReel } from '@/components/site/looks-reel';
 import { VIDEOS } from '@/content/site';
 import { siteMetadata } from '@/lib/site-meta';
 
@@ -29,7 +29,7 @@ export default function ShowcasePage() {
               <ButtonLink href="/docs/graphics/themes-and-branding" variant="secondary">Looks and branding</ButtonLink>
             </div>
           </div>
-          <VideoEmbed youtubeId={VIDEOS.graphics.youtubeId} title={VIDEOS.graphics.title} />
+          <LooksReel {...VIDEOS.looks} />
         </div>
       </Section>
     </>

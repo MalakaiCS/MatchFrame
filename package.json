@@ -20,6 +20,7 @@
     "test:db": "vitest run --project db",
     "test:e2e": "pnpm --filter @bs/e2e test",
     "test:media": "node tests/media/run-media-smoke.mjs",
+    "record:reel": "node tests/e2e/record-reel.mjs",
     "demo:start": "node scripts/demo.mjs start",
     "demo:stop": "node scripts/demo.mjs stop",
     "services:up": "docker compose -f infra/docker-compose.yml --env-file .env --profile streaming up -d",

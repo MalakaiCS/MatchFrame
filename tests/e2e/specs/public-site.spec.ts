@@ -26,6 +26,15 @@ test('public pages: MatchFrame branding, one heading each, and every header and 
     await expect(page.getByRole('heading', { level: 1 }), href).toHaveCount(1);
     await expect(page.getByText('Broadcast Studio')).toHaveCount(0);
   }
+  // the graphics video is MatchFrame's own recording, served from the site
+  await page.goto('/');
+  const video = page.locator('video[src="/media/matchframe-looks.mp4"]');
+  await expect(video).toHaveAttribute('poster', '/media/matchframe-looks.jpg');
+  for (const [file, type] of [['/media/matchframe-looks.mp4', 'video/mp4'], ['/media/matchframe-looks.jpg', 'image/jpeg']]) {
+    const r = await request.get(file);
+    expect(r.status(), file).toBe(200);
+    expect(r.headers()['content-type'], file).toContain(type);
+  }
   const robots = await (await request.get('/robots.txt')).text();
   expect(robots).toMatch(/Disallow: \//);
   const sitemap = await (await request.get('/sitemap.xml')).text();

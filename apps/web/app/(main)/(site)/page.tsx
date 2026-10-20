@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Clapperboard, MonitorPlay, Radio, Share2, Smartphone, Trophy, Users, Workflow } from 'lucide-react';
 import { GraphicsSample } from '@/components/site/graphics-sample';
 import { AvailabilityBadge, Badge, ButtonLink, Card, Container, Eyebrow, H1, H2, Lead, Rich, Section } from '@/components/site/ui';
-import { VideoEmbed } from '@/components/site/video-embed';
+import { LooksReel } from '@/components/site/looks-reel';
 import { PRICE_PLANS } from '@bs/domain';
 import { CAPABILITIES, SPORTS, SPORT_STATUS_LABEL, VIDEOS } from '@/content/site';
 import { FAQS } from '@/content/faq';
@@ -151,7 +151,7 @@ export default function Home() {
               <ButtonLink href="/showcase">Open the showcase</ButtonLink>
             </div>
           </div>
-          <VideoEmbed youtubeId={VIDEOS.graphics.youtubeId} title={VIDEOS.graphics.title} />
+          <LooksReel {...VIDEOS.looks} />
         </div>
       </Section>
 

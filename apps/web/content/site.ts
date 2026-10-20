@@ -163,7 +163,13 @@ export const SPORT_STATUS_NOTE = {
   beta: 'The rules, events and graphics are built and covered by automated checks, but a full match has not yet been run end to end. Rehearse before relying on it.',
 } as const;
 
-/** Videos on the public site, played from YouTube's privacy-enhanced player only after a visitor presses play. */
+/** Videos on the public site. The looks reel is recorded from MatchFrame's own renderer: re-record it with
+ *  `pnpm record:reel` after changing a look (see docs/public-site.md). */
 export const VIDEOS = {
-  graphics: { youtubeId: 'k4ET0z97tz8', title: 'Graphics in action' },
+  looks: {
+    src: '/media/matchframe-looks.mp4',
+    poster: '/media/matchframe-looks.jpg',
+    title: 'MatchFrame graphics in seven looks',
+    caption: "Recorded from MatchFrame's renderer with fictional teams: the Premier, Liga, Major, Southern, Continental, Primetime and Meister looks. No sound.",
+  },
 } as const;
