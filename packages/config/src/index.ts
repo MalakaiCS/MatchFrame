@@ -114,8 +114,16 @@ export function getConfig(): AppConfig {
   loadDotEnv();
   const r = configSchema.safeParse(withDerivedDefaults(process.env));
   if (!r.success) {
-    const fields = r.error.issues.map((i) => i.path.join('.')).join(', ');
-    throw new Error(`Invalid configuration (${fields}). Run \`pnpm setup\` or check .env`);
+    const missing = r.error.issues.filter((i) => process.env[i.path.join('.')] === undefined).map((i) => i.path.join('.'));
+    const invalid = r.error.issues.map((i) => i.path.join('.')).filter((f) => !missing.includes(f));
+    const parts = [missing.length && `missing: ${missing.join(', ')}`, invalid.length && `invalid: ${invalid.join(', ')}`];
+    const hint = missing.includes('PUBLIC_WEB_URL')
+      ? ' PUBLIC_WEB_URL comes from the platform domain (Railway: Settings → Networking → Generate domain) or set it.'
+      : '';
+    throw new Error(
+      `Invalid configuration (${parts.filter(Boolean).join('; ')}).${hint} Locally run \`pnpm setup\`; ` +
+        'on a hosting platform set these as service variables (docs/deploy-hosted.md).',
+    );
   }
   // the web origin is always trusted (auth CSRF checks and Socket.IO CORS)
   const origins = new Set(r.data.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean));
