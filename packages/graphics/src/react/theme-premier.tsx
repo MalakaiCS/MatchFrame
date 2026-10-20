@@ -393,7 +393,7 @@ function Slate(p: GraphicProps) {
   const c = roles(p);
   return (
     <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(118deg, ${c.deep} 0%, ${c.deep} 58%, ${c.hot} 58%, ${c.hot} 100%)`, color: '#fff', fontFamily: c.font, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 40, ...UPPER, ...animStyle(p, 'fade') }} data-graphic="slate">
-      <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 6, background: c.electric, opacity: 0.6, transformOrigin: 'left', ...animStyle(p, 'grow-x', 80, 600) }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: '11%', height: 6, background: c.electric, opacity: 0.6, transformOrigin: 'left', ...animStyle(p, 'grow-x', 80, 600) }} />
       <div style={{ position: 'relative', ...animStyle(p, 'fade', 100, 400) }}><ThemeBadge p={p} height={80} /></div>
       <div style={{ position: 'relative', width: 1100, background: 'rgba(255,255,255,.08)', padding: '24px 32px', borderRadius: 8 }}><TeamsHeader p={p} delayMs={200} /></div>
       <div style={{ position: 'relative', fontSize: 54, fontWeight: 700, letterSpacing: 2, ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>

@@ -50,436 +50,13 @@
       }
     ],
     "shard": null,
-    "updateSnapshots": "missing",
+    "updateSnapshots": "changed",
     "updateSourceMethod": "patch",
     "version": "1.56.1",
     "workers": 1,
     "webServer": null
   },
   "suites": [
-    {
-      "title": "features.spec.ts",
-      "file": "features.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "scorer enters line-ups from the phone and finds the preferences sheet",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 3034,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:19.512Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-69de1b94a921b2878947",
-          "file": "features.spec.ts",
-          "line": 7,
-          "column": 1
-        },
-        {
-          "title": "run sheet, activity, match information and the public match centre with its feed",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 4426,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:22.723Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-49600f178c5a6bd3418b",
-          "file": "features.spec.ts",
-          "line": 35,
-          "column": 1
-        },
-        {
-          "title": "control room: export dialog, run sheet tab and presence without a second operator",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2753,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:27.174Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-474be507887b2497c4c8",
-          "file": "features.spec.ts",
-          "line": 86,
-          "column": 1
-        },
-        {
-          "title": "producer board, competition tables, round creation and the status page",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 4176,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:29.964Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-7c32b33e95de7c55b1fa",
-          "file": "features.spec.ts",
-          "line": 103,
-          "column": 1
-        },
-        {
-          "title": "automation editor: conditions and approval per playlist",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 3034,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:34.174Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-90edc139afc6995f6a32",
-          "file": "features.spec.ts",
-          "line": 133,
-          "column": 1
-        },
-        {
-          "title": "settings: plan, branding, integrations, notifications, security and backups tabs",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 2279,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:37.243Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "85b3cc1667c06e9efc8f-55defd70890a4230c603",
-          "file": "features.spec.ts",
-          "line": 151,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "graphics-only.spec.ts",
-      "file": "graphics-only.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "graphics-only hides streaming and keeps overlays working",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [
-                {
-                  "type": "skip",
-                  "description": "needs a STREAMING_ENABLED=false deployment",
-                  "location": {
-                    "file": "/home/user/MatchFrame/tests/e2e/specs/graphics-only.spec.ts",
-                    "line": 6,
-                    "column": 6
-                  }
-                }
-              ],
-              "expectedStatus": "skipped",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": -1,
-                  "parallelIndex": -1,
-                  "status": "skipped",
-                  "duration": 0,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:39.567Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "skipped"
-            }
-          ],
-          "id": "85580dadacb726dcb7d9-a0d8b12f8c366c7578fa",
-          "file": "graphics-only.spec.ts",
-          "line": 8,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "graphics.spec.ts",
-      "file": "graphics.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "preview, take to air, refresh, transparency and rotation (A17, A18, A20, A36)",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 10488,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [
-                    {
-                      "buffer": ""
-                    },
-                    {
-                      "buffer": ""
-                    }
-                  ],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:39.578Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b597a74853af235c8d55-bc975c467bcdf89b6a54",
-          "file": "graphics.spec.ts",
-          "line": 6,
-          "column": 1
-        }
-      ]
-    },
-    {
-      "title": "scorer.spec.ts",
-      "file": "scorer.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [
-        {
-          "title": "running clock is anchor-derived and survives a refresh (A13)",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 9261,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:50.118Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "fe7277dd26f68d2f7004-766f1943fbab3631d9b8",
-          "file": "scorer.spec.ts",
-          "line": 6,
-          "column": 1
-        },
-        {
-          "title": "offline goal survives a refresh and applies exactly once after reconnect (A14)",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 4818,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:23:59.430Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "fe7277dd26f68d2f7004-d3df1835720fdfcfc2bf",
-          "file": "scorer.spec.ts",
-          "line": 30,
-          "column": 1
-        },
-        {
-          "title": "producer takes over while the scorer is offline; stale offline actions need review (A15)",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 7104,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:24:04.288Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "fe7277dd26f68d2f7004-24c0041acbc3e1568d6d",
-          "file": "scorer.spec.ts",
-          "line": 54,
-          "column": 1
-        }
-      ]
-    },
     {
       "title": "themes.spec.ts",
       "file": "themes.spec.ts",
@@ -502,12 +79,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 5927,
+                  "duration": 8719,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:24:11.452Z",
+                  "startTime": "2026-10-20T09:40:38.594Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -529,7 +106,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "broadcast look: every football graphic",
+          "title": "premier look: every football graphic",
           "ok": true,
           "tags": [],
           "tests": [
@@ -544,294 +121,362 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 32106,
+                  "duration": 37443,
                   "errors": [],
-                  "stdout": [],
+                  "stdout": [
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-scorebug.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-ident.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-kick-off-period-banner.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-break-final-score.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-holding-slate.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-fixtures-and-results.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-summary.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-head-to-head-and-form.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-information-strap.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-team-lineup.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-formation.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-goal-score-event.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-card.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-substitution.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-shoot-out-tracker.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-lower-third.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-card.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-of-the-match.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-statistics.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-league-table.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-live-statistic.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-top-scorers.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-sponsor-graphic.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-full-frame-media.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-ticker.png, writing actual.\n"
+                    },
+                    {
+                      "text": "A snapshot doesn't exist at /home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-stinger-wipe.png, writing actual.\n"
+                    }
+                  ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-10-20T08:24:17.474Z",
+                  "startTime": "2026-10-20T09:40:48.009Z",
                   "annotations": [],
-                  "attachments": []
+                  "attachments": [
+                    {
+                      "name": "premier-football-scorebug-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-scorebug.png"
+                    },
+                    {
+                      "name": "premier-football-scorebug-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-scorebug-actual.png"
+                    },
+                    {
+                      "name": "premier-football-match-ident-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-ident.png"
+                    },
+                    {
+                      "name": "premier-football-match-ident-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-ident-actual.png"
+                    },
+                    {
+                      "name": "premier-football-kick-off-period-banner-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-kick-off-period-banner.png"
+                    },
+                    {
+                      "name": "premier-football-kick-off-period-banner-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-kick-off-period-banner-actual.png"
+                    },
+                    {
+                      "name": "premier-football-break-final-score-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-break-final-score.png"
+                    },
+                    {
+                      "name": "premier-football-break-final-score-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-break-final-score-actual.png"
+                    },
+                    {
+                      "name": "premier-football-holding-slate-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-holding-slate.png"
+                    },
+                    {
+                      "name": "premier-football-holding-slate-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-holding-slate-actual.png"
+                    },
+                    {
+                      "name": "premier-football-fixtures-and-results-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-fixtures-and-results.png"
+                    },
+                    {
+                      "name": "premier-football-fixtures-and-results-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-fixtures-and-results-actual.png"
+                    },
+                    {
+                      "name": "premier-football-match-summary-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-summary.png"
+                    },
+                    {
+                      "name": "premier-football-match-summary-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-summary-actual.png"
+                    },
+                    {
+                      "name": "premier-football-head-to-head-and-form-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-head-to-head-and-form.png"
+                    },
+                    {
+                      "name": "premier-football-head-to-head-and-form-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-head-to-head-and-form-actual.png"
+                    },
+                    {
+                      "name": "premier-football-match-information-strap-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-information-strap.png"
+                    },
+                    {
+                      "name": "premier-football-match-information-strap-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-information-strap-actual.png"
+                    },
+                    {
+                      "name": "premier-football-team-lineup-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-team-lineup.png"
+                    },
+                    {
+                      "name": "premier-football-team-lineup-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-team-lineup-actual.png"
+                    },
+                    {
+                      "name": "premier-football-formation-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-formation.png"
+                    },
+                    {
+                      "name": "premier-football-formation-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-formation-actual.png"
+                    },
+                    {
+                      "name": "premier-football-goal-score-event-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-goal-score-event.png"
+                    },
+                    {
+                      "name": "premier-football-goal-score-event-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-goal-score-event-actual.png"
+                    },
+                    {
+                      "name": "premier-football-card-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-card.png"
+                    },
+                    {
+                      "name": "premier-football-card-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-card-actual.png"
+                    },
+                    {
+                      "name": "premier-football-substitution-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-substitution.png"
+                    },
+                    {
+                      "name": "premier-football-substitution-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-substitution-actual.png"
+                    },
+                    {
+                      "name": "premier-football-shoot-out-tracker-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-shoot-out-tracker.png"
+                    },
+                    {
+                      "name": "premier-football-shoot-out-tracker-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-shoot-out-tracker-actual.png"
+                    },
+                    {
+                      "name": "premier-football-lower-third-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-lower-third.png"
+                    },
+                    {
+                      "name": "premier-football-lower-third-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-lower-third-actual.png"
+                    },
+                    {
+                      "name": "premier-football-player-card-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-card.png"
+                    },
+                    {
+                      "name": "premier-football-player-card-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-player-card-actual.png"
+                    },
+                    {
+                      "name": "premier-football-player-of-the-match-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-player-of-the-match.png"
+                    },
+                    {
+                      "name": "premier-football-player-of-the-match-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-player-of-the-match-actual.png"
+                    },
+                    {
+                      "name": "premier-football-match-statistics-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-match-statistics.png"
+                    },
+                    {
+                      "name": "premier-football-match-statistics-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-match-statistics-actual.png"
+                    },
+                    {
+                      "name": "premier-football-league-table-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-league-table.png"
+                    },
+                    {
+                      "name": "premier-football-league-table-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-league-table-actual.png"
+                    },
+                    {
+                      "name": "premier-football-live-statistic-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-live-statistic.png"
+                    },
+                    {
+                      "name": "premier-football-live-statistic-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-live-statistic-actual.png"
+                    },
+                    {
+                      "name": "premier-football-top-scorers-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-top-scorers.png"
+                    },
+                    {
+                      "name": "premier-football-top-scorers-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-top-scorers-actual.png"
+                    },
+                    {
+                      "name": "premier-football-sponsor-graphic-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-sponsor-graphic.png"
+                    },
+                    {
+                      "name": "premier-football-sponsor-graphic-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-sponsor-graphic-actual.png"
+                    },
+                    {
+                      "name": "premier-football-full-frame-media-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-full-frame-media.png"
+                    },
+                    {
+                      "name": "premier-football-full-frame-media-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-full-frame-media-actual.png"
+                    },
+                    {
+                      "name": "premier-football-ticker-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-ticker.png"
+                    },
+                    {
+                      "name": "premier-football-ticker-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-ticker-actual.png"
+                    },
+                    {
+                      "name": "premier-football-stinger-wipe-expected.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/tests/e2e/specs/__screenshots__/premier-football-stinger-wipe.png"
+                    },
+                    {
+                      "name": "premier-football-stinger-wipe-actual.png",
+                      "contentType": "image/png",
+                      "path": "/home/user/MatchFrame/.data/e2e-artifacts/visual-premier-look-every-football-graphic/premier-football-stinger-wipe-actual.png"
+                    }
+                  ]
                 }
               ],
               "status": "expected"
             }
           ],
-          "id": "8324bb52c49185e48ff4-d3b15f7fd98e45e01e1e",
+          "id": "8324bb52c49185e48ff4-cbb3d7c644719566770f",
           "file": "visual.spec.ts",
           "line": 36,
-          "column": 3
-        },
-        {
-          "title": "minimal look: every football graphic",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 32505,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:24:49.661Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-d4ef3d635eaef40a3f87",
-          "file": "visual.spec.ts",
-          "line": 36,
-          "column": 3
-        },
-        {
-          "title": "club look: every football graphic",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 34045,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:25:22.228Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-b76d5f160e8b5e1af1b6",
-          "file": "visual.spec.ts",
-          "line": 36,
-          "column": 3
-        },
-        {
-          "title": "broadcast look: vertical (9:16) and venue formats",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 18105,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:25:56.339Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-1256327fe2ee17605fbf",
-          "file": "visual.spec.ts",
-          "line": 43,
-          "column": 1
-        },
-        {
-          "title": "broadcast look: basketball sport-specific graphics",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 11319,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:26:14.517Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-e4a0fe71b833f31bfe9b",
-          "file": "visual.spec.ts",
-          "line": 52,
-          "column": 3
-        },
-        {
-          "title": "broadcast look: netball sport-specific graphics",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 12079,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:26:26.032Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-c5e8c35a198ad369e1b2",
-          "file": "visual.spec.ts",
-          "line": 52,
-          "column": 3
-        },
-        {
-          "title": "broadcast look: rugby_league sport-specific graphics",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 11998,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:26:38.225Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-9ca0bb1439bd452e18c9",
-          "file": "visual.spec.ts",
-          "line": 52,
-          "column": 3
-        },
-        {
-          "title": "broadcast look: afl sport-specific graphics",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 12701,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:26:50.346Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-bd54eed948a22c5c5033",
-          "file": "visual.spec.ts",
-          "line": 52,
-          "column": 3
-        },
-        {
-          "title": "broadcast look: hockey sport-specific graphics",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 120000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 13083,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-10-20T08:27:03.217Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "8324bb52c49185e48ff4-d1af367742c42efe0ed8",
-          "file": "visual.spec.ts",
-          "line": 52,
           "column": 3
         }
       ]
@@ -839,10 +484,10 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-10-20T08:23:17.617Z",
-    "duration": 240840.092,
-    "expected": 20,
-    "skipped": 1,
+    "startTime": "2026-10-20T09:40:37.346Z",
+    "duration": 48418.37,
+    "expected": 2,
+    "skipped": 0,
     "unexpected": 0,
     "flaky": 0
   }
