@@ -3,7 +3,7 @@
 // Every graphic builds in parts (panel, stripe, badge, text) on a short stagger and exits as one.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 
 const SX = 96; // 5% title-safe
@@ -218,26 +218,26 @@ function FullPanel({ p, title, children, width = 1100 }: { p: GraphicProps; titl
   );
 }
 
-function TeamsHeader({ p, delayMs = 220 }: { p: GraphicProps; delayMs?: number }) {
+function TeamsHeader({ p, delayMs = 220, centre = 'v', score = false }: { p: GraphicProps; delayMs?: number; centre?: string; score?: boolean }) {
   const h = team(p, 'home');
   const a = team(p, 'away');
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'flex-end', ...animStyle(p, 'slide-left', delayMs, 420) }}><Fitted full={h.name} short={h.shortName} width={330} fontPx={40} measure={p.measure} /><Logo url={h.logoUrl} label={h.abbreviation} size={96} color={h.primaryColor} /></div>
-      <span style={{ fontSize: 30, opacity: 0.6, ...animStyle(p, 'zoom', delayMs + 120, 380) }}>v</span>
+      <span style={{ ...(score ? { fontSize: 72, fontWeight: 900, fontVariantNumeric: 'tabular-nums', padding: '0 10px' } : { fontSize: 30, opacity: 0.6, ...(centre === 'v' ? {} : { fontWeight: 800, letterSpacing: 2 }) }), ...animStyle(p, 'zoom', delayMs + 120, 380) }}><span style={score ? changeStyle(p, 'score', centre) : undefined}>{centre}</span></span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, ...animStyle(p, 'slide-right', delayMs, 420) }}><Logo url={a.logoUrl} label={a.abbreviation} size={96} color={a.primaryColor} /><Fitted full={a.name} short={a.shortName} width={330} fontPx={40} measure={p.measure} /></div>
     </div>
   );
 }
 
 function Ident(p: GraphicProps) {
-  const cd = p.cue.variables.showCountdown !== false ? kickoffCountdown(p) : null;
-  const when = new Intl.DateTimeFormat('en-AU', { timeZone: p.data.match.timezone, weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(p.data.match.scheduledAt));
+  const info = identInfo(p);
   return (
     <FullPanel p={p} title={p.data.match.competition.name}>
-      <TeamsHeader p={p} />
-      <div style={{ textAlign: 'center', marginTop: 28, fontSize: 28, opacity: 0.85, ...animStyle(p, 'rise', 420, 340) }}>{p.data.match.venue ?? ''}{p.data.match.venue ? ' · ' : ''}{when}</div>
-      {cd ? <div style={{ textAlign: 'center', marginTop: 16, fontSize: 56, fontWeight: 900, color: p.data.theme.accent, fontVariantNumeric: 'tabular-nums', ...animStyle(p, 'zoom', 500, 420) }}>{cd}</div> : null}
+      <TeamsHeader p={p} centre={info.centre} score={info.started} />
+      <div style={{ textAlign: 'center', marginTop: 28, fontSize: info.started ? 30 : 28, fontWeight: info.started ? 800 : 400, letterSpacing: info.started ? 3 : 0, opacity: 0.85, ...animStyle(p, 'rise', 420, 340) }}>{info.line}</div>
+      {info.countdown ? <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 16, marginTop: 14, ...animStyle(p, 'zoom', 500, 420) }}><span style={{ fontSize: 22, letterSpacing: 3, opacity: 0.8 }}>{info.countdown.label}</span><span style={{ fontSize: 56, fontWeight: 900, color: p.data.theme.accent, fontVariantNumeric: 'tabular-nums' }}>{info.countdown.text}</span></div> : null}
+      {info.message ? <div style={{ textAlign: 'center', marginTop: 18, fontSize: 40, fontWeight: 900, letterSpacing: 3, color: p.data.theme.accent, ...animStyle(p, 'rise', 520, 360) }}>{info.message.toUpperCase()}</div> : null}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 18, ...animStyle(p, 'fade', 580, 300) }}><SponsorMark p={p} placement="detached_logo" height={70} /></div>
     </FullPanel>
   );

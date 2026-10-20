@@ -40,7 +40,7 @@ import {
   type TriggerInput,
   type TriggerMatch,
 } from '@bs/domain';
-import { pruneExpired, type Cue, type Layer, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
+import { findTemplate, pruneExpired, type Cue, type Layer, type OverlayCommand, type OverlayPublicState } from '@bs/graphics';
 import type { AppConfig } from '@bs/config';
 import { systemActor } from './authz';
 import { AppError, conflict, notFound } from './errors';
@@ -272,7 +272,7 @@ export async function factTriggerInput(t: Tx, matchId: string, factId: string): 
   const adapter = getAdapter(m!.sport);
   const cfg = m!.rulesConfig as never;
   const log = (await t.select().from(matchFacts).where(and(eq(matchFacts.matchId, matchId), lte(matchFacts.sequence, f.sequence))).orderBy(asc(matchFacts.sequence))).map(
-    (r): LogEntry => ({ sequence: r.sequence, category: r.category as LogEntry['category'], type: r.type, side: r.side as LogEntry['side'], playerId: r.playerId, payload: r.payload, periodId: r.periodId, clockMs: r.clockMs, voided: r.voided }),
+    (r): LogEntry => ({ sequence: r.sequence, category: r.category as LogEntry['category'], type: r.type, side: r.side as LogEntry['side'], playerId: r.playerId, payload: r.payload, periodId: r.periodId, clockMs: r.clockMs, voided: r.voided, occurredAt: r.occurredAt.getTime() }),
   );
   const after = replay(adapter, cfg, log);
   const before = replay(adapter, cfg, log.filter((x) => x.sequence < f.sequence));
@@ -373,8 +373,17 @@ async function executeCue(t: Tx, d: AutomationDeps, fence: Fence, cue: typeof au
   switch (cue.action) {
     case 'wait':
       return { state: 'done' };
-    case 'show':
+    case 'show': {
+      // line-up graphics only go to air for a team whose line-up has been entered (no "to be confirmed" boards)
+      if (findTemplate(p.item.templateKey ?? '')?.requiredData.includes('lineup')) {
+        const [lu] = await t.select().from(matchLineups).where(and(eq(matchLineups.matchId, run.matchId), eq(matchLineups.organisationId, run.organisationId)));
+        const snap = lu?.snapshot as unknown as LineupSnapshot | undefined;
+        const want = p.variables.team === 'away' ? ['away'] : p.variables.team === 'home' ? ['home'] : ['home', 'away'];
+        const missing = want.filter((s) => !(snap?.[s as 'home' | 'away'] ?? []).some((x) => x.starter));
+        if (missing.length) return { state: 'skipped', reason: `no line-up entered for the ${missing.join(' and ')} team: not shown` };
+      }
       return { state: 'done', revision: await send({ type: 'TAKE_IN', templateKey: p.item.templateKey!, variables: p.variables, layer: p.layer ?? undefined, durationMs: cue.durationMs, cueId: cue.id }) };
+    }
     case 'update':
       if (!p.layer || !ownLayer(p.layer)) return { state: 'skipped', reason: 'graphic from this playlist is no longer on air' };
       return { state: 'done', revision: await send({ type: 'UPDATE', layer: p.layer, variables: p.variables }) };

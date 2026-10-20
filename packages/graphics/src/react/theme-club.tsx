@@ -3,7 +3,7 @@
 // Lively motion: pills zoom and drop in with a little overshoot, badges pop, rows cascade.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -135,15 +135,17 @@ function Big({ p, title, children, width = 1100, color }: { p: GraphicProps; tit
 function Ident(p: GraphicProps) {
   const h = team(p, 'home');
   const a = team(p, 'away');
-  const cd = p.cue.variables.showCountdown !== false ? kickoffCountdown(p) : null;
+  const info = identInfo(p);
   return (
     <Big p={p} title={p.data.match.competition.name}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', textAlign: 'center' }}>
         <div style={animStyle(p, 'zoom', 300, 460)}><Logo url={h.logoUrl} label={h.abbreviation} size={150} color={h.primaryColor} radius={75} /><div style={{ marginTop: 10, ...animStyle(p, 'rise', 420, 340) }}><Fitted full={h.name} short={h.shortName} width={380} fontPx={38} measure={p.measure} /></div></div>
-        <div style={{ fontSize: 42, fontWeight: 900, opacity: 0.6, ...animStyle(p, 'flip', 400, 460) }}>VS</div>
+        <div style={{ fontSize: info.started ? 84 : 42, fontWeight: 900, opacity: info.started ? 1 : 0.6, fontVariantNumeric: 'tabular-nums', padding: '0 20px', ...animStyle(p, 'flip', 400, 460) }}><span style={info.started ? changeStyle(p, 'score', info.centre) : undefined}>{info.centre}</span></div>
         <div style={animStyle(p, 'zoom', 360, 460)}><Logo url={a.logoUrl} label={a.abbreviation} size={150} color={a.primaryColor} radius={75} /><div style={{ marginTop: 10, ...animStyle(p, 'rise', 480, 340) }}><Fitted full={a.name} short={a.shortName} width={380} fontPx={38} measure={p.measure} /></div></div>
       </div>
-      <div style={{ textAlign: 'center', marginTop: 20, fontSize: 28, ...animStyle(p, 'rise', 540, 340) }}>{p.data.match.venue ?? ''}{cd ? <b style={{ marginLeft: 16, color: p.data.theme.primary, display: 'inline-block', ...animStyle(p, 'zoom', 620, 420) }}>{cd}</b> : null}</div>
+      <div style={{ textAlign: 'center', marginTop: 20, fontSize: 28, fontWeight: info.started ? 800 : 400, letterSpacing: info.started ? 3 : 0, ...animStyle(p, 'rise', 540, 340) }}>{info.line}</div>
+      {info.countdown ? <div style={{ textAlign: 'center', marginTop: 8, fontSize: 24, opacity: 0.9, ...animStyle(p, 'zoom', 620, 420) }}>{info.countdown.label} <b style={{ fontSize: 44, color: p.data.theme.primary, fontVariantNumeric: 'tabular-nums' }}>{info.countdown.text}</b></div> : null}
+      {info.message ? <div style={{ textAlign: 'center', marginTop: 14, fontSize: 38, fontWeight: 900, color: p.data.theme.primary, ...animStyle(p, 'rise', 680, 360) }}>{info.message.toUpperCase()}</div> : null}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14, ...animStyle(p, 'fade', 700, 320) }}><SponsorMark p={p} placement="detached_logo" height={60} /></div>
     </Big>
   );

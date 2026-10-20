@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
 import type { RenderPlayer, RenderTeam } from '../data';
 import { useAudioPolicy, type GraphicProps } from './stage';
@@ -249,4 +250,91 @@ export function scorebugPosition(p: GraphicProps, inset: number): CSSProperties 
 /** "PRESENTED BY" caption used beside moment sponsors (goals, cards, player of the match). */
 export function presentedBy(p: GraphicProps): string {
   return t(p, 'PRESENTED BY');
+}
+
+// ---------------------------------------------------------------- match header (ident) and animated background
+
+/** "#38003C" at 0.6 → "rgba(56,0,60,0.6)"; anything that is not a 6-digit hex is returned unchanged. */
+export function withAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1]!, 16)},${parseInt(m[2]!, 16)},${parseInt(m[3]!, 16)},${a})`;
+}
+
+const mmss = (ms: number) => {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+/** Break length in minutes from the rules: half time uses the half-time interval, other breaks the period break. */
+function breakMinutes(cfg: Record<string, unknown>, breakPhase: string, tags: string[]): number | null {
+  const n = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
+  if (breakPhase === 'half_time' || tags.includes('half_time')) return n(cfg.halfTimeMinutes);
+  if (tags.includes('extra_time_interval')) return null; // no configured length: no countdown rather than a wrong one
+  return n(cfg.quarterBreakMinutes) ?? n(cfg.breakMinutes);
+}
+
+/**
+ * Countdown to the restart during a break ("2nd Half in 8:42"): from when the break began, its configured length,
+ * and the next playing period. Null when the length is unknown or the time has passed.
+ */
+export function restartCountdown(p: GraphicProps): { label: string; text: string } | null {
+  const m = p.data.match;
+  const proj = m.projection;
+  if (proj.breakStartedAt == null) return null;
+  const adapter = getAdapter(m.sport);
+  const cfg = m.rulesConfig as never;
+  const bp = adapter.phase(cfg, proj.breakPhase ?? proj.phase);
+  const mins = breakMinutes(m.rulesConfig, proj.breakPhase ?? proj.phase, bp?.tags ?? []);
+  if (!mins) return null;
+  const left = proj.breakStartedAt + mins * 60_000 - p.now;
+  if (!(left > 0)) return null;
+  const next = adapter.allowedTransitions(cfg, proj).map((id) => adapter.phase(cfg, id)).find((x) => x?.kind === 'play');
+  return { label: t(p, `${(next?.label ?? 'Restart').toUpperCase()} IN`), text: mmss(left) };
+}
+
+export interface IdentInfo {
+  /** true once the match has kicked off: the header shows the score instead of "VS" */
+  started: boolean;
+  centre: string;
+  /** pre-match: "Bayside Oval · Saturday 21 October, 3:00 pm"; later: "HALF TIME", "FULL TIME" */
+  line: string;
+  countdown: { label: string; text: string } | null;
+  message: string | null;
+}
+
+/** What the match header shows right now, shared by every look so they all tell the same story. */
+export function identInfo(p: GraphicProps): IdentInfo {
+  const m = p.data.match;
+  const adapter = getAdapter(m.sport);
+  const cfg = m.rulesConfig as never;
+  const def = adapter.phase(cfg, m.projection.phase);
+  const kind = def?.kind ?? 'pre';
+  const show = String(p.cue.variables.show ?? 'auto');
+  const started = show === 'score' || (show !== 'countdown' && (kind === 'play' || kind === 'break' || kind === 'final'));
+  const wantCountdown = p.cue.variables.showCountdown !== false;
+  const d = p.display;
+  let line: string;
+  if (!started) {
+    let when = '';
+    try {
+      when = new Intl.DateTimeFormat('en-AU', { timeZone: m.timezone, weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(m.scheduledAt));
+    } catch {
+      when = '';
+    }
+    line = [m.venue, when].filter(Boolean).join(' · ');
+  } else {
+    // a walk-out step during the break still reads as the break itself ("HALF TIME", not "PLAYERS ENTERING")
+    const label = kind === 'break' ? adapter.phase(cfg, m.projection.breakPhase ?? m.projection.phase)?.label ?? d.periodLabel : kind === 'final' ? (m.sport === 'basketball' ? 'Final' : 'Full Time') : d.periodLabel;
+    line = t(p, label.toUpperCase());
+    if (d.shootout) line += ` · ${d.shootout.home}–${d.shootout.away} ${t(p, 'ON PENALTIES')}`;
+  }
+  let countdown: IdentInfo['countdown'] = null;
+  if (wantCountdown && !started) {
+    const cd = kickoffCountdown(p);
+    if (cd) countdown = { label: t(p, 'KICK-OFF IN'), text: cd };
+  } else if (wantCountdown && kind === 'break') countdown = restartCountdown(p);
+  const msg = typeof p.cue.variables.message === 'string' && p.cue.variables.message.trim() ? t(p, p.cue.variables.message.trim()) : null;
+  return { started, centre: started ? `${d.score.home}–${d.score.away}` : t(p, 'VS'), line, countdown, message: msg };
 }

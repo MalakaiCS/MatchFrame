@@ -25,7 +25,8 @@ export const SAMPLE_SLOTS = Object.fromEntries(
 export function sampleVariables(templateKey: string, sport: Sport): Record<string, unknown> {
   switch (templateKey.replace('builtin:', '')) {
     case 'scorebug': return { showSponsor: true };
-    case 'ident': return { showCountdown: true };
+    case 'ident': return { showCountdown: true, show: 'countdown' };
+    case 'backdrop': return { motion: true };
     case 'lineup': return { team: 'home', page: 1 };
     case 'goal': return { team: 'home', player: samplePlayerId('home', 9), minute: '63', eventType: 'goal' };
     case 'score': return { team: 'home', player: samplePlayerId('home', 4), points: 3 };

@@ -3,7 +3,7 @@
 // Quiet motion: panels fade and rise, rules draw across, text settles in on a short stagger.
 import type { CSSProperties } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, kickoffCountdown, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -126,24 +126,25 @@ function Card2({ p, title, children, width = 1000 }: { p: GraphicProps; title: R
   );
 }
 
-function Versus({ p, delayMs = 180 }: { p: GraphicProps; delayMs?: number }) {
+function Versus({ p, delayMs = 180, centre = 'vs', score = false }: { p: GraphicProps; delayMs?: number; centre?: string; score?: boolean }) {
   const h = team(p, 'home');
   const a = team(p, 'away');
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 16, ...animStyle(p, 'rise', delayMs, 360) }}><Logo url={h.logoUrl} label={h.abbreviation} size={72} color={h.primaryColor} /><Fitted full={h.name} short={h.shortName} width={300} fontPx={40} measure={p.measure} /></span>
-      <span style={{ color: '#8a93a3', fontSize: 26, ...animStyle(p, 'fade', delayMs + 120, 320) }}>vs</span>
+      <span style={{ ...(score ? { color: '#0B1220', fontSize: 56, fontWeight: 700, fontVariantNumeric: 'tabular-nums' } : { color: '#8a93a3', fontSize: 26 }), ...animStyle(p, 'fade', delayMs + 120, 320) }}><span style={score ? changeStyle(p, 'score', centre) : undefined}>{centre}</span></span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 16, ...animStyle(p, 'rise', delayMs + 80, 360) }}><Fitted full={a.name} short={a.shortName} width={300} fontPx={40} measure={p.measure} /><Logo url={a.logoUrl} label={a.abbreviation} size={72} color={a.primaryColor} /></span>
     </div>
   );
 }
 
 function Ident(p: GraphicProps) {
-  const cd = p.cue.variables.showCountdown !== false ? kickoffCountdown(p) : null;
+  const info = identInfo(p);
   return (
     <Card2 p={p} title={p.data.match.competition.name.toUpperCase()}>
-      <Versus p={p} />
-      <div style={{ marginTop: 22, fontSize: 24, color: '#5b6577', ...animStyle(p, 'rise', 380, 320) }}>{p.data.match.venue ?? ''}{cd ? ` · Kick-off in ${cd}` : ''}</div>
+      <Versus p={p} centre={info.started ? info.centre : info.centre.toLowerCase()} score={info.started} />
+      <div style={{ marginTop: 22, fontSize: 24, color: '#5b6577', letterSpacing: info.started ? 3 : 0, ...animStyle(p, 'rise', 380, 320) }}>{info.line}{info.countdown ? <> · {info.countdown.label.charAt(0)}{info.countdown.label.slice(1).toLowerCase()} <b style={{ color: '#0B1220', fontVariantNumeric: 'tabular-nums' }}>{info.countdown.text}</b></> : null}</div>
+      {info.message ? <div style={{ marginTop: 14, fontSize: 30, fontWeight: 600, color: '#0B1220', ...animStyle(p, 'rise', 460, 320) }}>{info.message}</div> : null}
       <div style={{ marginTop: 12, ...animStyle(p, 'fade', 460, 320) }}><SponsorMark p={p} placement="detached_logo" height={50} /></div>
     </Card2>
   );

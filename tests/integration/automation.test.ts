@@ -28,14 +28,14 @@ const TEST_PLAN: GamePlan = {
   ],
 };
 
-async function newMatch() {
+async function newMatch(planDraft: GamePlan = TEST_PLAN) {
   const comp = await catalog.createCompetition(ctx, { name: `Auto League ${crypto.randomUUID().slice(0, 4)}`, sport: 'football', defaultTimezone: 'Australia/Brisbane' });
   const season = await catalog.createSeason(ctx, comp.id, { name: '2026' });
   const h = await catalog.createTeam(ctx, { name: 'Harbour City FC', shortName: 'Harbour', abbreviation: 'HCF', sport: 'football' });
   const a = await catalog.createTeam(ctx, { name: 'Ridgeback United', shortName: 'Ridge', abbreviation: 'RBU', sport: 'football' });
   const m = await matchesSvc.createMatch(ctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-11-07 15:00', timezone: 'Australia/Brisbane' });
   const plan = await gamePlansSvc.createGamePlan(ctx, { name: `Plan ${m.id.slice(0, 4)}`, sport: 'football', fromStarter: false });
-  await gamePlansSvc.updateGamePlanDraft(ctx, plan.id, { draft: TEST_PLAN });
+  await gamePlansSvc.updateGamePlanDraft(ctx, plan.id, { draft: planDraft });
   const v = await gamePlansSvc.publishGamePlan(ctx, plan.id);
   const ov = await overlaysSvc.createOverlay(ctx, m.id, { name: 'Main' });
   await overlaysSvc.setOverlayGamePlan(ctx, ov.id, v.id);
@@ -44,7 +44,7 @@ async function newMatch() {
     const st = await scoring.getMatchState(ctx, m.id);
     return scoring.handleMatchCommand(ctx, m.id, { commandId: crypto.randomUUID(), expectedStateVersion: st.stateVersion, scorerLeaseVersion: lease!.leaseVersion, deviceId: 'dev-auto', type, payload });
   };
-  return { m, ov, send, versionId: v.id };
+  return { m, ov, send, versionId: v.id, season, h, a };
 }
 
 async function phase(x: Awaited<ReturnType<typeof newMatch>>, to: string) {
@@ -119,6 +119,42 @@ describe('automation runtime', () => {
     await pump();
     const s = await state(x.ov.id);
     expect(s.layers.lower).toMatchObject({ templateKey: 'builtin:lower_third', source: 'automation', variables: { heading: 'GOAL', subtitle: 'home' } });
+  });
+
+  it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {
+    const plan: GamePlan = {
+      version: 1, sport: 'football', defaultScorebug: false, freshnessMs: 10_000,
+      playlists: [{
+        id: 'walkout', name: 'Walk-out', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0, continueOnPhaseStep: true,
+        triggers: [{ id: 't_walk', type: 'phase', phaseTags: [], phaseIds: ['players_entering'] }], guards: [], repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+        items: [
+          { id: 'lu_home', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'home' }, offsetMs: 0, durationMs: 8000 },
+          { id: 'lu_away', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'away' }, offsetMs: 8600, durationMs: 8000 },
+        ],
+      }],
+    };
+    const x = await newMatch(plan);
+    const pl = await catalog.createPlayer(ctx, { displayName: 'Sam Okafor', defaultNumber: 9 });
+    await catalog.addToRoster(ctx, { playerId: pl.id, teamId: x.h.id, seasonId: x.season.id, number: 9 });
+    await matchesSvc.setLineup(ctx, x.m.id, { home: [{ playerId: pl.id, starter: true }], away: [] });
+    await phase(x, 'pre_match');
+    await phase(x, 'players_entering');
+    await pump();
+    expect((await state(x.ov.id)).layers.fullframe).toMatchObject({ templateKey: 'builtin:lineup', variables: { team: 'home' } });
+    T += 1500;
+    // "About to start" does not cut the walk-out playlist short
+    await phase(x, 'about_to_start');
+    await pump();
+    expect((await state(x.ov.id)).layers.fullframe).toMatchObject({ templateKey: 'builtin:lineup', variables: { team: 'home' }, outAt: null });
+    T += 7500;
+    await pump();
+    const cues = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(automationCues).where(eq(automationCues.overlayId, x.ov.id)));
+    const away = cues.find((c) => c.action === 'show' && c.itemIndex === 1)!;
+    expect(away).toMatchObject({ state: 'skipped', reason: 'no line-up entered for the away team: not shown' });
+    expect(cues.find((c) => c.action === 'show' && c.itemIndex === 0)?.state).toBe('done');
+    // no "to be confirmed" board for the away side: nothing new went to air on the full-screen layer
+    const ff = (await state(x.ov.id)).layers.fullframe;
+    expect(ff == null || (ff.templateKey === 'builtin:lineup' && ff.variables.team === 'home')).toBe(true);
   });
 
   it('correcting a goal withdraws its pending/on-air automation (A12)', async () => {

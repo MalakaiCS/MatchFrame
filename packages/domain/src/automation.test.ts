@@ -1,6 +1,7 @@
 import type { Sport } from './types';
 import { describe, expect, it } from 'vitest';
-import { clockCrossings, decidePriority, matchTriggers, planRun, resolveVariables, validateGamePlan, type GamePlan, type TriggerInput } from './automation';
+import { clockCrossings, decidePriority, matchTriggers, phaseStepCancellations, planRun, resolveVariables, validateGamePlan, type ActiveRun, type GamePlan, type TriggerInput } from './automation';
+import { applyCommand, replay } from './engine';
 import { FOOTBALL_STARTER, BASKETBALL_STARTER } from './starter-plans';
 import { selectCreative, type SelectionInput } from './sponsors';
 import { simulateRehearsal, syntheticTimeline } from './rehearsal';
@@ -9,7 +10,7 @@ import { basketballAdapter } from './sports/basketball';
 
 const LAYERS: Record<string, string> = {
   'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
-  'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background',
+  'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background', 'builtin:backdrop': 'background',
 };
 const opts = (sport: Sport) => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
 const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };
@@ -151,16 +152,67 @@ describe('rehearsal (A29: pure, explained)', () => {
   it('replays a synthetic match and explains every decision', () => {
     const r = simulateRehearsal(FOOTBALL_STARTER, footballAdapter.defaultConfig, syntheticTimeline('football'), { templateLayers: LAYERS });
     const fired = r.decisions.filter((d) => d.outcome === 'fired').map((d) => d.playlistId);
-    expect(fired).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'about_to_start_1', 'kickoff', 'goal', 'card', 'half_time', 'about_to_start_2', 'full_time']));
-    expect(r.decisions.find((d) => d.outcome === 'cancelled' && /phase changed/.test(d.reason))).toBeTruthy(); // "about to start" loop ends at kick-off
-    // the walk-out plays before both halves; each phase step replaces the one before it
-    expect(fired.filter((id) => id === 'players_entering')).toHaveLength(2);
+    expect(fired).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'kickoff', 'goal', 'card', 'half_time', 'half_time_boards', 'second_half_entering', 'full_time']));
+    // the first walk-out shows the line-ups once; the second only clears and brings the scorebug back
+    expect(fired.filter((id) => id === 'players_entering')).toHaveLength(1);
+    expect(fired.filter((id) => id === 'second_half_entering')).toHaveLength(1);
     expect(fired.filter((id) => id === 'kickoff')).toHaveLength(2);
-    const movedOn = r.decisions.filter((d) => d.outcome === 'cancelled' && /phase moved on/.test(d.reason)).map((d) => d.playlistId);
-    expect(movedOn).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'half_time']));
+    // "About to start" does not cut the line-ups short; the half-time loop ends when the players come back out
+    expect(r.decisions.some((d) => d.playlistId === 'players_entering' && d.outcome === 'cancelled')).toBe(false);
+    const lineups = r.cues.filter((c) => c.playlistId === 'players_entering' && c.templateKey === 'builtin:lineup');
+    expect(lineups.map((c) => [c.action, c.variables.team, c.durationMs])).toEqual([['show', 'home', 8000], ['show', 'away', 8000]]);
+    const enter = r.cues.find((c) => c.playlistId === 'players_entering' && c.action === 'clear_layers')!;
+    expect(lineups[0]!.t - enter.t).toBe(15_000);
+    expect(r.decisions.find((d) => d.playlistId === 'half_time_boards' && d.outcome === 'cancelled')?.reason).toMatch(/second_half_entering/);
+    const boards = r.cues.filter((c) => c.playlistId === 'half_time_boards' && c.action === 'show');
+    expect(boards.map((c) => c.templateKey).slice(0, 2)).toEqual(['builtin:stats', 'builtin:ident']);
+    expect(boards[1]!.t - boards[0]!.t).toBe(45_600);
+    const back = r.cues.filter((c) => c.playlistId === 'second_half_entering');
+    expect(back.map((c) => c.action)).toEqual(['clear_layers', 'scorebug_show']);
+    expect(back[1]!.t - back[0]!.t).toBe(7000);
+    // full time: 30 s later the background, then the final score on the header with the thank-you
+    const ft = r.cues.filter((c) => c.playlistId === 'full_time');
+    const ftPhase = r.cues.find((c) => c.playlistId === 'full_time')!.t - 30_000;
+    expect(ft.map((c) => [c.action, c.templateKey ?? null, c.t - ftPhase])).toEqual([['show', 'builtin:backdrop', 30_000], ['scorebug_hide', null, 30_600], ['show', 'builtin:ident', 30_600]]);
+    expect(ft[2]!.variables).toMatchObject({ showCountdown: false, message: 'Thank you for watching' });
     expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'queued')).toBeTruthy(); // equal priority: waits for the goal sequence
     expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'fired')).toBeTruthy();
     expect(r.decisions.some((d) => d.outcome === 'skipped' && /historical|freshness/.test(d.reason))).toBe(true); // the late goal
     expect(r.cues.length).toBeGreaterThan(10);
+  });
+});
+
+describe('phase steps and break timing', () => {
+  const run = (playlistId: string): ActiveRun => ({ runId: `r_${playlistId}`, playlistId, priority: 2, layers: ['fullframe'], state: 'running', createdAt: 0, promotional: false, kind: 'pre' });
+  it('a phase playlist stops when the scorer moves on, unless it is set to keep going', () => {
+    const plan = structuredClone(FOOTBALL_STARTER);
+    const step = { phaseId: 'about_to_start', phaseTags: [] as string[] };
+    expect(phaseStepCancellations(plan, [run('players_entering')], step)).toEqual([]);
+    plan.playlists.find((p) => p.id === 'players_entering')!.continueOnPhaseStep = false;
+    expect(phaseStepCancellations(plan, [run('players_entering')], step)).toEqual([{ runId: 'r_players_entering', reason: 'phase moved on to about_to_start' }]);
+    // event playlists are never phase-step bound
+    expect(phaseStepCancellations(plan, [run('goal')], step)).toEqual([]);
+  });
+
+  it('records when each phase and the current break began, through live commands and a rebuild from the log', () => {
+    const cfg = footballAdapter.defaultConfig;
+    let state: Parameters<typeof applyCommand>[2] = { projection: footballAdapter.initialProjection(cfg), clocks: footballAdapter.initialClocks(cfg), sequence: 0 };
+    const log: Parameters<typeof applyCommand>[3] = [];
+    const step = (to: string, at: number) => {
+      const r = applyCommand(footballAdapter, cfg, state, log, 'SET_PHASE', { to }, at, null);
+      if (r.kind !== 'append') throw new Error('expected append');
+      log.push({ ...r.entry, id: `f${r.entry.sequence}` });
+      state = r.state;
+      return r.state.projection;
+    };
+    for (const [to, at] of [['pre_match', 500], ['players_entering', 1000], ['about_to_start', 2000], ['first_half', 3000]] as const) step(to, at);
+    expect(state.projection).toMatchObject({ phaseStartedAt: 3000, breakStartedAt: null, breakPhase: null });
+    expect(step('half_time', 50_000)).toMatchObject({ phaseStartedAt: 50_000, breakStartedAt: 50_000, breakPhase: 'half_time' });
+    // the second-half walk-out is still the same break: the restart countdown keeps counting from half time
+    expect(step('second_half_entering', 900_000)).toMatchObject({ phaseStartedAt: 900_000, breakStartedAt: 50_000, breakPhase: 'half_time' });
+    expect(step('second_half_ready', 950_000)).toMatchObject({ breakStartedAt: 50_000, breakPhase: 'half_time' });
+    expect(step('second_half', 960_000)).toMatchObject({ phaseStartedAt: 960_000, breakStartedAt: null, breakPhase: null });
+    const rebuilt = replay(footballAdapter, cfg, log.slice(0, 5).map((f) => ({ ...f })));
+    expect(rebuilt).toMatchObject({ phase: 'half_time', breakStartedAt: 50_000, breakPhase: 'half_time' });
   });
 });

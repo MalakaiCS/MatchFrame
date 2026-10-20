@@ -109,7 +109,7 @@ const CUSTOM_FONT = 'BS Custom Font';
 export function layerBox(layer: Layer, format: OutputFormat): CSSProperties {
   if (format === '9:16') {
     if (layer === 'fullframe') return { position: 'absolute', left: 0, top: (1920 - 1080 * (1080 / 1920)) / 2, width: 1920, height: 1080, transform: 'scale(0.5625)', transformOrigin: 'top left' };
-    if (layer === 'background') return { position: 'absolute', left: (1080 - 1920 * (1920 / 1080)) / 2, top: 0, width: 1920, height: 1080, transform: 'scale(1.7778)', transformOrigin: 'top left' };
+    if (layer === 'background' || layer === 'transition') return { position: 'absolute', left: (1080 - 1920 * (1920 / 1080)) / 2, top: 0, width: 1920, height: 1080, transform: 'scale(1.7778)', transformOrigin: 'top left' };
     return { position: 'absolute', inset: 0 };
   }
   if (format === 'venue') {
@@ -294,6 +294,10 @@ export const KEYFRAMES = [
   ...['a', 'b'].map((x) => `@keyframes bs-flip-${x}{0%{transform:perspective(400px) rotateX(-90deg);opacity:.2}60%{transform:perspective(400px) rotateX(10deg);opacity:1}100%{transform:none}}`),
   '@keyframes bs-ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
   '@keyframes bs-pulse{0%,100%{opacity:1}50%{opacity:.45}}',
+  // animated background: slow drifts and a breathing glow, transforms and opacity only (cheap in an OBS browser source)
+  '@keyframes bs-bd-drift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}',
+  '@keyframes bs-bd-sweep{from{transform:translateX(-30%)}to{transform:translateX(30%)}}',
+  '@keyframes bs-bd-glow{from{opacity:.45;transform:scale(.9)}to{opacity:1;transform:scale(1.1)}}',
 ].join('');
 
 export function Keyframes() {

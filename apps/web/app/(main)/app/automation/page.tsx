@@ -5,7 +5,7 @@
 import { SportOptions } from '@/components/sport-options';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
-import { gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
+import { STARTER_PLANS, gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
 import { Button, Card, Dialog, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx, toast } from '@bs/ui';
 import { ApiError, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
@@ -155,6 +155,7 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
         <span className="text-xs text-muted">{plan.data.currentVersion ? `v${plan.data.currentVersion} published ${fmtDate(plan.data.versions[0]?.publishedAt, tz)}` : 'not yet published'}</span>
         <div className="ml-auto flex items-center gap-2">
           {saved ? <span role="status" className="text-xs text-muted">{saved}</span> : null}
+          {canEdit && STARTER_PLANS[sport] ? <Button variant="ghost" onClick={() => { if (confirm('Replace this draft with the latest starter flow? Your playlists in the draft are replaced; published versions are not touched until you publish.')) update(() => structuredClone(STARTER_PLANS[sport]!)); }}>Use the latest starter flow</Button> : null}
           {canEdit ? <Button variant="primary" disabled={!!errors.length} onClick={() => void publish()}><Upload className="size-4" /> Publish</Button> : null}
         </div>
       </Card>
@@ -227,6 +228,12 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
                 ))}
                 {!pl.guards.length ? <span className="text-muted">always (no conditions)</span> : null}
                 {canEdit ? <Button size="sm" variant="ghost" onClick={() => setEditGuard({ pi, gi: null })}><Plus className="size-3.5" /> Add condition</Button> : null}
+                {pl.triggers.every((t) => t.type === 'phase') ? (
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" disabled={!canEdit} checked={!!pl.continueOnPhaseStep} onChange={(e) => update((d) => { d.playlists[pi]!.continueOnPhaseStep = e.target.checked; })} /> Keep going when the scorer presses the next step
+                    <InfoTip text="Normally a phase playlist stops when the scorer moves on (for example from Players entering to About to start). With this on it finishes its steps, and still stops at kick-off, at a break or at full time." />
+                  </label>
+                ) : null}
                 <label className="ml-auto flex items-center gap-1">
                   <input type="checkbox" disabled={!canEdit} checked={pl.approval === 'manual'} onChange={(e) => update((d) => { d.playlists[pi]!.approval = e.target.checked ? 'manual' : 'auto'; })} /> Ask the producer before sending
                   <InfoTip text="Graphics from this playlist wait in the control room until someone presses Send now. Goals and other urgent graphics usually stay automatic." />

@@ -83,12 +83,33 @@ export class DomainError extends Error {
   }
 }
 
+/**
+ * Record when a phase and its break began on the projection. A break starts when the match enters a break phase
+ * from a non-break one and lasts through the walk-out steps that follow ("Players entering (2nd half)"), so a
+ * half-time countdown keeps its target; it clears when play resumes or the match ends.
+ */
+export function stampPhase<C>(adapter: SportAdapter<C>, cfg: C, prev: MatchProjection, next: MatchProjection, at: number | null): MatchProjection {
+  const kind = adapter.phase(cfg, next.phase)?.kind;
+  const wasBreak = adapter.phase(cfg, prev.phase)?.kind === 'break';
+  next.phaseStartedAt = at;
+  if (kind === 'break') {
+    if (!wasBreak || prev.breakStartedAt == null) {
+      next.breakStartedAt = at;
+      next.breakPhase = next.phase;
+    }
+  } else {
+    next.breakStartedAt = null;
+    next.breakPhase = null;
+  }
+  return next;
+}
+
 /** Rebuild the projection from the full ordered log (voids/corrections already applied to entries). */
 export function replay<C>(adapter: SportAdapter<C>, cfg: C, log: LogEntry[]): MatchProjection {
   let p = adapter.initialProjection(cfg);
   for (const e of [...log].sort((a, b) => a.sequence - b.sequence)) {
     if (e.voided) continue;
-    if (e.category === 'phase') p = adapter.applyPhase(cfg, p, String(e.payload.to));
+    if (e.category === 'phase') p = stampPhase(adapter, cfg, p, adapter.applyPhase(cfg, p, String(e.payload.to)), e.occurredAt ?? null);
     else if (e.category === 'adjustment') {
       p = structuredClone(p);
       p.score.home += Number(e.payload.homeDelta ?? 0);
@@ -169,7 +190,7 @@ export function applyCommand<C>(
         occurredAt: now,
         revision: 1,
       };
-      const projection = adapter.applyPhase(cfg, p, c.to);
+      const projection = stampPhase(adapter, cfg, p, adapter.applyPhase(cfg, p, c.to), now);
       projection.lastFactSequence = entry.sequence;
       const clocks = adapter.clocksForPhase(cfg, p.phase, c.to, state.clocks, now);
       return { kind: 'append', entry, state: { projection, clocks, sequence: entry.sequence }, clockChanged: true, phaseChanged: { from: p.phase, to: c.to } };

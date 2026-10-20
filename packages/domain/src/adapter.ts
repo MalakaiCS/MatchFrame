@@ -22,6 +22,8 @@ export interface LogEntry {
   periodId: string;
   clockMs?: number | null;
   voided?: boolean;
+  /** server ms the entry happened; phase entries use it to time breaks (absent in older call sites) */
+  occurredAt?: number;
 }
 
 export interface FactInput {

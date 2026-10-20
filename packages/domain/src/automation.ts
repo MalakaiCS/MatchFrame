@@ -3,7 +3,7 @@
 import { SPORTS } from './types';
 import { z } from 'zod';
 
-export const LAYER_NAMES = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor'] as const;
+export const LAYER_NAMES = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor', 'transition'] as const;
 /** Discipline event → card graphic variant, across codes (football, hockey, rugby league). */
 export const CARD_TYPES: Record<string, string> = { yellow_card: 'yellow', second_yellow: 'second_yellow', red_card: 'red', green_card: 'green', sin_bin: 'sin_bin', send_off: 'red' };
 const layer = z.enum(LAYER_NAMES);
@@ -67,6 +67,12 @@ export const playlistSchema = z.object({
   kind: z.enum(['pre', 'in_play', 'break', 'post']),
   /** manual: cues wait in the control room for a producer's approval before going to air */
   approval: z.enum(['auto', 'manual']).optional(),
+  /**
+   * Phase playlists normally stop when the scorer presses the next step ("Players entering" ends at "About to
+   * start"). With this set they keep going through later steps of the same part of the match, and still end when
+   * play starts, a break begins or the match finishes.
+   */
+  continueOnPhaseStep: z.boolean().optional(),
   priority: z.number().int().min(1).max(4),
   triggers: z.array(triggerSchema).min(1),
   guards: z.array(guardSchema).default([]),
@@ -430,7 +436,7 @@ export function phaseStepCancellations(plan: GamePlan, active: ActiveRun[], inpu
   return active
     .filter((r) => {
       const pl = plan.playlists.find((x) => x.id === r.playlistId);
-      if (!pl || !pl.triggers.every((t) => t.type === 'phase')) return false;
+      if (!pl || pl.continueOnPhaseStep || !pl.triggers.every((t) => t.type === 'phase')) return false;
       return !pl.triggers.some((t) => t.type === 'phase' && (t.phaseIds.includes(input.phaseId) || t.phaseTags.some((x) => input.phaseTags.includes(x))));
     })
     .map((r) => ({ runId: r.runId, reason: `phase moved on to ${input.phaseId}` }));

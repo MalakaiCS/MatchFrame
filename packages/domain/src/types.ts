@@ -106,6 +106,11 @@ export interface MatchProjection {
   timeouts?: { home: number; away: number };
   possession?: Side | null;
   stoppageMinutes?: number | null;
+  /** when the current phase began (server ms) */
+  phaseStartedAt?: number | null;
+  /** when the current break began and the phase that began it ("half_time"), kept through the walk-out steps */
+  breakStartedAt?: number | null;
+  breakPhase?: string | null;
   lastFactSequence: number;
   /** count of eligible facts by type for milestone triggers */
   counters: Record<string, number>;

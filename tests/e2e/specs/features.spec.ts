@@ -146,6 +146,16 @@ test('automation editor: conditions and approval per playlist', async ({ browser
   await approval.uncheck();
   await page.getByRole('button', { name: 'Remove condition' }).first().click();
   await expect(page.getByText('the score gap is at least 3')).toHaveCount(0);
+  // phase playlists can keep going through the next step; the latest starter flow is one click away (confirmed)
+  const keepGoing = page.getByRole('checkbox', { name: /Keep going when the scorer presses the next step/ }).first();
+  await expect(keepGoing).toBeVisible();
+  const was = await keepGoing.isChecked();
+  await keepGoing.setChecked(!was);
+  await expect(keepGoing).toBeChecked({ checked: !was });
+  await keepGoing.setChecked(was);
+  page.once('dialog', (d) => void d.dismiss()); // dismissing leaves the draft untouched
+  await page.getByRole('button', { name: 'Use the latest starter flow' }).click();
+  await expect(keepGoing).toBeChecked({ checked: was });
 });
 
 test('settings: plan, branding, integrations, notifications, security and backups tabs', async ({ browser }) => {

@@ -3,10 +3,18 @@ import type { Sport } from './types';
 import type { GamePlan } from './automation';
 
 /**
- * Football match flow. Each phase step replaces the previous one (phaseStepCancellations), and the walk-out
- * repeats before the second half:
- * Pre-match → Players entering → About to start → Kick-off (1st half) → live events → Half time →
- * Players entering → About to start → Kick-off (2nd half) → live events → Full time.
+ * Football match flow, in Auto mode:
+ * - Pre-match: the animated background with the match header (teams, ground, kick-off time, countdown).
+ * - Players entering: background and header fade out; 15 s later each line-up shows once for 8 s (a team with no
+ *   line-up entered is left out). It keeps going if the scorer presses "About to start" meanwhile.
+ * - Kick-off of each half: scorebug in and the kick-off banner.
+ * - Goals, cards and substitutions put their graphic on air during play.
+ * - Half time: the animated background comes up over everything, cycling the match stats and the match header
+ *   (with the countdown to the second half) every 45 s.
+ * - Players entering (2nd half): background and header fade out; the scorebug returns 7 s later.
+ * - Full time: 30 s after the whistle, the animated background with the final score on the match header and
+ *   "Thank you for watching".
+ * The animated background and the boards on it sit above every graphic except the stinger transition.
  */
 export const FOOTBALL_STARTER: GamePlan = {
   version: 1,
@@ -15,44 +23,25 @@ export const FOOTBALL_STARTER: GamePlan = {
   freshnessMs: 10_000,
   playlists: [
     {
-      id: 'pre_match', name: 'Pre-match: match ident and sponsor', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'pre_match', name: 'Pre-match: animated background and match header', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_pre', type: 'phase', phaseTags: ['pre_match'], phaseIds: [] }],
       guards: [],
-      repeat: { mode: 'loop', gapMs: 2000, maxIterations: 40 },
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'ident', action: 'show', templateKey: 'builtin:ident', offsetMs: 0, durationMs: 9000 },
-        { id: 'pre_sponsor', action: 'sponsor', placement: 'full_frame_image', offsetMs: 9800, durationMs: 6000 },
+        { id: 'pre_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 0, durationMs: null },
+        { id: 'pre_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: true }, offsetMs: 600, durationMs: null },
       ],
     },
     {
-      id: 'players_entering', name: 'Players entering: both lineups', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_enter', type: 'phase', phaseTags: ['players_entering'], phaseIds: [] }],
+      id: 'players_entering', name: 'Players entering: clear, then both line-ups once', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+      continueOnPhaseStep: true,
+      triggers: [{ id: 't_enter', type: 'phase', phaseTags: [], phaseIds: ['players_entering'] }],
       guards: [],
-      repeat: { mode: 'loop', gapMs: 1500, maxIterations: 20 },
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'enter_clear', action: 'clear_layers', layers: ['fullframe', 'background', 'lower'], offsetMs: 0 },
-        { id: 'lineup_home', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'home' }, offsetMs: 400, durationMs: 10_000 },
-        { id: 'lineup_away', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'away' }, offsetMs: 11_200, durationMs: 10_000 },
-      ],
-    },
-    {
-      id: 'about_to_start_1', name: 'About to start (1st half)', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_ready1', type: 'phase', phaseTags: [], phaseIds: ['about_to_start'] }],
-      guards: [],
-      repeat: { mode: 'loop', gapMs: 3000, maxIterations: 30 },
-      items: [
-        { id: 'ready1_clear', action: 'clear_layers', layers: ['fullframe', 'background'], offsetMs: 0 },
-        { id: 'ready1_banner', action: 'show', templateKey: 'builtin:period_banner', variables: { heading: 'ABOUT TO START', period: '1st Half' }, offsetMs: 400, durationMs: 8000 },
-      ],
-    },
-    {
-      id: 'about_to_start_2', name: 'About to start (2nd half)', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_ready2', type: 'phase', phaseTags: [], phaseIds: ['second_half_ready'] }],
-      guards: [],
-      repeat: { mode: 'loop', gapMs: 3000, maxIterations: 30 },
-      items: [
-        { id: 'ready2_clear', action: 'clear_layers', layers: ['fullframe', 'background'], offsetMs: 0 },
-        { id: 'ready2_banner', action: 'show', templateKey: 'builtin:period_banner', variables: { heading: 'ABOUT TO START', period: '2nd Half' }, offsetMs: 400, durationMs: 8000 },
+        { id: 'enter_clear', action: 'clear_layers', layers: ['background', 'fullframe', 'lower'], offsetMs: 0 },
+        { id: 'lineup_home', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'home' }, offsetMs: 15_000, durationMs: 8000 },
+        { id: 'lineup_away', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'away' }, offsetMs: 23_600, durationMs: 8000 },
       ],
     },
     {
@@ -61,7 +50,7 @@ export const FOOTBALL_STARTER: GamePlan = {
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'clear_ff', action: 'clear_layers', layers: ['fullframe', 'background', 'lower'], offsetMs: 0 },
+        { id: 'clear_ff', action: 'clear_layers', layers: ['background', 'fullframe', 'lower'], offsetMs: 0 },
         { id: 'bug', action: 'scorebug_show', offsetMs: 300 },
         { id: 'ko_banner', action: 'show', templateKey: 'builtin:period_banner', variables: { heading: 'KICK-OFF' }, offsetMs: 700, durationMs: 5000 },
       ],
@@ -91,27 +80,45 @@ export const FOOTBALL_STARTER: GamePlan = {
       items: [{ id: 'sub_gfx', action: 'show', templateKey: 'builtin:substitution', variables: { team: { from: 'event.side' }, playerOut: { from: 'event.playerOutId' }, playerIn: { from: 'event.playerInId' }, minute: { from: 'event.minute' } }, offsetMs: 0, durationMs: 7000 }],
     },
     {
-      id: 'half_time', name: 'Half time: score, stats and sponsor', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'half_time', name: 'Half time: animated background over everything', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ht', type: 'phase', phaseTags: ['half_time', 'extra_time_interval'], phaseIds: [] }],
       guards: [],
-      repeat: { mode: 'loop', gapMs: 2000, maxIterations: 30 },
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'ht_bug_off', action: 'scorebug_hide', offsetMs: 0 },
-        { id: 'ht_score', action: 'show', templateKey: 'builtin:break_score', offsetMs: 400, durationMs: 10_000 },
-        { id: 'ht_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 11_200, durationMs: 12_000 },
-        { id: 'ht_sponsor', action: 'sponsor', placement: 'full_frame_image', offsetMs: 24_000, durationMs: 6000 },
+        { id: 'ht_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 0, durationMs: null },
+        { id: 'ht_bug_off', action: 'scorebug_hide', offsetMs: 600 },
       ],
     },
     {
-      id: 'full_time', name: 'Full time: final score, stats and sponsor', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'half_time_boards', name: 'Half time: match stats, then match header with countdown (45 s each)', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      triggers: [{ id: 't_ht_boards', type: 'phase', phaseTags: ['half_time', 'extra_time_interval'], phaseIds: [] }],
+      guards: [],
+      repeat: { mode: 'loop', gapMs: 600, maxIterations: 40 },
+      items: [
+        { id: 'ht_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 600, durationMs: 45_000 },
+        { id: 'ht_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: true }, offsetMs: 46_200, durationMs: 45_000 },
+      ],
+    },
+    {
+      id: 'second_half_entering', name: 'Players entering (2nd half): clear, scorebug back 7 s later', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      continueOnPhaseStep: true,
+      triggers: [{ id: 't_enter2', type: 'phase', phaseTags: [], phaseIds: ['second_half_entering'] }],
+      guards: [],
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+      items: [
+        { id: 'enter2_clear', action: 'clear_layers', layers: ['background', 'fullframe', 'lower'], offsetMs: 0 },
+        { id: 'enter2_bug', action: 'scorebug_show', offsetMs: 7000 },
+      ],
+    },
+    {
+      id: 'full_time', name: 'Full time: after 30 s, final score on the match header with a thank-you', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ft', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
       guards: [],
-      repeat: { mode: 'loop', gapMs: 2000, maxIterations: 10 },
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'ft_bug_off', action: 'scorebug_hide', offsetMs: 0 },
-        { id: 'ft_score', action: 'show', templateKey: 'builtin:break_score', variables: { label: 'FULL TIME' }, offsetMs: 400, durationMs: 12_000 },
-        { id: 'ft_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 13_200, durationMs: 12_000 },
-        { id: 'ft_sponsor', action: 'sponsor', placement: 'full_frame_image', offsetMs: 26_000, durationMs: 8000 },
+        { id: 'ft_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 30_000, durationMs: null },
+        { id: 'ft_bug_off', action: 'scorebug_hide', offsetMs: 30_600 },
+        { id: 'ft_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: false, message: 'Thank you for watching' }, offsetMs: 30_600, durationMs: null },
       ],
     },
   ],

@@ -5,7 +5,7 @@
 // of that look without three copies of the content.
 import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, matchInfoItems, player, presentedBy, scoreText, side, t, team } from './common';
+import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
 import type { RenderFixture, RenderStandingRow } from '../data';
 
 export interface Chrome {
@@ -54,6 +54,52 @@ export function formationSpots(formation: string, count: number, sport: string):
   // extra starters beyond the formation sit on a final line
   while (spots.length < count) spots.push({ x: ((spots.length % 5) + 1) / 6, y: 0.05 });
   return spots.slice(0, count);
+}
+
+/**
+ * Full-screen animated background: the canvas the match header, stats and the full-time board sit on before the
+ * match, at the break and after the whistle. Built from the look's colours (deep base, primary and accent light),
+ * moving with slow transform-only drifts so it stays light in an OBS browser source. Fades in and out.
+ */
+export function Backdrop(p: GraphicProps) {
+  const th = p.data.theme;
+  const still = th.motion === 'none' || p.cue.variables.motion === false;
+  const run = (name: string, seconds: number, reverse = false): CSSProperties => (still ? {} : { animation: `${name} ${seconds}s ease-in-out ${reverse ? '-3s' : '0s'} infinite alternate${reverse ? '-reverse' : ''}`, willChange: 'transform, opacity' });
+  const deep = th.secondary;
+  const lightBase = /^#?f/i.test(deep); // a light base (unusual): keep the light effects subtle
+  const hot = th.primary;
+  const glow = th.accent;
+  const key = th.themeKey;
+  const angle = key === 'club' ? -8 : key === 'minimal' ? 0 : -14;
+  const stripes = key === 'minimal'
+    ? `repeating-linear-gradient(90deg, ${withAlpha('#ffffff', 0.025)} 0 1px, transparent 1px 96px)`
+    : `repeating-linear-gradient(${90 + angle + 45}deg, transparent 0 120px, ${withAlpha(hot, lightBase ? 0.05 : 0.08)} 120px 210px, transparent 210px 400px, ${withAlpha(glow, 0.06)} 400px 440px)`;
+  return (
+    <div data-graphic="backdrop" style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: `linear-gradient(135deg, ${deep} 0%, ${deep} 45%, ${withAlpha(hot, 0.35)} 160%), ${deep}`, ...animStyle(p, 'fade', 0, 600) }}>
+      {/* drifting stripes */}
+      <div style={{ position: 'absolute', left: '-15%', top: '-15%', width: '130%', height: '130%', background: stripes, ...run('bs-bd-drift', 18) }} />
+      {/* two soft light sweeps on the look's angle */}
+      <div style={{ position: 'absolute', left: '-20%', top: '48%', width: '140%', height: 0, transform: `rotate(${angle}deg)` }}>
+        <div style={{ position: 'absolute', left: '25%', top: -260, width: 1500, height: 520, background: `radial-gradient(closest-side, ${withAlpha(hot, 0.42)}, transparent)`, ...run('bs-bd-sweep', 12) }} />
+      </div>
+      <div style={{ position: 'absolute', left: '-20%', top: '14%', width: '140%', height: 0, transform: `rotate(${-angle / 2}deg)` }}>
+        <div style={{ position: 'absolute', left: '40%', top: -200, width: 1200, height: 400, background: `radial-gradient(closest-side, ${withAlpha(glow, 0.26)}, transparent)`, ...run('bs-bd-sweep', 16, true) }} />
+      </div>
+      {/* breathing glow in the corner */}
+      <div style={{ position: 'absolute', right: -260, bottom: -360, width: 1100, height: 1100, borderRadius: '50%', background: `radial-gradient(circle, ${withAlpha(glow, 0.3)}, transparent 68%)`, ...run('bs-bd-glow', 7) }} />
+      <div style={{ position: 'absolute', left: -300, top: -420, width: 1000, height: 1000, borderRadius: '50%', background: `radial-gradient(circle, ${withAlpha(hot, 0.22)}, transparent 70%)`, ...run('bs-bd-glow', 9, true) }} />
+      {/* the look's signature edge: a slanted wedge (broadcast, premier) or a soft band (club, minimal) */}
+      {key === 'premier' || key === 'broadcast' ? (
+        <div style={{ position: 'absolute', right: -120, top: 0, bottom: 0, width: 720, background: `linear-gradient(180deg, ${withAlpha(hot, key === 'premier' ? 0.92 : 0.55)}, ${withAlpha(hot, key === 'premier' ? 0.7 : 0.25)})`, clipPath: 'polygon(42% 0, 100% 0, 100% 100%, 0 100%)', ...run('bs-bd-drift', 22, true) }} />
+      ) : (
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 260, background: `linear-gradient(0deg, ${withAlpha(hot, 0.35)}, transparent)` }} />
+      )}
+      {key === 'premier' ? <div style={{ position: 'absolute', left: 0, right: 0, bottom: 120, height: 6, background: glow, opacity: 0.55, transform: `rotate(${angle / 4}deg)`, transformOrigin: 'left' }} /> : null}
+      {/* fine grid, faded towards the edges, then a vignette */}
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(${withAlpha('#ffffff', 0.035)} 1px, transparent 1px), linear-gradient(90deg, ${withAlpha('#ffffff', 0.035)} 1px, transparent 1px)`, backgroundSize: '64px 64px', WebkitMaskImage: 'radial-gradient(ellipse at center, #000 25%, transparent 75%)', maskImage: 'radial-gradient(ellipse at center, #000 25%, transparent 75%)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.42) 100%)' }} />
+    </div>
+  );
 }
 
 export function sharedGraphics(C: Chrome): ThemeComponents {
@@ -442,6 +488,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
   };
 
   return {
+    backdrop: Backdrop,
     league_table: LeagueTable,
     fixtures: Fixtures,
     formation: Formation,

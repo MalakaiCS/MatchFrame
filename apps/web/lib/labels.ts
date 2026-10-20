@@ -32,7 +32,7 @@ export const phaseTagLabel = (tag: string) => PHASE_TAGS[tag] ?? humanize(tag);
 
 export const PLAYLIST_KINDS: Record<string, string> = { pre: 'Before the match', in_play: 'During play', break: 'At a break', post: 'After the match' };
 export const PRIORITIES: Record<number, string> = { 1: 'Interrupts everything (goals)', 2: 'Normal', 3: 'Low (sponsor loops)', 4: 'Lowest' };
-export const LAYERS: Record<string, string> = { background: 'Full-screen background', fullframe: 'Full-screen graphic', scoreboard: 'Scorebug', event: 'Event strap', lower: 'Lower third', ticker: 'Ticker', sponsor: 'Sponsor logo' };
+export const LAYERS: Record<string, string> = { transition: 'Transition (stinger)', background: 'Animated background', fullframe: 'Full-screen graphic', scoreboard: 'Scorebug', event: 'Event strap', lower: 'Lower third', ticker: 'Ticker', sponsor: 'Sponsor logo' };
 export const layerLabel = (l: string) => LAYERS[l] ?? humanize(l);
 export const ACTIONS: Record<string, string> = {
   show: 'Show',
@@ -40,7 +40,7 @@ export const ACTIONS: Record<string, string> = {
   hide: 'Hide',
   scorebug_show: 'Show the scorebug',
   scorebug_hide: 'Hide the scorebug',
-  clear_layers: 'Clear full-screen graphics',
+  clear_layers: 'Clear the background and full-screen graphics',
   media: 'Show an image or video',
   creative: 'Show a sponsor creative',
   sponsor: 'Show a sponsor',

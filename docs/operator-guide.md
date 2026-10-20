@@ -68,7 +68,9 @@ until you apply the newer one on its OBS link tab.
 
 ## Graphics
 
-Twenty-eight built-in graphics render in every look: scorebug, match ident, team line-up, formation, goal /
+Twenty-nine built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
+countdown before the match; the score, the break and a countdown to the restart during a break; the final score and
+an optional closing message such as "Thank you for watching"), animated background, team line-up, formation, goal /
 score event, score update, card, substitution, kick-off and period banners, lower third, player card (with
 headshots from the asset library), match statistics, live statistic comparison, break and final score, match
 summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match
@@ -103,23 +105,39 @@ carry a "presented by" sponsor; those appearances count in the sponsor delivery 
 
 ### What the football starter plan does on its own
 
-The scorer's phase buttons drive the graphics, in the order a top-league broadcast runs them. Each step replaces
-the one before it, and the walk-out repeats before the second half:
+The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 
 | Scorer presses | On air |
 | --- | --- |
-| *Pre-match* | match ident (teams, kick-off time, venue) and the sponsor slate, looping |
-| *Players entering* | home lineup, then away lineup, looping |
-| *About to start* | "About to start" banner with the score and period |
-| *1st Half* / *2nd Half* | full-frame graphics clear, scorebug in, "Kick-off" banner |
-| *Half Time* / *Full Time* | scorebug out; score, match stats and sponsor, looping |
+| *Pre-match* | the animated background, then the match header on it: Home v Away, the ground and kick-off time, and a countdown to kick-off |
+| *Players entering* | the background and header fade out at once; 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
+| *1st Half* | scorebug in and the "Kick-off" banner |
+| *Half Time* | scorebug out, the animated background back over everything, then the match stats and the match header (score, HALF TIME, "2nd Half in 14:08") taking turns, 45 s each, until the players come back out |
+| *Players entering (2nd half)* | the background and header fade out; the scorebug comes back 7 s later. No line-ups the second time |
+| *2nd Half* | scorebug (already in) and the "Kick-off" banner |
+| *Full Time* | the scorebug stays for 30 s, then the animated background, scorebug out, and the match header with the final score, FULL TIME and "Thank you for watching" |
+
+A line-up board only goes to air for a team whose line-up has been entered (at least one starter). If a side has
+no line-up its board is skipped, and the automation history says why; there is no empty "to be confirmed" board.
+The half-time countdown runs from the moment *Half Time* was pressed, using the half-time length in the match
+rules, and stops at zero rather than going negative.
+
+**Layer order.** The animated background and the match header (and any other full-screen board) sit above every
+in-play graphic: scorebug, event straps, lower thirds, ticker and sponsor logo. Only the stinger wipe plays over
+them, and it no longer takes the header off when it runs. Taking the background in clears the small graphics; the
+scorebug is taken off by its own step.
+
+**Plans made before this flow.** A published plan keeps its playlists. To switch an existing football plan,
+open it under Automation, press *Use the latest starter flow*, check it in *Rehearse*, and publish. Any phase
+playlist can also be set to *Keep going when the scorer presses the next step*, which is how the line-ups survive
+*About to start*; it still stops at kick-off, at a break or at full time.
 
 During play only **goals, yellow and red cards and substitutions** put a graphic on air (then the goal partner
 logo after a goal). Corners, shots, saves, fouls and offsides are recorded as statistics and appear on the
 half-time and full-time stats board, not as graphics of their own. Every graphic builds in parts and animates
 out; the scorebug's score, period and added-time indicators animate when they change. Automation only acts in
-*Auto* mode. The other sports' starter plans follow the same shape with their own words (centre pass, first
-bounce, push back, final siren).
+*Auto* mode. The other sports' starter plans keep their earlier shape with their own words (centre pass, first
+bounce, push back, final siren); the animated background and match header can be added to them in the editor.
 
 ## Producer board and companion views
 

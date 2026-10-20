@@ -3,16 +3,20 @@
 import { SPORTS, type Sport } from '@bs/domain';
 import { z } from 'zod';
 
-export const LAYERS = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor'] as const;
+export const LAYERS = ['background', 'fullframe', 'scoreboard', 'event', 'lower', 'ticker', 'sponsor', 'transition'] as const;
 export type Layer = (typeof LAYERS)[number];
 
-/** Layer z-order (bottom → top). */
-export const LAYER_Z: Record<Layer, number> = { background: 10, fullframe: 20, scoreboard: 30, event: 40, lower: 45, ticker: 50, sponsor: 60 };
+/**
+ * Layer z-order (bottom → top). The full-screen background and the boards on it (match header, stats, line-ups)
+ * cover every in-play graphic, scorebug included; only the stinger transition plays over them.
+ */
+export const LAYER_Z: Record<Layer, number> = { scoreboard: 30, event: 40, lower: 45, ticker: 50, sponsor: 60, background: 70, fullframe: 80, transition: 90 };
 
 /** Taking a graphic onto `key` removes graphics on these layers (incompatible stacking). */
 export const LAYER_EXCLUSIONS: Partial<Record<Layer, Layer[]>> = {
   fullframe: ['event', 'lower', 'ticker', 'sponsor'],
-  background: ['event', 'lower', 'ticker', 'sponsor', 'fullframe'],
+  // a background is the canvas the boards sit on: it clears the small graphics but keeps the board above it
+  background: ['event', 'lower', 'ticker', 'sponsor'],
 };
 /** While these layers are on air, small-format takes onto the listed layers are refused unless forced. */
 export const LAYER_BLOCKED_BY: Partial<Record<Layer, Layer[]>> = {
@@ -62,8 +66,12 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'score', 'clock'], entranceMs: 300, holdMs: null, exitMs: 250, sponsorSlots: ['scorebug_logo'], bounds: { x: 0.05, y: 0.05, w: 0.42, h: 0.08 },
   },
   {
-    key: 'builtin:ident', name: 'Match ident', category: 'Match', sports: both, layer: 'fullframe',
-    variables: [{ key: 'showCountdown', label: 'Kick-off countdown', type: 'boolean', required: false, default: true }],
+    key: 'builtin:ident', name: 'Match header', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [
+      { key: 'showCountdown', label: 'Countdown (to kick-off, or to the restart at a break)', type: 'boolean', required: false, default: true },
+      { key: 'show', label: 'Shows', type: 'select', options: ['auto', 'countdown', 'score'], required: false, default: 'auto' },
+      { key: 'message', label: 'Message', type: 'text', required: false, maxLength: 60 },
+    ],
     requiredData: ['teams'], entranceMs: 350, holdMs: 8000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.15, y: 0.25, w: 0.7, h: 0.5 },
   },
   {
@@ -177,8 +185,15 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
   },
   {
     key: 'builtin:slate', name: 'Holding slate', category: 'Match', sports: both, layer: 'background',
+    // the slate's message is the whole picture: unlike the animated background, it takes any board off
+    reserves: ['fullframe'],
     variables: [{ key: 'message', label: 'Message', type: 'select', options: ['waiting', 'pre_game', 'interval', 'end'], required: true, default: 'waiting' }, { key: 'text', label: 'Custom text', type: 'text', maxLength: 80, required: false }],
     requiredData: ['teams'], entranceMs: 400, holdMs: null, exitMs: 400, sponsorSlots: ['detached_logo'], bounds: { x: 0, y: 0, w: 1, h: 1 },
+  },
+  {
+    key: 'builtin:backdrop', name: 'Animated background', category: 'Match', sports: both, layer: 'background',
+    variables: [{ key: 'motion', label: 'Moving', type: 'boolean', required: false, default: true }],
+    requiredData: [], entranceMs: 600, holdMs: null, exitMs: 600, sponsorSlots: [], bounds: { x: 0, y: 0, w: 1, h: 1 },
   },
   {
     key: 'builtin:league_table', name: 'League table', category: 'Stats', sports: both, layer: 'fullframe',
@@ -250,7 +265,7 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams'], entranceMs: 300, holdMs: 6000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
   },
   {
-    key: 'builtin:stinger', name: 'Stinger wipe', category: 'Media', sports: both, layer: 'fullframe',
+    key: 'builtin:stinger', name: 'Stinger wipe', category: 'Media', sports: both, layer: 'transition',
     variables: [{ key: 'text', label: 'Text', type: 'text', required: false, maxLength: 30 }],
     requiredData: [], entranceMs: 450, holdMs: 500, exitMs: 450, sponsorSlots: ['detached_logo'], bounds: { x: 0, y: 0, w: 1, h: 1 },
   },
