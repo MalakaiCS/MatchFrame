@@ -136,7 +136,10 @@ export function registerPlatformRoutes(b: AppBundle) {
     checks.worker = gauges ? (gauges.workerAlive ? 'ok' : 'no_lease') : 'unknown';
     const ok = checks.database === 'ok' && checks.redis !== 'unavailable';
     reply.header('cache-control', 'no-store');
-    return { status: ok ? 'ok' : 'degraded', checks, liveMatches: gauges?.liveMatches ?? null, connectedRenderers: gauges?.renderers ?? null, generatedAt: new Date().toISOString(), requestId: crypto.randomUUID() };
+    // which build is running (Railway and Render set the commit), and work waiting for the worker: a growing
+    // queue with the worker "no_lease" means automation is not reaching the outputs
+    const version = (process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? '').slice(0, 7) || null;
+    return { status: ok ? 'ok' : 'degraded', version, checks, outboxPending: gauges?.outboxPending ?? null, liveMatches: gauges?.liveMatches ?? null, connectedRenderers: gauges?.renderers ?? null, generatedAt: new Date().toISOString(), requestId: crypto.randomUUID() };
   });
   // ---------------------------------------------------------------- run sheet, activity, approvals, imports
   app.get('/api/v1/matches/:id/notes', async (req) => notes.listNotes(await ctxFor(req), P(id, req.params).id));
