@@ -248,7 +248,7 @@ environment, production build through the single-port launcher, graphics-only mo
 | `pnpm test`: every setting of every sport's rules has a labelled field with its limits (read from the sport's rules schema); futsal 2×18 with a 5-minute break validates and describes itself as "2×18-minute halves … half time up to 5 minutes"; 2×45 is refused | 117 tests, 21 files, all pass |
 | `pnpm test:db`: a futsal preset saved, listed with its description, replaced when saved under the same name, refused when a setting is out of range; a competition created from it gets 18/5; changing the rules with *Also use for upcoming matches* updates the untouched fixture (its clock reads 16:00) and leaves the one with Pre-match pressed on 18; without it only the competition changes; another organisation neither sees, uses nor deletes the preset (row-level security, migration `0013`) | 59 tests, 7 files, all pass |
 | `tests/e2e/specs/rules-presets.spec.ts` on the final build: *Edit rules* on a futsal competition, name, half length 18 and break 5, the rules summary updating, 45 minutes refused (*Save rules* disabled), kept as a preset; the upcoming match's clock goes from 20:00 to 18:00; the next new competition offers the preset under *Your presets* and is created with 18/5 (`docs/evidence/e2e/rules-editor.png`) | pass |
-| Full `pnpm test:e2e` | not yet complete when this row was written |
+| Full `pnpm test:e2e` on the final build | 42 tests, 42 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 18.5 min) |
 
 Not claimed: a match that already has anything recorded (a phase step, a fact) never changes rules; there is no
 per-match rules editor.
