@@ -37,13 +37,14 @@ function png(size = 96): Buffer {
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(Buffer.from(rows))), chunk('IEND', Buffer.alloc(0))]);
 }
 
+// hockey: specs that need a quick football fixture take the first active football teams, so this one adds none
 test('competition logo: upload on the competition, shown in the app and in the graphics data', async ({ browser }) => {
   const { page } = await login(browser);
   const tag = crypto.randomUUID().slice(0, 4);
-  const comp = await api<{ id: string }>(page, '/api/v1/competitions', { name: `E2E Logo Cup ${tag}`, sport: 'football', defaultTimezone: 'Australia/Sydney' });
+  const comp = await api<{ id: string }>(page, '/api/v1/competitions', { name: `E2E Logo Cup ${tag}`, sport: 'hockey', defaultTimezone: 'Australia/Sydney' });
   const season = await api<{ id: string }>(page, `/api/v1/competitions/${comp.id}/seasons`, { name: '2026' });
-  const home = await api<{ id: string }>(page, '/api/v1/teams', { name: `Logo Home ${tag}`, shortName: 'Home', abbreviation: 'HOM', sport: 'football' });
-  const away = await api<{ id: string }>(page, '/api/v1/teams', { name: `Logo Away ${tag}`, shortName: 'Away', abbreviation: 'AWY', sport: 'football' });
+  const home = await api<{ id: string }>(page, '/api/v1/teams', { name: `Logo Home ${tag}`, shortName: 'Home', abbreviation: 'HOM', sport: 'hockey' });
+  const away = await api<{ id: string }>(page, '/api/v1/teams', { name: `Logo Away ${tag}`, shortName: 'Away', abbreviation: 'AWY', sport: 'hockey' });
   const m = await api<{ id: string }>(page, '/api/v1/matches', { competitionId: comp.id, seasonId: season.id, homeTeamId: home.id, awayTeamId: away.id, kickoffLocal: '2027-04-03 19:00', timezone: 'Australia/Sydney' });
   const [out] = await api<{ id: string }[]>(page, `/api/v1/matches/${m.id}/overlays`);
   const logoUrl = async () => (await api<{ data: { match: { competition: { logoUrl: string | null } } } }>(page, `/api/v1/overlays/${out!.id}/render-data`)).data.match.competition.logoUrl;
