@@ -296,6 +296,30 @@ background jobs already queued for a suspended organisation (reminders, webhooks
 by a suspension need a browser-source refresh after reactivation; two-step sign-in for staff is recommended in the
 console, not required.
 
+## Replay transition for OBS and vMix (2026-10-21)
+
+Requested: "a replay transition for all graphics … a plain replay transition or a match by match which includes
+teams … that you can export and put into OBS or vMix. It has to export as a WebM file." Same environment,
+production build through the single-port launcher, graphics-only mode.
+
+Browsers cannot encode video with an alpha channel (Chromium's WebCodecs refuses alpha encoding, checked here) or
+record frame by frame, so the browser draws each frame at its exact instant as a PNG with transparency and the API
+encodes them with FFmpeg (libvpx VP9, `yuva420p`, `alpha_mode=1`). The app image's static FFmpeg build includes
+libvpx.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: the replay transition is a full-frame transition whose timeline matches the stinger (out at 950 ms, gone at 1600 ms, cut at 800 ms inside the cover from 650 ms); it draws in all ten looks, plain (the look's colours, REPLAY or own words) and with the teams (both names and colours); every band is in place by the end of the entrance and gone by the end of the exit, and none moves at the transition point; part animations stagger their exit; the encoder refuses other roles, frame rates and sizes and a missing length, and turns 15 PNG frames into a VP9 WebM with `alpha_mode=1`, 1280×720 at 30 fps, transparent, fully covered, transparent (alpha read back with libvpx) | 127 tests, 24 files, all pass |
+| `pnpm test:db` | 69 tests, 9 files, all pass |
+| `tests/e2e/specs/replay-transition.spec.ts` on the final build: from the Premier look page, plain, 1280×720 at 25 fps: `replay-premier-plain-1280x720-25fps.webm`, VP9 WebM, 41 frames, `alpha_mode=1`, frame 0 and the last frame transparent, frame 20 (800 ms) fully covered (`docs/evidence/e2e/replay-premier-sweep.png`, `replay-premier-plain.png`); from a match's OBS link tab, with the teams, 30 fps: 49 frames, transparent / covered at 800 ms / transparent, both teams' crests, names and colours (`docs/evidence/e2e/replay-match-teams.png`) | pass |
+| Visual baselines: the replay transition at full cover in all ten looks (new), and the stinger wipe, whose baselines had been an empty frame (the look page took transitions out after their short hold; it now keeps them up until *Take out* when looping is off) | pass |
+| Full `pnpm test:e2e` on the final build | 46 tests, 46 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 19.7 min) |
+
+Not claimed: the files were not loaded into OBS or vMix here (no OBS or vMix in this environment); the checks
+are the format both document for stingers (WebM VP9 with alpha) and the alpha channel read back frame by frame.
+Only 16:9 sizes are offered; on a live vertical (9:16) output the transition's centre plate is cropped.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
