@@ -1,16 +1,14 @@
 // Identity, organisation, catalog, fixtures, matches and scoring routes (/api/v1).
 import { z } from 'zod';
-import { fixtureTemplateCsv } from '@bs/domain';
-import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring, seasonData } from '@bs/services';
-import { organisations } from '@bs/db';
-import { eq } from 'drizzle-orm';
+import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring, seasonData, staffSvc } from '@bs/services';
+import { fixtureTemplateCsv, STAFF_LABELS } from '@bs/domain';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
 const P = <T extends z.ZodTypeAny>(s: T, v: unknown) => s.parse(v) as z.infer<T>;
 
 export function registerCoreRoutes(b: AppBundle) {
-  const { app, ctxFor, loadSession, deps } = b;
+  const { app, ctxFor, loadSession, forgetOrg, deps } = b;
 
   // ---------------------------------------------------------------- me & organisations
   app.get('/api/v1/me', async (req) => {
@@ -20,21 +18,20 @@ export function registerCoreRoutes(b: AppBundle) {
     let active = mine.find((o) => o.id === s.session.activeOrganisationId) ?? null;
     if (!active && mine.length === 1) active = await orgs.switchOrganisation(deps.db, s.user.id, s.session.id, mine[0]!.id);
     let grants: unknown[] = [];
-    let requireTwoFactor = false;
-    if (active) {
+    const staff = await staffSvc.resolveStaff(deps, s.user);
+    if (active && active.status === 'active') {
       const ctx = await ctxFor(req).catch(() => null);
       grants = ctx?.actor.grants ?? [];
-      const [o] = await deps.db.select({ r: organisations.requireTwoFactor }).from(organisations).where(eq(organisations.id, active.id));
-      requireTwoFactor = !!o?.r;
     }
     return {
       user: { id: s.user.id, name: s.user.name, email: s.user.email, emailVerified: s.user.emailVerified, twoFactorEnabled: !!(s.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled },
       organisations: mine,
-      activeOrganisation: active ? { ...active, requireTwoFactor } : null,
+      activeOrganisation: active,
       role: active ? mine.find((o) => o.id === active!.id)?.role : null,
       grants,
       product: { name: deps.config.PRODUCT_NAME, locale: deps.config.DEFAULT_LOCALE, timezone: deps.config.DEFAULT_TIMEZONE },
       features: { streaming: deps.config.STREAMING_ENABLED },
+      staff: staff ? { role: staff.role, label: STAFF_LABELS[staff.role] } : null,
     };
   });
 
@@ -68,7 +65,12 @@ export function registerCoreRoutes(b: AppBundle) {
   });
 
   app.get('/api/v1/organisations/current', async (req) => orgs.getOrganisation(await ctxFor(req)));
-  app.patch('/api/v1/organisations/current', async (req) => orgs.updateOrganisation(await ctxFor(req), req.body as never));
+  app.patch('/api/v1/organisations/current', async (req) => {
+    const ctx = await ctxFor(req);
+    const r = await orgs.updateOrganisation(ctx, req.body as never);
+    forgetOrg(ctx.actor.organisationId); // a changed two-step requirement applies at once
+    return r;
+  });
   app.put('/api/v1/organisations/current/entitlements', async (req) => orgs.setEntitlements(await ctxFor(req), req.body as never));
 
   app.get('/api/v1/members', async (req) => orgs.listMembers(await ctxFor(req)));

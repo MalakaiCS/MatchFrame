@@ -79,6 +79,9 @@ SMTP_USER=resend
 SMTP_PASSWORD=...
 MAIL_FROM="Your Studio <no-reply@yourdomain.com>"
 
+# site staff: your own account(s), Owners of the staff console at /staff (sign up with this email first)
+PLATFORM_OWNER_EMAILS=you@yourdomain.com
+
 # optional: branding and defaults
 PRODUCT_NAME=MatchFrame
 # the inbox the public contact form sends to (the form says "not connected yet" until this is set)

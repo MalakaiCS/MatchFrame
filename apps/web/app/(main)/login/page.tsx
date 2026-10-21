@@ -30,7 +30,7 @@ function LoginForm() {
     const me = await get<Me>('me');
     qc.setQueryData(['me'], me);
     if (next && next.startsWith('/')) router.replace(next);
-    else if (!me.organisations.length) router.replace('/onboarding');
+    else if (!me.organisations.length) router.replace(me.staff ? '/staff' : '/onboarding');
     else if (me.role === 'scorer') router.replace('/score');
     else router.replace('/app');
   }
@@ -48,7 +48,8 @@ function LoginForm() {
       await finish();
     } catch (e) {
       const ae = e as ApiError;
-      if (ae.status === 403) setNeedsVerify(true);
+      // 403: email not verified yet (offer to resend), or an account disabled by staff (say so)
+      if (ae.status === 403 && ae.code !== 'ACCOUNT_DISABLED') setNeedsVerify(true);
       setErr(ae.status === 401 ? new ApiError(401, 'INVALID', 'Email or password is incorrect.') : ae);
     } finally {
       setBusy(false);

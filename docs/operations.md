@@ -38,7 +38,7 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
   `GOOGLE_CLIENT_ID/SECRET` and `MICROSOFT_CLIENT_ID/SECRET` (+`MICROSOFT_TENANT_ID`) add social sign-in buttons;
   `VAPID_PUBLIC_KEY/PRIVATE_KEY` (+`VAPID_SUBJECT`) enable web push for reminders; `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` enable card billing (without them the owner
-  sets the plan by hand); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
+  sets the plan by hand; with them only site Admins can, in the staff console); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
   `METRICS_TOKEN` protects `/metrics`; `ERROR_REPORT_URL` receives a JSON report for every unhandled API error.
 * **White-label** — an organisation's `customDomain` (Settings → Branding, owners) resolves a host name to that
   organisation: point the host at the installation and let the reverse proxy accept it; sign-in and public pages
@@ -46,6 +46,23 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
 * **Security** — Settings → Security turns on TOTP two-step sign-in per account (backup codes included), lists and
   revokes sessions, and lets an owner require two-step sign-in for the whole organisation: members without it are
   held at an enrolment screen until they set it up (`TWO_FACTOR_REQUIRED`). API keys carry scopes.
+* **Site staff** — the people who run the installation, across every organisation (not an organisation's own
+  members). `PLATFORM_OWNER_EMAILS` (comma-separated) makes those verified accounts Owners; they add the rest in
+  the staff console at `/staff` → *Staff team*. Four roles, each with everything below it:
+  *Support* looks up organisations and accounts (members, usage, recent activity) and resends verification emails;
+  *Moderator* also takes down public content (a match's public page, media share links; *Public links* finds the
+  organisation behind a reported link); *Admin* also suspends and reactivates organisations, disables and enables
+  accounts, signs accounts out everywhere, sets plans by hand, manages Moderators and Support and reads the
+  *Staff log*; *Owner* also manages Admins and other Owners. Nobody changes their own role, Admins cannot act on
+  Owners or other Admins, Owners from the configuration are changed there, and there is always one Owner.
+  Every action needs a reason where it changes something, and is written to the append-only staff log
+  (`platform_audit_logs`) and to the organisation's own activity. Staff read other organisations through
+  read-only row-level security policies (`staff_read` on organisations, memberships and plans); changes run in
+  the organisation's tenant context. A suspended organisation's members see a suspended screen
+  (`ORGANISATION_SUSPENDED`); its graphics outputs, public match pages, share links, API keys and invitations stop
+  resolving; nothing is deleted and reactivating restores everything (open outputs keep their last picture until
+  reloaded). A disabled account is signed out everywhere and its sign-ins are refused (`ACCOUNT_DISABLED`).
+  Staff do not get into an organisation's workspace; to work inside one, its owner invites them.
 * **Webhooks** — Settings → Integrations (admins). Each delivery is signed: `X-Webhook-Signature: t=<unix>,v1=<hex>`
   where `v1 = HMAC-SHA256(secret, "<t>.<raw body>")`, with `X-Webhook-Event` naming the event. Private, loopback
   and link-local hosts are refused and `https` is required outside local development. Failed deliveries retry with

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DM from '@radix-ui/react-dropdown-menu';
 import {
-  Bell, BarChart3, Building2, ChevronDown, Clapperboard, Film, Gauge, Image, LayoutDashboard, LayoutGrid, LogOut, Megaphone, Palette, Radio, Search, Settings, Trophy, Workflow,
+  Bell, BarChart3, Building2, ChevronDown, Clapperboard, Film, Gauge, Image, LayoutDashboard, LayoutGrid, LogOut, Megaphone, Palette, Radio, Search, Settings, ShieldCheck, Trophy, Workflow,
 } from 'lucide-react';
 import { cx, Spinner, StatusPill, Toaster } from '@bs/ui';
 import { api, get, post } from '@/lib/api';
@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (me.isLoading) return;
     if (!me.data) router.replace(`/login?next=${encodeURIComponent(path)}`);
-    else if (!me.data.organisations.length) router.replace('/onboarding');
+    else if (!me.data.organisations.length) router.replace(me.data.staff ? '/staff' : '/onboarding');
     else if (me.data.role === 'scorer') router.replace('/score');
   }, [me.isLoading, me.data, router, path]);
 
@@ -70,6 +70,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
   const m = me.data;
   const tz = m.activeOrganisation!.timezone;
+  async function leave(to: string) {
+    if (to === 'sign-out') await api('/api/auth/sign-out', { method: 'POST', json: {} }).catch(() => undefined);
+    else await post('organisations/switch', { organisationId: to });
+    qc.clear();
+    router.replace(to === 'sign-out' ? '/login' : '/app');
+  }
+  // suspended by site staff: nothing in the organisation can be used until it is reactivated
+  if (m.activeOrganisation?.status === 'suspended') {
+    const others = m.organisations.filter((o) => o.id !== m.activeOrganisation!.id && o.status !== 'suspended');
+    return (
+      <main className="grid min-h-screen place-items-center p-4">
+        <div className="w-full max-w-md rounded-[var(--radius-card)] border border-border bg-panel p-6">
+          <h1 className="text-lg font-semibold">{m.activeOrganisation.name} is suspended</h1>
+          <p className="mb-4 mt-1 text-sm text-muted">{process.env.NEXT_PUBLIC_PRODUCT_NAME} staff have suspended this organisation, so its matches, graphics, public pages and share links are unavailable for now. Nothing has been deleted. Contact support to find out why and how to have it reactivated.</p>
+          <div className="flex flex-wrap gap-2">
+            {others.map((o) => <button key={o.id} className="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary" onClick={() => void leave(o.id)}>Switch to {o.name}</button>)}
+            {m.staff ? <Link href="/staff" className="rounded-md border border-border px-3 py-1.5 text-sm hover:border-primary">Staff console</Link> : null}
+            <button className="rounded-md px-3 py-1.5 text-sm text-muted underline" onClick={() => void leave('sign-out')}>Sign out</button>
+          </div>
+        </div>
+      </main>
+    );
+  }
   // the organisation requires two-step sign-in and this account has not set it up yet
   if (m.activeOrganisation?.requireTwoFactor && !m.user.twoFactorEnabled) {
     return (
@@ -114,6 +137,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {m.staff ? (
+            <Link href="/staff" className="mt-auto flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-muted hover:bg-elevated/60 hover:text-text">
+              <ShieldCheck className="size-4" aria-hidden />
+              Staff console
+            </Link>
+          ) : null}
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -165,6 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DM.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-md border border-border bg-panel p-1 text-sm shadow-xl">
                   <div className="px-2 py-1.5"><div className="font-medium">{m.user.name}</div><div className="text-xs text-muted">{m.user.email} · {m.role}</div></div>
                   <DM.Separator className="my-1 h-px bg-border" />
+                  {m.staff ? <DM.Item onSelect={() => router.push('/staff')} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-elevated"><ShieldCheck className="size-4" /> Staff console <span className="ml-auto text-xs text-muted">{m.staff.label}</span></DM.Item> : null}
                   <DM.Item onSelect={signOut} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-elevated"><LogOut className="size-4" /> Sign out</DM.Item>
                 </DM.Content>
               </DM.Portal>

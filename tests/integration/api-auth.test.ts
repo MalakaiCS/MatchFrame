@@ -3,41 +3,16 @@ import { createDb } from '@bs/db';
 import { getConfig } from '@bs/config';
 import { buildApp, type AppBundle } from '../../apps/api/src/app';
 import { registerRoutes } from '../../apps/api/src/routes';
+import { Client as HttpClient } from '../http-client';
 
 const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_URL);
 const links: { kind: string; email: string; url: string }[] = [];
 let b: AppBundle;
 const origin = new URL(config.PUBLIC_WEB_URL).origin;
-
-class Client {
-  cookies = new Map<string, string>();
-  constructor(private bundle: () => AppBundle) {}
-  private header() {
-    return [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
-  }
-  async req(method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', url: string, body?: unknown, extraHeaders: Record<string, string> = {}) {
-    const res = await this.bundle().app.inject({
-      method,
-      url,
-      payload: body === undefined ? undefined : (body as object),
-      headers: { origin, ...(this.cookies.size ? { cookie: this.header() } : {}), ...extraHeaders },
-    });
-    const sc = res.headers['set-cookie'];
-    for (const c of Array.isArray(sc) ? sc : sc ? [sc] : []) {
-      const [pair, ...attrs] = c.split(';');
-      const [k, v] = pair!.split('=');
-      const expired = attrs.some((a) => /max-age=0/i.test(a.trim()));
-      if (expired || v === '') this.cookies.delete(k!.trim());
-      else this.cookies.set(k!.trim(), v!);
-    }
-    let json: unknown = null;
-    try {
-      json = res.json();
-    } catch {
-      json = res.body;
-    }
-    return { status: res.statusCode, json: json as Record<string, unknown> & { error?: { code: string } }, headers: res.headers };
+class Client extends HttpClient {
+  constructor(bundle: () => AppBundle) {
+    super(bundle, origin);
   }
 }
 
@@ -88,6 +63,17 @@ describe('session lifecycle (A01)', () => {
     expect(r.status).toBe(201);
     const me = await c.req('GET', '/api/v1/me');
     expect(me.json).toMatchObject({ role: 'owner', activeOrganisation: { name: 'Harbour Media' } });
+  });
+
+  it('enforces the organisation\'s two-step sign-in requirement', async () => {
+    expect((await c.req('PATCH', '/api/v1/organisations/current', { requireTwoFactor: true })).status).toBe(200);
+    expect((await c.req('GET', '/api/v1/me')).json).toMatchObject({ activeOrganisation: { requireTwoFactor: true }, user: { twoFactorEnabled: false } });
+    // everything but the account routes waits until two-step sign-in is on
+    const blocked = await c.req('GET', '/api/v1/competitions');
+    expect(blocked.status).toBe(403);
+    expect(blocked.json.error?.code).toBe('TWO_FACTOR_REQUIRED');
+    expect((await c.req('PATCH', '/api/v1/organisations/current', { requireTwoFactor: false })).status).toBe(200);
+    expect((await c.req('GET', '/api/v1/competitions')).status).toBe(200);
   });
 
   it('rejects cookie-authenticated writes from a foreign origin (CSRF)', async () => {

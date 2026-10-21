@@ -2,7 +2,9 @@
 import crypto from 'node:crypto';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
+import { eq } from 'drizzle-orm';
 import type { AppConfig } from '@bs/config';
 import { accounts, sessions, twoFactors, users, verifications, type Db } from '@bs/db';
 import { emailLayout, type Mailer } from './mail';
@@ -62,6 +64,18 @@ export function createAuth({ db, config, mailer, onEmailLink }: AuthDeps) {
       updateAge: 24 * 3600,
       additionalFields: {
         activeOrganisationId: { type: 'string', required: false, input: false },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // an account disabled by site staff cannot sign in (its existing sessions were ended when it was disabled)
+          before: async (session) => {
+            const [u] = await db.select({ disabledAt: users.disabledAt }).from(users).where(eq(users.id, session.userId));
+            if (u?.disabledAt) throw new APIError('FORBIDDEN', { message: 'This account has been disabled. Contact support if you think this is a mistake.', code: 'ACCOUNT_DISABLED' });
+            return { data: session };
+          },
+        },
       },
     },
     rateLimit: {

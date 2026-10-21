@@ -22,3 +22,4 @@ export * from './standings';
 export * from './lineup';
 export * from './pricing';
 export * from './rules-fields';
+export * from './staff';

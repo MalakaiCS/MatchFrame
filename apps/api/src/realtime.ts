@@ -36,6 +36,8 @@ export interface RendererHooks {
 const matchRoom = (org: string, m: string) => `org:${org}:match:${m}`;
 const overlayRoom = (org: string, o: string) => `org:${org}:overlay:${o}`;
 const opsRoom = (org: string) => `org:${org}:ops`;
+const orgRoom = (org: string) => `org:${org}`;
+const publicOrgRoom = (org: string) => `public:org:${org}`;
 const userRoom = (org: string, u: string) => `org:${org}:user:${u}`;
 const publicMatchRoom = (m: string) => `public:match:${m}`;
 const publicOverlayRoom = (o: string) => `public:overlay:${o}`;
@@ -72,6 +74,7 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
       socket.data.actor = actor;
       socket.data.name = s.user.name ?? 'Operator';
       socket.join(userRoom(actor.organisationId, s.user.id));
+      socket.join(orgRoom(actor.organisationId));
       next();
     } catch {
       next(new Error('UNAUTHENTICATED'));
@@ -149,6 +152,7 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
     const scope = socket.data.scope as { organisationId: string; overlayId: string; matchId: string; purpose: string };
     socket.join(publicOverlayRoom(scope.overlayId));
     socket.join(publicMatchRoom(scope.matchId));
+    socket.join(publicOrgRoom(scope.organisationId));
     await opts.renderer?.onConnect?.(socket, scope, socket.data.instanceId).catch(() => undefined);
     socket.on('displayed', (p) => void opts.renderer?.onDisplayed?.(socket, p).catch(() => undefined));
     socket.on('exposure', (p) => void opts.renderer?.onExposure?.(socket, p).catch(() => undefined));
@@ -161,6 +165,12 @@ export function attachRealtime(server: HttpServer, b: AppBundle, opts: { redisUr
   const route = (e: RelayedEvent) => {
     const org = e.organisationId;
     const env = { topic: e.topic, position: e.position, seq: e.aggregateSeq, schemaVersion: e.schemaVersion, payload: e.payload };
+    if (e.topic === 'organisation.suspended') {
+      // suspended by site staff: nobody stays connected (reconnecting is refused while it is suspended)
+      users.in(orgRoom(org)).disconnectSockets(true);
+      renderers.in(publicOrgRoom(org)).disconnectSockets(true);
+      return;
+    }
     if (e.topic === 'access.revoked') {
       const userId = String(e.payload.userId);
       users.in(userRoom(org, userId)).disconnectSockets(true);

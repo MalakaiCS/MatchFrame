@@ -40,7 +40,9 @@ export const organisations = pgTable('organisations', {
   timezone: text('timezone').notNull().default('Australia/Brisbane'),
   brandColor: text('brand_color'),
   logoAssetId: uuid('logo_asset_id'),
-  status: text('status').notNull().default('active'), // active | deleted
+  status: text('status').notNull().default('active'), // active | suspended (by site staff) | deleted
+  suspendedAt: ts('suspended_at'),
+  suspendedReason: text('suspended_reason'),
   onboarding: jsonb('onboarding').$type<Record<string, unknown>>().notNull().default({}),
   /** white-label: a host that resolves to this organisation for public pages and overlays */
   customDomain: text('custom_domain').unique(),

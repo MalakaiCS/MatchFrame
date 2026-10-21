@@ -106,6 +106,8 @@ export const configSchema = z.object({
   DEV_DESTINATION_ALLOWLIST: z.string().default(''),
   RTMP_SINK_PASSWORD: z.string().optional(),
   MEDIA_TMP_DIR: z.string().optional(),
+  /** Site staff: verified accounts with these emails (comma-separated) are Owners of the staff console. */
+  PLATFORM_OWNER_EMAILS: z.string().default(''),
   // ---- platform features (all optional; a feature stays off until its keys are set)
   /** Web Push (reminders to scorers' phones): generate with `npx web-push generate-vapid-keys` */
   VAPID_PUBLIC_KEY: z.string().optional(),

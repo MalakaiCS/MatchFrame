@@ -5,7 +5,7 @@
 // entitlements; they are not yet enforced when a match goes live.
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { billingAccounts, entitlements, type Db } from '@bs/db';
+import { billingAccounts, entitlements, type Db, type Tx } from '@bs/db';
 import { PRICE_PLANS, priceLabel, type BillingInterval, type PaidPlanKey, type PlanKey } from '@bs/domain';
 import { z } from 'zod';
 import type { AppConfig } from '@bs/config';
@@ -165,15 +165,24 @@ export async function handleStripeEvent(db: Db, event: { id: string; type: strin
   return { applied: event.type, plan: plan.key };
 }
 
-/** Manual plan change by an installation owner without Stripe (self-hosted, invoices handled elsewhere). */
+/** A plan set by hand (no Stripe subscription): the organisation's billing account and its plan's allowances. */
+export async function applyManualPlan(t: Tx, organisationId: string, plan: PlanKey, updatedBy: string) {
+  if (!PLANS[plan]) throw invalid('Unknown plan', [{ field: 'plan', message: 'Unknown plan' }]);
+  await t.insert(billingAccounts).values({ organisationId, provider: 'manual', plan, status: 'active' }).onConflictDoUpdate({ target: billingAccounts.organisationId, set: { provider: 'manual', plan, status: 'active', updatedAt: new Date() } });
+  const [cur] = await t.select().from(entitlements).where(eq(entitlements.organisationId, organisationId));
+  const limits = { ...(cur?.limits ?? {}), ...planLimits(PLANS[plan]) };
+  await t.insert(entitlements).values({ organisationId, plan, features: cur?.features ?? {}, limits, updatedBy }).onConflictDoUpdate({ target: entitlements.organisationId, set: { plan, limits, updatedBy, updatedAt: new Date() } });
+}
+
+/**
+ * Manual plan change by an organisation owner on an installation without Stripe (self-hosted, invoices handled
+ * elsewhere). With Stripe set up, plans come from subscriptions, or from site staff (Admin) in the staff console.
+ */
 export async function setPlanManually(ctx: Ctx, plan: PlanKey) {
   assertCan(ctx.actor, 'org.own');
-  if (!PLANS[plan]) throw invalid('Unknown plan', [{ field: 'plan', message: 'Unknown plan' }]);
+  if (billingConfigured(ctx.config)) throw conflict('BILLING_MANAGED', 'Plans are chosen through checkout on this installation. Contact support to change a plan by hand.');
   return tx(ctx, async (t) => {
-    await t.insert(billingAccounts).values({ organisationId: ctx.actor.organisationId, provider: 'manual', plan, status: 'active' }).onConflictDoUpdate({ target: billingAccounts.organisationId, set: { provider: 'manual', plan, status: 'active', updatedAt: new Date() } });
-    const [cur] = await t.select().from(entitlements).where(eq(entitlements.organisationId, ctx.actor.organisationId));
-    const limits = { ...(cur?.limits ?? {}), ...planLimits(PLANS[plan]) };
-    await t.insert(entitlements).values({ organisationId: ctx.actor.organisationId, plan, features: cur?.features ?? {}, limits, updatedBy: ctx.actor.userId }).onConflictDoUpdate({ target: entitlements.organisationId, set: { plan, limits, updatedBy: ctx.actor.userId, updatedAt: new Date() } });
+    await applyManualPlan(t, ctx.actor.organisationId, plan, ctx.actor.userId!);
     await audit(t, ctx.actor, 'billing.plan', 'organisation', ctx.actor.organisationId, { after: { plan } });
     return { ok: true, plan };
   });

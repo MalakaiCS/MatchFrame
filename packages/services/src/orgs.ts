@@ -61,10 +61,11 @@ export async function createOrganisation(deps: Deps, userId: string, input: z.in
 export async function listMyOrganisations(db: Db, userId: string) {
   return withUser(db, userId, async (t) =>
     t
-      .select({ id: organisations.id, name: organisations.name, slug: organisations.slug, role: memberships.role, timezone: organisations.timezone, locale: organisations.locale })
+      .select({ id: organisations.id, name: organisations.name, slug: organisations.slug, role: memberships.role, timezone: organisations.timezone, locale: organisations.locale, status: organisations.status, requireTwoFactor: organisations.requireTwoFactor })
       .from(memberships)
       .innerJoin(organisations, eq(organisations.id, memberships.organisationId))
-      .where(and(eq(memberships.userId, userId), eq(memberships.status, 'active'), eq(organisations.status, 'active')))
+      // a suspended organisation is still listed, so its members are told why they cannot use it
+      .where(and(eq(memberships.userId, userId), eq(memberships.status, 'active'), inArray(organisations.status, ['active', 'suspended'])))
       .orderBy(organisations.name),
   );
 }

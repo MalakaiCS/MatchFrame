@@ -28,6 +28,9 @@ Business rules live in `packages/domain` (pure) and `packages/services` (DB-awar
 - Published theme/template/game-plan versions are immutable (DB trigger). Changes create new versions.
 - Secrets (stream keys, tokens) are encrypted or hashed, never returned by list APIs, sockets, logs or audit.
 - The fake media provider is for tests/labelled demo mode only; missing config = blocked state, never fake LIVE.
+- Site staff (`platform_staff`: owner/admin/moderator/support) read across organisations only through the `staff_read`
+  policies; every staff change goes through `staffSvc`, runs in the target organisation's tenant context and is logged
+  in `platform_audit_logs` and the organisation's `audit_logs`.
 - Never label an unexecuted check PASS in ACCEPTANCE_RESULTS.md.
 
 ## Current milestone

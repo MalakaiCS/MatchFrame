@@ -5,7 +5,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { eq, sql } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import type { AppConfig } from '@bs/config';
-import { organisations, users, type Db } from '@bs/db';
+import { organisations, users, withUser, type Db } from '@bs/db';
 import type { MediaProvider } from '@bs/media';
 import {
   AppError,
@@ -14,6 +14,7 @@ import {
   redact,
   resolveActor,
   orgs,
+  staffSvc,
   type Actor,
   type Auth,
   type Ctx,
@@ -150,15 +151,18 @@ export async function buildApp(deps: ApiDeps) {
   });
 
   const TWO_FACTOR_EXEMPT = /^\/api\/v1\/(me(\/|$|\?)|organisations\/(current|switch)|auth-options|status)/;
-  const twoFactorCache = new Map<string, { v: boolean; at: number }>();
-  async function orgRequiresTwoFactor(orgId: string) {
-    const c = twoFactorCache.get(orgId);
-    if (c && Date.now() - c.at < 30_000) return c.v;
-    const [o] = await deps.db.select({ r: organisations.requireTwoFactor }).from(organisations).where(eq(organisations.id, orgId));
-    const v = !!o?.r;
-    twoFactorCache.set(orgId, { v, at: Date.now() });
+  // per organisation: two-step sign-in required, suspended by site staff (cached briefly; staff changes clear it here)
+  const orgGateCache = new Map<string, { twoFactor: boolean; suspended: boolean; at: number }>();
+  async function orgGate(orgId: string, userId: string) {
+    const c = orgGateCache.get(orgId);
+    if (c && Date.now() - c.at < 10_000) return c;
+    // read as the member (row-level security shows an organisation to its members only)
+    const [o] = await withUser(deps.db, userId, (t) => t.select({ r: organisations.requireTwoFactor, status: organisations.status }).from(organisations).where(eq(organisations.id, orgId)));
+    const v = { twoFactor: !!o?.r, suspended: o?.status === 'suspended', at: Date.now() };
+    orgGateCache.set(orgId, v);
     return v;
   }
+  const forgetOrg = (orgId: string) => orgGateCache.delete(orgId);
 
   async function loadSession(req: FastifyRequest): Promise<SessionInfo | null> {
     if (req.sessionInfo !== undefined) return req.sessionInfo;
@@ -186,15 +190,26 @@ export async function buildApp(deps: ApiDeps) {
       if (mine.length === 1) orgId = await orgs.switchOrganisation(deps.db, s.user.id, s.session.id, mine[0]!.id).then((o) => o.id);
       else throw new AppError(mine.length ? 'ORGANISATION_REQUIRED' : 'NO_ORGANISATION', 409, mine.length ? 'Choose an organisation' : 'Create or join an organisation first');
     }
+    const gate = await orgGate(orgId!, s.user.id);
+    if (gate.suspended) throw new AppError('ORGANISATION_SUSPENDED', 403, `This organisation has been suspended. Contact ${config.PRODUCT_NAME} support.`);
     const actor = await resolveActor(deps.db, s.user.id, orgId!, req.id);
     if (!actor) throw new AppError('NOT_A_MEMBER', 403, 'Your access to this organisation has ended');
     // Organisations may require two-step sign-in: everything but the account routes waits until it is on.
-    if (await orgRequiresTwoFactor(orgId!)) {
+    if (gate.twoFactor) {
       const [u] = await deps.db.select({ tf: users.twoFactorEnabled }).from(users).where(eq(users.id, s.user.id));
       if (!u?.tf && !TWO_FACTOR_EXEMPT.test(req.url)) throw new AppError('TWO_FACTOR_REQUIRED', 403, 'This organisation requires two-step sign-in. Turn it on under Settings → Account to continue.');
     }
     req.actorCache = actor;
     return actor;
+  }
+
+  /** The signed-in account as site staff (Owner, Admin, Moderator, Support), or 403. */
+  async function staffFor(req: FastifyRequest): Promise<staffSvc.StaffCtx> {
+    const s = await loadSession(req);
+    if (!s) throw new AppError('UNAUTHENTICATED', 401, 'Sign in to continue');
+    const staff = await staffSvc.resolveStaff(deps, s.user);
+    if (!staff) throw new AppError('NOT_STAFF', 403, 'This is for site staff only');
+    return { db: deps.db, config, mailer: deps.mailer, storage: deps.storage, queues: deps.queues, media: deps.media, staff, requestId: req.id };
   }
 
   const ctxFor = async (req: FastifyRequest): Promise<Ctx> => ({
@@ -224,7 +239,7 @@ export async function buildApp(deps: ApiDeps) {
   });
   app.get('/api/v1/time', async () => ({ serverNow: Date.now() }));
 
-  return { app, auth, ctxFor, actorFor, loadSession, deps };
+  return { app, auth, ctxFor, actorFor, loadSession, staffFor, forgetOrg, deps };
 }
 
 export type AppBundle = Awaited<ReturnType<typeof buildApp>>;
