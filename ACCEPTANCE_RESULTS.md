@@ -271,7 +271,30 @@ from the app on a hosted installation. The file now goes through the API on the 
 | `tests/e2e/specs/competition-logo.spec.ts` on the final build: a PNG uploaded on the competition page appears in the preview, beside the competition's name and on the competitions list; once the media worker has checked it, the match output's graphics data has the logo; *Remove* clears it (`docs/evidence/e2e/competition-logo.png`) | pass |
 
 Not claimed: the logo is drawn by the looks' badge and full-screen title bars; the scorebug keeps the teams'
-logos. The full e2e suite was not re-run for this change alone.
+logos. The full e2e suite was not re-run for this change alone; it ran with the staff change below.
+
+## Site staff: Owner, Admin, Moderator, Support (2026-10-21)
+
+Requested: "staff perms built into the system now. Owner, Admin, Moderator, Support. That is site wide staff
+system not organisation." Same environment, production build through the single-port launcher, graphics-only
+mode, with `PLATFORM_OWNER_EMAILS` set to the e2e account.
+
+Found on the way: the API read an organisation's "require two-step sign-in" setting without a tenant context, so
+row-level security hid the row and the requirement was never enforced (nor shown in the app). It is now read as
+the member, and a change applies at once.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` (`packages/domain/src/staff.test.ts`): each role has everything the one below it has (Support 4 actions, Moderator 5, Admin and Owner 11); Owners manage everyone, Admins only Moderators and Support, nobody their own role; accounts: never your own, never staff of your rank or above unless you are an Owner | 120 tests, 22 files, all pass |
+| `pnpm test:db` (`tests/integration/staff.test.ts`, over HTTP with the application role): the Owner from `PLATFORM_OWNER_EMAILS` (any case, trimmed); a member is `NOT_STAFF` and signed-out is 401; staff added by email (unknown email refused); Support finds an organisation by its owner's email and sees members, usage and the match with a public page (the link itself is never returned), resends a verification email, and is refused take-downs, suspension, disabling, staff management and the staff log; a Moderator looks up the reported `/m/…` link and takes the page down (reason required; the public page then 404s); an Admin suspends (an `organisation.suspended` outbox event; the member gets `ORGANISATION_SUSPENDED`; `/me` lists it as suspended; the organisation's own log shows the staff action and reason), reactivates and sets a plan; disables an account (sessions ended, sign-in refused with `ACCOUNT_DISABLED`), enables it, signs Support out everywhere, and is refused acting on itself or an Owner; Admins cannot make or change Admins; a second Owner cannot remove the Owner from configuration; the staff log has every action with actor and reason; a staff member without a tenant context can read but not update another organisation, a non-staff account cannot read it (migration `0014`). `tests/integration/api-auth.test.ts`: an organisation requiring two-step sign-in now blocks a member without it (`TWO_FACTOR_REQUIRED`) until it is turned off | 69 tests, 9 files, all pass |
+| `tests/e2e/specs/staff-console.spec.ts` on the final build: a new account signs up (verification email read from Mailpit) and creates an organisation; staff find it by email, suspend it with a reason (`docs/evidence/e2e/staff-organisation.png`), its member sees the suspended screen (`docs/evidence/e2e/organisation-suspended.png`) and gets 403 from the API; reactivated, it works again; the account is disabled (signed out, sign-in shows "This account has been disabled") and enabled; added as Support it sees the console without *Public links* and *Staff log* (`docs/evidence/e2e/staff-team.png`), and after removal "Staff only"; the staff log lists the actions | pass |
+| Full `pnpm test:e2e` on the final build | 44 tests, 44 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 19.8 min). A first run found the competition-logo test's football teams being picked up by the scorer takeover test's fixture helper (1 failure, reproduced on its own); that test now uses hockey teams and the leftovers were archived |
+
+Not claimed: staff cannot open an organisation's workspace (no impersonation; an owner invites them instead);
+background jobs already queued for a suspended organisation (reminders, webhooks) are not paused; outputs dropped
+by a suspension need a browser-source refresh after reactivation; two-step sign-in for staff is recommended in the
+console, not required.
 
 ## A51 and measured capacity
 
