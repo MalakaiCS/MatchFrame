@@ -11,6 +11,8 @@ import { CompetitionProduction } from '@/components/competition-production';
 import { SeasonPlayers, SeasonResults, SeasonStandings } from '@/components/competition/season-data';
 import { BulkRoundDialog, RolloverDialog, StandingsRulesCard } from '@/components/competition/season-tools';
 import { DemoButton } from '@/components/demo-button';
+import { RulesEditor, usePresetOptions } from '@/components/competition/rules-editor';
+import type { Sport } from '@bs/domain';
 
 interface Competition {
   id: string; name: string; shortName: string | null; sport: string; status: string; defaultTimezone: string; rulesVersion: string;
@@ -30,9 +32,11 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
   const [season, setSeason] = useState({ name: '', startsOn: '', endsOn: '' });
   const [rollover, setRollover] = useState<Competition['seasons'][number] | null>(null);
   const [roundOpen, setRoundOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const addSeason = useAction((v: typeof season) => post(`competitions/${id}/seasons`, { name: v.name, startsOn: v.startsOn || null, endsOn: v.endsOn || null }), [['competition', id]], { success: 'Season added' });
   const archive = useAction(() => patch(`competitions/${id}`, { status: c.data?.status === 'archived' ? 'active' : 'archived' }), [['competition', id], ['competitions']]);
-  const setPreset = useAction((preset: string) => patch(`competitions/${id}`, { rulesPreset: preset }), [['competition', id]], { success: 'Rules updated' });
+  const setPreset = useAction((preset: string) => patch<{ matchesUpdated: number }>(`competitions/${id}`, { rulesPreset: preset, applyToUpcoming: true }), [['competition', id], ['matches', 'competition', id]], { success: (r) => `Rules updated${r.matchesUpdated ? `; ${r.matchesUpdated} upcoming match${r.matchesUpdated === 1 ? '' : 'es'} updated` : ''}` });
+  const presetOptions = usePresetOptions(c.data?.sport ?? 'football');
   if (c.isLoading) return <Spinner />;
   if (c.error) return <ErrorNotice error={c.error} onRetry={() => c.refetch()} />;
   const comp = c.data!;
@@ -67,11 +71,18 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Rules</h2>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">{comp.rulesDescription.map((r) => <li key={r}>{r}</li>)}</ul>
-            <p className="mt-3 text-xs text-muted">Rules version {comp.rulesVersion}. Running and completed matches keep the rules they started with.</p>
+            <p className="mt-3 text-xs text-muted">Rules version {comp.rulesVersion}. Running and completed matches keep the rules they started with; upcoming matches nobody has started scoring take changed rules.</p>
             {full ? (
-              <Field className="mt-3" label="Apply preset" htmlFor="preset">
-                <NativeSelect id="preset" defaultValue="" onChange={(e) => e.target.value && setPreset.mutate(e.target.value)}><option value="">Choose…</option>{comp.presets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</NativeSelect>
-              </Field>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <Field label="Apply preset" htmlFor="preset">
+                  <NativeSelect id="preset" value="" onChange={(e) => e.target.value && setPreset.mutate(e.target.value)}>
+                    <option value="">Choose…</option>
+                    {presetOptions.mine.length ? <optgroup label="Your presets">{presetOptions.mine.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</optgroup> : null}
+                    <optgroup label="Built-in">{comp.presets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</optgroup>
+                  </NativeSelect>
+                </Field>
+                <Button onClick={() => setRulesOpen(true)}>Edit rules</Button>
+              </div>
             ) : null}
             <ErrorNotice error={setPreset.error} />
           </Card>
@@ -88,6 +99,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <CompetitionProduction competition={comp} canEdit={full} />
         </TabPanel>
       </Tabs>
+      {full ? <RulesEditor competitionId={id} sport={comp.sport as Sport} current={comp.rulesConfig} open={rulesOpen} onOpenChange={setRulesOpen} /> : null}
       <Dialog open={seasonOpen} onOpenChange={setSeasonOpen} title="Add season" footer={<><Button variant="ghost" onClick={() => setSeasonOpen(false)}>Cancel</Button><Button variant="primary" loading={addSeason.isPending} disabled={!season.name.trim()} onClick={() => addSeason.mutate(season, { onSuccess: () => { setSeasonOpen(false); setSeason({ name: '', startsOn: '', endsOn: '' }); } })}>Add</Button></>}>
         <div className="grid gap-3">
           <Field label="Name" htmlFor="sn" error={addSeason.error?.fieldError('name')}><Input id="sn" value={season.name} onChange={(e) => setSeason({ ...season, name: e.target.value })} placeholder="2027" /></Field>

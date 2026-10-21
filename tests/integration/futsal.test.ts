@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { overlays, withTenant } from '@bs/db';
 import { catalog, gamePlansSvc, matchesSvc, scoring, type Ctx } from '@bs/services';
+import { futsalAdapter } from '@bs/domain';
 import { makeOrg, testDeps } from '../helpers';
 
 const deps = testDeps();
@@ -69,5 +70,51 @@ describe('futsal', () => {
     await cmd('SET_PHASE', { to: 'half_time' });
     await cmd('SET_PHASE', { to: 'p2' });
     expect((await state()).display).toMatchObject({ fouls: { home: 0, away: 0 }, timeouts: { home: 1, away: 1 } });
+  });
+
+  it('own rules presets: futsal 2×18 with a 5-minute half time, used for a competition; changed rules reach upcoming matches nobody has scored', async () => {
+    const A = await makeOrg(deps, 'Futsal presets A');
+    const B = await makeOrg(deps, 'Futsal presets B');
+    let T = Date.parse('2026-11-07T05:00:00Z');
+    const ctx: Ctx = { ...A.ctx, now: () => T };
+    const base = { ...(futsalAdapter.defaultConfig as Record<string, unknown>), periodMinutes: 18, halfTimeMinutes: 5 };
+    const preset = await catalog.saveRulesPreset(ctx, { sport: 'futsal', name: 'Futsal 2×18, 5-minute half time', config: base });
+    const listed = await catalog.listRulesPresets(ctx, 'futsal');
+    expect(listed.map((p) => [p.name, p.value])).toEqual([['Futsal 2×18, 5-minute half time', `org:${preset.id}`]]);
+    expect(listed[0]!.rulesDescription[0]).toMatch(/^2×18-minute halves.*half time up to 5 minutes/);
+    // saving under the same name replaces it; settings the rules do not allow are refused
+    await catalog.saveRulesPreset(ctx, { sport: 'futsal', name: 'Futsal 2×18, 5-minute half time', config: { ...base, halfTimeMinutes: 5 } });
+    expect(await catalog.listRulesPresets(ctx, 'futsal')).toHaveLength(1);
+    await expect(catalog.saveRulesPreset(ctx, { sport: 'futsal', name: 'Too long', config: { ...base, periodMinutes: 45 } })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+
+    const comp = await catalog.createCompetition(ctx, { name: 'Bayside Futsal Cup', sport: 'futsal', defaultTimezone: 'Australia/Sydney', rulesPreset: preset.value });
+    expect(comp.rulesConfig).toMatchObject({ periodMinutes: 18, halfTimeMinutes: 5, label: 'Futsal 2×18, 5-minute half time' });
+    const season = await catalog.createSeason(ctx, comp.id, { name: '2026' });
+    const h = await catalog.createTeam(ctx, { name: 'Bayside Futsal Club', shortName: 'Bayside', abbreviation: 'BFC', sport: 'futsal' });
+    const a = await catalog.createTeam(ctx, { name: 'Northgate Futsal', shortName: 'Northgate', abbreviation: 'NGF', sport: 'futsal' });
+    const fixture = (day: string) => matchesSvc.createMatch(ctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: `2026-11-${day} 19:00`, timezone: 'Australia/Sydney' });
+    const [m1, m2] = [await fixture('07'), await fixture('14')];
+    expect((await scoring.getMatchState(ctx, m1.id)).display.clockText).toBe('18:00');
+    // the first match has started (Pre-match pressed); the second is untouched
+    const lease = (await scoring.scorerLease(ctx, m1.id, { action: 'acquire', deviceId: 'presets-phone' }))!;
+    const st = await scoring.getMatchState(ctx, m1.id);
+    await scoring.handleMatchCommand(ctx, m1.id, { commandId: crypto.randomUUID(), expectedStateVersion: st.stateVersion, scorerLeaseVersion: lease.leaseVersion, deviceId: 'presets-phone', type: 'SET_PHASE', payload: { to: 'pre_match' } });
+
+    const u = await catalog.updateCompetition(ctx, comp.id, { rulesConfig: { periodMinutes: 16, halfTimeMinutes: 4 }, applyToUpcoming: true });
+    expect(u).toMatchObject({ matchesUpdated: 1, rulesConfig: { periodMinutes: 16, halfTimeMinutes: 4 } });
+    const s2 = await scoring.getMatchState(ctx, m2.id);
+    expect(s2.display.clockText).toBe('16:00');
+    expect((await matchesSvc.getMatch(ctx, m2.id)).rulesConfig).toMatchObject({ periodMinutes: 16, halfTimeMinutes: 4 });
+    expect((await matchesSvc.getMatch(ctx, m1.id)).rulesConfig).toMatchObject({ periodMinutes: 18 }); // already started: keeps its rules
+    // without the option, nothing but the competition changes
+    expect(await catalog.updateCompetition(ctx, comp.id, { rulesConfig: { periodMinutes: 15 } })).toMatchObject({ matchesUpdated: 0 });
+    expect((await scoring.getMatchState(ctx, m2.id)).display.clockText).toBe('16:00');
+
+    // another organisation neither sees nor uses the preset
+    expect(await catalog.listRulesPresets(B.ctx, 'futsal')).toEqual([]);
+    await expect(catalog.createCompetition(B.ctx, { name: 'Borrowed', sport: 'futsal', defaultTimezone: 'Australia/Sydney', rulesPreset: preset.value })).rejects.toThrow(/Unknown rules preset/);
+    await expect(catalog.deleteRulesPreset(B.ctx, preset.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await catalog.deleteRulesPreset(ctx, preset.id);
+    expect(await catalog.listRulesPresets(ctx)).toEqual([]);
   });
 });

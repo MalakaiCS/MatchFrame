@@ -543,6 +543,22 @@ export const templateVersions = pgTable(
   ],
 );
 
+/** An organisation's own rules preset for a sport ("Futsal 2×18, 5-minute half time"), offered beside the built-in ones. */
+export const rulesPresets = pgTable(
+  'rules_presets',
+  {
+    id: pk(),
+    organisationId: org(),
+    sport: text('sport').notNull(),
+    name: text('name').notNull(),
+    config: jsonb('config').$type<Record<string, unknown>>().notNull(),
+    createdBy: text('created_by'),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [unique('rules_presets_id_org').on(t.id, t.organisationId), uniqueIndex('rules_presets_name_uq').on(t.organisationId, t.sport, t.name)],
+);
+
 export const controlRoomLayouts = pgTable('control_room_layouts', {
   id: pk(),
   organisationId: org(),

@@ -92,6 +92,13 @@
       "when": 1792560000000,
       "tag": "0012_futsal",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792570000000,
+      "tag": "0013_rules_presets",
+      "breakpoints": true
     }
   ]
 }

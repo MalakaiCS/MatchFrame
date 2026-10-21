@@ -109,6 +109,7 @@ export const DOCS: DocArticle[] = [
         { do: 'Enter the **Competition name**, a **Short name**, the **Season** (for example 2026) and the **Sport**, then press **Continue**.' },
         { do: 'Enter at least two team names and press **Save teams**.' },
         { do: 'Choose the kick-off time for your first fixture and press **Create match**, then **Go to dashboard**.', expect: 'The dashboard shows the match as your next match.' },
+        { do: 'If your matches are not the standard length (for example 2×18-minute halves with a 5-minute half time), open **Competitions** → your competition → **Edit rules**, change the settings and press **Save rules**. Tick **Keep as one of your presets** to use the same rules for other competitions.', expect: 'The rules list shows the new lengths, and upcoming matches nobody has started scoring use them.' },
       ] },
       { h: '2. Add your players' },
       { steps: [
@@ -254,7 +255,7 @@ export const DOCS: DocArticle[] = [
     outcome: 'Know what the futsal scorer records, the rules it applies and what the scorebug shows.',
     availability: 'Beta.',
     body: [
-      { p: 'Futsal follows the Futsal Laws of the Game, which Football Australia and its member federations use. Competitions vary some of it, so choose the closest **Rules preset** when you create the competition and adjust it on the competition page: **Futsal Laws: 2×20 stopped clock** (the default), **Knockout** (with extra time 2×5 and kicks from the penalty mark), **Community 2×20 running clock, stopped in the final 2 minutes** and **Junior 2×15 running clock**. Check your competition\'s own regulations.' },
+      { p: 'Futsal follows the Futsal Laws of the Game, which Football Australia and its member federations use. Competitions vary some of it, so choose the closest **Rules preset** when you create the competition and change any setting with **Edit rules** on the competition page (for example 2×18-minute halves with a 5-minute half time), keeping it as one of your presets if other competitions use it too: **Futsal Laws: 2×20 stopped clock** (the default), **Knockout** (with extra time 2×5 and kicks from the penalty mark), **Community 2×20 running clock, stopped in the final 2 minutes** and **Junior 2×15 running clock**. Check your competition\'s own regulations.' },
       { h: 'What the scorer records' },
       { list: [
         'Goals (with the scorer, the assist and the goal type), own goals, penalties and 10 m kicks scored or missed.',

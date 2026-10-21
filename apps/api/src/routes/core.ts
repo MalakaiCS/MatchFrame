@@ -105,6 +105,9 @@ export function registerCoreRoutes(b: AppBundle) {
   app.post('/api/v1/competitions', async (req, reply) => reply.code(201).send(await catalog.createCompetition(await ctxFor(req), req.body as never)));
   app.get('/api/v1/competitions/:id', async (req) => catalog.getCompetition(await ctxFor(req), P(id, req.params).id));
   app.patch('/api/v1/competitions/:id', async (req) => catalog.updateCompetition(await ctxFor(req), P(id, req.params).id, req.body as never));
+  app.get('/api/v1/rules-presets', async (req) => catalog.listRulesPresets(await ctxFor(req), (req.query as { sport?: string }).sport || undefined));
+  app.post('/api/v1/rules-presets', async (req, reply) => reply.code(201).send(await catalog.saveRulesPreset(await ctxFor(req), req.body as never)));
+  app.delete('/api/v1/rules-presets/:id', async (req) => catalog.deleteRulesPreset(await ctxFor(req), P(id, req.params).id));
   app.post('/api/v1/competitions/:id/seasons', async (req, reply) => reply.code(201).send(await catalog.createSeason(await ctxFor(req), P(id, req.params).id, req.body as never)));
   app.patch('/api/v1/seasons/:id', async (req) => catalog.updateSeason(await ctxFor(req), P(id, req.params).id, req.body as never));
   app.get('/api/v1/competitions/:id/seasons', async (req) => seasonData.listSeasons(await ctxFor(req), P(id, req.params).id));

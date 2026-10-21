@@ -2,6 +2,14 @@
 
 ## Before the match
 
+0. **Rules** — a competition's rules come from a preset chosen when it is created. *Competition → Overview →
+   Rules → Edit rules* changes any setting of the sport's rules (half or quarter length, breaks, timeouts, extra
+   time, shoot-out; for futsal also the clock, the foul limit and the send-off time), shows the rules it makes, and
+   refuses settings the sport does not allow. *Keep as one of your presets* saves them, under the name at the top,
+   for other competitions: they are listed under *Your presets* when a competition is created and in *Apply
+   preset*, and can be deleted from the same form. *Also use for upcoming matches nobody has started scoring*
+   (on by default) gives the new rules to fixtures that have nothing recorded yet, not even a phase step, and
+   resets their untouched clock to the new length; a match with anything recorded keeps the rules it has.
 1. **Fixture** — Matches → open the fixture. Check teams, venue, kickoff (shown in the organisation timezone,
    stored in UTC) and the lineup snapshot. Lineups lock at kickoff; later roster changes never rewrite them.
    *Create a round* on the competition's Fixtures tab makes a whole round at once and can copy another match's

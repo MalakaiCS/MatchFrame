@@ -1,6 +1,6 @@
 'use client';
 import { SportOptions } from '@/components/sport-options';
-import { getAdapter } from '@bs/domain';
+import { usePresetOptions } from '@/components/competition/rules-editor';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
@@ -19,8 +19,9 @@ export default function CompetitionsPage() {
   const list = useGet<Comp[]>(['competitions', search, sport], `competitions?${new URLSearchParams({ ...(search ? { search } : {}), ...(sport ? { sport } : {}) })}`);
   const [form, setForm] = useState({ name: '', shortName: '', sport: 'football', rulesPreset: '', defaultTimezone: me.data?.activeOrganisation?.timezone ?? 'Australia/Brisbane' });
   const create = useAction((v: typeof form) => post('competitions', { ...v, shortName: v.shortName || null, rulesPreset: v.rulesPreset || undefined }), [['competitions']]);
-  // each sport's own presets; the first is its default rules
-  const presets = getAdapter(form.sport).presets.map((p, i) => [i === 0 ? '' : p.id, p.label] as const);
+  // each sport's own presets (the first is its default rules), and the organisation's for the sport
+  const presetOptions = usePresetOptions(form.sport);
+  const presets = presetOptions.builtIn.map((p, i) => [i === 0 ? '' : p.value, p.label] as const);
 
   return (
     <>
@@ -58,7 +59,7 @@ export default function CompetitionsPage() {
             <Field label="Short name" htmlFor="cshort"><Input id="cshort" maxLength={24} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
             <Field label="Sport" htmlFor="csport"><NativeSelect id="csport" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value, rulesPreset: '' })}><SportOptions /></NativeSelect></Field>
           </div>
-          <Field label="Rules preset" htmlFor="crules" hint="Presets are conveniences; adjust settings on the competition page. Not an official certification."><NativeSelect id="crules" value={form.rulesPreset} onChange={(e) => setForm({ ...form, rulesPreset: e.target.value })}>{presets.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</NativeSelect></Field>
+          <Field label="Rules preset" htmlFor="crules" hint="Presets are conveniences; change any setting, or keep your own preset, with Edit rules on the competition page. Not an official certification."><NativeSelect id="crules" value={form.rulesPreset} onChange={(e) => setForm({ ...form, rulesPreset: e.target.value })}>{presetOptions.mine.length ? <optgroup label="Your presets">{presetOptions.mine.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</optgroup> : null}<optgroup label="Built-in">{presets.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</optgroup></NativeSelect></Field>
           <Field label="Default timezone" htmlFor="ctz" error={create.error?.fieldError('defaultTimezone')}><Input id="ctz" value={form.defaultTimezone} onChange={(e) => setForm({ ...form, defaultTimezone: e.target.value })} /></Field>
           <ErrorNotice error={create.error && !create.error.fields ? create.error : null} />
         </div>

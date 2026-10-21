@@ -5,6 +5,8 @@ import {
   competitions,
   matchFacts,
   matches,
+  matchState,
+  rulesPresets,
   players,
   rosterMemberships,
   seasons,
@@ -17,7 +19,8 @@ import { z } from 'zod';
 import { assertCan, assignedScopes, hasWideRead } from './authz';
 import { audit } from './audit';
 import { conflict, invalid, notFound } from './errors';
-import { tx, type Ctx } from './context';
+import { nowMs, tx, type Ctx } from './context';
+import { enqueueOutbox } from './outbox';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
 const name = z.string().trim().min(1).max(100);
@@ -57,6 +60,53 @@ function resolveRules(sport: string, preset?: string, cfg?: Record<string, unkno
   const r = adapter.configSchema.safeParse(merged);
   if (!r.success) throw invalid('Invalid rules settings', r.error.issues.map((i) => ({ field: `rulesConfig.${i.path.join('.')}`, message: i.message })));
   return { rulesVersion: adapter.rulesVersion, rulesConfig: r.data as Record<string, unknown> };
+}
+
+/** An organisation's own preset ("org:<id>" in a rules-preset field): its saved settings, or an error if it is not one of this organisation's for this sport. */
+async function ownPreset(t: Tx, ctx: Ctx, sport: string, preset: string): Promise<Record<string, unknown>> {
+  const id = preset.slice(4);
+  const [p] = z.string().uuid().safeParse(id).success
+    ? await t.select().from(rulesPresets).where(and(eq(rulesPresets.id, id), eq(rulesPresets.organisationId, ctx.actor.organisationId), eq(rulesPresets.sport, sport)))
+    : [];
+  if (!p) throw invalid('Unknown rules preset', [{ field: 'rulesPreset', message: 'That preset is not one of yours for this sport' }]);
+  return p.config;
+}
+
+/** Built-in preset id, or an own preset's settings under the given changes. */
+async function rulesFor(t: Tx, ctx: Ctx, sport: string, preset: string | undefined, cfg: Record<string, unknown> | undefined) {
+  if (preset?.startsWith('org:')) return resolveRules(sport, undefined, { ...(await ownPreset(t, ctx, sport, preset)), ...(cfg ?? {}) });
+  return resolveRules(sport, preset, cfg);
+}
+
+/**
+ * Upcoming matches of a competition that nobody has scored yet (nothing recorded, not even a phase step) take the
+ * competition's new rules, as if they had been created under them: their rules and their untouched match state
+ * (clock lengths, timeouts) start again from the new rules. Matches with anything recorded keep theirs.
+ */
+async function retuneUntouchedMatches(t: Tx, ctx: Ctx, competitionId: string, rules: { rulesVersion: string; rulesConfig: Record<string, unknown> }) {
+  const rows = await t
+    .select({ m: matches, s: matchState })
+    .from(matches)
+    .innerJoin(matchState, eq(matchState.matchId, matches.id))
+    .where(and(eq(matches.competitionId, competitionId), eq(matches.organisationId, ctx.actor.organisationId), eq(matches.status, 'scheduled'), eq(matchState.sequence, 0)))
+    .for('update');
+  const now = nowMs(ctx);
+  for (const { m, s } of rows) {
+    const adapter = getAdapter(m.sport);
+    const cfg = rules.rulesConfig as never;
+    const projection = adapter.initialProjection(cfg);
+    const clocks = adapter.initialClocks(cfg);
+    const stateVersion = s.stateVersion + 1;
+    await t.update(matches).set({ sportRulesVersion: rules.rulesVersion, rulesConfig: rules.rulesConfig, updatedAt: new Date(now) }).where(eq(matches.id, m.id));
+    await t.update(matchState).set({ stateVersion, projection: projection as never, clocks: clocks as never, updatedAt: new Date(now) }).where(and(eq(matchState.matchId, m.id), eq(matchState.stateVersion, s.stateVersion)));
+    const base = { organisationId: ctx.actor.organisationId, aggregateType: 'match', aggregateId: m.id, aggregateSeq: stateVersion };
+    await enqueueOutbox(t, [
+      { ...base, topic: 'clock.anchor.updated', payload: { matchId: m.id, stateVersion, clocks: clocks as never, serverNow: now } },
+      { ...base, topic: 'match.state.updated', payload: { matchId: m.id, stateVersion, sequence: 0, phase: projection.phase, projection, clocks, status: m.status, serverNow: now } as never },
+    ]);
+    await audit(t, ctx.actor, 'match.rules', 'match', m.id, { before: { rulesConfig: m.rulesConfig }, after: { rulesConfig: rules.rulesConfig, reason: 'competition rules changed before the match was scored' } });
+  }
+  return rows.length;
 }
 
 function competitionScopeFilter(ctx: Ctx): SQL | undefined {
@@ -107,8 +157,8 @@ export async function getCompetition(ctx: Ctx, id: string) {
 export async function createCompetition(ctx: Ctx, input: z.input<typeof competitionInput>) {
   assertCan(ctx.actor, 'competition.write');
   const d = competitionInput.parse(input);
-  const rules = resolveRules(d.sport, d.rulesPreset, d.rulesConfig);
   return tx(ctx, async (t) => {
+    const rules = await rulesFor(t, ctx, d.sport, d.rulesPreset, d.rulesConfig);
     const [c] = await t
       .insert(competitions)
       .values({
@@ -130,23 +180,24 @@ export async function createCompetition(ctx: Ctx, input: z.input<typeof competit
   });
 }
 
-export async function updateCompetition(ctx: Ctx, id: string, input: Partial<z.input<typeof competitionInput>> & { status?: 'active' | 'archived' }) {
+export async function updateCompetition(ctx: Ctx, id: string, input: Partial<z.input<typeof competitionInput>> & { status?: 'active' | 'archived'; applyToUpcoming?: boolean }) {
   assertCan(ctx.actor, 'competition.write');
-  const d = competitionInput.partial().extend({ status: z.enum(['active', 'archived']).optional() }).parse(input);
+  const { applyToUpcoming, ...d } = competitionInput.partial().extend({ status: z.enum(['active', 'archived']).optional(), applyToUpcoming: z.boolean().optional() }).parse(input);
   return tx(ctx, async (t) => {
     const [c] = await t.select().from(competitions).where(and(eq(competitions.id, id), eq(competitions.organisationId, ctx.actor.organisationId)));
     if (!c) throw notFound('Competition');
     if (d.sport && d.sport !== c.sport) throw invalid('Sport cannot change after creation', [{ field: 'sport', message: 'Create a new competition instead' }]);
     // Rules changes never affect matches that already pinned a rules version (matches.rules_config snapshot).
-    const rules = d.rulesPreset || d.rulesConfig ? resolveRules(c.sport, d.rulesPreset, { ...(d.rulesPreset ? {} : c.rulesConfig), ...(d.rulesConfig ?? {}) }) : {};
+    const rules = d.rulesPreset || d.rulesConfig ? await rulesFor(t, ctx, c.sport, d.rulesPreset, { ...(d.rulesPreset ? {} : c.rulesConfig), ...(d.rulesConfig ?? {}) }) : null;
     const { rulesPreset: _p, rulesConfig: _c, ...rest } = d;
     const [u] = await t
       .update(competitions)
-      .set({ ...rest, ...rules, updatedAt: new Date() })
+      .set({ ...rest, ...(rules ?? {}), updatedAt: new Date() })
       .where(eq(competitions.id, id))
       .returning();
-    await audit(t, ctx.actor, d.status === 'archived' ? 'competition.archive' : 'competition.update', 'competition', id, { before: { name: c.name, status: c.status }, after: d });
-    return u!;
+    await audit(t, ctx.actor, d.status === 'archived' ? 'competition.archive' : 'competition.update', 'competition', id, { before: { name: c.name, status: c.status, ...(rules ? { rulesConfig: c.rulesConfig } : {}) }, after: d });
+    const matchesUpdated = rules && applyToUpcoming ? await retuneUntouchedMatches(t, ctx, id, rules) : 0;
+    return { ...u!, matchesUpdated };
   });
 }
 
@@ -440,5 +491,48 @@ export async function teamHistory(ctx: Ctx, id: string) {
     const [m] = await t.select({ n: count() }).from(matches).where(or(eq(matches.homeTeamId, id), eq(matches.awayTeamId, id)));
     const [f] = await t.select({ n: count() }).from(matchFacts).where(and(eq(matchFacts.teamId, id), isNull(matchFacts.playerId)));
     return { matches: m?.n ?? 0, facts: f?.n ?? 0 };
+  });
+}
+
+// ------------------------------------------------------------------ rules presets
+
+export const rulesPresetInput = z.object({ sport: z.enum(SPORTS), name: z.string().trim().min(1).max(80), config: z.record(z.string(), z.unknown()) });
+
+/** The organisation's own rules presets (for one sport, or all), each with the rules it describes. */
+export async function listRulesPresets(ctx: Ctx, sport?: string) {
+  assertCan(ctx.actor, 'competition.read');
+  return tx(ctx, async (t) => {
+    const rows = await t
+      .select()
+      .from(rulesPresets)
+      .where(and(eq(rulesPresets.organisationId, ctx.actor.organisationId), sport ? eq(rulesPresets.sport, sport) : undefined))
+      .orderBy(asc(rulesPresets.sport), asc(rulesPresets.name));
+    return rows.map((p) => ({ id: p.id, value: `org:${p.id}`, sport: p.sport, name: p.name, config: p.config, rulesDescription: getAdapter(p.sport).describeRules(p.config as never) }));
+  });
+}
+
+/** Save rules as one of the organisation's presets for the sport; saving under an existing name replaces it. */
+export async function saveRulesPreset(ctx: Ctx, input: z.input<typeof rulesPresetInput>) {
+  assertCan(ctx.actor, 'competition.write');
+  const d = rulesPresetInput.parse(input);
+  const { rulesConfig } = resolveRules(d.sport, undefined, { ...d.config, label: d.name });
+  return tx(ctx, async (t) => {
+    const [p] = await t
+      .insert(rulesPresets)
+      .values({ organisationId: ctx.actor.organisationId, sport: d.sport, name: d.name, config: rulesConfig, createdBy: ctx.actor.userId })
+      .onConflictDoUpdate({ target: [rulesPresets.organisationId, rulesPresets.sport, rulesPresets.name], set: { config: rulesConfig, updatedAt: new Date() } })
+      .returning();
+    await audit(t, ctx.actor, 'rules_preset.save', 'rules_preset', p!.id, { after: { sport: d.sport, name: d.name } });
+    return { id: p!.id, value: `org:${p!.id}`, sport: p!.sport, name: p!.name, config: p!.config };
+  });
+}
+
+export async function deleteRulesPreset(ctx: Ctx, id: string) {
+  assertCan(ctx.actor, 'competition.write');
+  return tx(ctx, async (t) => {
+    const [p] = await t.delete(rulesPresets).where(and(eq(rulesPresets.id, id), eq(rulesPresets.organisationId, ctx.actor.organisationId))).returning();
+    if (!p) throw notFound('Rules preset');
+    await audit(t, ctx.actor, 'rules_preset.delete', 'rules_preset', id, { before: { sport: p.sport, name: p.name } });
+    return { ok: true };
   });
 }
