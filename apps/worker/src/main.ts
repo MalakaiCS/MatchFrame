@@ -22,11 +22,14 @@ const relay = createRelay({
 await relay.start();
 const bg = await startBackground(ctx);
 console.log(`[worker] ${workerId} started`);
-// main outputs from before every match got automation by default: give them their plan now (once; then audited)
-void gamePlansSvc
-  .backfillDefaultPlans({ db, config })
-  .then((n) => n && console.log(`[worker] gave ${n} output(s) without automation the starter flow`))
-  .catch((e: Error) => console.warn(`[worker] automation backfill failed: ${e.message}`));
+// plans still exactly as an older starter flow left them get the current one; then main outputs from before every
+// match got automation by default get their plan (once; then audited)
+void (async () => {
+  const u = await gamePlansSvc.upgradeStarterPlans({ db, config });
+  if (u) console.log(`[worker] updated ${u} untouched starter plan(s) to the current starter flow`);
+  const n = await gamePlansSvc.backfillDefaultPlans({ db, config });
+  if (n) console.log(`[worker] gave ${n} output(s) without automation the starter flow`);
+})().catch((e: Error) => console.warn(`[worker] automation backfill failed: ${e.message}`));
 
 const shutdown = async () => {
   await relay.stop();

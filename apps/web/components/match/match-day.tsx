@@ -44,6 +44,14 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
     for (const p of plans.data ?? []) for (const v of p.versions) if (v.id === versionId) return `${p.name} v${v.version}`;
     return null;
   };
+  // the output is on an older version of its plan than the one now published (matches keep the version they were given)
+  const newer = (() => {
+    for (const p of plans.data ?? []) {
+      const at = p.versions.find((v) => v.id === primary?.gamePlanVersionId);
+      if (at && p.versions[0] && p.versions[0].version > at.version) return p.versions[0];
+    }
+    return null;
+  })();
   const obs = primary ? obsStatus(primary) : null;
   const rows = [
     { done: lineupsDone, key: 'lineups' },
@@ -81,10 +89,11 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
             </>
           ) : null} />
         <CheckRow done={!!primary?.gamePlanVersionId} label={primary?.gamePlanVersionId ? `Automation: ${planName(primary.gamePlanVersionId) ?? 'on'}` : 'Set up automation'}
-          detail={primary?.gamePlanVersionId ? 'Graphics follow the scorer automatically.' : publishedPlans.length ? 'Lineups, kick-off, goals and the half-time board run from the scorer’s taps.' : 'Without a plan the OBS link stays empty until you take graphics by hand. The starter flow puts the background and match header up now and follows the scorer from there.'}
+          detail={newer ? `Version ${newer.version} of this plan is published; this match still runs the older one.` : primary?.gamePlanVersionId ? 'Graphics follow the scorer automatically.' : publishedPlans.length ? 'Lineups, kick-off, goals and the half-time board run from the scorer’s taps.' : 'Without a plan the OBS link stays empty until you take graphics by hand. The starter flow puts the background and match header up now and follows the scorer from there.'}
           action={canEdit && primary ? (
             <>
               {!primary.gamePlanVersionId ? <Button size="sm" variant="primary" loading={starterAction.isPending} onClick={() => starterAction.mutate(undefined)}>{publishedPlans.length ? 'Use the latest plan' : 'Use the starter flow'}</Button> : null}
+              {newer ? <Button size="sm" variant="primary" loading={setPlanAction.isPending} onClick={() => setPlanAction.mutate(newer.id)}>Use v{newer.version}</Button> : null}
               <NativeSelect aria-label="Automation plan" className="w-auto" value={plan} onChange={(e) => setPlan(e.target.value)}>
                 <option value="">{primary.gamePlanVersionId ? 'Change plan…' : 'Choose…'}</option>
                 {publishedPlans.map((p) => <option key={p.id} value={p.versions[0]!.id}>{p.name} (v{p.versions[0]!.version})</option>)}

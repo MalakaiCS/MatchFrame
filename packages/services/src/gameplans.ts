@@ -1,5 +1,5 @@
 // Game plans: editable drafts, publish-time validation and immutable published versions.
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { creatives, gamePlans, gamePlanVersions, matches, mediaAssets, memberships, overlays, type Tx } from '@bs/db';
 import { getAdapter, SPORT_LABELS, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, type Sport, SPORTS } from '@bs/domain';
 import { BUILTIN_TEMPLATES } from '@bs/graphics';
@@ -9,6 +9,7 @@ import { audit } from './audit';
 import { invalid, notFound } from './errors';
 import { resolveActor, tx, type Ctx, type Deps } from './context';
 import { customDefs, latestPublishedPlan, loadOverlay, setOverlayGamePlan } from './overlays';
+import { planFingerprint, STARTER_FINGERPRINTS } from './starter-history';
 
 export async function templateLayerMap(t: Tx, organisationId: string) {
   const custom = await customDefs(t, organisationId);
@@ -161,20 +162,73 @@ export async function backfillDefaultPlans(deps: Deps, now = new Date()): Promis
     );
   let given = 0;
   for (const r of rows) {
-    const [owner] = await deps.db
-      .select({ userId: memberships.userId })
-      .from(memberships)
-      .where(and(eq(memberships.organisationId, r.organisationId), eq(memberships.role, 'owner'), eq(memberships.status, 'active')))
-      .orderBy(asc(memberships.createdAt))
-      .limit(1);
-    const actor = owner ? await resolveActor(deps.db, owner.userId, r.organisationId) : null;
-    if (!actor) continue;
+    const ctx = await ownerCtx(deps, r.organisationId);
+    if (!ctx) continue;
     try {
-      await applyStarterPlan({ ...deps, actor }, r.id);
+      await applyStarterPlan(ctx, r.id);
       given++;
     } catch (e) {
       console.warn(`[automation] could not give output ${r.id} a plan: ${(e as Error).message}`);
     }
   }
   return given;
+}
+
+/** A system step acting for an organisation: as its earliest active owner. */
+async function ownerCtx(deps: Deps, organisationId: string): Promise<Ctx | null> {
+  const [owner] = await deps.db
+    .select({ userId: memberships.userId })
+    .from(memberships)
+    .where(and(eq(memberships.organisationId, organisationId), eq(memberships.role, 'owner'), eq(memberships.status, 'active')))
+    .orderBy(asc(memberships.createdAt))
+    .limit(1);
+  const actor = owner ? await resolveActor(deps.db, owner.userId, organisationId) : null;
+  return actor ? { ...deps, actor } : null;
+}
+
+/**
+ * On worker start: a plan that is still an untouched copy of an older starter flow (published as it was created,
+ * nothing edited since) gets the current starter flow as a new version, as if its owner had reset it to the
+ * starter and published. Upcoming matches whose outputs used that copy move to the new version and catch up with
+ * their match (for football, the background and match header come up before kick-off). Plans someone has edited,
+ * and matches already under way, are left as they are. Returns how many plans were updated.
+ */
+export async function upgradeStarterPlans(deps: Deps, now = new Date()): Promise<number> {
+  const plans = await deps.db
+    .select({ id: gamePlans.id, organisationId: gamePlans.organisationId, sport: gamePlans.sport })
+    .from(gamePlans)
+    .where(and(eq(gamePlans.status, 'active'), gt(gamePlans.currentVersion, 0)));
+  let updated = 0;
+  for (const p of plans) {
+    const starter = STARTER_PLANS[p.sport as Sport];
+    const latest = starter ? planFingerprint(starter) : null;
+    const known = STARTER_FINGERPRINTS[p.sport as Sport] ?? [];
+    if (!starter || !known.some((f) => f !== latest)) continue;
+    const ctx = await ownerCtx(deps, p.organisationId);
+    if (!ctx) continue;
+    try {
+      const moved = await tx(ctx, async (t) => {
+        const [plan] = await t.select().from(gamePlans).where(and(eq(gamePlans.id, p.id), eq(gamePlans.organisationId, p.organisationId))).for('update');
+        if (!plan) return null;
+        const [pub] = await t.select().from(gamePlanVersions).where(and(eq(gamePlanVersions.gamePlanId, p.id), eq(gamePlanVersions.organisationId, p.organisationId), eq(gamePlanVersions.version, plan.currentVersion)));
+        const fp = pub ? planFingerprint(pub.definition) : null;
+        if (!fp || fp === latest || !known.includes(fp) || planFingerprint(plan.draft) !== fp) return null;
+        await t.update(gamePlans).set({ draft: structuredClone(starter) as never, updatedAt: new Date() }).where(eq(gamePlans.id, p.id));
+        await audit(t, ctx.actor, 'game_plan.update', 'game_plan', p.id, { before: { version: plan.currentVersion }, after: { reason: 'untouched copy of an older starter flow, updated to the current one' } });
+        const v = await publishTx(ctx, t, p.id);
+        const outputs = await t
+          .select({ id: overlays.id })
+          .from(overlays)
+          .innerJoin(matches, and(eq(matches.id, overlays.matchId), eq(matches.organisationId, overlays.organisationId)))
+          .where(and(eq(overlays.organisationId, p.organisationId), eq(overlays.gamePlanVersionId, pub!.id), eq(matches.status, 'scheduled'), gte(matches.scheduledAt, new Date(now.getTime() - 86_400_000))));
+        return { versionId: v.id, outputs: outputs.map((o) => o.id) };
+      });
+      if (!moved) continue;
+      updated++;
+      for (const o of moved.outputs) await setOverlayGamePlan(ctx, o, moved.versionId);
+    } catch (e) {
+      console.warn(`[automation] could not update plan ${p.id} to the current starter flow: ${(e as Error).message}`);
+    }
+  }
+  return updated;
 }

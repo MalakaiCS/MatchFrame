@@ -170,6 +170,27 @@ this environment, and carries no league or broadcaster marks, names or typefaces
 Not executed: vertical and venue formats have baselines only for Broadcast and Premier; the new looks use the same
 format rules and were not captured in those formats. Other sports were not captured in the new looks.
 
+## Match-day fixes (2026-10-21)
+
+The OBS link showing nothing for a new match, the match header's hold, the pre-kick-off order and the output format
+picker (operator guide, *What the football starter plan does on its own*). Same environment, production build
+through the single-port launcher, graphics-only mode.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: kick-off countdown wording (minutes, hours, days); the match header held until removed; every past starter flow's fingerprint known, key order ignored, an edited plan told apart | 105 tests, 19 files, all pass |
+| `pnpm test:db`: the first match in an organisation with no plan publishes the starter flow and its output shows the background and header with no set time; *Use the starter flow* on an output without a plan; on worker start an output that never had a plan gets one and one a person turned off stays off; an output on an untouched copy of the 20 October starter flow showed nothing before *Pre-match*, and after the worker's upgrade is on the new version with the background and header on air, while an edited plan keeps its version and draft; a second start changes nothing | 56 tests, 6 files, all pass |
+| `tests/e2e/specs/obs-link.spec.ts`: venue screen, 9:16 and back to 16:9, each saved and shown; *Use the starter flow* puts the pre-match graphics on air; a match on an older plan version shows *Use v2* and moves to it | 3 tests, all pass on the final build |
+| `tests/e2e/specs/automation-flow.spec.ts`: header still on air well past its old 8 s, scorebug at 0:00 at *About to start*, clock running after kick-off, then the rest of the football flow in real time | pass on the final build (2.3 min) |
+| Worker start on the local database that earlier builds and test runs had filled | "updated 14 untouched starter plan(s) to the current starter flow"; no warnings |
+| Full `pnpm test:e2e` | 37 tests, 37 pass on the build before the starter-plan upgrade; after the upgrade only the two specs above were re-run |
+
+Not executed here: the hosted deployment itself (this environment cannot reach it), so whether the upgrade finds the
+plan an organisation there has is confirmed only by the worker's log line after the next deploy. Plans that were
+edited are deliberately not changed; the other five sports' starter flows are unchanged and still start at
+*Pre-match*.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

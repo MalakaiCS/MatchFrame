@@ -1,11 +1,12 @@
 // Automation + sponsor delivery against real PostgreSQL with the worker role (A23–A28, A30–A32, A34).
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq, inArray } from 'drizzle-orm';
 import { automationCues, automationRuns, createDb, destinations, mediaAssets, outboxEvents, overlays, withTenant } from '@bs/db';
 import { createFakeProvider } from '@bs/media';
 import { automationSvc, catalog, gamePlansSvc, matchesSvc, overlaysSvc, scoring, sponsorsSvc, streamsSvc, type Ctx } from '@bs/services';
-import type { GamePlan } from '@bs/domain';
+import { STARTER_PLANS, type GamePlan } from '@bs/domain';
 import { makeOrg, testDeps } from '../helpers';
 
 const deps = testDeps();
@@ -226,6 +227,50 @@ describe('automation runtime', () => {
     const [ex] = await withTenant(deps.db, { organisationId: C.org.id }, (t) => t.select().from(overlays).where(eq(overlays.id, extra.id)));
     expect(ex!.gamePlanVersionId).toBeNull();
     expect(await gamePlansSvc.listGamePlans(cctx)).toHaveLength(1);
+  });
+
+  it('on worker start, an untouched copy of an older starter flow gets the current one and upcoming outputs catch up; an edited plan is left alone', async () => {
+    const D = await makeOrg(deps, 'Automation D');
+    const dctx: Ctx = { ...D.ctx, now: clock };
+    const publish = async (name: string, draft: unknown) => {
+      const p = await gamePlansSvc.createGamePlan(dctx, { name, sport: 'football', fromStarter: false });
+      await gamePlansSvc.updateGamePlanDraft(dctx, p.id, { draft });
+      return { id: p.id, versionId: (await gamePlansSvc.publishGamePlan(dctx, p.id)).id };
+    };
+    // the football starter flow of 20 October: the background and header only came up at "Pre-match"
+    const old = JSON.parse(fs.readFileSync(new URL('../fixtures/football-starter-2026-10-20.json', import.meta.url), 'utf8')) as GamePlan;
+    const edited = structuredClone(old);
+    edited.playlists[0]!.name = 'Our walk-out';
+    const keep = await publish('Our plan', edited);
+    const copy = await publish('Football starter', old);
+    const comp = await catalog.createCompetition(dctx, { name: 'Older League', sport: 'football', defaultTimezone: 'Australia/Brisbane' });
+    const season = await catalog.createSeason(dctx, comp.id, { name: '2026' });
+    const h = await catalog.createTeam(dctx, { name: 'Harbour City FC', shortName: 'Harbour', abbreviation: 'HCF', sport: 'football' });
+    const a = await catalog.createTeam(dctx, { name: 'Ridgeback United', shortName: 'Ridge', abbreviation: 'RBU', sport: 'football' });
+    const m = await matchesSvc.createMatch(dctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-12-19 15:00', timezone: 'Australia/Brisbane' });
+    const out = async () => (await withTenant(deps.db, { organisationId: D.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m.id))))[0]!;
+    // what the operator saw: the match's output has the old copy, and nothing goes on air before "Pre-match"
+    expect((await out()).gamePlanVersionId).toBe(copy.versionId);
+    expect((await automationSvc.onOutputReady(W(), D.org.id, (await out()).id))[0]!.started).toEqual([]);
+
+    expect(await gamePlansSvc.upgradeStarterPlans({ db: worker.db, config: deps.config })).toBeGreaterThanOrEqual(1);
+    const plans = await gamePlansSvc.listGamePlans(dctx);
+    expect(plans.map((p) => [p.name, p.currentVersion])).toEqual([['Football starter', 2], ['Our plan', 1]]);
+    const upgraded = await gamePlansSvc.getGamePlan(dctx, copy.id);
+    expect(upgraded.draft).toEqual(STARTER_PLANS.football);
+    expect((await gamePlansSvc.getGamePlan(dctx, keep.id)).draft).toEqual(edited);
+    const own = await out();
+    expect(own.gamePlanVersionId).toBe(upgraded.versions[0]!.id);
+    expect((await automationSvc.onOutputReady(W(), D.org.id, own.id))[0]!.started).toEqual(['pre_match']);
+    await pump();
+    T += 1000;
+    await pump();
+    const s = (await overlaysSvc.getOverlay(dctx, own.id)).state;
+    expect(s.layers.background).toMatchObject({ templateKey: 'builtin:backdrop', durationMs: null });
+    expect(s.layers.fullframe).toMatchObject({ templateKey: 'builtin:ident', durationMs: null, variables: { showCountdown: true } });
+    // a second start changes nothing
+    await gamePlansSvc.upgradeStarterPlans({ db: worker.db, config: deps.config });
+    expect((await gamePlansSvc.listGamePlans(dctx)).map((p) => p.currentVersion)).toEqual([2, 1]);
   });
 
   it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {

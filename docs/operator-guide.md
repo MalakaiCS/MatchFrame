@@ -147,8 +147,13 @@ checklist shows which plan it is, and *Change plan…* picks another. Whenever a
 later), it catches up with the match straight away: before kick-off the background and header go up, during half
 time the half-time boards start, and mid-half only the scorebug comes back (no kick-off banner at minute 30).
 
-**Plans made before this flow.** A published plan keeps its playlists. To switch an existing football plan,
-open it under Automation, press *Use the latest starter flow*, check it in *Rehearse*, and publish. Any phase
+**Plans made before this flow.** A plan that is still exactly as an older starter flow left it (published as it
+was created, nothing edited since) is brought up to the current starter flow when the worker starts after an update:
+it gets a new version, the audit log says why, and the outputs of matches that have not started yet move to that
+version and catch up (the background and header go up). Matches already under way keep the version they started
+with. A plan someone has edited keeps its playlists: to switch it, open it under Automation, press *Use the latest
+starter flow*, check it in *Rehearse*, and publish. A match keeps the plan version it was given, so after publishing,
+its match-day checklist says a newer version is published and offers *Use v2* (or whichever is newest). Any phase
 playlist can also be set to *Keep going when the scorer presses the next step*, which is how the line-ups survive
 *About to start*; it still stops at kick-off, at a break or at full time.
 

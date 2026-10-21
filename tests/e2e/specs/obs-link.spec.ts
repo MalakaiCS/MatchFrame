@@ -45,3 +45,21 @@ test('an output with no automation: "Use the starter flow" puts the pre-match gr
   await expect.poll(onAir, { timeout: 20_000 }).toBe('builtin:backdrop,builtin:ident');
   await ctx.close();
 });
+
+test('a match on an older version of its plan offers the newer one', async ({ browser }) => {
+  const { ctx, page } = await login(browser);
+  const matchId = await freshMatch(page);
+  const [ov] = await api<{ id: string }[]>(page, `/api/v1/matches/${matchId}/overlays`);
+  const plan = await api<{ id: string }>(page, '/api/v1/game-plans', { name: `E2E versions ${matchId.slice(0, 4)}`, sport: 'football', fromStarter: true });
+  const v1 = await api<{ id: string }>(page, `/api/v1/game-plans/${plan.id}/publish`, {});
+  const put = await page.evaluate(async ([p, b]) => (await fetch(p, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })).status, [`/api/v1/overlays/${ov!.id}/game-plan`, { gamePlanVersionId: v1.id }] as const);
+  expect(put).toBe(200);
+  const v2 = await api<{ id: string; version: number }>(page, `/api/v1/game-plans/${plan.id}/publish`, {});
+  await page.goto(`/app/matches/${matchId}`);
+  await expect(page.getByText('Version 2 of this plan is published; this match still runs the older one.')).toBeVisible();
+  await page.getByRole('button', { name: 'Use v2' }).click();
+  const pinned = async () => (await api<{ gamePlanVersionId: string | null }[]>(page, `/api/v1/matches/${matchId}/overlays`))[0]!.gamePlanVersionId;
+  await expect.poll(pinned).toBe(v2.id);
+  await expect(page.getByRole('button', { name: 'Use v2' })).toHaveCount(0);
+  await ctx.close();
+});
