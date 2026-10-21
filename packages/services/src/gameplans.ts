@@ -195,7 +195,7 @@ async function ownerCtx(deps: Deps, organisationId: string): Promise<Ctx | null>
  */
 export async function upgradeStarterPlans(deps: Deps, now = new Date()): Promise<number> {
   const plans = await deps.db
-    .select({ id: gamePlans.id, organisationId: gamePlans.organisationId, sport: gamePlans.sport })
+    .select({ id: gamePlans.id, organisationId: gamePlans.organisationId, sport: gamePlans.sport, draft: gamePlans.draft })
     .from(gamePlans)
     .where(and(eq(gamePlans.status, 'active'), gt(gamePlans.currentVersion, 0)));
   let updated = 0;
@@ -203,7 +203,8 @@ export async function upgradeStarterPlans(deps: Deps, now = new Date()): Promise
     const starter = STARTER_PLANS[p.sport as Sport];
     const latest = starter ? planFingerprint(starter) : null;
     const known = STARTER_FINGERPRINTS[p.sport as Sport] ?? [];
-    if (!starter || !known.some((f) => f !== latest)) continue;
+    const draft = planFingerprint(p.draft);
+    if (!starter || !draft || draft === latest || !known.includes(draft)) continue;
     const ctx = await ownerCtx(deps, p.organisationId);
     if (!ctx) continue;
     try {
