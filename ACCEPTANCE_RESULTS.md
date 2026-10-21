@@ -230,7 +230,7 @@ competition regulations, and the numbers that competitions vary are settings.
 | `tests/e2e/specs/futsal.spec.ts` on the final build: the scorer phone kicks off a count-down half, five *Foul* taps show "Fouls 5 · next is a 10 m kick" and the alert, *Timeout* stops the clock (TO 0), *Red card* shows "4 on court · 2:00"; the OBS page's scorebug shows the count-down clock and "F 5 ◆" (`docs/evidence/e2e/futsal-scorebug.png`) | pass |
 | Visual regression: six new baselines for futsal in the broadcast look (scorebug with fouls 3 and 5 ◆, match header, kick-off banner, break score, slate, animated background); basketball and hockey baselines unchanged | pass |
 | Plan validation for every sport | a plan is now checked against its own sport's events; before, every non-basketball plan was checked against football's, which would have refused the futsal starter flow |
-| Full `pnpm test:e2e` | not yet complete when this row was written |
+| Full `pnpm test:e2e` on the final build | 41 tests, 41 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 18.5 min); the FAQ and sports-page wording changed after this build |
 
 Not claimed: futsal is marked beta (no full match has been scored courtside); the scorebug shows no send-off
 countdown (it is on the scorer phone and in the alerts); the Laws' exact wording was not checked against the
