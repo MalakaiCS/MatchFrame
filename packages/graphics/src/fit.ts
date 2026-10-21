@@ -42,7 +42,11 @@ export function canvasMeasure(fontFamily: string, weight = 700): Measure {
   if (!ctx) return approxMeasure;
   const cache = new Map<string, number>();
   const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-  fonts?.addEventListener?.('loadingdone', () => cache.clear());
+  const asked = new Set<string>();
+  // only when a face actually finished loading (not on every check), so measuring never loops on itself
+  fonts?.addEventListener?.('loadingdone', (e) => {
+    if ((e as Event & { fontfaces?: readonly FontFace[] }).fontfaces?.length) cache.clear();
+  });
   return (text, px) => {
     const k = `${px}|${text}`;
     let v = cache.get(k);
@@ -56,7 +60,10 @@ export function canvasMeasure(fontFamily: string, weight = 700): Measure {
         ready = true;
       }
       if (ready) cache.set(k, v);
-      else void fonts?.load(ctx.font, text).catch(() => {});
+      else if (!asked.has(ctx.font)) {
+        asked.add(ctx.font);
+        void fonts?.load(ctx.font, text).catch(() => {});
+      }
     }
     return v;
   };

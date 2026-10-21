@@ -70,6 +70,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
   const rotate = useAction(() => post(`overlays/${o.id}/rotate`, { purpose: 'production' }), [['overlay-urls', o.id], ['overlays', matchId]], { success: 'New OBS link created. Update the Browser Source in OBS.' });
   const apply = useAction(() => post(`overlays/${o.id}/apply-theme`), [['overlays', matchId]], { success: 'New version of the look applied' });
   const setFormat = useAction((format: string) => put(`overlays/${o.id}/format`, { format }), [['overlays', matchId]], { success: 'Output format changed. OBS picks it up on the next refresh.' });
+  const starter = useAction(() => post(`overlays/${o.id}/starter-plan`), [['overlays', matchId], ['game-plans']], { success: 'Automation on: the pre-match graphics are going to air' });
   const [hk, setHk] = useState(false);
   const format = o.format ?? '16:9';
   const size = format === '9:16' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
@@ -91,6 +92,12 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
       <p className="mt-2 text-xs text-muted">
         Look: {o.theme ? `${o.theme.profile} v${o.theme.version}` : 'default'} · On air now: {o.state.onAir.length ? o.state.onAir.map(layerLabel).join(', ') : 'nothing'}
       </p>
+      {!o.gamePlanVersionId && o.kind === 'graphics' ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/10 p-2 text-sm">
+          No automation on this output, so OBS shows nothing until graphics are taken by hand.
+          {canEdit ? <Button size="sm" variant="primary" loading={starter.isPending} onClick={() => starter.mutate(undefined)}>Use the starter flow</Button> : null}
+        </div>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
         <span>Format</span>
         <NativeSelect aria-label="Output format" className="w-auto" value={format} disabled={!canEdit || setFormat.isPending} onChange={(e) => setFormat.mutate(e.target.value)}>
@@ -129,7 +136,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
           </p>
         </details>
       ) : null}
-      <ErrorNotice error={urls.error ?? rotate.error ?? apply.error ?? setFormat.error} />
+      <ErrorNotice error={urls.error ?? rotate.error ?? apply.error ?? setFormat.error ?? starter.error} />
     </Card>
   );
 }

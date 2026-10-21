@@ -49,7 +49,7 @@ export function overlayUrl(cfg: AppConfig, publicIdStr: string, token: string, p
   return purpose === 'monitor' ? `${base}&mode=monitor` : purpose === 'rehearsal' ? `${base}&mode=rehearsal` : base;
 }
 
-async function loadOverlay(ctx: Ctx, t: Tx, id: string) {
+export async function loadOverlay(ctx: Ctx, t: Tx, id: string) {
   const [row] = await t.select({ o: overlays, m: matches }).from(overlays).innerJoin(matches, eq(matches.id, overlays.matchId)).where(and(eq(overlays.id, id), eq(overlays.organisationId, ctx.actor.organisationId)));
   if (!row) throw notFound('Overlay');
   return row;
@@ -64,7 +64,7 @@ export const overlayInput = z.object({
 });
 
 /** The newest published version of the organisation's most recently published plan for a sport, if any. */
-async function latestPublishedPlan(t: Tx, organisationId: string, sport: string): Promise<string | null> {
+export async function latestPublishedPlan(t: Tx, organisationId: string, sport: string): Promise<string | null> {
   const [v] = await t
     .select({ id: gamePlanVersions.id })
     .from(gamePlanVersions)

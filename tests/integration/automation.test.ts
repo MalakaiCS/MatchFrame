@@ -191,6 +191,13 @@ describe('automation runtime', () => {
     expect(await gamePlansSvc.listGamePlans(bctx)).toHaveLength(1);
     const [own2] = await withTenant(deps.db, { organisationId: B.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m2.id)));
     expect(own2!.gamePlanVersionId).toBe(own!.gamePlanVersionId);
+    // an output left without a plan (a match from before) gets it back with "Use the starter flow", and catches up
+    await overlaysSvc.setOverlayGamePlan(bctx, own2!.id, null);
+    expect(await gamePlansSvc.applyStarterPlan(bctx, own2!.id)).toEqual({ gamePlanVersionId: own!.gamePlanVersionId });
+    const [again] = await withTenant(deps.db, { organisationId: B.org.id }, (t) => t.select().from(overlays).where(eq(overlays.id, own2!.id)));
+    expect(again!.gamePlanVersionId).toBe(own!.gamePlanVersionId);
+    expect(await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, own2!.id)))).toHaveLength(2);
+    expect(await gamePlansSvc.listGamePlans(bctx)).toHaveLength(1);
   });
 
   it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {

@@ -8,7 +8,7 @@ import { assertCan } from './authz';
 import { audit } from './audit';
 import { invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
-import { customDefs } from './overlays';
+import { customDefs, latestPublishedPlan, loadOverlay, setOverlayGamePlan } from './overlays';
 
 export async function templateLayerMap(t: Tx, organisationId: string) {
   const custom = await customDefs(t, organisationId);
@@ -119,4 +119,20 @@ export async function loadPlanVersion(t: Tx, versionId: string) {
 
 export async function overlaysUsingPlan(t: Tx, gamePlanId: string) {
   return t.select({ id: overlays.id, name: overlays.name, versionId: overlays.gamePlanVersionId }).from(overlays).innerJoin(gamePlanVersions, eq(gamePlanVersions.id, overlays.gamePlanVersionId)).where(eq(gamePlanVersions.gamePlanId, gamePlanId));
+}
+
+/**
+ * "Use the starter flow" on a match whose output has no plan (one created before plans were attached by
+ * default): the organisation's latest published plan for the sport, or else the starter flow published now, goes
+ * on the output, which then catches up with the match phase (the background and header come up before kick-off).
+ */
+export async function applyStarterPlan(ctx: Ctx, overlayId: string): Promise<{ gamePlanVersionId: string }> {
+  const versionId = await tx(ctx, async (t) => {
+    const { m } = await loadOverlay(ctx, t, overlayId);
+    assertCan(ctx.actor, 'competition.write', { matchId: m.id, competitionId: m.competitionId });
+    return (await latestPublishedPlan(t, ctx.actor.organisationId, m.sport)) ?? (await ensureStarterPlan(ctx, t, m.sport as Sport));
+  });
+  if (!versionId) throw invalid('There is no starter flow for this sport yet; create a plan under Automation.');
+  await setOverlayGamePlan(ctx, overlayId, versionId);
+  return { gamePlanVersionId: versionId };
 }

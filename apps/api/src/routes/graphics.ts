@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { assetDerivatives, mediaAssets, withTenant } from '@bs/db';
-import { AppError, layoutsSvc, overlaysSvc, themesSvc } from '@bs/services';
+import { AppError, gamePlansSvc, layoutsSvc, overlaysSvc, themesSvc } from '@bs/services';
 import { findTemplate } from '@bs/graphics';
 import type { AppBundle } from '../app';
 import * as presence from '../presence';
@@ -56,6 +56,7 @@ export function registerGraphicsRoutes(b: AppBundle) {
   app.post('/api/v1/overlays/:id/apply-theme', async (req) => overlaysSvc.applyPendingTheme(await ctxFor(req), P(id, req.params).id));
   app.put('/api/v1/overlays/:id/theme-profile', async (req) => overlaysSvc.setOverlayThemeProfile(await ctxFor(req), P(id, req.params).id, P(z.object({ themeProfileId: z.string().uuid().nullable() }), req.body).themeProfileId));
   app.put('/api/v1/overlays/:id/format', async (req) => overlaysSvc.setOverlayFormat(await ctxFor(req), P(id, req.params).id, P(z.object({ format: z.enum(['16:9', '9:16', 'venue']) }), req.body).format));
+  app.post('/api/v1/overlays/:id/starter-plan', async (req) => gamePlansSvc.applyStarterPlan(await ctxFor(req), P(id, req.params).id));
   app.put('/api/v1/overlays/:id/game-plan', async (req) => overlaysSvc.setOverlayGamePlan(await ctxFor(req), P(id, req.params).id, P(z.object({ gamePlanVersionId: z.string().uuid().nullable() }), req.body).gamePlanVersionId));
   // Operator preview data: same snapshot the production renderer gets, authorised by session.
   app.get('/api/v1/overlays/:id/render-data', async (req) => {
