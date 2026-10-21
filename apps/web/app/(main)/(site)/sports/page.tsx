@@ -13,7 +13,7 @@ export const metadata = siteMetadata({
 export default function SportsPage() {
   return (
     <>
-      <PageIntro eyebrow="Sports" title="Six sports, one scorer and one set of graphics">
+      <PageIntro eyebrow="Sports" title="Seven sports, one scorer and one set of graphics">
         <Lead>Every sport shares the same scorer app, graphics and automation. What differs is the rule set (periods, clocks and scoring), the event buttons and the wording on air.</Lead>
       </PageIntro>
       <Section>
@@ -34,7 +34,7 @@ export default function SportsPage() {
               </div>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-muted"><strong className="text-white/90">Records:</strong> {s.scoring}</p>
               <p className="mt-2 text-sm leading-relaxed text-muted"><strong className="text-white/90">Scorebug:</strong> {s.scorebug}</p>
-              {s.status === 'tested' ? (
+              {s.detail ? (
                 <Link href={`/sports/${s.key}`} className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">
                   {s.name} in detail <ArrowRight className="size-3.5" aria-hidden />
                 </Link>

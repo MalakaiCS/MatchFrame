@@ -489,12 +489,16 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
     const eventDefs = adapter.eventTypes(m!.rulesConfig as never);
     const factRows = await t.select().from(matchFacts).where(and(eq(matchFacts.matchId, m!.id), eq(matchFacts.category, 'event'), eq(matchFacts.voided, false))).orderBy(asc(matchFacts.sequence));
     const mainClock = (st!.clocks as Record<string, { direction?: string }>).main;
-    const minuteOf = (clockMs: number | null) => (clockMs == null ? null : mainClock?.direction === 'down' ? `${Math.floor(clockMs / 60000)}:${String(Math.floor((clockMs % 60000) / 1000)).padStart(2, '0')}` : `${Math.floor(clockMs / 60000) + 1}'`);
+    const minuteOf = (clockMs: number | null, periodId: string) => {
+      const minute = adapter.minuteOf?.(m!.rulesConfig as never, periodId, clockMs);
+      if (minute != null) return `${minute}'`;
+      return clockMs == null ? null : mainClock?.direction === 'down' ? `${Math.floor(clockMs / 60000)}:${String(Math.floor((clockMs % 60000) / 1000)).padStart(2, '0')}` : `${Math.floor(clockMs / 60000) + 1}'`;
+    };
     const events = factRows
       .map((f) => {
         const def = eventDefs.find((e) => e.type === f.type);
         const group: 'score' | 'discipline' | 'change' | 'other' = def?.group === 'score' || def?.group === 'discipline' || def?.group === 'change' ? def.group : 'other';
-        return { id: f.id, type: f.type, group, side: (f.side as 'home' | 'away' | null) ?? null, playerId: f.playerId, minute: minuteOf(f.clockMs), periodId: f.periodId, payload: f.payload };
+        return { id: f.id, type: f.type, group, side: (f.side as 'home' | 'away' | null) ?? null, playerId: f.playerId, minute: minuteOf(f.clockMs, f.periodId), periodId: f.periodId, payload: f.payload };
       })
       .filter((e) => e.group !== 'other')
       .slice(-80);

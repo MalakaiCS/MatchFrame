@@ -36,8 +36,8 @@ const formDots = (p: GraphicProps, form: string[], delayMs: number) => (
 const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor((n % 100) / 10) === 1 ? 0 : n % 10]}`;
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : d);
 
-export const DEFAULT_FORMATIONS: Record<string, string> = { football: '4-4-2', hockey: '4-3-3', basketball: '2-3', netball: '2-3-2', rugby_league: '1-4-2-6', afl: '6-6-6' };
-const HAS_KEEPER: Record<string, boolean> = { football: true, hockey: true };
+export const DEFAULT_FORMATIONS: Record<string, string> = { football: '4-4-2', hockey: '4-3-3', basketball: '2-3', netball: '2-3-2', rugby_league: '1-4-2-6', afl: '6-6-6', futsal: '1-2-1' };
+const HAS_KEEPER: Record<string, boolean> = { football: true, hockey: true, futsal: true };
 
 /** x/y (fractions of the pitch) for each starter from a "4-3-3" string; the keeper sits deepest when the code has one. */
 export function formationSpots(formation: string, count: number, sport: string): { x: number; y: number }[] {
@@ -227,7 +227,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     const formation = p.data.match.lineup.formations?.[s] ?? DEFAULT_FORMATIONS[p.data.match.sport] ?? '4-4-2';
     const spots = formationSpots(formation, starters.length, p.data.match.sport);
     const W = 760, H = 520;
-    const court = p.data.match.sport === 'basketball' || p.data.match.sport === 'netball';
+    const court = p.data.match.sport === 'basketball' || p.data.match.sport === 'netball' || p.data.match.sport === 'futsal';
     return C.frame(
       p,
       <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}><Logo url={tm.logoUrl} label={tm.abbreviation} size={44} color={tm.primaryColor} /> {tm.name.toUpperCase()} · {formation}</span>,
@@ -397,7 +397,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     };
     return (
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content', background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '18px 34px', display: 'grid', gap: 12, boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...C.card?.(p), ...animStyle(p, 'slide-up') }} data-graphic="shootout">
-        <div style={{ fontSize: 16, letterSpacing: 4, opacity: 0.75, textAlign: 'center', ...animStyle(p, 'fade', 80, 300) }}>{t(p, p.data.match.sport === 'hockey' ? 'SHOOT-OUT' : 'PENALTY SHOOT-OUT')}</div>
+        <div style={{ fontSize: 16, letterSpacing: 4, opacity: 0.75, textAlign: 'center', ...animStyle(p, 'fade', 80, 300) }}>{t(p, p.data.match.sport === 'hockey' ? 'SHOOT-OUT' : p.data.match.sport === 'futsal' ? 'PENALTIES' : 'PENALTY SHOOT-OUT')}</div>
         {row('home', 0)}
         {row('away', 1)}
       </div>

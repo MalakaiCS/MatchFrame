@@ -24,7 +24,7 @@ interface MatchForLineup {
 interface Suggestion { players: { playerId: string; number: number | null; position: string | null; starter: boolean; captain?: boolean }[]; formation: string | null; reason: string | null; from: { matchId: string; scheduledAt: string } | null }
 
 /** Usual number of players on the field per code; used only to flag an unusual line-up, never to block one. */
-export const STARTERS: Record<string, number> = { football: 11, basketball: 5, netball: 7, rugby_league: 13, afl: 18, hockey: 11 };
+export const STARTERS: Record<string, number> = { football: 11, basketball: 5, netball: 7, rugby_league: 13, afl: 18, hockey: 11, futsal: 5 };
 type Status = 'starter' | 'bench' | 'out';
 
 const strip = (ps: LineupEntry[]) => ps.map(({ playerId, number, starter, captain, position }) => ({ playerId, number, starter, captain: !!captain, position: position ?? null }));

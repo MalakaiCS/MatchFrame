@@ -70,4 +70,6 @@ export interface SportAdapter<C = unknown> {
   capabilities(cfg: C): GraphicCapabilities;
   /** Event types that create highlight requests by default. */
   highlightDefaults(cfg: C): string[];
+  /** Minute of play (1-based) at a clock reading, for sports whose clock does not count up through the match (futsal). */
+  minuteOf?(cfg: C, periodId: string, clockMs: number | null): number | null;
 }

@@ -119,7 +119,7 @@ export function SeasonPlayers({ seasons, sport }: { seasons: Season[]; sport: st
       {q.isLoading ? <Spinner /> : !rows.length ? <p className="text-sm text-muted">Player totals appear once line-ups and events have been recorded.</p> : (
         <Card className="overflow-x-auto p-0">
           <Table>
-            <thead><tr><th>#</th><th>Player</th><th>Team</th><th className="text-center">Apps</th><th className="text-center">Starts</th><th className="text-center">Goals</th>{sport === 'football' || sport === 'basketball' ? <th className="text-center">Assists</th> : null}{sport !== 'football' && sport !== 'netball' && sport !== 'hockey' ? <th className="text-center">Points</th> : null}{breakdownKeys.map((k) => <th key={k} className="text-center capitalize">{k.replace(/_/g, ' ')}</th>)}{cards ? <th className="text-center">Cards</th> : null}{sport === 'basketball' ? <th className="text-center">Fouls</th> : null}</tr></thead>
+            <thead><tr><th>#</th><th>Player</th><th>Team</th><th className="text-center">Apps</th><th className="text-center">Starts</th><th className="text-center">Goals</th>{sport === 'football' || sport === 'basketball' || sport === 'futsal' ? <th className="text-center">Assists</th> : null}{sport !== 'football' && sport !== 'netball' && sport !== 'hockey' && sport !== 'futsal' ? <th className="text-center">Points</th> : null}{breakdownKeys.map((k) => <th key={k} className="text-center capitalize">{k.replace(/_/g, ' ')}</th>)}{cards ? <th className="text-center">Cards</th> : null}{sport === 'basketball' ? <th className="text-center">Fouls</th> : null}</tr></thead>
             <tbody>
               {rows.slice(0, 200).map((r, i) => (
                 <tr key={r.playerId}>
@@ -127,8 +127,8 @@ export function SeasonPlayers({ seasons, sport }: { seasons: Season[]; sport: st
                   <td>{r.displayName}</td>
                   <td className="text-xs text-muted">{r.team?.shortName ?? ''}</td>
                   <td className="text-center tabular">{r.appearances}</td><td className="text-center tabular">{r.starts}</td><td className="text-center tabular font-semibold">{r.goals}</td>
-                  {sport === 'football' || sport === 'basketball' ? <td className="text-center tabular">{r.assists}</td> : null}
-                  {sport !== 'football' && sport !== 'netball' && sport !== 'hockey' ? <td className="text-center tabular">{r.points}</td> : null}
+                  {sport === 'football' || sport === 'basketball' || sport === 'futsal' ? <td className="text-center tabular">{r.assists}</td> : null}
+                  {sport !== 'football' && sport !== 'netball' && sport !== 'hockey' && sport !== 'futsal' ? <td className="text-center tabular">{r.points}</td> : null}
                   {breakdownKeys.map((k) => <td key={k} className="text-center tabular">{r.breakdown?.[k] ?? 0}</td>)}
                   {cards ? <td className="text-center text-xs">{r.yellow ? `${r.yellow} yellow` : ''}{r.yellow && r.red ? ', ' : ''}{r.red ? `${r.red} red` : ''}</td> : null}
                   {sport === 'basketball' ? <td className="text-center tabular">{r.fouls}</td> : null}

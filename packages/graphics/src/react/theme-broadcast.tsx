@@ -35,6 +35,7 @@ function ScorebugStrip(p: GraphicProps) {
         <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
         <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'center' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.scoreDetail ? <span style={{ fontSize: 16, opacity: 0.75 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
+        {d.fouls ? <span style={{ fontSize: 15, opacity: 0.8 }}>F {d.fouls[s]}{d.bonus?.[s] ? ' ◆' : ''}</span> : null}
       </div>
     );
   };

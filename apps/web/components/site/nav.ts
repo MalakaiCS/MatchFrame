@@ -23,7 +23,7 @@ export const NAV: (NavGroup | NavLink)[] = [
     links: [
       { label: 'Football', href: '/sports/football', note: 'Tested end to end' },
       { label: 'Basketball', href: '/sports/basketball', note: 'Tested end to end' },
-      { label: 'All sports', href: '/sports', note: 'Netball, rugby league, AFL and hockey in beta' },
+      { label: 'All sports', href: '/sports', note: 'Futsal, netball, rugby league, AFL and hockey in beta' },
     ],
   },
   { label: 'Pricing', href: '/pricing' },

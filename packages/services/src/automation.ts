@@ -293,6 +293,7 @@ export async function factTriggerInput(t: Tx, matchId: string, factId: string): 
       playerId: f.playerId,
       payload: f.payload,
       clockMs: f.clockMs,
+      minute: adapter.minuteOf?.(cfg, f.periodId, f.clockMs) ?? null,
       phaseId: f.periodId,
       phaseKind: adapter.phase(cfg, f.periodId)?.kind ?? 'play',
       occurredAt: f.occurredAt.getTime(),

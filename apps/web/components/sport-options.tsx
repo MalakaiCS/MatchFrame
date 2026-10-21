@@ -1,6 +1,6 @@
 import { SPORTS, SPORT_LABELS } from '@bs/domain';
 
-/** The six supported codes as <option>s, so every sport picker lists the same set in the same order. */
+/** The supported codes as <option>s, so every sport picker lists the same set in the same order. */
 export function SportOptions() {
   return (
     <>

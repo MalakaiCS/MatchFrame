@@ -152,7 +152,7 @@ export const competitions = pgTable(
   (t) => [
     unique('competitions_id_org').on(t.id, t.organisationId),
     foreignKey({ columns: [t.leagueId, t.organisationId], foreignColumns: [leagues.id, leagues.organisationId] }),
-    check('competitions_sport_chk', sql`${t.sport} in ('football','basketball','netball','rugby_league','afl','hockey')`),
+    check('competitions_sport_chk', sql`${t.sport} in ('football','basketball','netball','rugby_league','afl','hockey','futsal')`),
     index('competitions_org_idx').on(t.organisationId, t.status),
   ],
 );

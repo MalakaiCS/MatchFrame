@@ -84,7 +84,7 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'lineup'], entranceMs: 350, holdMs: 10000, exitMs: 300, sponsorSlots: [], bounds: { x: 0.2, y: 0.12, w: 0.6, h: 0.76 },
   },
   {
-    key: 'builtin:goal', name: 'Goal / score event', category: 'Events', sports: ['football', 'netball', 'rugby_league', 'afl', 'hockey'], layer: 'event',
+    key: 'builtin:goal', name: 'Goal / score event', category: 'Events', sports: ['football', 'netball', 'rugby_league', 'afl', 'hockey', 'futsal'], layer: 'event',
     variables: [
       { key: 'team', label: 'Team', type: 'team', required: true },
       { key: 'player', label: 'Scorer', type: 'player', required: false },
@@ -105,7 +105,7 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'score'], entranceMs: 250, holdMs: 5000, exitMs: 200, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
   },
   {
-    key: 'builtin:card', name: 'Card', category: 'Events', sports: ['football', 'hockey', 'rugby_league'], layer: 'event',
+    key: 'builtin:card', name: 'Card', category: 'Events', sports: ['football', 'hockey', 'rugby_league', 'futsal'], layer: 'event',
     variables: [
       { key: 'team', label: 'Team', type: 'team', required: true },
       { key: 'player', label: 'Player', type: 'player', required: false },
@@ -234,7 +234,7 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams'], entranceMs: 300, holdMs: 8000, exitMs: 250, sponsorSlots: ['lower_third_banner'], bounds: { x: 0.05, y: 0.76, w: 0.7, h: 0.12 },
   },
   {
-    key: 'builtin:shootout', name: 'Shoot-out tracker', category: 'Events', sports: ['football', 'hockey'], layer: 'lower',
+    key: 'builtin:shootout', name: 'Shoot-out tracker', category: 'Events', sports: ['football', 'hockey', 'futsal'], layer: 'lower',
     variables: [],
     requiredData: ['teams', 'score'], entranceMs: 300, holdMs: null, exitMs: 250, sponsorSlots: [], bounds: { x: 0.2, y: 0.74, w: 0.6, h: 0.16 },
   },
@@ -261,7 +261,7 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'player'], entranceMs: 350, holdMs: 8000, exitMs: 300, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.62, w: 0.5, h: 0.26 },
   },
   {
-    key: 'builtin:timeout', name: 'Timeout', category: 'Events', sports: ['basketball'], layer: 'event',
+    key: 'builtin:timeout', name: 'Timeout', category: 'Events', sports: ['basketball', 'futsal'], layer: 'event',
     variables: [{ key: 'team', label: 'Team', type: 'team', required: true }],
     requiredData: ['teams'], entranceMs: 300, holdMs: 6000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },
   },

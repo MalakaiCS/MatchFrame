@@ -314,6 +314,35 @@ export const RUGBY_LEAGUE_STARTER = periodStarter('rugby_league', { startWord: '
 export const AFL_STARTER = periodStarter('afl', { startWord: 'First bounce', scoreEvents: ['goal'], cardEvents: [], changeEvents: ['interchange'], finalLabel: 'FINAL SIREN' });
 export const HOCKEY_STARTER = periodStarter('hockey', { startWord: 'Push back', scoreEvents: ['goal'], cardEvents: ['green_card', 'yellow_card', 'red_card'], changeEvents: ['substitution'] });
 
+/**
+ * Futsal match flow, in Auto mode: the football flow above (background and match header from the moment the match
+ * exists, line-ups at the walk-out, the scorebug at "About to start", the kick-off banner, the half-time boards
+ * 10 s after the whistle, the thank-you at full time), with futsal's own events: goals including penalties and 10 m
+ * kicks, cards, and at a timeout the timeout graphic then the match stats (a timeout lasts a minute). Substitutions
+ * are rolling and constant in futsal, so they put nothing on air.
+ */
+export const FUTSAL_STARTER: GamePlan = {
+  ...FOOTBALL_STARTER,
+  sport: 'futsal',
+  playlists: FOOTBALL_STARTER.playlists.filter((pl) => pl.id !== 'sub').flatMap((pl): GamePlan['playlists'] => {
+    if (pl.id === 'goal') return [{ ...pl, triggers: [{ id: 't_goal', type: 'event', eventTypes: ['goal', 'own_goal', 'penalty_scored', 'ten_metre_scored'] }] }];
+    if (pl.id !== 'card') return [pl];
+    return [
+      pl,
+      {
+        id: 'timeout', name: 'Timeout: the timeout graphic, then the match stats', kind: 'in_play', priority: 2, promotional: false, cooldownMs: 0,
+        triggers: [{ id: 't_timeout', type: 'event', eventTypes: ['timeout'] }],
+        guards: [],
+        repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+        items: [
+          { id: 'to_gfx', action: 'show', templateKey: 'builtin:timeout', variables: { team: { from: 'event.side' } }, offsetMs: 0, durationMs: 8000 },
+          { id: 'to_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 8600, durationMs: 9000 },
+        ],
+      },
+    ];
+  }),
+};
+
 export const STARTER_PLANS: Partial<Record<Sport, GamePlan>> = {
   football: FOOTBALL_STARTER,
   basketball: BASKETBALL_STARTER,
@@ -321,4 +350,5 @@ export const STARTER_PLANS: Partial<Record<Sport, GamePlan>> = {
   rugby_league: RUGBY_LEAGUE_STARTER,
   afl: AFL_STARTER,
   hockey: HOCKEY_STARTER,
+  futsal: FUTSAL_STARTER,
 };

@@ -148,7 +148,7 @@ export function validateGamePlan(input: unknown, opts: { templateKeys: string[];
 
 export type TriggerInput =
   | { kind: 'phase'; phaseId: string; phaseTags: string[]; phaseKind: string; phaseLabel?: string; at: number; occurredAt: number; seq: number }
-  | { kind: 'event'; eventType: string; side: 'home' | 'away' | null; factId: string; factRevision: number; playerId: string | null; payload: Record<string, unknown>; clockMs: number | null; phaseId: string; phaseKind: string; occurredAt: number; at: number; historical: boolean; counters: Record<string, number>; prevCounters: Record<string, number> }
+  | { kind: 'event'; eventType: string; side: 'home' | 'away' | null; factId: string; factRevision: number; playerId: string | null; payload: Record<string, unknown>; clockMs: number | null; /** minute of play, when the sport works it out (futsal's count-down clock) */ minute?: number | null; phaseId: string; phaseKind: string; occurredAt: number; at: number; historical: boolean; counters: Record<string, number>; prevCounters: Record<string, number> }
   | { kind: 'match_clock'; triggerId: string; periodId: string; thresholdMs: number; at: number; phaseKind: string }
   | { kind: 'wall_clock'; triggerId: string; at: number; phaseKind: string; occurrence: string }
   | { kind: 'manual'; playlistId: string; at: number; requestId: string; phaseKind: string };
@@ -196,7 +196,7 @@ export function evaluateCondition(g: Extract<Guard, { type: 'condition' }>, inpu
     }
     case 'minute': {
       const ms = input.kind === 'event' ? input.clockMs : c.clockMs;
-      value = ms == null ? null : Math.floor(ms / 60_000) + 1;
+      value = input.kind === 'event' && input.minute != null ? input.minute : ms == null ? null : Math.floor(ms / 60_000) + 1;
       break;
     }
     case 'since_last_graphic_s':
@@ -258,7 +258,7 @@ export function matchTriggers(plan: GamePlan, input: TriggerInput, g: GuardConte
       } else if (t.type === 'event' && input.kind === 'event') {
         hit = t.eventTypes.includes(input.eventType) && (!t.sides || (input.side != null && t.sides.includes(input.side)));
         iteration = `fact:${input.factId}:${input.factRevision}`;
-        ctx = { factId: input.factId, factRevision: input.factRevision, eventType: input.eventType, side: input.side, playerId: input.playerId, clockMs: input.clockMs, payload: input.payload };
+        ctx = { factId: input.factId, factRevision: input.factRevision, eventType: input.eventType, side: input.side, playerId: input.playerId, clockMs: input.clockMs, minute: input.minute ?? null, payload: input.payload };
         occurredAt = input.occurredAt;
         if (hit && input.historical) {
           skipped.push({ playlistId: pl.id, triggerId: t.id, reason: 'historical fact (outside live window): no on-air replay' });
@@ -360,7 +360,7 @@ export function resolveVariables(vars: PlanItem['variables'], ctx: Record<string
         src === 'event.side' ? ctx.side
         : src === 'event.playerId' ? ctx.playerId
         : src === 'event.type' ? ctx.eventType
-        : src === 'event.minute' ? (ctx.clockMs != null ? String(Math.floor(Number(ctx.clockMs) / 60000) + 1) : undefined)
+        : src === 'event.minute' ? (ctx.minute != null ? String(ctx.minute) : ctx.clockMs != null ? String(Math.floor(Number(ctx.clockMs) / 60000) + 1) : undefined)
         : src === 'event.points' ? payload.points
         : src === 'event.playerOutId' ? payload.playerOutId
         : src === 'event.playerInId' ? payload.playerInId

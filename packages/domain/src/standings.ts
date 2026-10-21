@@ -25,6 +25,7 @@ export const DEFAULT_STANDINGS_RULES: Record<Sport, StandingsRules> = {
   rugby_league: { win: 2, draw: 1, loss: 0, bye: 2, rankBy: 'points', order: ['points', 'difference', 'for', 'wins', 'name'], unit: 'points' },
   afl: { win: 4, draw: 2, loss: 0, bye: 4, rankBy: 'points', order: ['points', 'percentage', 'for', 'name'], unit: 'points' },
   hockey: { win: 3, draw: 1, loss: 0, bye: 0, rankBy: 'points', order: ['points', 'difference', 'for', 'wins', 'name'], unit: 'goals' },
+  futsal: { win: 3, draw: 1, loss: 0, bye: 0, rankBy: 'points', order: ['points', 'difference', 'for', 'wins', 'head_to_head', 'name'], unit: 'goals' },
 };
 
 export function standingsRules(sport: Sport, override: Partial<StandingsRules> | null | undefined): StandingsRules {

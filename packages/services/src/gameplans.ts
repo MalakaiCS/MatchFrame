@@ -1,7 +1,7 @@
 // Game plans: editable drafts, publish-time validation and immutable published versions.
 import { and, asc, desc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { creatives, gamePlans, gamePlanVersions, matches, mediaAssets, memberships, overlays, type Tx } from '@bs/db';
-import { getAdapter, SPORT_LABELS, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, type Sport, SPORTS } from '@bs/domain';
+import { getAdapter, isSport, SPORT_LABELS, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, type Sport, SPORTS } from '@bs/domain';
 import { BUILTIN_TEMPLATES } from '@bs/graphics';
 import { z } from 'zod';
 import { assertCan } from './authz';
@@ -19,7 +19,8 @@ export async function templateLayerMap(t: Tx, organisationId: string) {
 }
 
 async function validateFor(t: Tx, organisationId: string, draft: unknown) {
-  const sport = (draft as { sport?: string })?.sport === 'basketball' ? 'basketball' : 'football';
+  const claimed = (draft as { sport?: string })?.sport;
+  const sport = isSport(claimed) ? claimed : 'football';
   const { layers } = await templateLayerMap(t, organisationId);
   const approved = await t
     .select({ id: creatives.id })

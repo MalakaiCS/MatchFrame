@@ -1,8 +1,8 @@
 import type { ClockState } from './clock';
 
-export const SPORTS = ['football', 'basketball', 'netball', 'rugby_league', 'afl', 'hockey'] as const;
+export const SPORTS = ['football', 'basketball', 'netball', 'rugby_league', 'afl', 'hockey', 'futsal'] as const;
 export type Sport = (typeof SPORTS)[number];
-export const SPORT_LABELS: Record<Sport, string> = { football: 'Football', basketball: 'Basketball', netball: 'Netball', rugby_league: 'Rugby League', afl: 'Australian Football', hockey: 'Hockey' };
+export const SPORT_LABELS: Record<Sport, string> = { football: 'Football', basketball: 'Basketball', netball: 'Netball', rugby_league: 'Rugby League', afl: 'Australian Football', hockey: 'Hockey', futsal: 'Futsal' };
 export const isSport = (v: unknown): v is Sport => typeof v === 'string' && (SPORTS as readonly string[]).includes(v);
 
 /** A match official as entered by the operator (shown on straps and reports). */
@@ -101,8 +101,10 @@ export interface MatchProjection {
   shootout: { home: number; away: number; kicks: { side: Side; scored: boolean; playerId?: string | null }[] } | null;
   stats: { home: TeamStats; away: TeamStats };
   players: Record<string, PlayerTally>;
-  /** Basketball */
+  /** Basketball team fouls; futsal accumulated fouls (per half) */
   teamFouls?: { home: number; away: number };
+  /** Futsal: send-offs that leave a team a player short (playing time in ms since kick-off) until they end */
+  sendOffs?: { side: Side; playerId: string | null; atMs: number; endedBy: 'goal' | null; endedAtMs: number | null }[];
   timeouts?: { home: number; away: number };
   possession?: Side | null;
   stoppageMinutes?: number | null;
@@ -150,6 +152,8 @@ export interface DisplayModel {
   timeouts?: { home: number; away: number } | null;
   possession?: Side | null;
   bonus?: { home: boolean; away: boolean } | null;
+  /** a team playing short after a send-off: players on the court and the playing time left */
+  shortHanded?: { side: Side; players: number; remainingText: string }[] | null;
   alerts: string[];
 }
 

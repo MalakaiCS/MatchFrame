@@ -1,5 +1,6 @@
 'use client';
 import { SportOptions } from '@/components/sport-options';
+import { getAdapter } from '@bs/domain';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
@@ -18,7 +19,8 @@ export default function CompetitionsPage() {
   const list = useGet<Comp[]>(['competitions', search, sport], `competitions?${new URLSearchParams({ ...(search ? { search } : {}), ...(sport ? { sport } : {}) })}`);
   const [form, setForm] = useState({ name: '', shortName: '', sport: 'football', rulesPreset: '', defaultTimezone: me.data?.activeOrganisation?.timezone ?? 'Australia/Brisbane' });
   const create = useAction((v: typeof form) => post('competitions', { ...v, shortName: v.shortName || null, rulesPreset: v.rulesPreset || undefined }), [['competitions']]);
-  const presets = form.sport === 'football' ? [['', 'Standard 2×45 with ET and penalties'], ['league', 'League 2×45 (no extra time)'], ['junior-u12', 'Junior 2×25']] : [['', 'Community 4×10 (FIBA-style preset)'], ['halves-2x20', 'College-style 2×20'], ['junior-4x8', 'Junior 4×8, no shot clock']];
+  // each sport's own presets; the first is its default rules
+  const presets = getAdapter(form.sport).presets.map((p, i) => [i === 0 ? '' : p.id, p.label] as const);
 
   return (
     <>

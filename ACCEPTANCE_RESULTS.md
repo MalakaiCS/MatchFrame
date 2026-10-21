@@ -214,6 +214,29 @@ Not claimed: the other five sports' starter flows still clear without a stagger 
 too, since every automatic clear takes graphics out with their exit animation). The kick-off clear also animates
 now. The OBS link tab's *Add output* still lists only the organisation's own looks.
 
+## Futsal (2026-10-21)
+
+A seventh sport following the Futsal Laws of the Game as Football Australia and its member federations use them
+(operator guide, *Sports*; docs guide *Futsal*). Same environment, production build through the single-port
+launcher, graphics-only mode. The laws' text could not be opened from this environment (FIFA and federation sites
+are blocked by its network policy); the rules follow search-result summaries of the laws and of Australian
+competition regulations, and the numbers that competitions vary are settings.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: two count-down halves with football's walk-out steps, extra time and kicks from the penalty mark only in the knockout preset; accumulated fouls marked at five, 10 m kicks from the sixth, reset for the second half, carried into extra time; one timeout per half that stops the clock, refused a second time and in extra time; a send-off countdown on playing time that stands while the clock is stopped and carries across half time; a goal by the team with more players ends one send-off (5 v 4, 5 v 3), level numbers or a goal by the short team change nothing, a bench send-off does not reduce the team; shoot-out kicks never change the score; running-clock reminder in the final 2 minutes; minute of play from the count-down clock; the futsal starter flow validates and its rehearsal fires the football flow plus goals, cards and the timeout sequence, with no substitution graphic | 115 tests, 20 files, all pass |
+| `pnpm test:db`: a futsal competition with the knockout preset (migration `0012` allows the sport); the first futsal match publishes the "Futsal starter flow" on its output; through the scoring service, five fouls with the 10 m alert, a timeout that stops the clock and a second one refused (`NO_TIMEOUTS_LEFT`), a red card leaving the team 4 v 5 with 1:30 left after 30 s of play, ended by the other team's goal; fouls and timeouts reset for the second half | 58 tests, 7 files, all pass |
+| `tests/e2e/specs/futsal.spec.ts` on the final build: the scorer phone kicks off a count-down half, five *Foul* taps show "Fouls 5 · next is a 10 m kick" and the alert, *Timeout* stops the clock (TO 0), *Red card* shows "4 on court · 2:00"; the OBS page's scorebug shows the count-down clock and "F 5 ◆" (`docs/evidence/e2e/futsal-scorebug.png`) | pass |
+| Visual regression: six new baselines for futsal in the broadcast look (scorebug with fouls 3 and 5 ◆, match header, kick-off banner, break score, slate, animated background); basketball and hockey baselines unchanged | pass |
+| Plan validation for every sport | a plan is now checked against its own sport's events; before, every non-basketball plan was checked against football's, which would have refused the futsal starter flow |
+| Full `pnpm test:e2e` | not yet complete when this row was written |
+
+Not claimed: futsal is marked beta (no full match has been scored courtside); the scorebug shows no send-off
+countdown (it is on the scorer phone and in the alerts); the Laws' exact wording was not checked against the
+official PDF; competition-specific regulations (squad sizes, foul thresholds, junior formats) are settings, not
+verified against any one competition.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

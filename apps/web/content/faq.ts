@@ -53,10 +53,10 @@ export const FAQS: Faq[] = [
     q: 'Which sports are supported?',
     a: [
       '**Football and basketball** have been tested end to end: a full match, including the unusual cases such as extra time, penalty shoot-outs, overtime, fouls and timeouts, has been played through the scorer, graphics and automation.',
-      '**Netball, rugby league, AFL and hockey** are in beta. Their rules, events and graphics are built and covered by automated checks, but a full match has not yet been run end to end, so rehearse before relying on them. See [all sports](/sports).',
+      '**Futsal, netball, rugby league, AFL and hockey** are in beta. Their rules, events and graphics are built and covered by automated checks, but a full match has not yet been run end to end, so rehearse before relying on them. Futsal follows the Futsal Laws of the Game as Football Australia uses them: stopped clock, accumulated fouls, timeouts and the two-minute send-off. See [all sports](/sports).',
     ],
     home: true,
-    basis: 'Acceptance checks A07 (football) and A08 (basketball); sport adapter unit tests and visual baselines for the other four.',
+    basis: 'Acceptance checks A07 (football) and A08 (basketball); sport adapter unit tests and visual baselines for the other five; futsal also has a scoring-service test and a scorer-phone browser test.',
   },
   {
     id: 'need-a-camera',

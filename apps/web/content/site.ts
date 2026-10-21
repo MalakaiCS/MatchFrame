@@ -142,15 +142,18 @@ export interface SportInfo {
   status: 'tested' | 'beta';
   scoring: string;
   scorebug: string;
+  /** has its own page under /sports */
+  detail?: boolean;
 }
 
 export const SPORTS: SportInfo[] = [
-  { key: 'football', name: 'Football', status: 'tested', scoring: 'Goals with assists and goal types, own goals, penalties, yellow and red cards, substitutions, extra time and penalty shoot-outs.', scorebug: 'Score, clock, added time and the shoot-out tally.' },
-  { key: 'basketball', name: 'Basketball', status: 'tested', scoring: 'One, two and three-point scores with the scorer named afterwards, foul types, timeouts, overtime, possession, rebounds and assists.', scorebug: 'Score, period, team fouls and bonus, timeouts remaining and the shot clock.' },
+  { key: 'football', name: 'Football', status: 'tested', detail: true, scoring: 'Goals with assists and goal types, own goals, penalties, yellow and red cards, substitutions, extra time and penalty shoot-outs.', scorebug: 'Score, clock, added time and the shoot-out tally.' },
+  { key: 'basketball', name: 'Basketball', status: 'tested', detail: true, scoring: 'One, two and three-point scores with the scorer named afterwards, foul types, timeouts, overtime, possession, rebounds and assists.', scorebug: 'Score, period, team fouls and bonus, timeouts remaining and the shot clock.' },
   { key: 'netball', name: 'Netball', status: 'beta', scoring: 'Goals and missed shots, intercepts, rebounds, turnovers, penalties, centre passes and rolling substitutions.', scorebug: 'Quarter and score.' },
   { key: 'rugby_league', name: 'Rugby league', status: 'beta', scoring: 'Tries, penalty tries, conversions, penalty and field goals, sin bins, send-offs, interchanges and six-again calls.', scorebug: 'Score and sin-bin markers.' },
   { key: 'afl', name: 'AFL', status: 'beta', scoring: 'Goals, behinds and rushed behinds, interchanges, marks, tackles, inside 50s and clearances.', scorebug: 'The "12.7 (79)" score line.' },
   { key: 'hockey', name: 'Hockey', status: 'beta', scoring: 'Goals, green, yellow and red cards, substitutions, penalty corners and strokes, and shoot-outs.', scorebug: 'Quarter and score.' },
+  { key: 'futsal', name: 'Futsal', status: 'beta', detail: true, scoring: 'Futsal Laws as used by Football Australia: goals, penalties and 10 m kicks, accumulated fouls per half, one timeout per half, cards with the two-minute send-off, rolling substitutions, extra time and kicks from the penalty mark.', scorebug: 'Count-down clock, score, accumulated fouls (marked at five) and timeouts.' },
 ];
 
 export const SPORT_STATUS_LABEL = {

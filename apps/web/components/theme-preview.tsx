@@ -30,13 +30,13 @@ export function sampleVariables(templateKey: string, sport: Sport): Record<strin
     case 'lineup': return { team: 'home', page: 1 };
     case 'goal': return { team: 'home', player: samplePlayerId('home', 9), minute: '63', eventType: 'goal' };
     case 'score': return { team: 'home', player: samplePlayerId('home', 4), points: 3 };
-    case 'period_banner': return { heading: 'KICK-OFF', period: sport === 'football' ? '2nd Half' : '3rd Quarter' };
+    case 'period_banner': return { heading: 'KICK-OFF', period: sport === 'football' || sport === 'futsal' ? '2nd Half' : '3rd Quarter' };
     case 'card': return { team: 'away', player: samplePlayerId('away', 5), cardType: 'yellow', minute: '58' };
     case 'substitution': return { team: 'home', playerOut: samplePlayerId('home', 8), playerIn: samplePlayerId('home', 12), minute: '70' };
     case 'lower_third': return { heading: 'Sam Patel', subtitle: 'Head coach, Harbour City FC' };
-    case 'player_card': return { team: 'home', player: samplePlayerId('home', 9), stat: sport === 'football' ? 'goals' : 'points' };
+    case 'player_card': return { team: 'home', player: samplePlayerId('home', 9), stat: sport === 'football' || sport === 'futsal' ? 'goals' : 'points' };
     case 'stats': return {};
-    case 'break_score': return { label: sport === 'football' ? 'Half time' : 'End of Q3', showSponsor: true };
+    case 'break_score': return { label: sport === 'football' || sport === 'futsal' ? 'Half time' : 'End of Q3', showSponsor: true };
     case 'sponsor': return { creative: SAMPLE_SPONSOR, placement: 'detached_logo' };
     case 'full_frame_media': return { image: SAMPLE_MEDIA, fit: 'cover', audio: 'muted' };
     case 'ticker': return { text: 'Next match: Saltmarsh Rovers v Bayside United, Saturday 3 pm  •  Tickets at the gate  •  Follow us for highlights', speed: 'normal' };
@@ -48,7 +48,7 @@ export function sampleVariables(templateKey: string, sport: Sport): Record<strin
     case 'head_to_head': return {};
     case 'match_info': return {};
     case 'shootout': return {};
-    case 'stat_compare': return { stat: sport === 'football' ? 'shots_on_target' : sport === 'basketball' ? 'rebounds' : '' };
+    case 'stat_compare': return { stat: sport === 'football' || sport === 'futsal' ? 'shots_on_target' : sport === 'basketball' ? 'rebounds' : '' };
     case 'top_scorers': return { rows: 5, metric: sport === 'basketball' || sport === 'rugby_league' || sport === 'afl' ? 'points' : 'goals' };
     case 'player_of_match': return { team: 'home', player: samplePlayerId('home', 9), caption: 'PLAYER OF THE MATCH' };
     case 'timeout': return { team: 'away' };
@@ -59,18 +59,19 @@ export function sampleVariables(templateKey: string, sport: Sport): Record<strin
 
 const FOOTBALL_POSITIONS = ['Goalkeeper', 'Defender', 'Defender', 'Defender', 'Defender', 'Midfielder', 'Midfielder', 'Midfielder', 'Forward', 'Forward', 'Forward'];
 const BASKETBALL_POSITIONS = ['Guard', 'Guard', 'Forward', 'Forward', 'Center', 'Guard', 'Forward', 'Center', 'Guard', 'Forward', 'Center'];
+const FUTSAL_POSITIONS = ['Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Defender'];
 
 /** Synthetic preview data (fictional teams) for theme thumbnails and the designer. */
 export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; format?: RenderData['format'] } = {}): RenderData {
   const a = getAdapter(sport);
   const cfg = a.defaultConfig;
-  const proj = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' ? 'p2' : 'p3', score: { home: 2, away: 1 }, shootout: opts.shootout && (sport === 'football' || sport === 'hockey') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
+  const proj = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
   const clocks = a.initialClocks(cfg);
-  clocks.main = { ...clocks.main!, baseMs: sport === 'football' ? 63 * 60_000 + 12_000 : sport === 'rugby_league' ? 52 * 60_000 + 8_000 : sport === 'afl' ? 12 * 60_000 + 31_000 : 4 * 60_000 + 31_000, periodId: proj.phase };
-  const mk = (n: number, side: 'home' | 'away') => ({ playerId: `00000000-0000-4000-8000-${side === 'home' ? '1' : '2'}${String(n).padStart(11, '0')}`, displayName: ['Mia Torres', 'Léa Ångström', 'Kai Fitzgerald-Montgomery', 'Noah Ito', 'Aroha Te Huia', 'Theo Rossi', 'Isla Walker', 'Mateo Ramírez', 'Zoe Okafor', 'Finn Larsen', 'Ana Silva'][n % 11]!, number: n + 1, starter: n < 11, photoAssetId: null });
+  clocks.main = { ...clocks.main!, baseMs: sport === 'football' ? 63 * 60_000 + 12_000 : sport === 'rugby_league' ? 52 * 60_000 + 8_000 : sport === 'afl' ? 12 * 60_000 + 31_000 : sport === 'futsal' ? 12 * 60_000 + 31_000 : 4 * 60_000 + 31_000, periodId: proj.phase };
+  const mk = (n: number, side: 'home' | 'away') => ({ playerId: `00000000-0000-4000-8000-${side === 'home' ? '1' : '2'}${String(n).padStart(11, '0')}`, displayName: ['Mia Torres', 'Léa Ångström', 'Kai Fitzgerald-Montgomery', 'Noah Ito', 'Aroha Te Huia', 'Theo Rossi', 'Isla Walker', 'Mateo Ramírez', 'Zoe Okafor', 'Finn Larsen', 'Ana Silva'][n % 11]!, number: n + 1, starter: n < (sport === 'futsal' ? 5 : 11), photoAssetId: null });
   const lineup = { home: Array.from({ length: 14 }, (_, i) => mk(i, 'home')), away: Array.from({ length: 14 }, (_, i) => mk(i, 'away')) };
   const players: RenderData['players'] = {};
-  for (const s of ['home', 'away'] as const) for (const p of lineup[s]) players[p.playerId] = { playerId: p.playerId, displayName: p.displayName, number: p.number, photoUrl: null, side: s, position: (sport === 'football' ? FOOTBALL_POSITIONS : BASKETBALL_POSITIONS)[(p.number - 1) % 11] };
+  for (const s of ['home', 'away'] as const) for (const p of lineup[s]) players[p.playerId] = { playerId: p.playerId, displayName: p.displayName, number: p.number, photoUrl: null, side: s, position: (sport === 'football' ? FOOTBALL_POSITIONS : sport === 'futsal' ? FUTSAL_POSITIONS : BASKETBALL_POSITIONS)[(p.number - 1) % 11] };
   return {
     match: {
       id: 'sample', sport, rulesConfig: cfg as Record<string, unknown>, competition: { name: 'Coastal Premier League', shortName: 'CPL', logoUrl: null }, venue: 'Bayside Oval', scheduledAt: new Date(Date.now() + 15 * 60_000).toISOString(), timezone: 'Australia/Brisbane',
@@ -95,6 +96,7 @@ export function sampleStats(sport: Sport): { home: Record<string, number>; away:
     case 'rugby_league': return { home: { points: 2, tries: 3, conversions: 2, penalty_goals: 1, field_goals: 0, line_breaks: 5, errors: 7, penalties: 4, six_agains: 3, interchanges: 5 }, away: { points: 1, tries: 2, conversions: 1, penalty_goals: 0, field_goals: 1, line_breaks: 3, errors: 9, penalties: 6, six_agains: 5, interchanges: 6 } };
     case 'afl': return { home: { goals: 8, behinds: 7, points: 55, marks: 64, tackles: 41, inside_50s: 31, clearances: 22, free_kicks: 12 }, away: { goals: 6, behinds: 9, points: 45, marks: 58, tackles: 48, inside_50s: 27, clearances: 25, free_kicks: 15 } };
     case 'hockey': return { home: { goals: 2, shots: 11, penalty_corners: 5, circle_entries: 19, green_cards: 1, yellow_cards: 0, red_cards: 0 }, away: { goals: 1, shots: 7, penalty_corners: 3, circle_entries: 13, green_cards: 0, yellow_cards: 1, red_cards: 0 } };
+    case 'futsal': return { home: { goals: 2, shots_on_target: 9, shots_off_target: 7, fouls: 4, corners: 5, saves: 6, yellow_cards: 1, red_cards: 0, timeouts_used: 1, ten_metre_kicks: 0, assists: 2 }, away: { goals: 1, shots_on_target: 6, shots_off_target: 8, fouls: 5, corners: 3, saves: 7, yellow_cards: 2, red_cards: 0, timeouts_used: 0, ten_metre_kicks: 1, assists: 1 } };
     default: return { home: { goals: 2, shots_on_target: 6, shots_off_target: 4, corners: 4, offsides: 1, fouls: 7, yellow_cards: 1, red_cards: 0, saves: 3, possession_pct: 56, assists: 2 }, away: { goals: 1, shots_on_target: 3, shots_off_target: 5, corners: 2, offsides: 3, fouls: 11, yellow_cards: 2, red_cards: 0, saves: 4, possession_pct: 44, assists: 1 } };
   }
 }
@@ -147,10 +149,11 @@ export function samplePreview(): RenderData['preview'] {
 export function sampleEvents(sport: Sport): NonNullable<RenderData['match']['events']> {
   const score = sport === 'basketball' ? 'score' : sport === 'rugby_league' ? 'try' : sport === 'afl' ? 'goal' : 'goal';
   const down = sport === 'basketball' || sport === 'netball' || sport === 'hockey';
+  // futsal events read as the minute of play, like football's
   const min = (m: number) => (down ? `${String(m % 10).padStart(1, '0')}:${String((m * 7) % 60).padStart(2, '0')}` : `${m}'`);
   return [
     { id: 'e1', type: score, group: 'score', side: 'home', playerId: samplePlayerId('home', 9), minute: min(23), periodId: 'p1', payload: {} },
-    { id: 'e2', type: sport === 'football' ? 'yellow_card' : sport === 'hockey' ? 'green_card' : sport === 'rugby_league' ? 'sin_bin' : 'foul', group: sport === 'basketball' || sport === 'netball' || sport === 'afl' ? 'other' : 'discipline', side: 'away', playerId: samplePlayerId('away', 5), minute: min(31), periodId: 'p1', payload: {} },
+    { id: 'e2', type: sport === 'football' || sport === 'futsal' ? 'yellow_card' : sport === 'hockey' ? 'green_card' : sport === 'rugby_league' ? 'sin_bin' : 'foul', group: sport === 'basketball' || sport === 'netball' || sport === 'afl' ? 'other' : 'discipline', side: 'away', playerId: samplePlayerId('away', 5), minute: min(31), periodId: 'p1', payload: {} },
     { id: 'e3', type: score, group: 'score', side: 'away', playerId: samplePlayerId('away', 10), minute: min(44), periodId: 'p2', payload: {} },
     { id: 'e4', type: 'substitution', group: 'change', side: 'home', playerId: null, minute: min(58), periodId: 'p2', payload: {} },
     { id: 'e5', type: score, group: 'score', side: 'home', playerId: samplePlayerId('home', 9), minute: min(63), periodId: 'p2', payload: {} },

@@ -45,12 +45,14 @@ const PERIOD_SPORT_EVENTS: Record<string, { score: { type: string; payload?: Rec
   rugby_league: { score: [{ type: 'try' }, { type: 'conversion' }, { type: 'penalty_goal' }], card: 'sin_bin', change: 'interchange', stat: 'line_break' },
   afl: { score: [{ type: 'goal' }, { type: 'behind' }], card: null, change: 'interchange', stat: 'mark' },
   hockey: { score: [{ type: 'goal', payload: { goalType: 'field' } }], card: 'green_card', change: 'substitution', stat: 'penalty_corner' },
+  // futsal's rolling substitutions put nothing on air, so the second half's change is a timeout
+  futsal: { score: [{ type: 'goal' }, { type: 'ten_metre_scored' }], card: 'yellow_card', change: 'timeout', stat: 'foul' },
 };
 
 /** Four quarters (or two halves) with a walk-out before each half, scores in every period, a card and a change. */
 function periodTimeline(sport: Sport): TimelineEntry[] {
   const ev = PERIOD_SPORT_EVENTS[sport] ?? PERIOD_SPORT_EVENTS.netball!;
-  const halves = sport === 'rugby_league';
+  const halves = sport === 'rugby_league' || sport === 'futsal';
   const periods = halves ? ['p1', 'p2'] : ['p1', 'p2', 'p3', 'p4'];
   const out: TimelineEntry[] = [
     { t: 0, kind: 'phase', phase: 'pre_match' },

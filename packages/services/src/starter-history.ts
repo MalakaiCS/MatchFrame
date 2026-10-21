@@ -19,6 +19,7 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
   rugby_league: ['3c33e86754195214e7d6e227630f86ba'],
   afl: ['f9139044bd932f100515c999d6798186'],
   hockey: ['3d6975e875876a18ac1f94fa33dd9439'],
+  futsal: ['6e70168bff2b85bc0ae977c920d55720'], // the football flow with 10 m kicks and timeouts, no substitution graphic
 };
 
 const stable = (v: unknown): unknown =>

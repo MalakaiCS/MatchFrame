@@ -17,6 +17,7 @@ const SPORTS: { key: Sport; label: string }[] = [
   { key: 'rugby_league', label: 'Rugby league (beta)' },
   { key: 'afl', label: 'AFL (beta)' },
   { key: 'hockey', label: 'Hockey (beta)' },
+  { key: 'futsal', label: 'Futsal (beta)' },
 ];
 const FORMATS: { key: OutputFormat; label: string }[] = [
   { key: '16:9', label: 'Widescreen 16:9' },

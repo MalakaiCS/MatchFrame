@@ -20,6 +20,13 @@ const DETAIL: Record<string, { intro: string; graphics: string[]; automation: st
     rehearse: ['Record a three and a two, and name the scorers afterwards', 'Record a foul of each type you use and a timeout', 'Run the shot clock and a period end, then overtime if your competition uses it'],
     guide: '/docs/sports/basketball',
   },
+  futsal: {
+    intro: 'Futsal in MatchFrame follows the Futsal Laws of the Game as Football Australia uses them: two 20-minute halves on a stopped clock, accumulated fouls per half, one timeout per team in each half, the two-minute send-off, rolling substitutions, then extra time and kicks from the penalty mark when a winner is needed. Running-clock and junior formats are presets.',
+    graphics: ['Scorebug with the count-down clock, accumulated fouls (marked at five, when the next foul is a 10 m kick) and timeouts', 'Animated background and match header before the match, at half time and at full time', 'Team line-ups on a court, five a side', 'Goal graphics for goals, penalties and 10 m kicks, cards and the timeout graphic', 'Kick-off banners, match statistics, break and final scores', 'Kicks from the penalty mark tracker, league table, fixtures and top scorers'],
+    automation: ['The same match flow as football: the animated background and match header from the moment the match is created, the line-ups at the walk-out, the scorebug at About to start', 'Each half: the kick-off banner, and the clock starts', 'Goals, cards and timeouts put their graphic on air; rolling substitutions put nothing on air', 'Half time: after 10 seconds, the header with a countdown to the second half and the stats, 30 seconds each', 'Full time: after 30 seconds, the final score on the header with "Thank you for watching"'],
+    rehearse: ['Stop and start the clock as the ball goes out of play', 'Record five fouls for one team and check the scorebug marks them, then a sixth', 'Call a timeout and check the clock stops and the timeout graphic goes to air', 'Record a red card and watch the two-minute countdown on the scorer phone'],
+    guide: '/docs/sports/futsal',
+  },
 };
 
 export function generateStaticParams() {

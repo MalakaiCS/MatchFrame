@@ -11,7 +11,7 @@ test.afterEach(async () => {
 });
 
 const LOOKS = ['broadcast', 'minimal', 'club', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister'] as const;
-const OTHER_SPORTS = ['basketball', 'netball', 'rugby_league', 'afl', 'hockey'] as const;
+const OTHER_SPORTS = ['basketball', 'netball', 'rugby_league', 'afl', 'hockey', 'futsal'] as const;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 async function openLook(page: Page, look: string, sport: string, format = '16:9') {

@@ -8,6 +8,7 @@ import { netballAdapter } from './sports/netball';
 import { rugbyLeagueAdapter } from './sports/rugby-league';
 import { aflAdapter } from './sports/afl';
 import { hockeyAdapter } from './sports/hockey';
+import { futsalAdapter } from './sports/futsal';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const adapters: Record<string, SportAdapter<any>> = {
@@ -17,6 +18,7 @@ export const adapters: Record<string, SportAdapter<any>> = {
   rugby_league: rugbyLeagueAdapter,
   afl: aflAdapter,
   hockey: hockeyAdapter,
+  futsal: futsalAdapter,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

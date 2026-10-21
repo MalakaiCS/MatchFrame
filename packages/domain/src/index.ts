@@ -10,6 +10,7 @@ export { netballAdapter, netballConfigSchema, NETBALL_STATS, type NetballConfig 
 export { rugbyLeagueAdapter, rugbyLeagueConfigSchema, RUGBY_LEAGUE_STATS, type RugbyLeagueConfig } from './sports/rugby-league';
 export { aflAdapter, aflConfigSchema, aflScoreLine, AFL_STATS, type AflConfig } from './sports/afl';
 export { hockeyAdapter, hockeyConfigSchema, HOCKEY_STATS, type HockeyConfig } from './sports/hockey';
+export { futsalAdapter, futsalConfigSchema, futsalMatchMs, FUTSAL_GOAL_TYPES, FUTSAL_GOAL_TYPE_LABELS, FUTSAL_ON_COURT, FUTSAL_STATS, type FutsalConfig } from './sports/futsal';
 export { GOAL_TYPES, GOAL_TYPE_LABELS } from './sports/football';
 export { ordinal } from './sports/periods';
 export * from './automation';

@@ -37,7 +37,7 @@
 
 ## Sports
 
-Football, basketball, netball, rugby league, AFL and hockey share the same scorer, graphics and automation.
+Football, futsal, basketball, netball, rugby league, AFL and hockey share the same scorer, graphics and automation.
 What differs is the rule set (periods, clocks, scoring values), the event buttons and the wording:
 
 | Sport | Scoring and events | On the scorebug |
@@ -48,6 +48,28 @@ What differs is the rule set (periods, clocks, scoring values), the event button
 | Rugby league | try, penalty try, conversion, penalty goal, field goal, sin bin, send off, interchange, six again | score and sin-bin markers |
 | AFL | goal, behind, rushed behind, interchange, marks, tackles, inside 50s, clearances | the "12.7 (79)" score line |
 | Hockey | goals, green/yellow/red cards, substitutions, penalty corners and strokes, shoot-out | quarter and score |
+| Futsal (beta) | goals (with assist and type), penalties and 10 m kicks, accumulated fouls, one timeout per half, yellow/second yellow/red with the two-minute send-off, rolling substitutions, kicks from the penalty mark | count-down clock, accumulated fouls (marked at five), timeouts |
+
+**Futsal** follows the Futsal Laws of the Game as Football Australia and its member federations use them. The
+default rules are two 20-minute halves on a stopped clock (counting down; pause it whenever the ball is out of play)
+and a half-time interval of up to 15 minutes. The other presets are *Knockout* (extra time 2×5 and kicks from the
+penalty mark, 5 each then one each), *Community 2×20 running clock, stopped in the final 2 minutes* and *Junior 2×15
+running clock*; the competition page shows the rules in force. Competitions vary these, so check the competition's
+own regulations.
+
+* *Foul* records an accumulated foul (one penalised with a direct free kick or a penalty). Fouls count per half and
+  reset for the second half; extra time carries on from the second half. At five the scorebug marks the team and
+  the scorer phone says the next one is a direct free kick from the 10 m mark; from the sixth, every one is. A card
+  for the same foul is recorded separately.
+* *Timeout*: one per team in each half (60 s), none in extra time. Recording it stops the clock.
+* A red card or second yellow leaves the team a player short for two minutes of playing time. The countdown runs
+  only while the clock runs, carries across half time, and ends early when the other team scores while it has more
+  players (5 v 4, 5 v 3 or 4 v 3 gives one player back); at level numbers, or when the short team scores, nothing
+  changes. The scorer phone shows the players on the court and the time left. A substitute sent off from the bench
+  does not reduce the team.
+* Goals, penalties and 10 m kicks put the goal graphic on air, with the minute of play (18:30 left in the first
+  half is the 2nd minute). The futsal starter plan is the football flow plus the timeout graphic and the match stats
+  at a timeout; rolling substitutions put nothing on air.
 
 Rolling-substitution sports let a player come back on; football does not. The scorer's player pickers only
 offer players who can make the change (who is on the field is tracked from the line-up plus substitutions and

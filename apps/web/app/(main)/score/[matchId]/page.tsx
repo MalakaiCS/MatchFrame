@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { use, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowRight, CloudOff, Pause, Play, RotateCcw, Settings2, Undo2, UserRound, Users } from 'lucide-react';
-import { GOAL_TYPES, GOAL_TYPE_LABELS, clockDisplayMs, getAdapter, onField, type DisplayModel, type EventTypeDef, type LineupPlayer } from '@bs/domain';
+import { FUTSAL_GOAL_TYPES, FUTSAL_GOAL_TYPE_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS, clockDisplayMs, getAdapter, onField, type DisplayModel, type EventTypeDef, type LineupPlayer } from '@bs/domain';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, Switch, cx } from '@bs/ui';
 import { get } from '@/lib/api';
 import { feedback, tone, useScorerPrefs } from '@/lib/feedback';
@@ -25,6 +25,9 @@ const FOUL_TYPES: { id: FoulType; label: string }[] = [
 // goals, cards and substitutions put a graphic on air; the rest are statistics for the half-time board
 const GRAPHIC_GROUPS = ['score', 'discipline', 'change', 'shootout'];
 const DETAIL_GOAL_TYPES = GOAL_TYPES.filter((g) => g !== 'own_goal' && g !== 'penalty');
+// futsal penalties and 10 m kicks have their own buttons
+const FUTSAL_DETAIL_GOAL_TYPES = FUTSAL_GOAL_TYPES.filter((g) => g !== 'own_goal' && g !== 'penalty' && g !== 'second_penalty');
+const GOAL_LABELS: Record<string, string> = { ...GOAL_TYPE_LABELS, ...FUTSAL_GOAL_TYPE_LABELS };
 
 function useTicker(ms = 200) {
   const [, set] = useState(0);
@@ -90,7 +93,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const allPlayers = [...playersOf('home'), ...playersOf('away')];
   const nameOf = (id: string | null | undefined) => (id ? allPlayers.find((p) => p.playerId === id)?.displayName ?? null : null);
   const rolling = m.sport !== 'football';
-  const fieldWord = m.sport === 'basketball' || m.sport === 'netball' ? 'On the court' : 'On the field';
+  const fieldWord = m.sport === 'basketball' || m.sport === 'netball' || m.sport === 'futsal' ? 'On the court' : 'On the field';
   /** who is on the field for a side right now: the line-up plus substitutions and dismissals so far */
   const groupPlayers = (side: Side) => {
     const f = onField(m.lineup, proj, side);
@@ -207,8 +210,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
     await s.enqueue('CORRECT_FACT', { factId, reason: 'scorer identified', changes: { playerId } }, `Scorer for ${label}`);
     feedback(prefs, 'tick');
     setPlayerFor(null);
-    // football goals carry an assist and a type for the goal graphic and the season statistics
-    if (m.sport === 'football' && eventType === 'goal') setGoalDetails({ factId, side, scorerId: playerId, step: 'assist' });
+    // football and futsal goals carry an assist and a type for the goal graphic and the season statistics
+    if ((m.sport === 'football' || m.sport === 'futsal') && eventType === 'goal') setGoalDetails({ factId, side, scorerId: playerId, step: 'assist' });
   };
 
   const finishGoalDetails = async (goalType: string | null) => {
@@ -283,7 +286,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
             <span className="mt-1 text-sm font-medium">{team(side).shortName}</span>
             <span className={cx('text-5xl font-bold tabular', s.provisional?.provisional && 'text-warning')}>{display.score[side]}</span>
             {display.scoreDetail ? <span className="text-xs text-muted tabular">{display.scoreDetail[side]}</span> : null}
-            {display.fouls ? <span className="text-xs text-muted">Fouls {display.fouls[side]}{display.bonus?.[side] ? ' · BONUS' : ''} · TO {display.timeouts?.[side]}</span> : null}
+            {display.fouls ? <span className="text-xs text-muted">Fouls {display.fouls[side]}{display.bonus?.[side] ? (m.sport === 'futsal' ? ' · next is a 10 m kick' : ' · BONUS') : ''} · TO {display.timeouts?.[side]}</span> : null}
+            {display.shortHanded?.find((x) => x.side === side) ? <span className="mt-1 rounded bg-live/15 px-2 text-xs font-semibold text-live tabular" aria-label={`${team(side).shortName} a player short`}>{display.shortHanded.find((x) => x.side === side)!.players} on court · {display.shortHanded.find((x) => x.side === side)!.remainingText}</span> : null}
             {display.possession === side ? <span className="text-xs text-primary">◀ possession</span> : null}
           </div>
         ))}
@@ -419,8 +423,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           {(facts.data ?? []).filter((f) => f.category === 'event').slice(-12).reverse().map((f) => {
             const pl = nameOf(f.playerId);
             const assist = nameOf(f.payload?.assistId as string | undefined);
-            const goalType = f.payload?.goalType ? GOAL_TYPE_LABELS[f.payload.goalType as keyof typeof GOAL_TYPE_LABELS] ?? String(f.payload.goalType) : null;
-            const detailsMissing = access === 'score' && m.sport === 'football' && f.type === 'goal' && !f.voided && !!f.playerId && !f.payload?.goalType;
+            const goalType = f.payload?.goalType ? GOAL_LABELS[String(f.payload.goalType)] ?? String(f.payload.goalType) : null;
+            const detailsMissing = access === 'score' && (m.sport === 'football' || m.sport === 'futsal') && f.type === 'goal' && !f.voided && !!f.playerId && !f.payload?.goalType;
             return (
               <li key={f.id} className={cx('flex min-h-11 items-center gap-2', f.voided && 'line-through opacity-50')}>
                 <span className="w-10 text-xs text-muted tabular">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : ''}</span>
@@ -501,7 +505,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           </>
         ) : goalDetails ? (
           <>
-            <div className="grid grid-cols-2 gap-2">{DETAIL_GOAL_TYPES.map((g) => <Button key={g} size="touch" onClick={() => finishGoalDetails(g)}>{GOAL_TYPE_LABELS[g]}</Button>)}</div>
+            <div className="grid grid-cols-2 gap-2">{(m.sport === 'futsal' ? FUTSAL_DETAIL_GOAL_TYPES : DETAIL_GOAL_TYPES).map((g) => <Button key={g} size="touch" onClick={() => finishGoalDetails(g)}>{GOAL_LABELS[g]}</Button>)}</div>
             <Button className="mt-3 w-full" size="touch" variant="ghost" onClick={() => finishGoalDetails(null)}>Skip</Button>
           </>
         ) : null}

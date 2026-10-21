@@ -247,6 +247,30 @@ export const DOCS: DocArticle[] = [
     related: ['scoring/corrections'],
     verified: V,
   },
+  {
+    slug: 'sports/futsal',
+    section: 'sports',
+    title: 'Futsal',
+    outcome: 'Know what the futsal scorer records, the rules it applies and what the scorebug shows.',
+    availability: 'Beta.',
+    body: [
+      { p: 'Futsal follows the Futsal Laws of the Game, which Football Australia and its member federations use. Competitions vary some of it, so choose the closest **Rules preset** when you create the competition and adjust it on the competition page: **Futsal Laws: 2×20 stopped clock** (the default), **Knockout** (with extra time 2×5 and kicks from the penalty mark), **Community 2×20 running clock, stopped in the final 2 minutes** and **Junior 2×15 running clock**. Check your competition\'s own regulations.' },
+      { h: 'What the scorer records' },
+      { list: [
+        'Goals (with the scorer, the assist and the goal type), own goals, penalties and 10 m kicks scored or missed.',
+        '**Foul** for each accumulated foul (one penalised with a direct free kick or a penalty). They count per half and start again for the second half; extra time carries on from the second half. At five fouls the scorebug marks the team, because its next foul is a direct free kick from the 10 m mark; the scorer phone says so too. Record a card for the same foul separately.',
+        '**Timeout**: one per team in each half, none in extra time. Recording it stops the clock; start it again when play restarts.',
+        'Yellow cards, second yellows and red cards. A send-off leaves the team a player short for two minutes of playing time, or until the other team scores while it has more players; the scorer phone shows the players on the court and the time left. If both teams are short, a goal changes nothing.',
+        'Rolling substitutions (players can come back on), and statistics: shots, corners and saves.',
+      ] },
+      { h: 'The clock' },
+      { p: 'The clock counts down from 20:00 and starts at each kick-off. With a stopped clock, pause it whenever the ball is out of play and start it again at the restart; with the community preset only in the final two minutes, when the phone reminds you. The phases are the same as football\'s, from **Pre-match** to **Full Time**.' },
+      { h: 'What goes on air' },
+      { p: 'The futsal starter plan follows the football flow (see [the football automation flow](/docs/automation/football-flow)), with goals, penalties and 10 m kicks, cards, and at a timeout the timeout graphic then the match stats. Substitutions put nothing on air.' },
+    ],
+    related: ['automation/football-flow', 'scoring/corrections'],
+    verified: V,
+  },
   // ================================================================== scoring
   {
     slug: 'scoring/corrections',
