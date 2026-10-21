@@ -2,7 +2,7 @@
 import { getConfig } from '@bs/config';
 import { createDb } from '@bs/db';
 import { Redis } from 'ioredis';
-import { createRelay, type OutboxRow } from '@bs/services';
+import { createRelay, gamePlansSvc, type OutboxRow } from '@bs/services';
 import { buildSubscribers, startBackground } from './subscribers';
 
 const config = getConfig();
@@ -22,6 +22,11 @@ const relay = createRelay({
 await relay.start();
 const bg = await startBackground(ctx);
 console.log(`[worker] ${workerId} started`);
+// main outputs from before every match got automation by default: give them their plan now (once; then audited)
+void gamePlansSvc
+  .backfillDefaultPlans({ db, config })
+  .then((n) => n && console.log(`[worker] gave ${n} output(s) without automation the starter flow`))
+  .catch((e: Error) => console.warn(`[worker] automation backfill failed: ${e.message}`));
 
 const shutdown = async () => {
   await relay.stop();

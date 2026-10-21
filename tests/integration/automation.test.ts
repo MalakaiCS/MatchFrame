@@ -1,7 +1,7 @@
 // Automation + sponsor delivery against real PostgreSQL with the worker role (A23–A28, A30–A32, A34).
 import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { automationCues, automationRuns, createDb, destinations, mediaAssets, outboxEvents, overlays, withTenant } from '@bs/db';
 import { createFakeProvider } from '@bs/media';
 import { automationSvc, catalog, gamePlansSvc, matchesSvc, overlaysSvc, scoring, sponsorsSvc, streamsSvc, type Ctx } from '@bs/services';
@@ -198,6 +198,34 @@ describe('automation runtime', () => {
     expect(again!.gamePlanVersionId).toBe(own!.gamePlanVersionId);
     expect(await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, own2!.id)))).toHaveLength(2);
     expect(await gamePlansSvc.listGamePlans(bctx)).toHaveLength(1);
+  });
+
+  it('on worker start, an output that never had a plan gets one; one a person turned off stays off', async () => {
+    const C = await makeOrg(deps, 'Automation C');
+    const cctx: Ctx = { ...C.ctx, now: clock };
+    const comp = await catalog.createCompetition(cctx, { name: 'Old League', sport: 'football', defaultTimezone: 'Australia/Brisbane' });
+    const season = await catalog.createSeason(cctx, comp.id, { name: '2026' });
+    const h = await catalog.createTeam(cctx, { name: 'Harbour City FC', shortName: 'Harbour', abbreviation: 'HCF', sport: 'football' });
+    const a = await catalog.createTeam(cctx, { name: 'Ridgeback United', shortName: 'Ridge', abbreviation: 'RBU', sport: 'football' });
+    const m1 = await matchesSvc.createMatch(cctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-12-19 15:00', timezone: 'Australia/Brisbane' });
+    const m2 = await matchesSvc.createMatch(cctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-12-26 15:00', timezone: 'Australia/Brisbane' });
+    // like matches created before outputs got a plan by default: no plan, and nothing in the audit log about one
+    await worker.db.update(overlays).set({ gamePlanVersionId: null }).where(inArray(overlays.matchId, [m1.id, m2.id]));
+    const out = async (matchId: string) => (await withTenant(deps.db, { organisationId: C.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, matchId))))[0]!;
+    // someone deliberately took the automation off the second match's output
+    await overlaysSvc.setOverlayGamePlan(cctx, (await out(m2.id)).id, null);
+    await gamePlansSvc.backfillDefaultPlans({ db: worker.db, config: deps.config });
+    const [plan] = await gamePlansSvc.listGamePlans(cctx);
+    expect((await out(m1.id)).gamePlanVersionId).toBe(plan!.versions[0]!.id);
+    expect((await out(m2.id)).gamePlanVersionId).toBeNull();
+    expect(await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, (await out(m1.id)).id)))).toHaveLength(2);
+    // a second start changes nothing; an extra output added to a match is never given a plan
+    const extra = await overlaysSvc.createOverlay(cctx, m1.id, { name: 'Venue screen' });
+    await gamePlansSvc.backfillDefaultPlans({ db: worker.db, config: deps.config });
+    expect((await out(m2.id)).gamePlanVersionId).toBeNull();
+    const [ex] = await withTenant(deps.db, { organisationId: C.org.id }, (t) => t.select().from(overlays).where(eq(overlays.id, extra.id)));
+    expect(ex!.gamePlanVersionId).toBeNull();
+    expect(await gamePlansSvc.listGamePlans(cctx)).toHaveLength(1);
   });
 
   it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {

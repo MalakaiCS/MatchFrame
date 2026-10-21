@@ -1,8 +1,14 @@
 // Visual regression: every built-in graphic in every look, rendered by the real engine on the theme page with
 // its sample data, compared pixel-for-pixel (2% tolerance) with the committed baselines in __screenshots__/.
 // Animations are disabled through the reduced-motion preference so each capture is the settled graphic.
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { login } from './helpers';
+
+// every test closes its context: a theme page left open keeps animating and slows each later look's captures
+const opened: BrowserContext[] = [];
+test.afterEach(async () => {
+  for (const c of opened.splice(0)) await c.close();
+});
 
 const LOOKS = ['broadcast', 'minimal', 'club', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister'] as const;
 const OTHER_SPORTS = ['basketball', 'netball', 'rugby_league', 'afl', 'hockey'] as const;
@@ -36,7 +42,8 @@ async function snapAll(page: Page, prefix: string, limit?: number) {
 
 for (const look of LOOKS) {
   test(`${look} look: every football graphic`, async ({ browser }) => {
-    const { page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const { ctx, page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    opened.push(ctx);
     await openLook(page, look, 'football');
     await snapAll(page, `${look}-football`);
   });
@@ -44,7 +51,8 @@ for (const look of LOOKS) {
 
 for (const look of ['broadcast', 'premier'] as const) {
   test(`${look} look: vertical (9:16) and venue formats`, async ({ browser }) => {
-    const { page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const { ctx, page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    opened.push(ctx);
     await openLook(page, look, 'football', '9:16');
     await snapAll(page, `${look}-football-9x16`, 6);
     await openLook(page, look, 'football', 'venue');
@@ -54,7 +62,8 @@ for (const look of ['broadcast', 'premier'] as const) {
 
 for (const sport of OTHER_SPORTS) {
   test(`broadcast look: ${sport} sport-specific graphics`, async ({ browser }) => {
-    const { page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    const { ctx, page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    opened.push(ctx);
     await openLook(page, 'broadcast', sport);
     await snapAll(page, `broadcast-${sport}`, 6);
   });

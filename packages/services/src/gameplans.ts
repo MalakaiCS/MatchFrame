@@ -1,13 +1,13 @@
 // Game plans: editable drafts, publish-time validation and immutable published versions.
-import { and, asc, desc, eq } from 'drizzle-orm';
-import { creatives, gamePlans, gamePlanVersions, mediaAssets, overlays, type Tx } from '@bs/db';
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { creatives, gamePlans, gamePlanVersions, matches, mediaAssets, memberships, overlays, type Tx } from '@bs/db';
 import { getAdapter, SPORT_LABELS, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, type Sport, SPORTS } from '@bs/domain';
 import { BUILTIN_TEMPLATES } from '@bs/graphics';
 import { z } from 'zod';
 import { assertCan } from './authz';
 import { audit } from './audit';
 import { invalid, notFound } from './errors';
-import { tx, type Ctx } from './context';
+import { resolveActor, tx, type Ctx, type Deps } from './context';
 import { customDefs, latestPublishedPlan, loadOverlay, setOverlayGamePlan } from './overlays';
 
 export async function templateLayerMap(t: Tx, organisationId: string) {
@@ -135,4 +135,46 @@ export async function applyStarterPlan(ctx: Ctx, overlayId: string): Promise<{ g
   if (!versionId) throw invalid('There is no starter flow for this sport yet; create a plan under Automation.');
   await setOverlayGamePlan(ctx, overlayId, versionId);
   return { gamePlanVersionId: versionId };
+}
+
+/**
+ * On worker start: the main output (the one created with the match) of an upcoming or live match that never had
+ * an automation plan (matches created before the main output got one by default) gets one now, exactly as if the
+ * organisation's owner had pressed "Use the starter flow", and catches up with its match. Extra outputs added
+ * later, and any output whose plan someone has set or removed (the audit log has an "overlay.game_plan" entry for
+ * it), are left as they are. Returns how many outputs were given a plan.
+ */
+export async function backfillDefaultPlans(deps: Deps, now = new Date()): Promise<number> {
+  const rows = await deps.db
+    .select({ id: overlays.id, organisationId: overlays.organisationId })
+    .from(overlays)
+    .innerJoin(matches, and(eq(matches.id, overlays.matchId), eq(matches.organisationId, overlays.organisationId)))
+    .where(
+      and(
+        isNull(overlays.gamePlanVersionId),
+        eq(overlays.kind, 'graphics'),
+        inArray(matches.status, ['scheduled', 'live']),
+        gte(matches.scheduledAt, new Date(now.getTime() - 86_400_000)),
+        sql`not exists (select 1 from overlays first where first.match_id = ${overlays.matchId} and first.kind = 'graphics' and first.created_at < ${overlays.createdAt})`,
+        sql`not exists (select 1 from audit_logs a where a.organisation_id = ${overlays.organisationId} and a.resource_type = 'overlay' and a.resource_id = ${overlays.id}::text and a.action = 'overlay.game_plan')`,
+      ),
+    );
+  let given = 0;
+  for (const r of rows) {
+    const [owner] = await deps.db
+      .select({ userId: memberships.userId })
+      .from(memberships)
+      .where(and(eq(memberships.organisationId, r.organisationId), eq(memberships.role, 'owner'), eq(memberships.status, 'active')))
+      .orderBy(asc(memberships.createdAt))
+      .limit(1);
+    const actor = owner ? await resolveActor(deps.db, owner.userId, r.organisationId) : null;
+    if (!actor) continue;
+    try {
+      await applyStarterPlan({ ...deps, actor }, r.id);
+      given++;
+    } catch (e) {
+      console.warn(`[automation] could not give output ${r.id} a plan: ${(e as Error).message}`);
+    }
+  }
+  return given;
 }
