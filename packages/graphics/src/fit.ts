@@ -31,19 +31,32 @@ export function fitLabel(opts: { full: string; short?: string | null; maxWidth: 
   return { text: `${t.trimEnd()}…`, fontPx: opts.minFontPx, step: 'truncate' };
 }
 
-/** Canvas-based measure for browsers (fonts must be loaded before readiness is signalled). */
+/**
+ * Canvas-based measure for browsers. A width measured while the look's web font is still loading (the fallback
+ * font's width) is not kept, and everything is measured again once fonts finish loading, so a name fitted on the
+ * first frame is not clipped when the real typeface arrives.
+ */
 export function canvasMeasure(fontFamily: string, weight = 700): Measure {
   if (typeof document === 'undefined') return approxMeasure;
   const ctx = document.createElement('canvas').getContext('2d');
   if (!ctx) return approxMeasure;
   const cache = new Map<string, number>();
+  const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+  fonts?.addEventListener?.('loadingdone', () => cache.clear());
   return (text, px) => {
     const k = `${px}|${text}`;
     let v = cache.get(k);
     if (v === undefined) {
       ctx.font = `${weight} ${px}px ${fontFamily}`;
       v = ctx.measureText(text).width;
-      cache.set(k, v);
+      let ready = true;
+      try {
+        ready = !fonts || fonts.check(ctx.font, text);
+      } catch {
+        ready = true;
+      }
+      if (ready) cache.set(k, v);
+      else void fonts?.load(ctx.font, text).catch(() => {});
     }
     return v;
   };

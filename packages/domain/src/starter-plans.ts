@@ -4,10 +4,12 @@ import type { GamePlan } from './automation';
 
 /**
  * Football match flow, in Auto mode:
- * - Pre-match: the animated background with the match header (teams, ground, kick-off time, countdown).
+ * - From the moment the match exists: the animated background with the match header (teams, ground, kick-off time
+ *   and a countdown to kick-off however far away), on air until the players walk out.
  * - Players entering: background and header fade out; 15 s later each line-up shows once for 8 s (a team with no
  *   line-up entered is left out). It keeps going if the scorer presses "About to start" meanwhile.
- * - Kick-off of each half: scorebug in and the kick-off banner.
+ * - About to start: the scorebug comes up, its clock at 0:00 until the kick-off starts it.
+ * - Kick-off of each half: the kick-off banner (and the scorebug, if it is not already up).
  * - Goals, cards and substitutions put their graphic on air during play.
  * - Half time: the animated background comes up over everything, cycling the match stats and the match header
  *   (with the countdown to the second half) every 45 s.
@@ -44,6 +46,13 @@ export const FOOTBALL_STARTER: GamePlan = {
         { id: 'lineup_home', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'home' }, offsetMs: 15_000, durationMs: 8000 },
         { id: 'lineup_away', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'away' }, offsetMs: 23_600, durationMs: 8000 },
       ],
+    },
+    {
+      id: 'about_to_start', name: 'About to start: scorebug up before kick-off', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+      triggers: [{ id: 't_ready', type: 'phase', phaseTags: ['about_to_start'], phaseIds: [] }],
+      guards: [],
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+      items: [{ id: 'ready_bug', action: 'scorebug_show', offsetMs: 0 }],
     },
     {
       id: 'kickoff', name: 'Kick-off: scorebug and kick-off banner', kind: 'in_play', priority: 2, promotional: false, cooldownMs: 0,

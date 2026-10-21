@@ -39,6 +39,14 @@ describe('match header wording', () => {
     expect(restartCountdown(props('half_time', { now: htAt }))).toBeNull();
   });
 
+  it('counts down to kick-off however far away it is', () => {
+    const cd = (msBefore: number) => identInfo(props('scheduled', { now: KO - msBefore })).countdown?.text;
+    expect(cd(12 * 60_000)).toBe('12:00');
+    expect(cd(2 * 3600_000 + 14 * 60_000 + 58_000)).toBe('2:14:58');
+    expect(cd(3 * 86_400_000 + 2 * 3600_000 + 5 * 60_000)).toBe('3d 02:05:00');
+    expect(identInfo(props('scheduled', { now: KO + 60_000 })).countdown).toBeNull(); // past the kick-off time
+  });
+
   it('at full time: the final score, FULL TIME and the thank-you message, with no countdown', () => {
     const i = identInfo(props('full_time', { now: KO + 2 * 3600_000, variables: { showCountdown: false, message: 'Thank you for watching' }, score: [3, 2] }));
     expect(i).toEqual({ started: true, centre: '3–2', line: 'FULL TIME', countdown: null, message: 'Thank you for watching' });

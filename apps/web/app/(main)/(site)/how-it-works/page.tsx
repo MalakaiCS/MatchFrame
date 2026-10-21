@@ -70,9 +70,10 @@ export default function HowItWorksPage() {
               <thead className="bg-white/[0.03] text-xs uppercase tracking-[0.12em] text-muted"><tr><th scope="col" className="px-4 py-3">When</th><th scope="col" className="px-4 py-3">On air</th></tr></thead>
               <tbody className="text-white/90">
                 {[
-                  ['The match is created', 'Animated background and the match header: teams, ground and kick-off time, with a countdown in the last 99 minutes.'],
+                  ['The match is created', 'Animated background and the match header: teams, ground and kick-off time, with a countdown to kick-off, on air until the players walk out.'],
                   ['Players entering', 'Background and header fade; 15 seconds later each line-up for 8 seconds, once.'],
-                  ['1st Half', 'Scorebug and kick-off banner.'],
+                  ['About to start', 'The scorebug comes up, its clock at 0:00.'],
+                  ['1st Half', 'Kick-off banner, and the clock starts.'],
                   ['Goals, cards, substitutions', 'Their graphic, with the goal partner after a goal.'],
                   ['Half Time', 'Background over everything; the stats and the header with a countdown to the second half take turns every 45 seconds.'],
                   ['Players entering (2nd half)', 'Background and header fade; the scorebug returns 7 seconds later.'],

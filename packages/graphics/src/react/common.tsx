@@ -123,12 +123,18 @@ export function slateMessage(p: GraphicProps): string {
   }
 }
 
+/** Time to kick-off however far away: "14:58", "2:14:58", or "3d 02:14:58" more than a day out. */
 export function kickoffCountdown(p: GraphicProps): string | null {
   const ms = new Date(p.data.match.scheduledAt).getTime() - p.now;
   if (!(ms > 0)) return null;
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  return m > 99 ? null : `${m}:${String(s).padStart(2, '0')}`;
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, '0');
+  if (d > 0) return `${d}d ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${s}`;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${s}`;
+  return `${m}:${s}`;
 }
 
 /** The look's own logo (league or broadcaster), shown in the title bars of full-screen graphics and on the slate. */

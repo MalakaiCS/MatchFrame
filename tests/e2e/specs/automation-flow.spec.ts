@@ -1,6 +1,7 @@
 // The football starter plan on a real output, in real time: animated background and match header from the moment
-// the output has its plan (the match is still "Scheduled"), left untouched at "Pre-match", both cleared when the players walk out, line-ups 15 s later (8 s each, once, only for a team with a
-// line-up), scorebug and kick-off banner at each half, the half-time background cycling stats and the header
+// the output has its plan (the match is still "Scheduled"), on air with no set time and left untouched at
+// "Pre-match", both cleared when the players walk out, line-ups 15 s later (8 s each, once, only for a team with a
+// line-up), the scorebug at "About to start" with its clock at 0:00, the kick-off banner and a running clock at each half, the half-time background cycling stats and the header
 // with the restart countdown every 45 s, the scorebug back 7 s after the second-half walk-out, and 30 s after
 // full time the final score on the header with "Thank you for watching". Captures of the OBS page are kept as
 // evidence in docs/evidence/e2e/.
@@ -71,6 +72,9 @@ test('football starter flow on a real output, with the real timings', async ({ b
   await expect(obs.locator('[data-graphic="backdrop"]')).toBeVisible();
   await capture('1-pre-match');
   const before = await st();
+  // the header has no set time on air: still up after the old 8-second hold
+  await obs.waitForTimeout(9000);
+  expect(on(await st(), 'fullframe')?.cueId).toBe(on(before, 'fullframe')?.cueId);
   // "Pre-match" leaves them exactly as they are (no second entrance)
   await phase('pre_match');
   await obs.waitForTimeout(2500);
@@ -82,7 +86,10 @@ test('football starter flow on a real output, with the real timings', async ({ b
   const t0 = await phase('players_entering');
   await waitFor('background and header cleared', (s) => !on(s, 'background') && !on(s, 'fullframe'), 5000);
   await obs.waitForTimeout(3000);
+  // "About to start": the scorebug comes up before kick-off, its clock at 0:00
   await phase('about_to_start');
+  await waitFor('scorebug up at About to start', (s) => s.scorebugVisible, 5000);
+  await expect(obs.locator('[data-graphic="scorebug"]')).toContainText('0:00');
   await waitFor('home line-up on air', (s) => on(s, 'fullframe')?.templateKey === 'builtin:lineup', 20_000);
   expect(Date.now() - t0).toBeGreaterThanOrEqual(14_000);
   expect(on(await st(), 'fullframe')?.variables.team).toBe('home');
@@ -96,9 +103,10 @@ test('football starter flow on a real output, with the real timings', async ({ b
     await obs.waitForTimeout(500);
   }
 
-  // 1st half: scorebug and kick-off banner
+  // 1st half: the kick-off banner, and the scorebug's clock starts
   await phase('first_half');
   await waitFor('scorebug and kick-off banner', (s) => s.scorebugVisible && on(s, 'lower')?.templateKey === 'builtin:period_banner', 8000);
+  await expect(obs.locator('[data-graphic="scorebug"]')).toContainText(/0:0[2-9]|0:[1-5]\d/, { timeout: 10_000 });
 
   // half time: background over everything, stats, then 45 s later the header with the restart countdown
   const t1 = await phase('half_time');

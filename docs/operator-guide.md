@@ -114,14 +114,18 @@ carry a "presented by" sponsor; those appearances count in the sponsor delivery 
 
 ### What the football starter plan does on its own
 
+An organisation's first football match publishes the starter plan ("Football starter flow") if no football plan has
+been published yet, so its OBS link shows the pre-match graphics straight away. Edit it under *Automation* like any plan.
+
 The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 
 | Scorer presses | On air |
 | --- | --- |
-| *(nothing yet: the match has just been created)* | the animated background, then the match header on it: Home v Away, the ground and kick-off time; the countdown to kick-off appears in the last 99 minutes |
+| *(nothing yet: the match has just been created)* | the animated background, then the match header on it: Home v Away, the ground and kick-off time, with a countdown to kick-off however far away ("3d 02:14:58" more than a day out). Both stay up, with no set time, until the players walk out |
 | *Pre-match* | the same background and header stay up as they are (no second entrance) |
 | *Players entering* | the background and header fade out at once; 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
-| *1st Half* | scorebug in and the "Kick-off" banner |
+| *About to start* | the scorebug comes up, its clock at 0:00 |
+| *1st Half* | the "Kick-off" banner, and the clock starts |
 | *Half Time* | scorebug out, the animated background back over everything, then the match stats and the match header (score, HALF TIME, "2nd Half in 14:08") taking turns, 45 s each, until the players come back out |
 | *Players entering (2nd half)* | the background and header fade out; the scorebug comes back 7 s later. No line-ups the second time |
 | *2nd Half* | scorebug (already in) and the "Kick-off" banner |

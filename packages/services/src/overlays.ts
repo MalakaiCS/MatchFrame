@@ -82,9 +82,10 @@ export async function enqueuePlanAttached(t: Tx, organisationId: string, overlay
 
 /**
  * `defaultPlan` (the output every match gets when it is created): with no plan on the match or the competition,
- * use the organisation's latest published plan for the sport, so automation runs without a set-up step.
+ * use the organisation's latest published plan for the sport, so automation runs without a set-up step; with none
+ * at all, `starterPlan` publishes the sport's starter flow (match creation passes it).
  */
-export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<typeof overlayInput>, t0?: Tx, opts: { defaultPlan?: boolean } = {}) {
+export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<typeof overlayInput>, t0?: Tx, opts: { defaultPlan?: boolean; starterPlan?: (t: Tx, sport: string) => Promise<string | null> } = {}) {
   assertCan(ctx.actor, 'theme.use');
   const d = overlayInput.parse(input);
   const run = async (t: Tx) => {
@@ -103,7 +104,7 @@ export async function createOverlay(ctx: Ctx, matchId: string, input: z.input<ty
       }
     }
     let gamePlanVersionId = m.gamePlanVersionId ?? comp?.gamePlanVersionId ?? null;
-    if (!gamePlanVersionId && opts.defaultPlan) gamePlanVersionId = await latestPublishedPlan(t, ctx.actor.organisationId, m.sport);
+    if (!gamePlanVersionId && opts.defaultPlan) gamePlanVersionId = (await latestPublishedPlan(t, ctx.actor.organisationId, m.sport)) ?? (await opts.starterPlan?.(t, m.sport)) ?? null;
     const [o] = await t
       .insert(overlays)
       .values({ organisationId: ctx.actor.organisationId, matchId, name: d.name, kind: d.kind, themeProfileVersionId: profileVersionId, themeVersionId, gamePlanVersionId, publicId: publicId('ov', 12) })
@@ -135,6 +136,7 @@ export async function listOverlays(ctx: Ctx, matchId: string) {
       kind: r.o.kind,
       publicId: r.o.publicId,
       gamePlanVersionId: r.o.gamePlanVersionId,
+      format: (r.o.format as '16:9' | '9:16' | 'venue' | null) ?? '16:9',
       theme: pv(r.o.themeProfileVersionId) ? { profile: pv(r.o.themeProfileVersionId)!.p.name, version: pv(r.o.themeProfileVersionId)!.v.version } : null,
       pendingTheme: pv(r.o.pendingThemeProfileVersionId) ? { id: r.o.pendingThemeProfileVersionId, version: pv(r.o.pendingThemeProfileVersionId)!.v.version } : null,
       state: { revision: r.s.revision, displayedRevision: r.s.displayedRevision, displayedAt: r.s.displayedAt, mode: r.s.mode, inhibited: r.s.inhibited, scorebugVisible: r.s.scorebugVisible, onAir: Object.keys(r.s.layers ?? {}) },

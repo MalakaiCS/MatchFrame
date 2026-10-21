@@ -19,13 +19,14 @@ import {
   users,
   type Tx,
 } from '@bs/db';
-import { getAdapter, isValidTimeZone, resolveLocalTime, type LineupPlayer, type LineupSnapshot, type TeamSnapshot } from '@bs/domain';
+import { getAdapter, isValidTimeZone, resolveLocalTime, type LineupPlayer, type LineupSnapshot, type Sport, type TeamSnapshot } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan, assignedScopes, can, hasWideRead } from './authz';
 import { audit } from './audit';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
 import { createOverlay, enqueuePlanAttached } from './overlays';
+import { ensureStarterPlan } from './gameplans';
 import { enqueueOutbox } from './outbox';
 
 export const matchInput = z.object({
@@ -119,7 +120,7 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
   await t.insert(matchLineups).values({ matchId: m!.id, organisationId: ctx.actor.organisationId, snapshot: lineup as never, teams: { home: teamSnapshot(home), away: teamSnapshot(away) } as never });
   // Every match gets one graphics output, so the OBS link exists from day one; a second output is an explicit add.
   try {
-    await createOverlay(ctx, m!.id, { name: 'Main graphics' }, t, { defaultPlan: true });
+    await createOverlay(ctx, m!.id, { name: 'Main graphics' }, t, { defaultPlan: true, starterPlan: (tt, sport) => ensureStarterPlan(ctx, tt, sport as Sport) });
   } catch (e) {
     if (!(e instanceof AppError && e.status === 403)) throw e;
   }

@@ -11,7 +11,7 @@ import { useAction, useCopy, useGet } from '@/lib/hooks';
 import { layerLabel } from '@/lib/labels';
 
 export interface OverlayRow {
-  id: string; name: string; kind: string; publicId: string; gamePlanVersionId: string | null;
+  id: string; name: string; kind: string; publicId: string; gamePlanVersionId: string | null; format: '16:9' | '9:16' | 'venue';
   theme: { profile: string; version: number } | null; pendingTheme: { id: string; version: number } | null;
   state: { revision: number; displayedRevision: number; displayedAt: string | null; mode: string; inhibited: boolean; scorebugVisible: boolean; onAir: string[] };
   renderers: { purpose: string; displayedRevision: number; lastSeenAt: string; reporting: boolean }[];
@@ -71,7 +71,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
   const apply = useAction(() => post(`overlays/${o.id}/apply-theme`), [['overlays', matchId]], { success: 'New version of the look applied' });
   const setFormat = useAction((format: string) => put(`overlays/${o.id}/format`, { format }), [['overlays', matchId]], { success: 'Output format changed. OBS picks it up on the next refresh.' });
   const [hk, setHk] = useState(false);
-  const format = (o as { format?: string }).format ?? '16:9';
+  const format = o.format ?? '16:9';
   const size = format === '9:16' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const st = obsStatus(o);
   const link = urls.data?.production ?? null;

@@ -201,6 +201,9 @@ describe('phase steps and break timing', () => {
     expect(at('players_entering', ['players_entering'])).toEqual(['players_entering']);
     const pre = FOOTBALL_STARTER.playlists.find((p) => p.id === 'pre_match')!;
     expect(pre.items.map((i) => [i.templateKey, i.durationMs])).toEqual([['builtin:backdrop', null], ['builtin:ident', null]]);
+    // "About to start" brings the scorebug up before kick-off (its clock starts with the first half)
+    expect(at('about_to_start', ['about_to_start'])).toEqual(['about_to_start']);
+    expect(FOOTBALL_STARTER.playlists.find((p) => p.id === 'about_to_start')!.items.map((i) => i.action)).toEqual(['scorebug_show']);
   });
 
   it('records when each phase and the current break began, through live commands and a rebuild from the log', () => {

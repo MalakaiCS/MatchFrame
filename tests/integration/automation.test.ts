@@ -164,6 +164,35 @@ describe('automation runtime', () => {
     expect(await worker.db.select().from(outboxEvents).where(and(eq(outboxEvents.topic, 'overlay.plan.attached'), eq(outboxEvents.aggregateId, own!.id)))).toHaveLength(1);
   });
 
+  it('the first match in an organisation with no plan publishes the starter flow; its output shows the background and the header until removed', async () => {
+    const B = await makeOrg(deps, 'Automation B');
+    const bctx: Ctx = { ...B.ctx, now: clock };
+    const comp = await catalog.createCompetition(bctx, { name: 'Fresh League', sport: 'football', defaultTimezone: 'Australia/Brisbane' });
+    const season = await catalog.createSeason(bctx, comp.id, { name: '2026' });
+    const h = await catalog.createTeam(bctx, { name: 'Harbour City FC', shortName: 'Harbour', abbreviation: 'HCF', sport: 'football' });
+    const a = await catalog.createTeam(bctx, { name: 'Ridgeback United', shortName: 'Ridge', abbreviation: 'RBU', sport: 'football' });
+    expect(await gamePlansSvc.listGamePlans(bctx)).toHaveLength(0);
+    const m = await matchesSvc.createMatch(bctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-12-05 15:00', timezone: 'Australia/Brisbane' });
+    const plans = await gamePlansSvc.listGamePlans(bctx);
+    expect(plans.map((p) => [p.name, p.currentVersion])).toEqual([['Football starter flow', 1]]);
+    const [own] = await withTenant(deps.db, { organisationId: B.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m.id)));
+    expect(own!.gamePlanVersionId).toBeTruthy();
+    expect((await automationSvc.onOutputReady(W(), B.org.id, own!.id))[0]!.started).toEqual(['pre_match']);
+    await pump();
+    T += 1000;
+    await pump();
+    T += 60_000; // well past the header's old 8-second hold
+    await pump();
+    const s = (await overlaysSvc.getOverlay(bctx, own!.id)).state;
+    expect(s.layers.background).toMatchObject({ templateKey: 'builtin:backdrop', durationMs: null, outAt: null });
+    expect(s.layers.fullframe).toMatchObject({ templateKey: 'builtin:ident', durationMs: null, outAt: null, variables: { showCountdown: true } });
+    // the next match reuses that plan rather than publishing another
+    const m2 = await matchesSvc.createMatch(bctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: '2026-12-12 15:00', timezone: 'Australia/Brisbane' });
+    expect(await gamePlansSvc.listGamePlans(bctx)).toHaveLength(1);
+    const [own2] = await withTenant(deps.db, { organisationId: B.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, m2.id)));
+    expect(own2!.gamePlanVersionId).toBe(own!.gamePlanVersionId);
+  });
+
   it('a line-up board goes to air only for a team whose line-up was entered; the other is skipped with the reason', async () => {
     const plan: GamePlan = {
       version: 1, sport: 'football', defaultScorebug: false, freshnessMs: 10_000,

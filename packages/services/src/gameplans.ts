@@ -1,7 +1,7 @@
 // Game plans: editable drafts, publish-time validation and immutable published versions.
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { creatives, gamePlans, gamePlanVersions, mediaAssets, overlays, type Tx } from '@bs/db';
-import { getAdapter, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, SPORTS } from '@bs/domain';
+import { getAdapter, SPORT_LABELS, STARTER_PLANS, validateGamePlan, type GamePlan, type PlanIssue, type Sport, SPORTS } from '@bs/domain';
 import { BUILTIN_TEMPLATES } from '@bs/graphics';
 import { z } from 'zod';
 import { assertCan } from './authz';
@@ -80,18 +80,35 @@ export async function updateGamePlanDraft(ctx: Ctx, id: string, input: { name?: 
 
 export async function publishGamePlan(ctx: Ctx, id: string, t0?: Tx): Promise<{ id: string; version: number; issues: PlanIssue[] }> {
   assertCan(ctx.actor, 'theme.write');
-  const run = async (t: Tx) => {
-    const [p] = await t.select().from(gamePlans).where(and(eq(gamePlans.id, id), eq(gamePlans.organisationId, ctx.actor.organisationId))).for('update');
-    if (!p) throw notFound('Game plan');
-    const v = await validateFor(t, ctx.actor.organisationId, p.draft);
-    if (!v.ok) throw invalid('The game plan has errors; fix them before publishing', v.issues.filter((i) => i.severity === 'error').map((i) => ({ field: i.path, message: i.message })));
-    const version = p.currentVersion + 1;
-    const [gv] = await t.insert(gamePlanVersions).values({ organisationId: ctx.actor.organisationId, gamePlanId: id, version, sport: p.sport, definition: v.plan as never, publishedBy: ctx.actor.userId }).returning();
-    await t.update(gamePlans).set({ currentVersion: version, updatedAt: new Date() }).where(eq(gamePlans.id, id));
-    await audit(t, ctx.actor, 'game_plan.publish', 'game_plan', id, { after: { version, warnings: v.issues.length } });
-    return { id: gv!.id, version, issues: v.issues };
-  };
-  return t0 ? run(t0) : tx(ctx, run);
+  return t0 ? publishTx(ctx, t0, id) : tx(ctx, (t) => publishTx(ctx, t, id));
+}
+
+async function publishTx(ctx: Ctx, t: Tx, id: string) {
+  const [p] = await t.select().from(gamePlans).where(and(eq(gamePlans.id, id), eq(gamePlans.organisationId, ctx.actor.organisationId))).for('update');
+  if (!p) throw notFound('Game plan');
+  const v = await validateFor(t, ctx.actor.organisationId, p.draft);
+  if (!v.ok) throw invalid('The game plan has errors; fix them before publishing', v.issues.filter((i) => i.severity === 'error').map((i) => ({ field: i.path, message: i.message })));
+  const version = p.currentVersion + 1;
+  const [gv] = await t.insert(gamePlanVersions).values({ organisationId: ctx.actor.organisationId, gamePlanId: id, version, sport: p.sport, definition: v.plan as never, publishedBy: ctx.actor.userId }).returning();
+  await t.update(gamePlans).set({ currentVersion: version, updatedAt: new Date() }).where(eq(gamePlans.id, id));
+  await audit(t, ctx.actor, 'game_plan.publish', 'game_plan', id, { after: { version, warnings: v.issues.length } });
+  return { id: gv!.id, version, issues: v.issues };
+}
+
+/**
+ * An organisation's first match in a sport with a starter flow, and no published plan for that sport: create the
+ * starter flow ("Football starter flow") and publish it, so the match's output shows the pre-match graphics from
+ * the start instead of nothing. It is an ordinary plan afterwards, editable under Automation. A system step of match
+ * creation, so it does not need the creator to be allowed to edit plans; the audit log records it.
+ */
+export async function ensureStarterPlan(ctx: Ctx, t: Tx, sport: Sport): Promise<string | null> {
+  const starter = STARTER_PLANS[sport];
+  if (!starter) return null;
+  const name = `${SPORT_LABELS[sport]} starter flow`;
+  const [p] = await t.insert(gamePlans).values({ organisationId: ctx.actor.organisationId, name, sport, draft: structuredClone(starter) as never }).returning();
+  await audit(t, ctx.actor, 'game_plan.create', 'game_plan', p!.id, { after: { name, sport, reason: 'first match in this sport, no plan published' } });
+  const v = await publishTx(ctx, t, p!.id);
+  return v.id;
 }
 
 /** Published definition for an overlay's pinned version (worker and rehearsal). */

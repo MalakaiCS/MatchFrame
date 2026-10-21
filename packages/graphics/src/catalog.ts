@@ -72,7 +72,8 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
       { key: 'show', label: 'Shows', type: 'select', options: ['auto', 'countdown', 'score'], required: false, default: 'auto' },
       { key: 'message', label: 'Message', type: 'text', required: false, maxLength: 60 },
     ],
-    requiredData: ['teams'], entranceMs: 350, holdMs: 8000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.15, y: 0.25, w: 0.7, h: 0.5 },
+    // stays up until it is taken off (or the walk-out clears it): before the match it is the holding picture
+    requiredData: ['teams'], entranceMs: 350, holdMs: null, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.15, y: 0.25, w: 0.7, h: 0.5 },
   },
   {
     key: 'builtin:lineup', name: 'Team lineup', category: 'Teams', sports: both, layer: 'fullframe',

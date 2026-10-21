@@ -156,8 +156,8 @@ export const DOCS: DocArticle[] = [
       { h: 'Rehearse the whole chain' },
       { p: 'Use a practice fixture (or a **demo match** from the dashboard, which scores itself and is kept out of tables and reports), with OBS showing its graphics link but not streaming, or streaming to a private test stream.' },
       { steps: [
-        { do: 'On the scorer\'s phone, press **Next:** through **Pre-match**, **Players entering** and **About to start**.', expect: 'In OBS: the background and header clear when the players walk out, and about 15 seconds later each team\'s line-up shows for 8 seconds.' },
-        { do: 'Press **Next: 1st Half**.', expect: 'The scorebug and the kick-off banner come in, and the clock runs.' },
+        { do: 'On the scorer\'s phone, press **Next:** through **Pre-match**, **Players entering** and **About to start**.', expect: 'In OBS: the background and header clear when the players walk out, about 15 seconds later each team\'s line-up shows for 8 seconds, and the scorebug comes up at About to start with its clock at 0:00.' },
+        { do: 'Press **Next: 1st Half**.', expect: 'The kick-off banner comes in and the clock runs.' },
         { do: 'Record a goal, then use **Undo** straight away.', expect: 'The goal graphic shows, then the score goes back and the graphic comes off.' },
         { do: 'In the control room, switch the output to **Manual**, send a lower third with **To air**, take it **Out**, then switch back to **Auto**.', expect: 'Nothing automatic happens while in Manual; the lower third comes and goes when you say.' },
         { do: 'Turn the scorer phone\'s Wi-Fi and mobile data off, record a card, then turn them back on.', expect: 'The phone shows Offline and a pending action; when it reconnects the card applies once.' },
@@ -328,13 +328,14 @@ export const DOCS: DocArticle[] = [
     section: 'automation',
     title: 'How the football automation runs',
     outcome: 'Know what goes on air at each step of a football match with the starter plan.',
-    availability: 'Football starter plan. Plans published before 20 October 2026 need **Use the latest starter flow** and a republish.',
+    availability: 'Football starter plan. An organisation\'s first football match publishes it automatically when there is no plan yet. Plans published before 21 October 2026 need **Use the latest starter flow** and a republish.',
     body: [
       { table: { head: ['When', 'On air'], rows: [
-        ['The match is created (Scheduled)', 'The animated background, then the match header: Home v Away, ground and kick-off time. The countdown to kick-off appears in the last 99 minutes.'],
+        ['The match is created (Scheduled)', 'The animated background, then the match header: Home v Away, ground and kick-off time, with a countdown to kick-off however far away (for example 3d 02:14:58). Both stay up until the players walk out.'],
         ['Pre-match', 'The same background and header stay up as they are.'],
         ['Players entering', 'Background and header fade out. 15 seconds later the home line-up for 8 seconds, then the away line-up for 8 seconds, once each. About to start does not cut them short.'],
-        ['1st Half', 'The scorebug and the kick-off banner.'],
+        ['About to start', 'The scorebug comes up, its clock at 0:00.'],
+        ['1st Half', 'The kick-off banner, and the clock starts.'],
         ['Goals, cards, substitutions', 'Their graphic, then the goal partner logo after a goal.'],
         ['Half Time', 'Scorebug out; the animated background over everything, then the match stats and the match header (score, HALF TIME and a countdown to the second half) taking turns, 45 seconds each.'],
         ['Players entering (2nd half)', 'Background and header fade out; the scorebug comes back 7 seconds later. No line-ups the second time.'],
