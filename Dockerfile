@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 # Application image for api, worker, media-worker and web (compose profile "app").
-# Build from the repository root:  docker build -f infra/Dockerfile -t broadcast-studio-app:local .
+# Build from the repository root:  docker build -t broadcast-studio-app:local .
+# It lives at the root because Railway's builder ignores a Dockerfile in a subfolder named in railway.json and
+# falls back to Railpack auto-detection.
 # NEXT_PUBLIC_* values are baked into the web bundle at build time: pass the public URLs as build args.
 # PUBLIC_REALTIME_URL empty (the default) = Socket.IO on the page's own origin, as served by a reverse proxy or
 # by scripts/start-hosted.mjs (hosted platforms: one container, one port, migrations with MIGRATE_ON_START=true).

@@ -113,7 +113,7 @@ services:
     <<: *restart
     build:
       context: ..
-      dockerfile: infra/Dockerfile
+      dockerfile: Dockerfile
       args: { PUBLIC_REALTIME_URL: "${PUBLIC_REALTIME_URL:-}", PUBLIC_LIVEKIT_URL: "${PUBLIC_LIVEKIT_URL:-}", PUBLIC_RTMP_URL: "${PUBLIC_RTMP_URL:-}" }
     image: broadcast-studio-app:local
     network_mode: host

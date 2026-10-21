@@ -61,7 +61,7 @@ The local RTMP receiver for testing destinations starts with `docker compose -f 
 | `pnpm start:hosted` | Production build: every process behind one port (`$PORT`), as on Railway/Render |
 | `node scripts/gen-secrets.mjs` | Prints fresh production secrets for a hosting platform's variables |
 
-Production images: `docker build -f infra/Dockerfile -t broadcast-studio-app:local .` then
+Production images: `docker build -t broadcast-studio-app:local .` then
 `docker compose -f infra/docker-compose.yml --env-file .env --profile app up -d` (see `docs/operations.md`).
 
 ## Layout

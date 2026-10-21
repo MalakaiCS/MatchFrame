@@ -26,6 +26,7 @@
     "services:up": "docker compose -f infra/docker-compose.yml --env-file .env --profile streaming up -d",
     "services:up:core": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
     "services:down": "docker compose -f infra/docker-compose.yml --env-file .env --profile streaming --profile media-test down",
+    "start": "node scripts/start-hosted.mjs",
     "start:hosted": "node scripts/start-hosted.mjs",
     "db:reset": "node scripts/db-reset.mjs"
   },

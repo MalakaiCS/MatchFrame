@@ -41,7 +41,8 @@ rejected). A failed send is logged as `[auth] verify email to … failed: Resend
 ## 3. Railway
 
 1. Sign in to Railway with GitHub → **New project** → **Deploy from GitHub repo** → choose this repository.
-   It finds `railway.json` and builds `infra/Dockerfile`.
+   It finds `railway.json` and builds the `Dockerfile` at the repository root (the build log says it is using
+   the Dockerfile). If the log shows **Railpack** instead, see *If Railway builds with Railpack* below.
 2. In the same project: **+ Create** → **Database** → **PostgreSQL**, then again for **Redis**.
 3. Open the app service → **Settings → Networking → Generate domain** (or add your own domain).
 4. Generate the secrets. On any computer with Node 22: `node scripts/gen-secrets.mjs` prints the three lines
@@ -103,6 +104,20 @@ updates use the site's own address.
    app, API and workers behind one port. Railway waits for `/api/v1/health/ready` before sending traffic; it
    reports `"media": "disabled"` in this mode.
 
+### If Railway builds with Railpack
+
+The build log should say it is building the Dockerfile. If it starts with **Railpack** instead (and ends with "No start
+command detected", or the app is missing video checks and backups), the service is not using the Dockerfile:
+
+1. App service → **Settings → Build** → **Builder: Dockerfile**, **Dockerfile path: `Dockerfile`**.
+2. If the project canvas shows a banner with staged changes, **Apply** (or **Deploy**) them: staged settings are not
+   used until they are applied.
+3. **Deployments → Redeploy** the latest commit and check the log says it is building the Dockerfile.
+
+The repository also has a `start` script (`node scripts/start-hosted.mjs`), so a Railpack build can still start the
+app; but that image has no FFmpeg or `pg_dump`, so uploaded videos cannot be checked and scheduled backups fail.
+Switch back to the Dockerfile.
+
 ## 4. First sign-in
 
 Open your address → **Create account** → confirm the email → name your organisation. You are its owner.
@@ -120,7 +135,7 @@ values in the database cannot be read.
 
 ## Other platforms
 
-Any host that builds a Dockerfile and gives you one port works: build `infra/Dockerfile` (its default command is
+Any host that builds a Dockerfile and gives you one port works: build the root `Dockerfile` (its default command is
 `node scripts/start-hosted.mjs`, which listens on `$PORT`), add Postgres and Redis, and set the variables above
 with that platform's connection strings. On Render, `RENDER_EXTERNAL_URL` is picked up the way Railway's domain is.
 The Postgres user in `DATABASE_ADMIN_URL` must be allowed to create roles (migrations create `bs_app` and

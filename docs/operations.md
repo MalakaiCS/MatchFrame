@@ -54,7 +54,7 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
 ## Deployment with the image
 
 ```bash
-docker build -f infra/Dockerfile -t broadcast-studio-app:local \
+docker build -t broadcast-studio-app:local \
   --build-arg PUBLIC_REALTIME_URL=https://studio.example.org --build-arg PUBLIC_LIVEKIT_URL=wss://media.example.org \
   --build-arg PUBLIC_RTMP_URL=rtmp://ingest.example.org/live .
 pnpm services:up                                     # or your managed Postgres/Redis/S3 + LiveKit
