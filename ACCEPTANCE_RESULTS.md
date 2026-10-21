@@ -208,7 +208,7 @@ launcher, graphics-only mode.
 | `tests/e2e/specs/obs-link.spec.ts` on the final build | 3 tests, all pass |
 | Exit frames: OBS page screenshots every ~160 ms after *Players entering* | the background visibly fading rather than disappearing (header already gone by the second frame; the capture rate is too low to show its 0.3 s exit) |
 | Worker start on the local database | updated 28 untouched copies of the previous starter flow |
-| Full `pnpm test:e2e` | not yet complete when this row was written |
+| Full `pnpm test:e2e` on the final build | 39 tests, 39 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 17.5 min) |
 
 Not claimed: the other five sports' starter flows still clear without a stagger (their clear steps now animate out
 too, since every automatic clear takes graphics out with their exit animation). The kick-off clear also animates
