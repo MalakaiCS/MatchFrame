@@ -6,7 +6,7 @@ import { DEFAULT_THEMES, emptyState, type Cue, type Layer, type OverlayPublicSta
 import { Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { SAMPLE_MEDIA, SAMPLE_SLOTS, SAMPLE_SPONSOR, sampleData } from '@/components/theme-preview';
 
-export interface RehearsalCue { t: number; playlistId: string; runId: string; action: string; templateKey?: string; layer: string | null; variables?: Record<string, unknown>; durationMs: number | null; placement?: string }
+export interface RehearsalCue { t: number; playlistId: string; runId: string; action: string; templateKey?: string; layer: string | null; variables?: Record<string, unknown>; durationMs: number | null; placement?: string; layers?: string[] }
 
 const PITCH = 'linear-gradient(180deg, #24476b 0%, #1d3b2a 55%, #2f6b3c 100%)';
 
@@ -24,7 +24,8 @@ export function stateAt(cues: RehearsalCue[], t: number, base: number): OverlayP
         s.scorebugVisible = false;
         break;
       case 'clear_layers':
-        for (const l of ['fullframe', 'background', 'lower'] as Layer[]) delete s.layers[l];
+        // taken out with their exit animation, as on air
+        for (const l of (c.layers ?? ['fullframe', 'background', 'lower']) as Layer[]) if (s.layers[l] && !s.layers[l]!.outAt) s.layers[l] = { ...s.layers[l]!, outAt: base + c.t };
         break;
       case 'show':
         if (c.templateKey && c.layer) s.layers[c.layer as Layer] = cue(c, c.templateKey, c.layer as Layer, c.variables ?? {});
@@ -40,7 +41,7 @@ export function stateAt(cues: RehearsalCue[], t: number, base: number): OverlayP
         break;
     }
   }
-  for (const [l, c] of Object.entries(s.layers) as [Layer, Cue][]) if (c.durationMs != null && t > c.startedAt - base + c.durationMs + 600) delete s.layers[l];
+  for (const [l, c] of Object.entries(s.layers) as [Layer, Cue][]) if ((c.durationMs != null && t > c.startedAt - base + c.durationMs + 600) || (c.outAt && t > c.outAt - base + 800)) delete s.layers[l];
   return s;
 }
 

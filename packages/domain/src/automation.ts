@@ -73,6 +73,8 @@ export const playlistSchema = z.object({
    * play starts, a break begins or the match finishes.
    */
   continueOnPhaseStep: z.boolean().optional(),
+  /** wait this long after the trigger before the first pass; repeats of a looping playlist follow on without it */
+  startDelayMs: z.number().int().min(0).max(3_600_000).optional(),
   priority: z.number().int().min(1).max(4),
   triggers: z.array(triggerSchema).min(1),
   guards: z.array(guardSchema).default([]),
@@ -391,8 +393,8 @@ export function playlistLayers(pl: Playlist, templateLayers: Record<string, stri
  * Cue timeline for one run. Deadlines use occurrence time (+ alignment delay), not queue insertion time,
  * so a late-arriving fact never plays an obsolete celebration.
  */
-export function planRun(pl: Playlist, m: TriggerMatch, startAt: number, opts: { freshnessMs: number; alignmentDelayMs?: number; templateLayers: Record<string, string>; liveTrigger: boolean }): PlannedCue[] {
-  const origin = startAt;
+export function planRun(pl: Playlist, m: TriggerMatch, startAt: number, opts: { freshnessMs: number; alignmentDelayMs?: number; templateLayers: Record<string, string>; liveTrigger: boolean; loop?: number }): PlannedCue[] {
+  const origin = startAt + (opts.loop ? 0 : pl.startDelayMs ?? 0);
   const deadlineBase = m.occurredAt + (opts.alignmentDelayMs ?? 0) + opts.freshnessMs;
   return pl.items.map((item, itemIndex) => {
     const dueAt = origin + item.offsetMs;

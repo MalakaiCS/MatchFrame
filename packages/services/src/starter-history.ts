@@ -12,6 +12,7 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
     '0e6a0c1011ad6f197d5e9c7f76104994', // timed line-ups, half-time cycle, thank-you board
     'fc67f368d6fde27470bd18ba1285cf8e', // background and header from match creation
     '60b90f740e725e21d4197763afb5ddd0', // scorebug at "About to start"
+    '6ae9e72701c533093f58f901328b2813', // graphics animate out at the walk-outs (board, then background); half time after 10 s, header and stats 30 s each
   ],
   basketball: ['2a72efc1183f22c928818f24e5c8a135'],
   netball: ['cf62a84825b609243d794e2884bc75ba'],

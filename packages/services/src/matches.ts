@@ -256,7 +256,7 @@ export async function getMatch(ctx: Ctx, id: string) {
     const cfg = m.rulesConfig as never;
     return {
       ...m,
-      competition: { id: comp!.id, name: comp!.name, shortName: comp!.shortName, logoAssetId: comp!.logoAssetId },
+      competition: { id: comp!.id, name: comp!.name, shortName: comp!.shortName, logoAssetId: comp!.logoAssetId, themeProfileId: comp!.themeProfileId },
       season: { id: season!.id, name: season!.name },
       venue: venue ? { id: venue.id, name: venue.name, timezone: venue.timezone } : null,
       teams: lineup!.teams,

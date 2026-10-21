@@ -48,6 +48,14 @@ describe('triggers', () => {
     expect(cues[1]).toMatchObject({ dueAt: 8500, layer: 'sponsor' });
   });
 
+  it('a playlist that starts after a delay waits once; its repeats follow on without the wait', () => {
+    const pl = FOOTBALL_STARTER.playlists.find((p) => p.id === 'half_time_boards')!;
+    const m = { playlist: pl, trigger: pl.triggers[0]!, iteration: 'phase:half_time:1', occurredAt: 0, context: {} };
+    const opts = { freshnessMs: 10_000, templateLayers: LAYERS, liveTrigger: false };
+    expect(planRun(pl, m, 1000, opts).map((c) => c.dueAt)).toEqual([11_600, 42_200]);
+    expect(planRun(pl, m, 1000, { ...opts, loop: 1 }).map((c) => c.dueAt)).toEqual([1000, 31_600]);
+  });
+
   it('historical (late offline) facts never start a live celebration (A16)', () => {
     const r = matchTriggers(FOOTBALL_STARTER, ev({ historical: true }), guard);
     expect(r.matches).toHaveLength(0);
@@ -164,12 +172,22 @@ describe('rehearsal (A29: pure, explained)', () => {
     const enter = r.cues.find((c) => c.playlistId === 'players_entering' && c.action === 'clear_layers')!;
     expect(lineups[0]!.t - enter.t).toBe(15_000);
     expect(r.decisions.find((d) => d.playlistId === 'half_time_boards' && d.outcome === 'cancelled')?.reason).toMatch(/second_half_entering/);
-    const boards = r.cues.filter((c) => c.playlistId === 'half_time_boards' && c.action === 'show');
-    expect(boards.map((c) => c.templateKey).slice(0, 2)).toEqual(['builtin:stats', 'builtin:ident']);
-    expect(boards[1]!.t - boards[0]!.t).toBe(45_600);
+    // half time: 10 s after the whistle the background comes up and the scorebug goes, then the header and the
+    // stats take turns, 30 s each, with no 10 s wait between passes
+    const ht = r.cues.filter((c) => c.playlistId === 'half_time');
+    const htAt = ht[0]!.t - 10_000;
+    expect(ht.map((c) => [c.action, c.templateKey ?? null, c.t - htAt])).toEqual([['show', 'builtin:backdrop', 10_000], ['scorebug_hide', null, 10_600]]);
+    const boards = r.cues.filter((c) => c.playlistId === 'half_time_boards' && c.action.startsWith('show'));
+    expect(boards.map((c) => [c.templateKey, c.t - htAt, c.durationMs]).slice(0, 4)).toEqual([
+      ['builtin:ident', 10_600, 30_000],
+      ['builtin:stats', 41_200, 30_000],
+      ['builtin:ident', 71_800, 30_000],
+      ['builtin:stats', 102_400, 30_000],
+    ]);
+    expect(boards[0]!.variables).toMatchObject({ showCountdown: true });
     const back = r.cues.filter((c) => c.playlistId === 'second_half_entering');
-    expect(back.map((c) => c.action)).toEqual(['clear_layers', 'scorebug_show']);
-    expect(back[1]!.t - back[0]!.t).toBe(7000);
+    // the board goes first, the background 0.4 s later (each with its exit animation), the scorebug 7 s after the walk-out
+    expect(back.map((c) => [c.action, c.layers ?? null, c.t - back[0]!.t])).toEqual([['clear_layers', ['fullframe', 'lower'], 0], ['clear_layers', ['background'], 400], ['scorebug_show', null, 7000]]);
     // full time: 30 s later the background, then the final score on the header with the thank-you
     const ft = r.cues.filter((c) => c.playlistId === 'full_time');
     const ftPhase = r.cues.find((c) => c.playlistId === 'full_time')!.t - 30_000;

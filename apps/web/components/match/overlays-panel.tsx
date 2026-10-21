@@ -12,7 +12,7 @@ import { layerLabel } from '@/lib/labels';
 
 export interface OverlayRow {
   id: string; name: string; kind: string; publicId: string; gamePlanVersionId: string | null; format: '16:9' | '9:16' | 'venue';
-  theme: { profile: string; version: number } | null; pendingTheme: { id: string; version: number } | null;
+  theme: { id: string; profile: string; version: number } | null; pendingTheme: { id: string; version: number } | null;
   state: { revision: number; displayedRevision: number; displayedAt: string | null; mode: string; inhibited: boolean; scorebugVisible: boolean; onAir: string[] };
   renderers: { purpose: string; displayedRevision: number; lastSeenAt: string; reporting: boolean }[];
 }

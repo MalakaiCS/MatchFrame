@@ -191,6 +191,29 @@ plan an organisation there has is confirmed only by the worker's log line after 
 edited are deliberately not changed; the other five sports' starter flows are unchanged and still start at
 *Pre-match*.
 
+## Walk-out exits, half-time timing and look choice (2026-10-21)
+
+Requested after the match-day fixes: the background and header animate out instead of cutting when the players walk
+out; at half time a 10-second pause, then the header and the stats taking turns, 30 s each; and a look chosen for
+the tournament and for the match from every look. Same environment, production build through the single-port
+launcher, graphics-only mode.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: rehearsal of the football starter flow (at the walk-outs the board is taken out first and the background 0.4 s later; at half time the background at 10 s and the scorebug out at 10.6 s, then header 10.6 s, stats 41.2 s, header 71.8 s, stats 102.4 s, 30 s each); a playlist's one-off start delay applies to the first pass only; the new starter version's fingerprint is recorded | 106 tests, 19 files, all pass |
+| `pnpm test:db`: tournament look from a built-in look saved as the organisation's ("Liga") and shown on both upcoming matches; a match's own look; changing the tournament look moves the match that followed it and keeps the one with its own; new fixtures start with it; *Same as the tournament*; a match under way keeps its look; the built-in look is reused, not duplicated; another organisation can neither change the match nor use the look | 57 tests, 6 files, all pass |
+| `tests/e2e/specs/automation-flow.spec.ts` on the final build: header and background off air at each walk-out with only take-outs (exit animations) in the output's command history and no layer clear (a cut); nothing over the scorebug for the first 10 s of half time, then background and header with the restart countdown, the stats 30 s later and the header again 30 s after that | pass (2.7 min); captures `docs/evidence/e2e/flow-3-half-time-header.png`, `flow-4-half-time-stats.png` |
+| `tests/e2e/specs/look-choice.spec.ts` on the final build: *Graphics & production → Tournament look → Liga* puts Liga on the match's output (render data `themeKey: liga`); the match page offers it as the tournament's look, *Premier* makes it the match's own (`premier`), *Same as the tournament (Liga)* puts it back | pass |
+| `tests/e2e/specs/obs-link.spec.ts` on the final build | 3 tests, all pass |
+| Exit frames: OBS page screenshots every ~160 ms after *Players entering* | the background visibly fading rather than disappearing (header already gone by the second frame; the capture rate is too low to show its 0.3 s exit) |
+| Worker start on the local database | updated 28 untouched copies of the previous starter flow |
+| Full `pnpm test:e2e` | not yet complete when this row was written |
+
+Not claimed: the other five sports' starter flows still clear without a stagger (their clear steps now animate out
+too, since every automatic clear takes graphics out with their exit animation). The kick-off clear also animates
+now. The OBS link tab's *Add output* still lists only the organisation's own looks.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

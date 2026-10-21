@@ -8,25 +8,24 @@ import { Button, Card, CheckRow, Dialog, ErrorNotice, Input, NativeSelect, Statu
 import { get, post, put } from '@/lib/api';
 import { useAction, useCopy, useGet } from '@/lib/hooks';
 import { obsStatus, type OverlayRow } from './overlays-panel';
+import { LookPicker, lookName, type LookChoice, type LookProfile } from '@/components/look-picker';
 import type { MatchDetail } from '@/app/(main)/app/matches/[id]/page';
 
-interface Profile { id: string; name: string; currentVersion: number }
 interface Plan { id: string; name: string; sport: string; currentVersion: number; versions: { id: string; version: number }[] }
 interface Member { id: string; name: string; role: string; status: string }
 
 export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canEdit: boolean; onGoTo: (tab: string) => void }) {
   const overlays = useGet<OverlayRow[]>(['overlays', d.id], `matches/${d.id}/overlays`, { refetchInterval: 5000 });
-  const profiles = useGet<Profile[]>(['theme-profiles'], 'theme-profiles');
+  const profiles = useGet<LookProfile[]>(['theme-profiles'], 'theme-profiles');
   const plans = useGet<Plan[]>(['game-plans'], 'game-plans');
   const members = useGet<Member[]>(['members'], 'members', { enabled: canEdit });
   const copy = useCopy();
   const [scorerLink, setScorerLink] = useState(false);
-  const [look, setLook] = useState('');
   const [plan, setPlan] = useState('');
   const [member, setMember] = useState('');
 
   const primary = overlays.data?.[0];
-  const setLookAction = useAction((profileId: string) => put(`overlays/${primary!.id}/theme-profile`, { themeProfileId: profileId }), [['overlays', d.id]], { success: 'Look applied to this match' });
+  const setLookAction = useAction((v: { choice: LookChoice; name: string }) => put<{ outputs: number }>(`matches/${d.id}/look`, v.choice), [['overlays', d.id], ['theme-profiles']], { success: (_r, v) => `${v.name} applied to this match` });
   const setPlanAction = useAction((versionId: string) => put(`overlays/${primary!.id}/game-plan`, { gamePlanVersionId: versionId }), [['overlays', d.id]], { success: 'Automation set for this match' });
   const starterAction = useAction(() => post(`overlays/${primary!.id}/starter-plan`), [['overlays', d.id], ['game-plans']], { success: 'Automation on: the pre-match graphics are going to air' });
   const assign = useAction((membershipId: string) => post(`matches/${d.id}/scorers`, { membershipId }), [['match', d.id]], { success: 'Scorer assigned. The match is now on their list.' });
@@ -52,6 +51,7 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
     }
     return null;
   })();
+  const tournamentLook = lookName(profiles.data, d.competition.themeProfileId);
   const obs = primary ? obsStatus(primary) : null;
   const rows = [
     { done: lineupsDone, key: 'lineups' },
@@ -78,15 +78,11 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
           detail={lineupsDone ? undefined : 'Team lineups and the goal, card and substitution graphics need player names.'}
           action={<Button size="sm" variant={lineupsDone ? 'ghost' : 'secondary'} onClick={() => onGoTo('lineup')}>{lineupsDone ? 'Edit' : 'Lineup'}</Button>} />
         <CheckRow done={!!primary?.theme} label={primary?.theme ? `Look: ${primary.theme.profile} v${primary.theme.version}` : 'Choose a graphics look'}
-          detail={primary?.theme ? undefined : profiles.data?.length ? 'Colours and style for every graphic in this match.' : 'Create a look under Themes first.'}
+          detail={primary?.theme
+            ? (primary.theme.id === d.competition.themeProfileId ? 'The tournament’s look. Choose another for this match only.' : 'This match’s own look.')
+            : 'Colours and style for every graphic in this match: one of your looks or any of the ten built-in looks.'}
           action={canEdit && primary ? (
-            <>
-              <NativeSelect aria-label="Look" className="w-auto" value={look} onChange={(e) => setLook(e.target.value)}>
-                <option value="">{primary.theme ? 'Change look…' : 'Choose…'}</option>
-                {profiles.data?.filter((p) => p.currentVersion > 0).map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.currentVersion})</option>)}
-              </NativeSelect>
-              <Button size="sm" disabled={!look} loading={setLookAction.isPending} onClick={() => setLookAction.mutate(look, { onSuccess: () => setLook('') })}>Apply</Button>
-            </>
+            <LookPicker profiles={profiles.data} current={primary.theme?.id} follow={{ name: tournamentLook }} loading={setLookAction.isPending} onApply={(choice, name) => setLookAction.mutate({ choice, name })} />
           ) : null} />
         <CheckRow done={!!primary?.gamePlanVersionId} label={primary?.gamePlanVersionId ? `Automation: ${planName(primary.gamePlanVersionId) ?? 'on'}` : 'Set up automation'}
           detail={newer ? `Version ${newer.version} of this plan is published; this match still runs the older one.` : primary?.gamePlanVersionId ? 'Graphics follow the scorer automatically.' : publishedPlans.length ? 'Lineups, kick-off, goals and the half-time board run from the scorer’s taps.' : 'Without a plan the OBS link stays empty until you take graphics by hand. The starter flow puts the background and match header up now and follows the scorer from there.'}

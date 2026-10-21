@@ -6,14 +6,15 @@ import type { GamePlan } from './automation';
  * Football match flow, in Auto mode:
  * - From the moment the match exists: the animated background with the match header (teams, ground, kick-off time
  *   and a countdown to kick-off however far away), on air until the players walk out.
- * - Players entering: background and header fade out; 15 s later each line-up shows once for 8 s (a team with no
+ * - Players entering: the header animates out, then the background; 15 s later each line-up shows once for 8 s (a team with no
  *   line-up entered is left out). It keeps going if the scorer presses "About to start" meanwhile.
  * - About to start: the scorebug comes up, its clock at 0:00 until the kick-off starts it.
  * - Kick-off of each half: the kick-off banner (and the scorebug, if it is not already up).
  * - Goals, cards and substitutions put their graphic on air during play.
- * - Half time: the animated background comes up over everything, cycling the match stats and the match header
- *   (with the countdown to the second half) every 45 s.
- * - Players entering (2nd half): background and header fade out; the scorebug returns 7 s later.
+ * - Half time: 10 s after the whistle the animated background comes up over everything and the scorebug goes; the
+ *   match header (with the countdown to the second half) and the match stats then take turns, 30 s each, until
+ *   the players walk back out.
+ * - Players entering (2nd half): the board animates out, then the background; the scorebug returns 7 s later.
  * - Full time: 30 s after the whistle, the animated background with the final score on the match header and
  *   "Thank you for watching".
  * The animated background and the boards on it sit above every graphic except the stinger transition.
@@ -36,13 +37,14 @@ export const FOOTBALL_STARTER: GamePlan = {
       ],
     },
     {
-      id: 'players_entering', name: 'Players entering: clear, then both line-ups once', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'players_entering', name: 'Players entering: graphics out, then both line-ups once', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
       continueOnPhaseStep: true,
       triggers: [{ id: 't_enter', type: 'phase', phaseTags: [], phaseIds: ['players_entering'] }],
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'enter_clear', action: 'clear_layers', layers: ['background', 'fullframe', 'lower'], offsetMs: 0 },
+        { id: 'enter_clear', action: 'clear_layers', layers: ['fullframe', 'lower'], offsetMs: 0 },
+        { id: 'enter_clear_bg', action: 'clear_layers', layers: ['background'], offsetMs: 400 },
         { id: 'lineup_home', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'home' }, offsetMs: 15_000, durationMs: 8000 },
         { id: 'lineup_away', action: 'show', templateKey: 'builtin:lineup', variables: { team: 'away' }, offsetMs: 23_600, durationMs: 8000 },
       ],
@@ -90,33 +92,35 @@ export const FOOTBALL_STARTER: GamePlan = {
       items: [{ id: 'sub_gfx', action: 'show', templateKey: 'builtin:substitution', variables: { team: { from: 'event.side' }, playerOut: { from: 'event.playerOutId' }, playerIn: { from: 'event.playerInId' }, minute: { from: 'event.minute' } }, offsetMs: 0, durationMs: 7000 }],
     },
     {
-      id: 'half_time', name: 'Half time: animated background over everything', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'half_time', name: 'Half time: after 10 s, the animated background over everything', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ht', type: 'phase', phaseTags: ['half_time', 'extra_time_interval'], phaseIds: [] }],
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'ht_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 0, durationMs: null },
-        { id: 'ht_bug_off', action: 'scorebug_hide', offsetMs: 600 },
+        { id: 'ht_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 10_000, durationMs: null },
+        { id: 'ht_bug_off', action: 'scorebug_hide', offsetMs: 10_600 },
       ],
     },
     {
-      id: 'half_time_boards', name: 'Half time: match stats, then match header with countdown (45 s each)', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'half_time_boards', name: 'Half time: match header with countdown, then match stats (30 s each)', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ht_boards', type: 'phase', phaseTags: ['half_time', 'extra_time_interval'], phaseIds: [] }],
       guards: [],
-      repeat: { mode: 'loop', gapMs: 600, maxIterations: 40 },
+      startDelayMs: 10_600,
+      repeat: { mode: 'loop', gapMs: 600, maxIterations: 60 },
       items: [
-        { id: 'ht_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 600, durationMs: 45_000 },
-        { id: 'ht_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: true }, offsetMs: 46_200, durationMs: 45_000 },
+        { id: 'ht_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: true }, offsetMs: 0, durationMs: 30_000 },
+        { id: 'ht_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 30_600, durationMs: 30_000 },
       ],
     },
     {
-      id: 'second_half_entering', name: 'Players entering (2nd half): clear, scorebug back 7 s later', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'second_half_entering', name: 'Players entering (2nd half): graphics out, scorebug back 7 s later', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
       continueOnPhaseStep: true,
       triggers: [{ id: 't_enter2', type: 'phase', phaseTags: [], phaseIds: ['second_half_entering'] }],
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
-        { id: 'enter2_clear', action: 'clear_layers', layers: ['background', 'fullframe', 'lower'], offsetMs: 0 },
+        { id: 'enter2_clear', action: 'clear_layers', layers: ['fullframe', 'lower'], offsetMs: 0 },
+        { id: 'enter2_clear_bg', action: 'clear_layers', layers: ['background'], offsetMs: 400 },
         { id: 'enter2_bug', action: 'scorebug_show', offsetMs: 7000 },
       ],
     },

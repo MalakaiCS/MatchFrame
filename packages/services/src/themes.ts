@@ -1,5 +1,5 @@
 // Theme profiles (published theme version + colours/typography/logos/sponsor slots/layout) and designer templates.
-import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { competitions, graphicTemplates, overlays, templateVersions, themeProfileVersions, themeProfiles, themeVersions, themes, type Tx } from '@bs/db';
 import { DEFAULT_THEMES, LOOKS, THEME_KEYS, emptyScene, validateScene, type ThemeConfig } from '@bs/graphics';
 import { z } from 'zod';
@@ -82,6 +82,36 @@ export async function createProfile(ctx: Ctx, input: z.input<typeof profileInput
     if (d.competitionId) await t.update(competitions).set({ themeProfileId: p!.id }).where(and(eq(competitions.id, d.competitionId), eq(competitions.organisationId, ctx.actor.organisationId)));
     return (await t.select().from(themeProfiles).where(eq(themeProfiles.id, p!.id)))[0]!;
   });
+}
+
+/** A look chosen in the tournament or match picker: one of the organisation's own looks, or a built-in look. */
+export const lookChoice = z.union([z.object({ themeProfileId: z.string().uuid() }), z.object({ themeKey: z.enum(THEME_KEYS) })]);
+export type LookChoice = z.infer<typeof lookChoice>;
+
+/**
+ * The organisation's look for a built-in look, named after it ("Liga") with nothing changed: created and published
+ * the first time that look is chosen for a tournament or a match, then reused. It is an ordinary look afterwards
+ * (a logo, colours and wording can be added under Themes). A system step of choosing the look, so it does not need
+ * the person choosing to be allowed to edit looks; the audit log records it.
+ */
+export async function ensureLookProfile(ctx: Ctx, t: Tx, themeKey: (typeof THEME_KEYS)[number]): Promise<string> {
+  const look = LOOKS.find((l) => l.key === themeKey)!;
+  const named = await t.select().from(themeProfiles).where(and(eq(themeProfiles.organisationId, ctx.actor.organisationId), eq(themeProfiles.name, look.name), gt(themeProfiles.currentVersion, 0)));
+  const mine = named.find((p) => (p.draft as { themeKey?: string }).themeKey === themeKey);
+  if (mine) return mine.id;
+  const [p] = await t.insert(themeProfiles).values({ organisationId: ctx.actor.organisationId, name: look.name, draft: { themeKey, config: {} } }).returning();
+  await audit(t, ctx.actor, 'theme_profile.create', 'theme_profile', p!.id, { after: { name: look.name, themeKey, reason: 'built-in look chosen for a tournament or match' } });
+  await publishProfileTx(ctx, t, p!.id);
+  return p!.id;
+}
+
+/** The look profile a picker choice stands for (published; one of this organisation's). */
+export async function resolveLook(ctx: Ctx, t: Tx, choice: LookChoice): Promise<string> {
+  if ('themeKey' in choice) return ensureLookProfile(ctx, t, choice.themeKey);
+  const [p] = await t.select().from(themeProfiles).where(and(eq(themeProfiles.id, choice.themeProfileId), eq(themeProfiles.organisationId, ctx.actor.organisationId)));
+  if (!p) throw notFound('Look');
+  if (!p.currentVersion) throw conflict('NOT_PUBLISHED', 'Publish this look before using it on a match');
+  return p.id;
 }
 
 export async function updateProfileDraft(ctx: Ctx, id: string, input: { name?: string; themeKey?: string; config?: unknown }) {

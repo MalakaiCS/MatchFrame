@@ -1,10 +1,11 @@
 // The football starter plan on a real output, in real time: animated background and match header from the moment
 // the output has its plan (the match is still "Scheduled"), on air with no set time and left untouched at
-// "Pre-match", both cleared when the players walk out, line-ups 15 s later (8 s each, once, only for a team with a
-// line-up), the scorebug at "About to start" with its clock at 0:00, the kick-off banner and a running clock at each half, the half-time background cycling stats and the header
-// with the restart countdown every 45 s, the scorebug back 7 s after the second-half walk-out, and 30 s after
-// full time the final score on the header with "Thank you for watching". Captures of the OBS page are kept as
-// evidence in docs/evidence/e2e/.
+// "Pre-match", both taken out with their exit animation when the players walk out, line-ups 15 s later (8 s each,
+// once, only for a team with a line-up), the scorebug at "About to start" with its clock at 0:00, the kick-off
+// banner and a running clock at each half; at half time nothing for 10 s, then the background and the header with
+// the restart countdown, the stats 30 s later and the header again 30 s after that; both animated out at the
+// second-half walk-out and the scorebug back 7 s later; 30 s after full time the final score on the header with
+// "Thank you for watching". Captures of the OBS page are kept as evidence in docs/evidence/e2e/.
 import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { api, freshMatch, login } from './helpers';
@@ -82,9 +83,17 @@ test('football starter flow on a real output, with the real timings', async ({ b
   expect(on(after, 'background')?.cueId).toBe(on(before, 'background')?.cueId);
   expect(on(after, 'fullframe')?.cueId).toBe(on(before, 'fullframe')?.cueId);
 
-  // players entering: both go; 15 s later the home line-up for 8 s; "About to start" does not cut it short
+  // players entering: both go, with their exit animation (taken out, not cut); 15 s later the home line-up for 8 s;
+  // "About to start" does not cut it short
   const t0 = await phase('players_entering');
-  await waitFor('background and header cleared', (s) => !on(s, 'background') && !on(s, 'fullframe'), 5000);
+  // taken out (each plays its exit animation), never cleared (a cut): the output's command history says which
+  const exits = async (since: number) => {
+    const h = (await api<{ history: { type: string; source: string; status: string; createdAt: string }[] }>(page, `/api/v1/overlays/${ov.id}`)).history.filter((c) => c.source === 'automation' && c.status === 'accepted' && Date.parse(c.createdAt) >= since - 1000);
+    return { takeOuts: h.filter((c) => c.type === 'TAKE_OUT').length, cuts: h.filter((c) => c.type === 'CLEAR_LAYER').length };
+  };
+  await waitFor('background and header off air', (s) => !on(s, 'background') && !on(s, 'fullframe'), 5000);
+  await expect.poll(async () => (await exits(t0)).takeOuts, { message: 'taken out with their exit animation' }).toBeGreaterThanOrEqual(2);
+  expect((await exits(t0)).cuts, 'no hard cut').toBe(0);
   await obs.waitForTimeout(3000);
   // "About to start": the scorebug comes up before kick-off, its clock at 0:00
   await phase('about_to_start');
@@ -108,18 +117,28 @@ test('football starter flow on a real output, with the real timings', async ({ b
   await waitFor('scorebug and kick-off banner', (s) => s.scorebugVisible && on(s, 'lower')?.templateKey === 'builtin:period_banner', 8000);
   await expect(obs.locator('[data-graphic="scorebug"]')).toContainText(/0:0[2-9]|0:[1-5]\d/, { timeout: 10_000 });
 
-  // half time: background over everything, stats, then 45 s later the header with the restart countdown
+  // half time: the scorebug stays for 10 s with nothing over it; then the background and the header with the
+  // restart countdown, the stats 30 s later, and the header again 30 s after that
   const t1 = await phase('half_time');
-  await waitFor('half-time background and stats', (s) => on(s, 'background')?.templateKey === 'builtin:backdrop' && on(s, 'fullframe')?.templateKey === 'builtin:stats' && !s.scorebugVisible, 8000);
-  await capture('3-half-time-stats');
-  await waitFor('header with countdown after 45 s', (s) => on(s, 'fullframe')?.templateKey === 'builtin:ident', 55_000);
-  expect(Date.now() - t1).toBeGreaterThanOrEqual(44_000);
+  await obs.waitForTimeout(5000);
+  const early = await st();
+  expect(early.scorebugVisible).toBe(true);
+  expect(on(early, 'background') ?? on(early, 'fullframe')).toBeFalsy();
+  await waitFor('half-time background and header after 10 s', (s) => on(s, 'background')?.templateKey === 'builtin:backdrop' && on(s, 'fullframe')?.templateKey === 'builtin:ident' && !s.scorebugVisible, 10_000);
+  expect(Date.now() - t1).toBeGreaterThanOrEqual(9500);
   await expect(obs.locator('[data-graphic$="ident"]')).toContainText(/2ND HALF IN/i);
-  await capture('4-half-time-header');
+  await capture('3-half-time-header');
+  await waitFor('stats 30 s later', (s) => on(s, 'fullframe')?.templateKey === 'builtin:stats', 35_000);
+  expect(Date.now() - t1).toBeGreaterThanOrEqual(40_000);
+  await capture('4-half-time-stats');
+  await waitFor('header again 30 s after that', (s) => on(s, 'fullframe')?.templateKey === 'builtin:ident', 35_000);
+  expect(Date.now() - t1).toBeGreaterThanOrEqual(70_500);
 
-  // second-half walk-out: background and header fade, scorebug back 7 s later
+  // second-half walk-out: background and board animate out, scorebug back 7 s later
   const t2 = await phase('second_half_entering');
-  await waitFor('cleared for the walk-out', (s) => !on(s, 'background') && !on(s, 'fullframe'), 5000);
+  await waitFor('background and board off air', (s) => !on(s, 'background') && !on(s, 'fullframe'), 5000);
+  await expect.poll(async () => (await exits(t2)).takeOuts, { message: 'taken out with their exit animation' }).toBeGreaterThanOrEqual(2);
+  expect((await exits(t2)).cuts, 'no hard cut').toBe(0);
   await waitFor('scorebug back', (s) => s.scorebugVisible, 12_000);
   expect(Date.now() - t2).toBeGreaterThanOrEqual(6500);
   await phase('second_half_ready');

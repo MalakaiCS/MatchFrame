@@ -55,6 +55,8 @@ export function registerGraphicsRoutes(b: AppBundle) {
   app.post('/api/v1/overlays/:id/rotate', async (req) => overlaysSvc.rotateOverlayCredential(await ctxFor(req), P(id, req.params).id, (P(z.object({ purpose: z.enum(['production', 'monitor', 'rehearsal']).default('production') }), req.body ?? {})).purpose));
   app.post('/api/v1/overlays/:id/apply-theme', async (req) => overlaysSvc.applyPendingTheme(await ctxFor(req), P(id, req.params).id));
   app.put('/api/v1/overlays/:id/theme-profile', async (req) => overlaysSvc.setOverlayThemeProfile(await ctxFor(req), P(id, req.params).id, P(z.object({ themeProfileId: z.string().uuid().nullable() }), req.body).themeProfileId));
+  app.put('/api/v1/matches/:id/look', async (req) => overlaysSvc.setMatchLook(await ctxFor(req), P(id, req.params).id, req.body as never));
+  app.put('/api/v1/competitions/:id/look', async (req) => overlaysSvc.setCompetitionLook(await ctxFor(req), P(id, req.params).id, req.body as never));
   app.put('/api/v1/overlays/:id/format', async (req) => overlaysSvc.setOverlayFormat(await ctxFor(req), P(id, req.params).id, P(z.object({ format: z.enum(['16:9', '9:16', 'venue']) }), req.body).format));
   app.post('/api/v1/overlays/:id/starter-plan', async (req) => gamePlansSvc.applyStarterPlan(await ctxFor(req), P(id, req.params).id));
   app.put('/api/v1/overlays/:id/game-plan', async (req) => overlaysSvc.setOverlayGamePlan(await ctxFor(req), P(id, req.params).id, P(z.object({ gamePlanVersionId: z.string().uuid().nullable() }), req.body).gamePlanVersionId));

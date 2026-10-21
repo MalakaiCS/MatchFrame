@@ -132,6 +132,50 @@ describe('overlays', () => {
     await expect(overlaysSvc.overlayUrls(B.ctx, o.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
+  it('a tournament look and a match look, from any of the built-in looks; upcoming matches follow the tournament unless they have their own', async () => {
+    const ctx = A.ctx;
+    const comp = await catalog.createCompetition(ctx, { name: 'Look League', sport: 'football', defaultTimezone: 'Australia/Brisbane' });
+    const season = await catalog.createSeason(ctx, comp.id, { name: '2026' });
+    const h = await catalog.createTeam(ctx, { name: 'Northgate Rovers', shortName: 'Northgate', abbreviation: 'NGR', sport: 'football' });
+    const a = await catalog.createTeam(ctx, { name: 'Southbank City', shortName: 'Southbank', abbreviation: 'SBC', sport: 'football' });
+    const fixture = (day: string) => matchesSvc.createMatch(ctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: h.id, awayTeamId: a.id, kickoffLocal: `2026-12-${day} 15:00`, timezone: 'Australia/Brisbane' });
+    const [m1, m2] = [await fixture('05'), await fixture('12')];
+    const look = async (id: string) => (await overlaysSvc.listOverlays(ctx, id))[0]!.theme?.profile ?? null;
+    const themeKey = async (id: string) => {
+      const o = (await overlaysSvc.listOverlays(ctx, id))[0]!;
+      return (await overlaysSvc.rendererSnapshot(deps.db, deps.config, { organisationId: A.org.id, overlayId: o.id, matchId: id, purpose: 'monitor', tokenVersion: 0 })).data.theme.themeKey;
+    };
+
+    // the tournament takes a built-in look: it is saved as the organisation's "Liga" and both upcoming matches show it
+    expect(await overlaysSvc.setCompetitionLook(ctx, comp.id, { themeKey: 'liga' })).toMatchObject({ outputs: 2 });
+    expect([await look(m1.id), await look(m2.id)]).toEqual(['Liga', 'Liga']);
+    expect(await themeKey(m1.id)).toBe('liga');
+    // one match gets a look of its own
+    expect(await overlaysSvc.setMatchLook(ctx, m2.id, { themeKey: 'premier' })).toMatchObject({ outputs: 1 });
+    expect(await themeKey(m2.id)).toBe('premier');
+    // the tournament changes: the match that followed it changes too, the one with its own look keeps it, new fixtures start with it
+    await overlaysSvc.setCompetitionLook(ctx, comp.id, { themeKey: 'meister' });
+    expect([await look(m1.id), await look(m2.id)]).toEqual(['Meister', 'Premier']);
+    const m3 = await fixture('19');
+    expect(await look(m3.id)).toBe('Meister');
+    // "same as the tournament" puts the match back on it
+    await overlaysSvc.setMatchLook(ctx, m2.id, { follow: 'competition' });
+    expect(await look(m2.id)).toBe('Meister');
+    // a match under way keeps the look it started with
+    const l = await scoring.scorerLease(ctx, m1.id, { action: 'acquire', deviceId: 'dev-look' });
+    const st = await scoring.getMatchState(ctx, m1.id);
+    await scoring.handleMatchCommand(ctx, m1.id, { commandId: crypto.randomUUID(), expectedStateVersion: st.stateVersion, scorerLeaseVersion: l!.leaseVersion, deviceId: 'dev-look', type: 'SET_PHASE', payload: { to: 'first_half' } });
+    await overlaysSvc.setCompetitionLook(ctx, comp.id, { themeKey: 'liga' });
+    expect([await look(m1.id), await look(m2.id), await look(m3.id)]).toEqual(['Meister', 'Liga', 'Liga']);
+    // choosing a built-in look again reuses the look saved the first time
+    const liga = (await themesSvc.listProfiles(ctx)).filter((p) => p.name === 'Liga');
+    expect(liga).toHaveLength(1);
+    // another organisation can neither see this match nor use this organisation's look on its own
+    await expect(overlaysSvc.setMatchLook(B.ctx, m1.id, { themeKey: 'liga' })).rejects.toThrow(/not found/i);
+    const other = await setup(B.ctx);
+    await expect(overlaysSvc.setMatchLook(B.ctx, other.m.id, { themeProfileId: liga[0]!.id })).rejects.toThrow(/not found/i);
+  });
+
   it('a production snapshot exposes only public display data (no roster directory, no private fields)', async () => {
     const o = await overlaysSvc.createOverlay(A.ctx, matchId, { name: 'Public' });
     const urls = await overlaysSvc.overlayUrls(A.ctx, o.id);

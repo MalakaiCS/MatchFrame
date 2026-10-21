@@ -22,7 +22,7 @@ import { MatchInfoEditor } from '@/components/match/match-info';
 export interface LineupPlayer { playerId: string; displayName: string; number: number | null; position?: string | null; starter: boolean; captain?: boolean }
 export interface MatchDetail {
   id: string; status: string; sport: string; scheduledAt: string; timezone: string; round: string | null; externalId: string | null; isDemo: boolean;
-  competition: { id: string; name: string }; season: { id: string; name: string }; venue: { name: string } | null;
+  competition: { id: string; name: string; themeProfileId?: string | null }; season: { id: string; name: string }; venue: { name: string } | null;
   teams: { home: { id: string; name: string; abbreviation: string; primaryColor: string }; away: { id: string; name: string; abbreviation: string; primaryColor: string } };
   lineup: { home: LineupPlayer[]; away: LineupPlayer[] }; lineupLocked: boolean;
   state: { phase: string; projection: { score: { home: number; away: number }; shootout: { home: number; away: number } | null; stats: Record<string, Record<string, number>> }; stateVersion: number };

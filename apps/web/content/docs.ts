@@ -123,7 +123,7 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: '4. Choose a look and turn on automation' },
       { steps: [
-        { do: 'In the match-day checklist, choose a **Look** and press **Apply**.' },
+        { do: 'In the match-day checklist, choose a **Look** (one of yours or any of the ten built-in looks) and press **Apply**. To give every match in a competition the same look, set it once under the competition\'s **Graphics & production** tab → **Tournament look**.' },
         { do: 'If your organisation has no automation plan yet: open **Automation**, press **New plan**, keep **Start from the football starter plan** ticked (or your sport\'s), press **Create**, then **Publish**.', expect: 'A message confirms the published version.' },
         { do: 'Back on the match, choose the plan under **Automation plan** and press **Apply** (new matches take your latest published plan for their sport on their own).', expect: 'The checklist shows "Automation: <plan name>".' },
       ] },
@@ -309,7 +309,13 @@ export const DOCS: DocArticle[] = [
       { steps: [
         { do: 'Open **Themes** and choose one of the ten looks, such as Broadcast, Premier, Liga or Primetime.', expect: 'Every graphic previews in that look with sample teams.' },
         { do: 'Set your colours, logo and team colours, and the scorebug variant and position, the clock style and any wording changes.' },
-        { do: 'Publish the look, then choose it on the match (match-day checklist → **Look** → **Apply**), or as the competition default.' },
+        { do: 'Publish the look, then choose it on the match (match-day checklist → **Look** → **Apply**), or for a whole competition (**Graphics & production** → **Tournament look** → **Apply**).' },
+      ] },
+      { h: 'Tournament look and match look' },
+      { list: [
+        'Both pickers list your own looks and all ten built-in looks. A built-in look chosen there is saved as one of your looks, named after it, so you can add your logo and colours to it here later.',
+        'Every match in a competition uses the **Tournament look** unless it has a look of its own. Changing it changes the upcoming matches that showed the previous one; matches under way keep theirs.',
+        'On a match, **Same as the tournament** puts it back on the tournament look.',
       ] },
       { h: 'Artwork' },
       { list: [
@@ -333,12 +339,12 @@ export const DOCS: DocArticle[] = [
       { table: { head: ['When', 'On air'], rows: [
         ['The match is created (Scheduled)', 'The animated background, then the match header: Home v Away, ground and kick-off time, with a countdown to kick-off however far away (for example 3d 02:14:58). Both stay up until the players walk out.'],
         ['Pre-match', 'The same background and header stay up as they are.'],
-        ['Players entering', 'Background and header fade out. 15 seconds later the home line-up for 8 seconds, then the away line-up for 8 seconds, once each. About to start does not cut them short.'],
+        ['Players entering', 'The header animates out, then the background. 15 seconds later the home line-up for 8 seconds, then the away line-up for 8 seconds, once each. About to start does not cut them short.'],
         ['About to start', 'The scorebug comes up, its clock at 0:00.'],
         ['1st Half', 'The kick-off banner, and the clock starts.'],
         ['Goals, cards, substitutions', 'Their graphic, then the goal partner logo after a goal.'],
-        ['Half Time', 'Scorebug out; the animated background over everything, then the match stats and the match header (score, HALF TIME and a countdown to the second half) taking turns, 45 seconds each.'],
-        ['Players entering (2nd half)', 'Background and header fade out; the scorebug comes back 7 seconds later. No line-ups the second time.'],
+        ['Half Time', 'Nothing changes for 10 seconds; then the animated background over everything, the scorebug out, and the match header (score, HALF TIME and a countdown to the second half) and the match stats taking turns, 30 seconds each, header first.'],
+        ['Players entering (2nd half)', 'The board animates out, then the background; the scorebug comes back 7 seconds later. No line-ups the second time.'],
         ['2nd Half', 'The kick-off banner.'],
         ['Full Time', 'The scorebug stays for 30 seconds, then the background and the match header with the final score, FULL TIME and "Thank you for watching".'],
       ] } },

@@ -9,15 +9,15 @@ export function useGet<T>(key: QueryKey, path: string | null, opts: { refetchInt
 }
 
 /** Mutation with recoverable error state, cache invalidation and an optional success toast. */
-export function useAction<TIn, TOut>(fn: (v: TIn) => Promise<TOut>, invalidate: QueryKey[] = [], opts: { success?: string | ((r: TOut) => string) } = {}) {
+export function useAction<TIn, TOut>(fn: (v: TIn) => Promise<TOut>, invalidate: QueryKey[] = [], opts: { success?: string | ((r: TOut, v: TIn) => string) } = {}) {
   const qc = useQueryClient();
   const [done, setDone] = useState<string | null>(null);
   const m = useMutation<TOut, ApiError, TIn>({
     mutationFn: fn,
-    onSuccess: async (r) => {
+    onSuccess: async (r, v) => {
       await Promise.all(invalidate.map((k) => qc.invalidateQueries({ queryKey: k })));
       setDone(new Date().toISOString());
-      if (opts.success) toast(typeof opts.success === 'function' ? opts.success(r) : opts.success);
+      if (opts.success) toast(typeof opts.success === 'function' ? opts.success(r, v) : opts.success);
     },
   });
   return { ...m, done, reset: () => { m.reset(); setDone(null); } };

@@ -123,7 +123,7 @@ async function activeRuns(t: Tx, overlayId: string, states = ['running']) {
 
 async function insertCues(t: Tx, run: typeof automationRuns.$inferSelect, pl: Playlist, rc: RunContext, startAt: number, layers: Record<string, string>, freshnessMs: number) {
   const m: TriggerMatch = { playlist: pl, trigger: pl.triggers.find((x) => x.id === run.triggerId) ?? pl.triggers[0]!, iteration: run.iteration, occurredAt: rc.occurredAt, context: rc.context };
-  const planned = planRun(pl, m, startAt, { freshnessMs, templateLayers: layers, liveTrigger: rc.liveTrigger && rc.loop === 0 });
+  const planned = planRun(pl, m, startAt, { freshnessMs, templateLayers: layers, liveTrigger: rc.liveTrigger && rc.loop === 0, loop: rc.loop });
   await t.insert(automationCues).values(
     planned.map((c) => ({
       organisationId: run.organisationId,
@@ -448,7 +448,8 @@ async function executeCue(t: Tx, d: AutomationDeps, fence: Fence, cue: typeof au
       return { state: 'done', revision: await send({ type: 'HIDE_SCOREBUG' }) };
     case 'clear_layers': {
       let rev: number | undefined;
-      for (const l of p.item.layers ?? []) if (layers[l] && layers[l]!.source === 'automation') rev = await send({ type: 'CLEAR_LAYER', layer: l }, `:${l}`);
+      // taken out with their exit animation, not cut (a graphic already on its way out is left to finish)
+      for (const l of p.item.layers ?? []) if (layers[l] && layers[l]!.source === 'automation' && !layers[l]!.outAt) rev = await send({ type: 'TAKE_OUT', layer: l }, `:${l}`);
       return { state: 'done', revision: rev };
     }
     case 'media':

@@ -25,7 +25,7 @@ import { AppError, conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
 import { renderSeasonTx } from './season-data';
-import { effectiveTheme, publishedCustomTemplates } from './themes';
+import { effectiveTheme, lookChoice, publishedCustomTemplates, resolveLook } from './themes';
 
 export type Purpose = 'production' | 'monitor' | 'rehearsal';
 interface SnapTeam {
@@ -137,7 +137,7 @@ export async function listOverlays(ctx: Ctx, matchId: string) {
       publicId: r.o.publicId,
       gamePlanVersionId: r.o.gamePlanVersionId,
       format: (r.o.format as '16:9' | '9:16' | 'venue' | null) ?? '16:9',
-      theme: pv(r.o.themeProfileVersionId) ? { profile: pv(r.o.themeProfileVersionId)!.p.name, version: pv(r.o.themeProfileVersionId)!.v.version } : null,
+      theme: pv(r.o.themeProfileVersionId) ? { id: pv(r.o.themeProfileVersionId)!.p.id, profile: pv(r.o.themeProfileVersionId)!.p.name, version: pv(r.o.themeProfileVersionId)!.v.version } : null,
       pendingTheme: pv(r.o.pendingThemeProfileVersionId) ? { id: r.o.pendingThemeProfileVersionId, version: pv(r.o.pendingThemeProfileVersionId)!.v.version } : null,
       state: { revision: r.s.revision, displayedRevision: r.s.displayedRevision, displayedAt: r.s.displayedAt, mode: r.s.mode, inhibited: r.s.inhibited, scorebugVisible: r.s.scorebugVisible, onAir: Object.keys(r.s.layers ?? {}) },
       renderers: renderers.filter((x) => x.overlayId === r.o.id).map((x) => ({ purpose: x.purpose, displayedRevision: x.displayedRevision, lastSeenAt: x.lastSeenAt, reporting: x.isReportingAuthority })),
@@ -206,6 +206,67 @@ export async function setOverlayThemeProfile(ctx: Ctx, overlayId: string, profil
     await audit(t, ctx.actor, 'overlay.theme_profile', 'overlay', overlayId, { before: { themeProfileVersionId: o.themeProfileVersionId }, after: next });
     return { ok: true, version: pv?.version ?? null };
   });
+}
+
+/** A match's graphics outputs that show the same look as its main output (the first one), and that look. */
+async function outputsOnMainLook(t: Tx, organisationId: string, matchId: string) {
+  const rows = await t
+    .select({ id: overlays.id, profileId: themeProfileVersions.profileId })
+    .from(overlays)
+    .leftJoin(themeProfileVersions, eq(themeProfileVersions.id, overlays.themeProfileVersionId))
+    .where(and(eq(overlays.matchId, matchId), eq(overlays.organisationId, organisationId), eq(overlays.kind, 'graphics'), eq(overlays.status, 'active')))
+    .orderBy(asc(overlays.createdAt));
+  const look = rows[0]?.profileId ?? null;
+  return { look, ids: rows.filter((r) => (r.profileId ?? null) === look).map((r) => r.id) };
+}
+
+export const matchLookInput = z.union([lookChoice, z.object({ follow: z.literal('competition') })]);
+
+/**
+ * The match's look, from the match-day picker: a look of the organisation's, a built-in look, or "the same as the
+ * tournament". It goes on the main output and on every other output showing the same look; an output given a
+ * different look on the OBS link tab keeps it.
+ */
+export async function setMatchLook(ctx: Ctx, matchId: string, input: z.input<typeof matchLookInput>) {
+  const choice = matchLookInput.parse(input);
+  const { profileId, ids } = await tx(ctx, async (t) => {
+    const [m] = await t.select().from(matches).where(and(eq(matches.id, matchId), eq(matches.organisationId, ctx.actor.organisationId)));
+    if (!m) throw notFound('Match');
+    assertCan(ctx.actor, 'overlay.operate', { matchId, competitionId: m.competitionId });
+    const [comp] = await t.select().from(competitions).where(and(eq(competitions.id, m.competitionId), eq(competitions.organisationId, ctx.actor.organisationId)));
+    const id = 'follow' in choice ? (comp?.themeProfileId ?? null) : await resolveLook(ctx, t, choice);
+    return { profileId: id, ids: (await outputsOnMainLook(t, ctx.actor.organisationId, matchId)).ids };
+  });
+  for (const o of ids) await setOverlayThemeProfile(ctx, o, profileId);
+  return { themeProfileId: profileId, outputs: ids.length };
+}
+
+/**
+ * The tournament's look, from the competition page: new fixtures start with it, and upcoming matches that showed
+ * the tournament's previous look (or no look of their own) change to it now. Matches given their own look, and
+ * matches under way or finished, keep theirs.
+ */
+export const competitionLookInput = z.union([lookChoice, z.object({ themeProfileId: z.null() })]);
+
+export async function setCompetitionLook(ctx: Ctx, competitionId: string, input: z.input<typeof competitionLookInput>) {
+  assertCan(ctx.actor, 'competition.write');
+  const choice = competitionLookInput.parse(input);
+  const { profileId, outputs } = await tx(ctx, async (t) => {
+    const [c] = await t.select().from(competitions).where(and(eq(competitions.id, competitionId), eq(competitions.organisationId, ctx.actor.organisationId))).for('update');
+    if (!c) throw notFound('Competition');
+    const id = 'themeKey' in choice || choice.themeProfileId ? await resolveLook(ctx, t, choice as z.infer<typeof lookChoice>) : null;
+    await t.update(competitions).set({ themeProfileId: id, updatedAt: new Date() }).where(eq(competitions.id, competitionId));
+    await audit(t, ctx.actor, 'competition.look', 'competition', competitionId, { before: { themeProfileId: c.themeProfileId }, after: { themeProfileId: id } });
+    const upcoming = await t.select({ id: matches.id }).from(matches).where(and(eq(matches.competitionId, competitionId), eq(matches.organisationId, ctx.actor.organisationId), eq(matches.status, 'scheduled')));
+    const out: string[] = [];
+    for (const m of upcoming) {
+      const o = await outputsOnMainLook(t, ctx.actor.organisationId, m.id);
+      if (o.look === null || o.look === c.themeProfileId) out.push(...o.ids);
+    }
+    return { profileId: id, outputs: out };
+  });
+  for (const o of outputs) await setOverlayThemeProfile(ctx, o, profileId);
+  return { themeProfileId: profileId, outputs: outputs.length };
 }
 
 /** Output format: broadcast 16:9, vertical 9:16 for a social stream, or the venue screen layout. */

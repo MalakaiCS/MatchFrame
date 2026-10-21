@@ -126,7 +126,7 @@ export function StepDialog({ sport, playlist, item, onSave, onClose }: { sport: 
               <Field label="Sound (video only)" htmlFor="sa"><NativeSelect id="sa" value={audio} onChange={(e) => setAudio(e.target.value as typeof audio)}><option value="muted">Silent</option><option value="duck">Lower the programme sound</option><option value="replace">Replace the programme sound</option></NativeSelect></Field>
             </>
           ) : null}
-          {action === 'clear_layers' ? <p className="text-sm text-muted">Takes off the animated background, any full-screen board and the lower third, for example when the players walk out or at kick-off. The scorebug stays.</p> : null}
+          {action === 'clear_layers' ? <p className="text-sm text-muted">Takes off the animated background, any full-screen board and the lower third with their exit animation, for example when the players walk out or at kick-off. The scorebug stays.</p> : null}
           {action === 'scorebug_show' || action === 'scorebug_hide' ? <p className="text-sm text-muted">{action === 'scorebug_show' ? 'Brings the scorebug in (it also comes in by itself at kick-off when "Show scorebug during play" is on).' : 'Takes the scorebug out, for example during the half-time board.'}</p> : null}
         </div>
         <div className="grid content-start gap-3 rounded-md border border-border p-3">

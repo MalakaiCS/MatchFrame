@@ -75,6 +75,19 @@ uploaded through the asset library. When two kits are too close in colour the aw
 alternate colours automatically. Published versions are immutable: a match keeps the version it started with
 until you apply the newer one on its OBS link tab.
 
+**Choosing the look for a tournament and for a match.** Both pickers list your own looks, then all ten built-in
+looks.
+
+* *Competition → Graphics & production → Tournament look*: every match in the competition uses it unless it has
+  a look of its own. New fixtures start with it, and upcoming matches that showed the previous tournament look (or
+  no look) change to it straight away. A match under way, or finished, keeps the look it started with.
+* *Match page → match-day checklist → Look*: a look for this match only, or *Same as the tournament* to put it
+  back. It goes on the match's main output and on any other output showing the same look; an output given a
+  different look on the OBS link tab keeps it.
+
+Choosing a built-in look the first time saves it as a look of your organisation's, named after it ("Liga"), so it
+can be given your logo, colours and wording under *Themes*; choosing it again uses that same look.
+
 ## Graphics
 
 Twenty-nine built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
@@ -123,11 +136,11 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 | --- | --- |
 | *(nothing yet: the match has just been created)* | the animated background, then the match header on it: Home v Away, the ground and kick-off time, with a countdown to kick-off however far away ("3d 02:14:58" more than a day out). Both stay up, with no set time, until the players walk out |
 | *Pre-match* | the same background and header stay up as they are (no second entrance) |
-| *Players entering* | the background and header fade out at once; 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
+| *Players entering* | the header animates out, then the background 0.4 s later (each plays its exit animation, no hard cut); 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
 | *About to start* | the scorebug comes up, its clock at 0:00 |
 | *1st Half* | the "Kick-off" banner, and the clock starts |
-| *Half Time* | scorebug out, the animated background back over everything, then the match stats and the match header (score, HALF TIME, "2nd Half in 14:08") taking turns, 45 s each, until the players come back out |
-| *Players entering (2nd half)* | the background and header fade out; the scorebug comes back 7 s later. No line-ups the second time |
+| *Half Time* | nothing changes for 10 s (the scorebug shows the half-time score); then the animated background animates in over everything, the scorebug goes, and the match header (score, HALF TIME, "2nd Half in 14:08") and the match stats take turns, 30 s each, header first, until the players come back out |
+| *Players entering (2nd half)* | the board on air animates out, then the background 0.4 s later; the scorebug comes back 7 s later. No line-ups the second time |
 | *2nd Half* | scorebug (already in) and the "Kick-off" banner |
 | *Full Time* | the scorebug stays for 30 s, then the animated background, scorebug out, and the match header with the final score, FULL TIME and "Thank you for watching" |
 

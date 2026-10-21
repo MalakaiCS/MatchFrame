@@ -1,7 +1,9 @@
 'use client';
+import Link from 'next/link';
 import { Button, Card, ErrorNotice, Field, NativeSelect, Spinner } from '@bs/ui';
-import { patch } from '@/lib/api';
+import { patch, put } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
+import { LookPicker, lookName, type LookChoice, type LookProfile } from '@/components/look-picker';
 
 interface Props {
   competition: { id: string; sport: string; themeProfileId: string | null; gamePlanVersionId: string | null; outputDefaults: Record<string, unknown> };
@@ -10,21 +12,23 @@ interface Props {
 
 /** Competition-level defaults inherited (and pinned) by new fixtures and their overlays/outputs. */
 export function CompetitionProduction({ competition: c, canEdit }: Props) {
-  const profiles = useGet<{ id: string; name: string; currentVersion: number }[]>(['theme-profiles'], 'theme-profiles');
+  const profiles = useGet<LookProfile[]>(['theme-profiles'], 'theme-profiles');
   const plans = useGet<{ id: string; name: string; sport: string; versions: { id: string; version: number }[] }[]>(['game-plans'], 'game-plans');
   const save = useAction((v: Record<string, unknown>) => patch(`competitions/${c.id}`, v), [['competition', c.id]]);
+  const setLook = useAction((v: { choice: LookChoice; name: string }) => put<{ outputs: number }>(`competitions/${c.id}/look`, v.choice), [['competition', c.id], ['theme-profiles'], ['overlays']], {
+    success: (r, v) => `${v.name} is the tournament look${r.outputs ? `; ${r.outputs} upcoming match output${r.outputs === 1 ? '' : 's'} changed to it` : ''}`,
+  });
+  const current = lookName(profiles.data, c.themeProfileId);
   const od = c.outputDefaults as { preset?: string; postrollSeconds?: number };
   if (profiles.isLoading || plans.isLoading) return <Spinner />;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="p-4">
-        <h2 className="mb-3 font-medium">Default look</h2>
-        <Field label="Look for new fixtures" htmlFor="tp" hint="New fixtures start with this look. A match already set up changes only when you apply the newer version on its OBS link tab.">
-          <NativeSelect id="tp" disabled={!canEdit} value={c.themeProfileId ?? ''} onChange={(e) => save.mutate({ themeProfileId: e.target.value || null })}>
-            <option value="">None</option>
-            {profiles.data?.map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.currentVersion})</option>)}
-          </NativeSelect>
-        </Field>
+        <h2 className="mb-1 font-medium">Tournament look</h2>
+        <p className="mb-3 text-sm">{current ? <>Every match uses <strong>{current}</strong> unless it has a look of its own.</> : 'No look chosen: matches use the Broadcast look unless they have one of their own.'}</p>
+        {canEdit ? <div className="flex flex-wrap items-center gap-2"><LookPicker label="Tournament look" profiles={profiles.data} current={c.themeProfileId} loading={setLook.isPending} onApply={(choice, name) => setLook.mutate({ choice, name })} /></div> : null}
+        <p className="mt-2 text-xs text-muted">Upcoming matches that show the tournament look change with it; a match given its own look on its match page keeps that, and a match under way keeps the look it started with. <Link className="underline" href="/app/themes">See every look</Link>.</p>
+        <ErrorNotice error={setLook.error} />
       </Card>
       <Card className="p-4">
         <h2 className="mb-3 font-medium">Default automation</h2>

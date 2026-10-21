@@ -75,7 +75,7 @@ export default function HowItWorksPage() {
                   ['About to start', 'The scorebug comes up, its clock at 0:00.'],
                   ['1st Half', 'Kick-off banner, and the clock starts.'],
                   ['Goals, cards, substitutions', 'Their graphic, with the goal partner after a goal.'],
-                  ['Half Time', 'Background over everything; the stats and the header with a countdown to the second half take turns every 45 seconds.'],
+                  ['Half Time', 'After 10 seconds, the background over everything; the header with a countdown to the second half and the stats take turns every 30 seconds.'],
                   ['Players entering (2nd half)', 'Background and header fade; the scorebug returns 7 seconds later.'],
                   ['Full Time', 'After 30 seconds, the final score on the header with "Thank you for watching".'],
                 ].map(([w, o]) => (

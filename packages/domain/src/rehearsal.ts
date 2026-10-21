@@ -35,6 +35,8 @@ export interface RehearsalCue {
   variables: Record<string, unknown>;
   durationMs: number | null;
   placement?: string;
+  /** clear_layers: the layers it takes out */
+  layers?: string[];
 }
 
 /** Scoring and discipline events that read well in a rehearsal of each period sport. */
@@ -157,8 +159,8 @@ export function simulateRehearsal(plan: GamePlan, rulesConfig: unknown, timeline
     let start = now;
     let end = now;
     for (let k = 0; k < iterations; k++) {
-      const planned = planRun(m.playlist, m, start, { freshnessMs: freshness, templateLayers: opts.templateLayers, liveTrigger: input.kind === 'event' });
-      for (const c of planned) cues.push({ t: c.dueAt, playlistId: m.playlist.id, runId, action: c.item.action, templateKey: c.item.templateKey, layer: c.layer, variables: c.variables, durationMs: c.durationMs, placement: c.item.placement });
+      const planned = planRun(m.playlist, m, start, { freshnessMs: freshness, templateLayers: opts.templateLayers, liveTrigger: input.kind === 'event', loop: k });
+      for (const c of planned) cues.push({ t: c.dueAt, playlistId: m.playlist.id, runId, action: c.item.action, templateKey: c.item.templateKey, layer: c.layer, variables: c.variables, durationMs: c.durationMs, placement: c.item.placement, ...(c.item.layers ? { layers: c.item.layers } : {}) });
       const len = Math.max(...planned.map((c) => c.dueAt - start + (c.durationMs ?? 0)));
       end = start + len;
       start = end + m.playlist.repeat.gapMs;
