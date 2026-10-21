@@ -12,7 +12,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type AnimKind, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -280,7 +280,7 @@ function SponsorPlate({ p, c, placement, height, delayMs = 560 }: { p: GraphicPr
 }
 
 export function packTheme(k: Pack): ThemeComponents {
-  const brand = (p: GraphicProps, c: L, H: number) => (p.data.theme.logoUrl ? <ThemeBadge p={p} height={H - 18} /> : <Mark c={c} size={H - 22} />);
+  const brand = (p: GraphicProps, c: L, H: number) => (badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark c={c} size={H - 22} />);
 
   /** Stoppage time, shot clock, shoot-out and the scorebug sponsor: small pieces after the clock. */
   const extras = (p: GraphicProps, c: L, H: number, slim: boolean) => {
@@ -338,7 +338,7 @@ export function packTheme(k: Pack): ThemeComponents {
     };
     return (
       <>
-        {k.brandTab ? <div style={{ display: 'grid', placeItems: 'center', minWidth: H, padding: `0 ${pad(c, p.data.theme.logoUrl ? 8 : 0)}px`, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.4)})`, transformOrigin: 'top', ...shape(c, c.k.corner === 'slant' ? 'right' : 'both'), ...animStyle(p, 'grow-y', 0, 320) }}>{brand(p, c, H)}</div> : null}
+        {k.brandTab ? <div style={{ display: 'grid', placeItems: 'center', minWidth: H, padding: `0 ${pad(c, badgeUrl(p) ? 8 : 0)}px`, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.4)})`, transformOrigin: 'top', ...shape(c, c.k.corner === 'slant' ? 'right' : 'both'), ...animStyle(p, 'grow-y', 0, 320) }}>{brand(p, c, H)}</div> : null}
         <div style={k.brandTab ? join(c, 4) : undefined}>
           <Panel c={c} texture={false} style={{ height: '100%' }} inner={{ display: 'flex', alignItems: 'stretch' }}>
             {cell('home', 0)}
@@ -456,7 +456,7 @@ export function packTheme(k: Pack): ThemeComponents {
     };
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'stretch', paddingBottom: 6 }}>
-        <span style={{ display: 'grid', placeItems: 'center', width: H, background: mix(c.deep, '#ffffff', 0.12), ...animStyle(p, 'grow-y', 0, 300) }}>{p.data.theme.logoUrl ? <ThemeBadge p={p} height={H - 18} /> : <Mark c={c} size={H - 16} />}</span>
+        <span style={{ display: 'grid', placeItems: 'center', width: H, background: mix(c.deep, '#ffffff', 0.12), ...animStyle(p, 'grow-y', 0, 300) }}>{badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark c={c} size={H - 16} />}</span>
         <Panel c={c} texture={false} radius={0} style={{ height: '100%' }} inner={{ display: 'flex', alignItems: 'stretch' }}>
           {cell('home', 0)}
           <span style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '0 10px', fontSize: slim ? 28 : 34, ...plate(c, { borderRadius: 0, fontWeight: 900 }), ...animStyle(p, 'wipe-up', 200, 340) }}>

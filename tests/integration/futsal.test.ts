@@ -75,7 +75,7 @@ describe('futsal', () => {
   it('own rules presets: futsal 2×18 with a 5-minute half time, used for a competition; changed rules reach upcoming matches nobody has scored', async () => {
     const A = await makeOrg(deps, 'Futsal presets A');
     const B = await makeOrg(deps, 'Futsal presets B');
-    let T = Date.parse('2026-11-07T05:00:00Z');
+    const T = Date.parse('2026-11-07T05:00:00Z');
     const ctx: Ctx = { ...A.ctx, now: () => T };
     const base = { ...(futsalAdapter.defaultConfig as Record<string, unknown>), periodMinutes: 18, halfTimeMinutes: 5 };
     const preset = await catalog.saveRulesPreset(ctx, { sport: 'futsal', name: 'Futsal 2×18, 5-minute half time', config: base });

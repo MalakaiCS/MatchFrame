@@ -33,6 +33,7 @@ import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
 import { keys, type Storage } from './storage';
 import type { JobQueues } from './queues';
+import type { Readable } from 'node:stream';
 
 // ------------------------------------------------------------------ quotas & usage
 
@@ -101,6 +102,27 @@ export async function createUpload(ctx: Ctx, input: z.input<typeof uploadInput>)
 }
 
 /** Called after the browser PUT: size is verified at storage, then the worker validates and normalises. */
+/**
+ * The file of an upload sent through the API, from the app's own origin (browsers cannot reach private or internal
+ * storage, and the app's content security policy only allows its own origin). Stored as the asset's original; the
+ * caller then completes the upload as with a direct-to-storage PUT.
+ */
+export async function receiveUpload(ctx: Ctx, assetId: string, body: Readable, contentType: string, contentLength: number) {
+  if (!ctx.storage) throw new AppError('STORAGE_UNAVAILABLE', 503, 'Object storage is not configured');
+  const a = await tx(ctx, async (t) => {
+    const [a] = await t.select().from(mediaAssets).where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.organisationId, ctx.actor.organisationId)));
+    if (!a) throw notFound('Asset');
+    if (a.ownerTeamId) assertCan(ctx.actor, 'team_assets.write', { teamIds: [a.ownerTeamId], ownerTeamId: a.ownerTeamId });
+    else assertCan(ctx.actor, 'media.edit');
+    if (a.state !== 'UPLOADING') throw conflict('UPLOAD_CLOSED', 'This upload has already been received');
+    if (contentType.split(';')[0]!.trim().toLowerCase() !== a.originalMime) throw invalid('The file type does not match the upload', [{ field: 'content-type', message: `Expected ${a.originalMime}` }], 'UNSUPPORTED_MEDIA');
+    if (!a.expectedBytes || contentLength !== a.expectedBytes) throw invalid('The file size does not match the upload', undefined, 'UPLOAD_SIZE_MISMATCH');
+    return a;
+  });
+  await ctx.storage.put(a.originalKey, body, a.originalMime!, contentLength);
+  return { ok: true };
+}
+
 export async function completeUpload(ctx: Ctx, assetId: string) {
   if (!ctx.storage) throw new AppError('STORAGE_UNAVAILABLE', 503, 'Object storage is not configured');
   const job = await tx(ctx, async (t) => {

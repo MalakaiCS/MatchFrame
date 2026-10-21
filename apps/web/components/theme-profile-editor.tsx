@@ -9,6 +9,7 @@ import { DEFAULT_THEMES, LOOKS, emptyState, findTemplate, type OverlayPublicStat
 import { Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, toast } from '@bs/ui';
 import { ApiError, patch, post } from '@/lib/api';
+import { uploadFile } from '@/lib/upload';
 import { useAction, useGet } from '@/lib/hooks';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
 
@@ -89,10 +90,8 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
     setUploading(true);
     try {
       const mime = f.type || (kind === 'font' ? (f.name.endsWith('.woff2') ? 'font/woff2' : f.name.endsWith('.woff') ? 'font/woff' : f.name.endsWith('.otf') ? 'font/otf' : 'font/ttf') : 'application/octet-stream');
-      const u = await post<{ assetId: string; uploadUrl: string; headers: Record<string, string> }>('assets/uploads', { name: f.name, kind, mime, bytes: f.size });
-      const r = await fetch(u.uploadUrl, { method: 'PUT', headers: u.headers, body: f });
-      if (!r.ok) throw new ApiError(r.status, 'UPLOAD_FAILED', 'Upload to storage failed');
-      await post(`assets/${u.assetId}/complete`);
+      const assetId = await uploadFile(f, kind, mime);
+      const u = { assetId };
       if (kind === 'font') {
         setCfg((c) => ({ ...c, fontAssetId: u.assetId }));
         setFontName(f.name);

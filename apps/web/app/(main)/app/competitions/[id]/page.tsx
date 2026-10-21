@@ -12,13 +12,14 @@ import { SeasonPlayers, SeasonResults, SeasonStandings } from '@/components/comp
 import { BulkRoundDialog, RolloverDialog, StandingsRulesCard } from '@/components/competition/season-tools';
 import { DemoButton } from '@/components/demo-button';
 import { RulesEditor, usePresetOptions } from '@/components/competition/rules-editor';
+import { LogoField } from '@/components/logo-field';
 import type { Sport } from '@bs/domain';
 
 interface Competition {
   id: string; name: string; shortName: string | null; sport: string; status: string; defaultTimezone: string; rulesVersion: string;
   rulesConfig: Record<string, unknown>; rulesDescription: string[]; presets: { id: string; label: string }[];
   seasons: { id: string; name: string; startsOn: string | null; endsOn: string | null; status: string }[];
-  themeProfileId: string | null; gamePlanVersionId: string | null; outputDefaults: Record<string, unknown>;
+  themeProfileId: string | null; gamePlanVersionId: string | null; outputDefaults: Record<string, unknown>; logoAssetId: string | null;
   standingsRules?: Record<string, unknown> | null;
 }
 
@@ -37,6 +38,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
   const archive = useAction(() => patch(`competitions/${id}`, { status: c.data?.status === 'archived' ? 'active' : 'archived' }), [['competition', id], ['competitions']]);
   const setPreset = useAction((preset: string) => patch<{ matchesUpdated: number }>(`competitions/${id}`, { rulesPreset: preset, applyToUpcoming: true }), [['competition', id], ['matches', 'competition', id]], { success: (r) => `Rules updated${r.matchesUpdated ? `; ${r.matchesUpdated} upcoming match${r.matchesUpdated === 1 ? '' : 'es'} updated` : ''}` });
   const presetOptions = usePresetOptions(c.data?.sport ?? 'football');
+  const setLogo = useAction((logoAssetId: string | null) => patch(`competitions/${id}`, { logoAssetId }), [['competition', id], ['competitions']], { success: (_r, v) => (v ? 'Logo saved. Graphics for this competition show it in their title bars.' : 'Logo removed') });
   if (c.isLoading) return <Spinner />;
   if (c.error) return <ErrorNotice error={c.error} onRetry={() => c.refetch()} />;
   const comp = c.data!;
@@ -46,7 +48,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         crumbs={<><Link href="/app/competitions" className="hover:text-text">Competitions</Link> / {comp.name}</>}
-        title={comp.name}
+        title={<span className="flex items-center gap-3">{comp.logoAssetId ? <img src={`/api/v1/assets/${comp.logoAssetId}/preview`} alt="" className="h-9 w-auto max-w-24 object-contain" /> : null}{comp.name}</span>}
         subtitle={<>{comp.sport} · {comp.shortName ?? 'no short name'} · {tz} <StatusPill className="ml-2" tone={comp.status === 'active' ? 'healthy' : 'neutral'}>{comp.status}</StatusPill></>}
         actions={full ? <><DemoButton competitionId={id} /><Button variant="ghost" loading={archive.isPending} onClick={() => archive.mutate(undefined)}><Archive className="size-4" /> {comp.status === 'archived' ? 'Restore' : 'Archive'}</Button></> : null}
       />
@@ -67,6 +69,12 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
                 {comp.seasons.map((s) => <tr key={s.id}><td>{s.name}</td><td className="text-muted">{s.startsOn ?? '—'} → {s.endsOn ?? '—'}</td><td><StatusPill tone={s.status === 'active' ? 'healthy' : 'neutral'}>{s.status}</StatusPill></td>{full ? <td className="text-right">{s.status === 'active' ? <Button size="sm" variant="ghost" onClick={() => setRollover(s)}><RefreshCw className="size-3.5" /> Roll over</Button> : null}</td> : null}</tr>)}
               </tbody></Table>
             ) : <p className="text-sm text-muted">No seasons yet. Fixtures need a season.</p>}
+          </Card>
+          <Card className="p-4">
+            <h2 className="mb-2 font-medium">Logo</h2>
+            <LogoField label="Competition logo" value={comp.logoAssetId} disabled={!full} onChange={(v) => setLogo.mutateAsync(v)} />
+            <p className="mt-2 text-xs text-muted">Shown beside the competition&apos;s name in the app, and in the title bars of full-screen graphics and on the holding slate in every look (in place of the look&apos;s own logo). PNG with a transparent background works best.</p>
+            <ErrorNotice error={setLogo.error} />
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Rules</h2>

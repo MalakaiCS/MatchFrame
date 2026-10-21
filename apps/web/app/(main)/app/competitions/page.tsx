@@ -9,7 +9,7 @@ import { post } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 
-interface Comp { id: string; name: string; shortName: string | null; sport: string; status: string; seasonCount: number; matchCount: number; currentSeason: { name: string } | null }
+interface Comp { id: string; name: string; shortName: string | null; sport: string; status: string; seasonCount: number; matchCount: number; currentSeason: { name: string } | null; logoAssetId: string | null }
 
 export default function CompetitionsPage() {
   const me = useMe();
@@ -39,7 +39,7 @@ export default function CompetitionsPage() {
             <Link key={c.id} href={`/app/competitions/${c.id}`}>
               <Card className="h-full p-4 hover:border-primary">
                 <div className="flex items-start justify-between gap-2">
-                  <div><h2 className="font-medium">{c.name}</h2><p className="text-xs text-muted">{c.shortName ?? '—'} · {c.sport}</p></div>
+                  <div className="flex items-center gap-3">{c.logoAssetId ? <img src={`/api/v1/assets/${c.logoAssetId}/preview`} alt="" className="h-10 w-10 shrink-0 object-contain" loading="lazy" /> : null}<div><h2 className="font-medium">{c.name}</h2><p className="text-xs text-muted">{c.shortName ?? '—'} · {c.sport}</p></div></div>
                   <StatusPill tone={c.status === 'active' ? 'healthy' : 'neutral'}>{c.status}</StatusPill>
                 </div>
                 <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">

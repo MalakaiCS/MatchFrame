@@ -6,7 +6,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -171,8 +171,8 @@ function Scorebug(p: GraphicProps) {
   return (
     <div style={{ top: SY, display: 'flex', alignItems: 'stretch', gap: 6, height: H, fontFamily: c.font, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
       <Glass p={p} radius={8} facets={false} inner={{ display: 'flex', alignItems: 'stretch' }}>
-        <span style={{ minWidth: H, display: 'grid', placeItems: 'center', padding: p.data.theme.logoUrl ? '0 8px' : 0, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.45)})`, transformOrigin: 'top', ...animStyle(p, 'grow-y', 0, 320) }}>
-          {p.data.theme.logoUrl ? <ThemeBadge p={p} height={H - 18} /> : <Mark p={p} size={H - 20} />}
+        <span style={{ minWidth: H, display: 'grid', placeItems: 'center', padding: badgeUrl(p) ? '0 8px' : 0, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.45)})`, transformOrigin: 'top', ...animStyle(p, 'grow-y', 0, 320) }}>
+          {badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark p={p} size={H - 20} />}
         </span>
         {teamCell('home', 0)}
         <span style={{ display: 'flex', alignItems: 'center', gap: 2, margin: '7px 0', padding: '0 6px', fontSize: slim ? 26 : 32, ...plate(c), ...animStyle(p, 'drop', 220, 380) }}>

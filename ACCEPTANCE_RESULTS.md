@@ -253,6 +253,26 @@ environment, production build through the single-port launcher, graphics-only mo
 Not claimed: a match that already has anything recorded (a phase step, a fact) never changes rules; there is no
 per-match rules editor.
 
+## Competition logo and uploads through the app (2026-10-21)
+
+Requested: "If a tournament has a logo I wanna attach the logo to the competition." Same environment, production
+build through the single-port launcher, graphics-only mode.
+
+Found on the way: uploads from the app sent the file from the browser straight to the storage bucket, which the
+app's content security policy (`connect-src 'self'`) blocks, so no image, logo, font or video could be uploaded
+from the app on a hosted installation. The file now goes through the API on the app's own address
+(`PUT /api/v1/assets/:id/content`, streamed to the bucket); the presigned URL stays for API clients.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` | 117 tests, 21 files, all pass |
+| `pnpm test:db` (`tests/integration/competition-logo.test.ts`): only the organisation's own image or logo can be a competition's logo (a video, another organisation's image refused on create and update); the output's graphics data carries a signed URL for it; a logo change queues a reload for the open outputs of the competition's upcoming matches and other edits do not; removing it clears it. The file of an upload sent through the API is checked against the upload (type, size, organisation, not already received) and stored, then completed | 61 tests, 8 files, all pass |
+| `tests/e2e/specs/competition-logo.spec.ts` on the final build: a PNG uploaded on the competition page appears in the preview, beside the competition's name and on the competitions list; once the media worker has checked it, the match output's graphics data has the logo; *Remove* clears it (`docs/evidence/e2e/competition-logo.png`) | pass |
+
+Not claimed: the logo is drawn by the looks' badge and full-screen title bars; the scorebug keeps the teams'
+logos. The full e2e suite was not re-run for this change alone.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

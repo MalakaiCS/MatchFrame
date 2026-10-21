@@ -1,10 +1,13 @@
 // Media library: uploads, recordings, highlights, clips, exports, compilations, shares and public share access.
+import type { Readable } from 'node:stream';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppError, library, usageSvc, type Storage } from '@bs/services';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
+/** the file types an upload's file is sent as (checked against the upload by the service) */
+const UPLOAD_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'font/woff2', 'font/woff', 'font/ttf', 'font/otf', 'application/font-woff', 'application/x-font-ttf', 'application/octet-stream'];
 const P = <T extends z.ZodTypeAny>(s: T, v: unknown) => s.parse(v) as z.infer<T>;
 
 /** Stream an object with HTTP range support (video seeking) and no-store caching for private media. */
@@ -26,6 +29,13 @@ export function registerMediaRoutes(b: AppBundle) {
   app.get('/api/v1/usage', async (req) => library.usageSummary(await ctxFor(req)));
   app.get('/api/v1/usage/ledger', async (req) => usageSvc.usageReport(await ctxFor(req), req.query as never));
   app.post('/api/v1/assets/uploads', async (req, reply) => reply.code(201).send(await library.createUpload(await ctxFor(req), req.body as never)));
+  // the file itself, through the API from the app's origin (the stream goes straight to storage)
+  app.addContentTypeParser(UPLOAD_TYPES, (_req, payload, done) => done(null, payload));
+  app.put('/api/v1/assets/:id/content', async (req) => {
+    const length = Number(req.headers['content-length']);
+    if (!Number.isInteger(length) || length <= 0) throw new AppError('LENGTH_REQUIRED', 411, 'Send the file with its size (Content-Length)');
+    return library.receiveUpload(await ctxFor(req), P(id, req.params).id, req.body as Readable, String(req.headers['content-type'] ?? ''), length);
+  });
   app.post('/api/v1/assets/:id/complete', async (req) => library.completeUpload(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/assets/:id/preview', async (req, reply) => streamObject(deps.storage, req, reply, await library.assetPreview(await ctxFor(req), P(id, req.params).id, (req.query as { purpose?: string }).purpose === 'broadcast' ? 'broadcast' : 'thumbnail')));
   app.post('/api/v1/assets/:id/archive', async (req) => library.archiveAsset(await ctxFor(req), P(id, req.params).id));

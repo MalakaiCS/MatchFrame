@@ -269,6 +269,21 @@ export async function setCompetitionLook(ctx: Ctx, competitionId: string, input:
   return { themeProfileId: profileId, outputs: outputs.length };
 }
 
+/** Open outputs of the competition's matches that are not finished reload their data (e.g. a new competition logo). */
+export async function reloadCompetitionOutputsTx(t: Tx, organisationId: string, competitionId: string) {
+  const rows = await t
+    .select({ o: overlays, s: overlayState })
+    .from(overlays)
+    .innerJoin(matches, eq(matches.id, overlays.matchId))
+    .innerJoin(overlayState, eq(overlayState.overlayId, overlays.id))
+    .where(and(eq(overlays.organisationId, organisationId), eq(matches.organisationId, organisationId), eq(matches.competitionId, competitionId), inArray(matches.status, ['scheduled', 'live'])));
+  for (const { o, s } of rows) {
+    const [n] = await t.update(overlayState).set({ revision: sql`${overlayState.revision} + 1`, updatedAt: new Date() }).where(eq(overlayState.overlayId, o.id)).returning();
+    await enqueueOutbox(t, { organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: o.id, payload: { ...publicState(n ?? s, o), themeChanged: true } });
+  }
+  return rows.length;
+}
+
 /** Output format: broadcast 16:9, vertical 9:16 for a social stream, or the venue screen layout. */
 export async function setOverlayFormat(ctx: Ctx, overlayId: string, format: '16:9' | '9:16' | 'venue') {
   return tx(ctx, async (t) => {

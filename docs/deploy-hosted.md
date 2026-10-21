@@ -88,6 +88,11 @@ CONTACT_EMAIL=
 DEFAULT_TIMEZONE=Australia/Brisbane
 ```
 
+Uploads from the app (images, logos, fonts, videos) go through the API on the app's own address and from there to
+the bucket, so the bucket needs no CORS rules and stays private. `POST /api/v1/assets/uploads` still returns a
+presigned `uploadUrl` for API clients that want to send large files straight to storage; that needs CORS on the
+bucket for the caller's origin.
+
 If an earlier deployment set `PRODUCT_NAME=Broadcast Studio`, change it to `MatchFrame` or remove it. The public
 website (homepage, features, FAQ, documentation, contact) always says MatchFrame; see `docs/public-site.md`.
 

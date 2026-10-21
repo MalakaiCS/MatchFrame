@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { Button, EmptyState, ErrorNotice, Input, NativeSelect, Spinner, StatusPill } from '@bs/ui';
-import { ApiError, post } from '@/lib/api';
+import type { ApiError } from '@/lib/api';
+import { uploadFile } from '@/lib/upload';
 import { useGet } from '@/lib/hooks';
 
 interface Asset { id: string; name: string; kind: string; state: string; width: number | null; height: number | null; durationMs: number | null; bytes: number; error: string | null; tags: string[] }
@@ -22,10 +23,7 @@ export function AssetLibrary() {
     setErr(null);
     setBusy(`Uploading ${f.name}…`);
     try {
-      const u = await post<{ assetId: string; uploadUrl: string; headers: Record<string, string> }>('assets/uploads', { name: f.name, kind: KIND_FOR(f.type), mime: f.type, bytes: f.size });
-      const r = await fetch(u.uploadUrl, { method: 'PUT', headers: u.headers, body: f });
-      if (!r.ok) throw new ApiError(r.status, 'UPLOAD_FAILED', 'Upload to storage failed');
-      await post(`assets/${u.assetId}/complete`);
+      await uploadFile(f, KIND_FOR(f.type));
       setBusy(null);
       void assets.refetch();
     } catch (e) {

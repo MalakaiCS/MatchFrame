@@ -137,10 +137,15 @@ export function kickoffCountdown(p: GraphicProps): string | null {
   return `${m}:${s}`;
 }
 
-/** The look's own logo (league or broadcaster), shown in the title bars of full-screen graphics and on the slate. */
+/** The logo for the title bars of full-screen graphics and the slate: the competition's when it has one, else the look's own. */
+export function badgeUrl(p: GraphicProps): string | null {
+  return p.data.match.competition.logoUrl || p.data.theme.logoUrl || null;
+}
+
+/** The competition's (or else the look's) logo, shown in the title bars of full-screen graphics and on the slate. */
 export function ThemeBadge({ p, height }: { p: GraphicProps; height: number }) {
   const [broken, setBroken] = useState(false);
-  const url = p.data.theme.logoUrl;
+  const url = badgeUrl(p);
   if (!url || broken) return null;
   return <img alt="" src={url} onError={() => setBroken(true)} style={{ height, maxWidth: height * 3, objectFit: 'contain', flex: 'none' }} />;
 }

@@ -6,6 +6,7 @@ import {
   matchFacts,
   matches,
   matchState,
+  mediaAssets,
   rulesPresets,
   players,
   rosterMemberships,
@@ -21,6 +22,7 @@ import { audit } from './audit';
 import { conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
+import { reloadCompetitionOutputsTx } from './overlays';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
 const name = z.string().trim().min(1).max(100);
@@ -60,6 +62,13 @@ function resolveRules(sport: string, preset?: string, cfg?: Record<string, unkno
   const r = adapter.configSchema.safeParse(merged);
   if (!r.success) throw invalid('Invalid rules settings', r.error.issues.map((i) => ({ field: `rulesConfig.${i.path.join('.')}`, message: i.message })));
   return { rulesVersion: adapter.rulesVersion, rulesConfig: r.data as Record<string, unknown> };
+}
+
+/** A competition logo must be one of the organisation's own images. */
+async function checkLogo(t: Tx, ctx: Ctx, assetId: string | null | undefined) {
+  if (!assetId) return;
+  const [a] = await t.select({ kind: mediaAssets.kind }).from(mediaAssets).where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.organisationId, ctx.actor.organisationId)));
+  if (!a || !['image', 'logo'].includes(a.kind)) throw invalid('Choose an image for the logo', [{ field: 'logoAssetId', message: 'Not one of your images' }]);
 }
 
 /** An organisation's own preset ("org:<id>" in a rules-preset field): its saved settings, or an error if it is not one of this organisation's for this sport. */
@@ -158,6 +167,7 @@ export async function createCompetition(ctx: Ctx, input: z.input<typeof competit
   assertCan(ctx.actor, 'competition.write');
   const d = competitionInput.parse(input);
   return tx(ctx, async (t) => {
+    await checkLogo(t, ctx, d.logoAssetId);
     const rules = await rulesFor(t, ctx, d.sport, d.rulesPreset, d.rulesConfig);
     const [c] = await t
       .insert(competitions)
@@ -187,6 +197,7 @@ export async function updateCompetition(ctx: Ctx, id: string, input: Partial<z.i
     const [c] = await t.select().from(competitions).where(and(eq(competitions.id, id), eq(competitions.organisationId, ctx.actor.organisationId)));
     if (!c) throw notFound('Competition');
     if (d.sport && d.sport !== c.sport) throw invalid('Sport cannot change after creation', [{ field: 'sport', message: 'Create a new competition instead' }]);
+    await checkLogo(t, ctx, d.logoAssetId);
     // Rules changes never affect matches that already pinned a rules version (matches.rules_config snapshot).
     const rules = d.rulesPreset || d.rulesConfig ? await rulesFor(t, ctx, c.sport, d.rulesPreset, { ...(d.rulesPreset ? {} : c.rulesConfig), ...(d.rulesConfig ?? {}) }) : null;
     const { rulesPreset: _p, rulesConfig: _c, ...rest } = d;
@@ -197,6 +208,7 @@ export async function updateCompetition(ctx: Ctx, id: string, input: Partial<z.i
       .returning();
     await audit(t, ctx.actor, d.status === 'archived' ? 'competition.archive' : 'competition.update', 'competition', id, { before: { name: c.name, status: c.status, ...(rules ? { rulesConfig: c.rulesConfig } : {}) }, after: d });
     const matchesUpdated = rules && applyToUpcoming ? await retuneUntouchedMatches(t, ctx, id, rules) : 0;
+    if (d.logoAssetId !== undefined && d.logoAssetId !== c.logoAssetId) await reloadCompetitionOutputsTx(t, ctx.actor.organisationId, id);
     return { ...u!, matchesUpdated };
   });
 }

@@ -118,6 +118,12 @@ looks.
 Choosing a built-in look the first time saves it as a look of your organisation's, named after it ("Liga"), so it
 can be given your logo, colours and wording under *Themes*; choosing it again uses that same look.
 
+**Competition logo.** *Competition → Overview → Logo*: upload the tournament's logo (PNG with a transparent
+background works best, JPEG and WebP too) or choose one of your images. It shows beside the competition's name in
+the app, and on the graphics of every match in the competition, whichever look they use: in the title bar of
+full-screen graphics (line-ups, stats, tables) and on the holding slate, in place of the look's own logo. Outputs
+that are open pick it up straight away; *Remove* goes back to the look's logo.
+
 ## Graphics
 
 Twenty-nine built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
