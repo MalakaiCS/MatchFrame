@@ -1,14 +1,15 @@
 'use client';
 // The match's graphics outputs, led by the OBS link. One output is created with every match; more are an
 // explicit "Add another output" so most people never meet the concept.
-import { OUTPUT_FORMATS } from '@bs/graphics';
+import { LOOKS, OUTPUT_FORMATS, type RenderData } from '@bs/graphics';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Clapperboard, Copy, ExternalLink, Plus } from 'lucide-react';
+import { Clapperboard, Copy, ExternalLink, Film, Plus } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, type Tone } from '@bs/ui';
 import { post, put } from '@/lib/api';
 import { useAction, useCopy, useGet } from '@/lib/hooks';
 import { layerLabel } from '@/lib/labels';
+import { ReplayExportDialog } from '@/components/replay-export';
 
 export interface OverlayRow {
   id: string; name: string; kind: string; publicId: string; gamePlanVersionId: string | null; format: '16:9' | '9:16' | 'venue';
@@ -44,6 +45,7 @@ export function ObsLinkPanel({ matchId, canEdit }: { matchId: string; canEdit: b
   return (
     <div className="grid gap-4">
       <OutputCard o={primary} matchId={matchId} canEdit={canEdit} primary />
+      <ReplayCard overlayId={primary.id} />
       <details className="rounded-[var(--radius-card)] border border-border p-3 text-sm">
         <summary className="cursor-pointer font-medium">More outputs {others.length ? `(${others.length})` : ''}</summary>
         <p className="mt-2 text-xs text-muted">A second output has its own OBS link and its own graphics state, for example a clean feed without a scorebug or a different look for a second screen.</p>
@@ -158,5 +160,35 @@ function HotkeyTable({ overlayId, enabled }: { overlayId: string; enabled: boole
         </tr>
       ))}
     </tbody></table>
+  );
+}
+
+/** The replay transition in this output's look, plain or with this match's teams, as a WebM for an OBS or vMix stinger. */
+function ReplayCard({ overlayId }: { overlayId: string }) {
+  const [open, setOpen] = useState(false);
+  const rd = useGet<{ data: RenderData }>(['render-data', overlayId], open ? `overlays/${overlayId}/render-data` : null);
+  const d = rd.data?.data;
+  const h = d?.match.teams.home;
+  const a = d?.match.teams.away;
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <div>
+        <h3 className="font-medium">Replay transition</h3>
+        <p className="text-sm text-muted">A stinger for OBS or vMix in this output's look: with this match's teams, or plain. Exported as a transparent WebM.</p>
+      </div>
+      <Button onClick={() => setOpen(true)} loading={open && rd.isLoading}><Film className="size-4" /> Export replay transition</Button>
+      {open && rd.error ? <div className="w-full"><ErrorNotice error={rd.error} /></div> : null}
+      {d && h && a ? (
+        <ReplayExportDialog
+          open={open}
+          onOpenChange={setOpen}
+          data={d}
+          teams={{ home: h.shortName ?? h.name, away: a.shortName ?? a.name }}
+          fileBase={`replay-${slug(h.abbreviation || h.name)}-v-${slug(a.abbreviation || a.name)}`}
+          lookName={LOOKS.find((l) => l.key === d.theme.themeKey)?.name ?? d.theme.themeKey}
+        />
+      ) : null}
+    </Card>
   );
 }

@@ -7,6 +7,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
 import type { RenderFixture, RenderStandingRow } from '../data';
+import { ReplayTransition } from './replay';
 
 export interface Chrome {
   /** a full-frame board with a title bar, centred */
@@ -523,6 +524,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     player_of_match: PlayerOfMatch,
     timeout: Timeout,
     stinger: Stinger,
+    replay: ReplayTransition,
   };
 }
 

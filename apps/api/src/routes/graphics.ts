@@ -2,7 +2,8 @@
 import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { assetDerivatives, mediaAssets, withTenant } from '@bs/db';
-import { AppError, gamePlansSvc, layoutsSvc, overlaysSvc, themesSvc } from '@bs/services';
+import type { Readable } from 'node:stream';
+import { AppError, gamePlansSvc, layoutsSvc, overlaysSvc, themesSvc, transitionsSvc } from '@bs/services';
 import { findTemplate } from '@bs/graphics';
 import type { AppBundle } from '../app';
 import * as presence from '../presence';
@@ -13,6 +14,14 @@ const P = <T extends z.ZodTypeAny>(s: T, v: unknown) => s.parse(v) as z.infer<T>
 
 export function registerGraphicsRoutes(b: AppBundle) {
   const { app, ctxFor, deps } = b;
+
+  // a transition drawn frame by frame in the browser (PNG with alpha, one after another) → VP9 WebM with alpha for
+  // an OBS or vMix stinger; the frames stream straight into FFmpeg
+  app.addContentTypeParser('application/vnd.matchframe.png-sequence', (_req, payload, done) => done(null, payload));
+  app.post('/api/v1/transitions/encode', async (req, reply) => {
+    const r = await transitionsSvc.encodeTransition(await ctxFor(req), req.body as Readable, Number(req.headers['content-length']), req.query as never);
+    return reply.header('content-type', 'video/webm').header('content-disposition', `attachment; filename="${r.fileName}"`).header('x-frames', String(r.frames)).header('cache-control', 'no-store').send(r.file);
+  });
 
   app.get('/api/v1/themes', async (req) => themesSvc.listThemes(await ctxFor(req)));
   app.get('/api/v1/theme-profiles', async (req) => themesSvc.listProfiles(await ctxFor(req)));

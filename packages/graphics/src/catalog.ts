@@ -270,7 +270,23 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     variables: [{ key: 'text', label: 'Text', type: 'text', required: false, maxLength: 30 }],
     requiredData: [], entranceMs: 450, holdMs: 500, exitMs: 450, sponsorSlots: ['detached_logo'], bounds: { x: 0, y: 0, w: 1, h: 1 },
   },
+  {
+    // in and out of a replay: bands sweep across and cover the whole frame, then sweep on and away. Exported as a
+    // transparent WebM for an OBS or vMix stinger (cut underneath at REPLAY_TRANSITION.transitionPointMs).
+    key: 'builtin:replay', name: 'Replay transition', category: 'Media', sports: both, layer: 'transition',
+    variables: [
+      { key: 'teams', label: 'With the teams (colours, crests and names)', type: 'boolean', required: false, default: false },
+      { key: 'text', label: 'Text', type: 'text', required: false, maxLength: 20 },
+    ],
+    requiredData: [], entranceMs: 650, holdMs: 950, exitMs: 650, sponsorSlots: [], bounds: { x: 0, y: 0, w: 1, h: 1 },
+  },
 ];
+
+/**
+ * The replay transition's timeline: covered from about 650 ms (bands in) until the bands start to leave at 950 ms,
+ * gone at 1600 ms. A stinger cuts the scene underneath at the transition point, in the middle of the cover.
+ */
+export const REPLAY_TRANSITION = { totalMs: 1600, coveredFromMs: 650, coveredUntilMs: 1000, transitionPointMs: 800 } as const;
 
 export const TITLE_SAFE = 0.05;
 

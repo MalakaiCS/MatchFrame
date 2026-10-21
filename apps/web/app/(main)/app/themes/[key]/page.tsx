@@ -4,11 +4,12 @@ import type { Sport } from '@bs/domain';
 import Link from 'next/link';
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, LogOut, Play, Repeat } from 'lucide-react';
+import { ArrowLeft, Film, LogOut, Play, Repeat } from 'lucide-react';
 import { BUILTIN_TEMPLATES, DEFAULT_THEMES, OUTPUT_FORMATS, emptyState, type Category, type OutputFormat, type OverlayPublicState, type TemplateDef, type ThemeConfig } from '@bs/graphics';
 import { CHECKERBOARD, Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { Button, Card, ErrorNotice, NativeSelect, PageHeader, Spinner, StatusPill, Switch } from '@bs/ui';
 import { SAMPLE_SLOTS, sampleData, sampleVariables } from '@/components/theme-preview';
+import { ReplayExportDialog } from '@/components/replay-export';
 import { useGet } from '@/lib/hooks';
 
 type Backdrop = 'pitch' | 'transparent' | 'dark';
@@ -36,6 +37,8 @@ function cueState(t: TemplateDef, sport: Sport, startedAt: number, durationMs: n
   return s;
 }
 
+const slugOf = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'look';
+
 export default function ThemeDetailPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = use(params);
   return (
@@ -59,6 +62,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
   const [format, setFormat] = useState<OutputFormat>('16:9');
   const [withScorebug, setWithScorebug] = useState(true);
   const [loop, setLoop] = useState(true);
+  const [replayOpen, setReplayOpen] = useState(false);
   const graphics = useMemo(() => BUILTIN_TEMPLATES.filter((t) => t.sports.includes(sport)), [sport]);
   const [selectedKey, setSelectedKey] = useState('builtin:scorebug');
   const previewRef = useRef<HTMLDivElement>(null);
@@ -76,7 +80,8 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
   const replay = () => setRun({ startedAt: Date.now(), outAt: null });
   const takeOut = () => setRun((r) => (r.outAt ? r : { ...r, outAt: Date.now() }));
   useEffect(replay, [selected.key, sport, loop]);
-  const durationMs = loop ? selected.entranceMs + LOOP_HOLD_MS : selected.holdMs;
+  // without the loop a graphic stays for its own hold time; a transition stays at full cover until Take out
+  const durationMs = loop ? selected.entranceMs + LOOP_HOLD_MS : selected.layer === 'transition' ? null : selected.holdMs;
   useEffect(() => {
     if (!loop) return;
     const end = run.outAt ?? run.startedAt + selected.entranceMs + LOOP_HOLD_MS;
@@ -112,9 +117,11 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
             <NativeSelect aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><SportOptions /></NativeSelect>
             <NativeSelect aria-label="Format" value={format} onChange={(e) => setFormat(e.target.value as OutputFormat)}>{OUTPUT_FORMATS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}</NativeSelect>
             <NativeSelect aria-label="Background" value={backdrop} onChange={(e) => setBackdrop(e.target.value as Backdrop)}><option value="pitch">Background: pitch</option><option value="transparent">Background: transparent</option><option value="dark">Background: dark</option></NativeSelect>
+            <Button onClick={() => setReplayOpen(true)}><Film className="size-4" /> Replay transition (WebM)</Button>
           </div>
         }
       />
+      <ReplayExportDialog open={replayOpen} onOpenChange={setReplayOpen} data={data} fileBase={`replay-${slugOf(profile?.name ?? meta?.name ?? themeKey)}`} lookName={profile ? `${profile.name} (${meta?.name ?? themeKey})` : (meta?.name ?? themeKey)} />
 
       <div ref={previewRef} className="grid scroll-mt-4 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>

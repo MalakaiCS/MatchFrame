@@ -213,7 +213,7 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
   );
 }
 
-export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine';
+export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine' | 'sweep';
 
 /** Timeline offset when this animation was first rendered (constant afterwards). */
 function firstOffset(p: GraphicProps, key: string): number {
@@ -245,6 +245,27 @@ export function animStyle(p: GraphicProps, kind: AnimKind, delayMs = 0, durMs?: 
     animationDelay: `${out ? -start : delayMs - start}ms`,
     animationFillMode: 'both',
     animationTimingFunction: out ? 'cubic-bezier(.5,0,.75,0)' : kind === 'zoom' || kind === 'drop' ? 'cubic-bezier(.34,1.56,.64,1)' : 'cubic-bezier(.2,.8,.2,1)',
+  };
+}
+
+/**
+ * A part on its own schedule in both phases: in after `inDelay` over `inDur`, out after `outDelay` over `outDur`
+ * (all within the graphic's entrance and exit times), so parts can also stagger their exit, e.g. transition bands.
+ */
+export function partAnim(p: GraphicProps, kind: AnimKind, inDelay: number, inDur: number, outDelay = 0, outDur = p.t.exitMs - outDelay): CSSProperties {
+  if (p.data.theme.motion === 'none') return {};
+  const out = p.phase === 'out';
+  const delay = out ? outDelay : inDelay;
+  const dur = out ? outDur : inDur;
+  if (!out && p.offsetMs >= delay + dur) return {};
+  const name = `bs-${kind}-${out ? 'out' : 'in'}`;
+  const start = firstOffset(p, `${name}:${delay}:part`);
+  return {
+    animationName: name,
+    animationDuration: `${dur}ms`,
+    animationDelay: `${delay - start}ms`,
+    animationFillMode: 'both',
+    animationTimingFunction: out ? 'cubic-bezier(.55,0,.8,.2)' : 'cubic-bezier(.16,.84,.24,1)',
   };
 }
 
@@ -289,6 +310,8 @@ export const KEYFRAMES = [
   kf('wipe-up', 'clip-path:inset(100% 0 0 0)', 'clip-path:inset(0 0 0 0)'),
   kf('grow-x', 'transform:scaleX(0)', 'transform:none'),
   kf('grow-y', 'transform:scaleY(0)', 'transform:none'),
+  // transition bands: in from the left and out to the right (onwards, not back), across the whole frame
+  '@keyframes bs-sweep-in{from{transform:translateX(-2900px)}to{transform:none}}@keyframes bs-sweep-out{from{transform:none}to{transform:translateX(2900px)}}',
   // value-change emphasis: two identical copies so back-to-back changes restart the animation
   ...['a', 'b'].map((x) => `@keyframes bs-pop-${x}{0%{transform:scale(1)}30%{transform:scale(1.35);filter:brightness(1.6)}100%{transform:scale(1)}}`),
   ...['a', 'b'].map((x) => `@keyframes bs-flip-${x}{0%{transform:perspective(400px) rotateX(-90deg);opacity:.2}60%{transform:perspective(400px) rotateX(10deg);opacity:1}100%{transform:none}}`),

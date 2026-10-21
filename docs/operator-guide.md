@@ -126,15 +126,29 @@ that are open pick it up straight away; *Remove* goes back to the look's logo.
 
 ## Graphics
 
-Twenty-nine built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
+Thirty built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
 countdown before the match; the score, the break and a countdown to the restart during a break; the final score and
 an optional closing message such as "Thank you for watching"), animated background, team line-up, formation, goal /
 score event, score update, card, substitution, kick-off and period banners, lower third, player card (with
 headshots from the asset library), match statistics, live statistic comparison, break and final score, match
 summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match
-information strap, shoot-out tracker, timeout, sponsor graphic, stinger wipe, holding slate, full-frame media
-and the ticker (which can carry the other live scores of the round). Goal, card and substitution graphics can
-carry a "presented by" sponsor; those appearances count in the sponsor delivery report.
+information strap, shoot-out tracker, timeout, sponsor graphic, stinger wipe, replay transition, holding slate,
+full-frame media and the ticker (which can carry the other live scores of the round). Goal, card and substitution
+graphics can carry a "presented by" sponsor; those appearances count in the sponsor delivery report.
+
+**Replay transition (OBS or vMix stinger).** In every look, slanted bands in the look's colours sweep in, cover
+the whole frame with REPLAY in the middle, then sweep on and away (1.6 s). It comes in two versions:
+* *Plain*: the look only. *Themes → a look → Replay transition (WebM)* (opened from one of your own looks, it
+  carries your colours and logo).
+* *This match*: home's colours, crest and name on the left, away's on the right. *Match → OBS link → Replay
+  transition → Export replay transition*, in that output's look; the same dialog also offers the plain version.
+
+Choose the size (1920×1080 or 1280×720), the frame rate (25, 30, 50 or 60, the same as your OBS or vMix output)
+and, if you like, your own word instead of REPLAY, then *Export WebM*. Every frame is drawn exactly and encoded on
+the server as a transparent WebM (VP9 with alpha). In OBS: *Scene Transitions → + → Stinger*, choose the file, set
+*Transition Point Type* to *Time* and *Transition Point* to **800 ms** (the frame is fully covered from 650 ms to
+1000 ms). In vMix: set a Stinger transition to the file with its transition point (delay) at 800 ms. The replay
+transition is also one of the look's graphics, so it can be put on air on the output's transition layer.
 
 ## In the control room
 
