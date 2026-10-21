@@ -184,7 +184,7 @@ through the single-port launcher, graphics-only mode.
 | `tests/e2e/specs/obs-link.spec.ts`: venue screen, 9:16 and back to 16:9, each saved and shown; *Use the starter flow* puts the pre-match graphics on air; a match on an older plan version shows *Use v2* and moves to it | 3 tests, all pass on the final build |
 | `tests/e2e/specs/automation-flow.spec.ts`: header still on air well past its old 8 s, scorebug at 0:00 at *About to start*, clock running after kick-off, then the rest of the football flow in real time | pass on the final build (2.3 min) |
 | Worker start on the local database that earlier builds and test runs had filled | "updated 14 untouched starter plan(s) to the current starter flow"; no warnings |
-| Full `pnpm test:e2e` | 37 tests, 37 pass on the build before the starter-plan upgrade; after the upgrade only the two specs above were re-run |
+| Full `pnpm test:e2e` | 38 tests, 38 pass on the build with the starter-plan upgrade (`docs/evidence/e2e/results.json`, 16.9 min); 37 of 37 on the build before it |
 
 Not executed here: the hosted deployment itself (this environment cannot reach it), so whether the upgrade finds the
 plan an organisation there has is confirmed only by the worker's log line after the next deploy. Plans that were
