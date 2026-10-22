@@ -14,6 +14,7 @@ import {
 } from '@bs/db';
 import {
   applyCommand,
+  tallyOf,
   commandPayloadSchemas,
   DomainError,
   getAdapter,
@@ -157,15 +158,18 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
     // 5. rules
     const adapter = getAdapter(m.sport);
     const cfg = m.rulesConfig as never;
-    const needsLog = env.type === 'VOID_FACT' || env.type === 'CORRECT_FACT';
-    const log = needsLog ? (await t.select().from(matchFacts).where(eq(matchFacts.matchId, matchId)).orderBy(asc(matchFacts.sequence))).map(factRowToStored) : [];
+    const stored = state.projection as unknown as MatchProjection;
+    // a match scored before the projection kept per-team counts gets them from its log first
+    const untallied = !stored.tally && state.sequence > 0;
+    const needsLog = env.type === 'VOID_FACT' || env.type === 'CORRECT_FACT' || untallied;
+    const log = needsLog ? (await t.select().from(matchFacts).where(and(eq(matchFacts.matchId, matchId), eq(matchFacts.organisationId, ctx.actor.organisationId))).orderBy(asc(matchFacts.sequence))).map(factRowToStored) : [];
     const [lineupRow] = await t.select().from(matchLineups).where(eq(matchLineups.matchId, matchId));
     let result;
     try {
       result = applyCommand(
         adapter,
         cfg,
-        { projection: state.projection as unknown as MatchProjection, clocks: state.clocks as unknown as Record<string, ClockState>, sequence: state.sequence },
+        { projection: untallied ? { ...stored, tally: tallyOf(log) } : stored, clocks: state.clocks as unknown as Record<string, ClockState>, sequence: state.sequence },
         log,
         env.type,
         env.payload,
@@ -333,6 +337,8 @@ export async function getMatchState(ctx: Ctx, matchId: string) {
     const [s] = await t.select().from(matchState).where(eq(matchState.matchId, matchId));
     const adapter = getAdapter(m.sport);
     const now = nowMs(ctx);
+    const p = s!.projection as unknown as MatchProjection;
+    if (!p.tally && s!.sequence > 0) p.tally = tallyOf(await t.select({ category: matchFacts.category, side: matchFacts.side, type: matchFacts.type, voided: matchFacts.voided }).from(matchFacts).where(and(eq(matchFacts.matchId, matchId), eq(matchFacts.organisationId, ctx.actor.organisationId))));
     return {
       matchId,
       sport: m.sport,

@@ -16,8 +16,8 @@ export interface MatchRow {
   isDemo: boolean;
   competition: { id: string; name: string; shortName: string | null };
   venue: { name: string } | null;
-  home: { name: string; abbreviation: string; primaryColor: string } | null;
-  away: { name: string; abbreviation: string; primaryColor: string } | null;
+  home: { name: string; shortName?: string; abbreviation: string; primaryColor: string; logoAssetId?: string | null } | null;
+  away: { name: string; shortName?: string; abbreviation: string; primaryColor: string; logoAssetId?: string | null } | null;
   score: { home: number; away: number };
   scorer: { name: string | null } | null;
   stateUpdatedAt?: string;

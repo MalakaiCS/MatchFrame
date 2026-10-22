@@ -70,7 +70,8 @@ export function periodTransitions(spec: PeriodSpec, p: MatchProjection, opts: { 
   const tied = p.score.home === p.score.away;
   const half = halfOf(spec);
   const pre: Record<string, string[]> = {
-    scheduled: ['ready', 'pre_match', 'p1', 'postponed', 'cancelled'],
+    // any walk-out step can be skipped, straight from the fixture
+    scheduled: ['ready', 'pre_match', 'players_entering', 'about_to_start', 'p1', 'postponed', 'cancelled'],
     ready: ['pre_match', 'players_entering', 'about_to_start', 'p1', 'postponed', 'cancelled'],
     pre_match: ['players_entering', 'about_to_start', 'p1', 'postponed', 'abandoned', 'cancelled'],
     players_entering: ['about_to_start', 'p1', 'abandoned'],

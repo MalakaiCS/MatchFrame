@@ -1,7 +1,7 @@
 // Scorer PWA in a real browser: clock continuity across refresh (A13), offline intent survives a refresh
 // and applies once (A14), producer takeover while the first device is offline (A15).
 import { expect, test } from '@playwright/test';
-import { api, clockText, freshMatch, login, score, startFirstHalf, teamColumn, toSeconds } from './helpers';
+import { api, clockText, freshMatch, login, score, sheetCell, startFirstHalf, toSeconds } from './helpers';
 
 test('running clock is anchor-derived and survives a refresh (A13)', async ({ browser }) => {
   const { page } = await login(browser);
@@ -10,8 +10,8 @@ test('running clock is anchor-derived and survives a refresh (A13)', async ({ br
   await startFirstHalf(page);
   const clockBtn = page.getByRole('region', { name: 'Clock controls' }).getByRole('button', { name: /(Start|Resume|Pause) clock/ });
   await page.waitForTimeout(1500); // phase change may auto-start the clock server-side
-  if (/Start|Resume/.test((await clockBtn.textContent()) ?? '')) await clockBtn.click();
-  await expect(clockBtn).toHaveText(/Pause clock/, { timeout: 10_000 });
+  if (/Start|Resume/.test((await clockBtn.getAttribute('aria-label')) ?? '')) await clockBtn.click();
+  await expect(clockBtn).toHaveAccessibleName(/Pause clock/, { timeout: 10_000 });
   await page.waitForTimeout(4000);
   const before = toSeconds(await clockText(page));
   const t0 = Date.now();
@@ -35,7 +35,7 @@ test('offline goal survives a refresh and applies exactly once after reconnect (
   await page.waitForTimeout(1500); // service worker has cached the shell
   await ctx.setOffline(true);
   await expect(page.getByText('Offline', { exact: true })).toBeVisible({ timeout: 15_000 });
-  await teamColumn(page, 'home').getByRole('button', { name: 'Goal', exact: true }).click();
+  await sheetCell(page, 'home', 'goal').click();
   await page.getByRole('button', { name: 'Later' }).click();
   await expect(page.getByText('1 pending')).toBeVisible();
   await page.reload(); // offline refresh: shell from the service worker, intent from IndexedDB
@@ -58,7 +58,7 @@ test('producer takes over while the scorer is offline; stale offline actions nee
   await a.page.waitForTimeout(1500);
   await a.ctx.setOffline(true);
   await expect(a.page.getByText('Offline', { exact: true })).toBeVisible({ timeout: 15_000 });
-  await teamColumn(a.page, 'home').getByRole('button', { name: 'Goal', exact: true }).click();
+  await sheetCell(a.page, 'home', 'goal').click();
   await a.page.getByRole('button', { name: 'Later' }).click();
   await expect(a.page.getByText('1 pending')).toBeVisible();
   // producer on another device takes control and records the authoritative goal for the away side
@@ -67,8 +67,8 @@ test('producer takes over while the scorer is offline; stale offline actions nee
   await b.page.waitForTimeout(2000);
   const take = b.page.getByRole('button', { name: 'Take over scoring' });
   if (await take.count()) await take.click(); // a different user must ask; the same producer on a new device takes over
-  await expect(teamColumn(b.page, 'away').getByRole('button', { name: 'Goal', exact: true })).toBeEnabled({ timeout: 15_000 });
-  await teamColumn(b.page, 'away').getByRole('button', { name: 'Goal', exact: true }).click();
+  await expect(sheetCell(b.page, 'away', 'goal')).toBeEnabled({ timeout: 15_000 });
+  await sheetCell(b.page, 'away', 'goal').click();
   await b.page.getByRole('button', { name: 'Later' }).click();
   await expect(b.page.getByText('All changes saved')).toBeVisible({ timeout: 15_000 });
   // the old device reconnects: its intent was based on an old version and must not apply silently

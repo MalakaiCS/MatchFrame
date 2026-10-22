@@ -1,23 +1,68 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, getAdapter, type EngineState, type StoredFact } from './engine';
+import { applyCommand, getAdapter, tallyOf, type EngineState, type StoredFact } from './engine';
 import { possessionShare, POSSESSION_EVENT } from './possession';
-import { SCORER_BOARDS } from './scorer-board';
+import { SCORER_SHEETS, sheetCount, sheetEvents, type SheetRow } from './scorer-board';
 import type { Sport } from './types';
 
-describe('scorer board', () => {
-  it('names only events the sport has, and every counted row reads a statistic the event moves', () => {
-    for (const [sport, board] of Object.entries(SCORER_BOARDS) as [Sport, NonNullable<(typeof SCORER_BOARDS)[Sport]>][]) {
+describe('scorer sheet', () => {
+  it('names only events the sport has, and every row with a statistic reads one the event moves', () => {
+    for (const [sport, rows] of Object.entries(SCORER_SHEETS) as [Sport, SheetRow[]][]) {
       const a = getAdapter(sport);
       const cfg = a.defaultConfig;
       const types = a.eventTypes(cfg).map((e) => e.type);
-      for (const t of [...board.scoring, ...board.rows.map((r) => r.type), ...board.more]) expect(types, `${sport}: ${t}`).toContain(t);
-      if (board.possession) expect(types, sport).toContain(POSSESSION_EVENT);
-      for (const row of board.rows.filter((r) => r.stat)) {
+      for (const t of sheetEvents(rows)) expect(types, `${sport}: ${t}`).toContain(t);
+      if (rows.some((r) => r.kind === 'possession')) expect(types, sport).toContain(POSSESSION_EVENT);
+      const counted = rows.flatMap((r) => (r.kind === 'event' ? [r] : r.kind === 'cards' ? r.cards : [])).filter((r) => r.stat);
+      for (const row of counted) {
         const p = { ...a.initialProjection(cfg), phase: a.phases(cfg).find((x) => x.kind === 'play')!.id };
-        const def = a.eventTypes(cfg).find((e) => e.type === row.type)!;
-        const after = a.applyFact(cfg, p, { sequence: 1, category: 'event', type: row.type, side: 'home', playerId: null, payload: def.type === 'field_goal' ? { points: 1 } : {}, periodId: p.phase, clockMs: 0 });
-        expect(after.stats.home[row.stat!], `${sport}: ${row.type} counts ${row.stat}`).toBe(1);
+        const after = a.applyFact(cfg, p, { sequence: 1, category: 'event', type: row.type, side: 'home', playerId: null, payload: {}, periodId: p.phase, clockMs: 0 });
+        expect(sheetCount(after, 'home', row.type, row.stat), `${sport}: ${row.type} counts ${row.stat}`).toBe(1);
       }
+    }
+  });
+
+  it('counts an event with no statistic by the times it was recorded, for that team only, and an undo takes it back', () => {
+    const a = getAdapter('football');
+    const cfg = a.defaultConfig;
+    let state: EngineState = { projection: a.initialProjection(cfg), clocks: a.initialClocks(cfg), sequence: 0 };
+    const log: StoredFact[] = [];
+    const run = (type: Parameters<typeof applyCommand>[4], payload: unknown) => {
+      const r = applyCommand(a, cfg, state, log, type, payload, 2_000_000, null);
+      if (r.kind === 'append') log.push({ ...r.entry, id: `00000000-0000-4000-8000-${String(log.length + 1).padStart(12, '0')}` });
+      if (r.kind === 'correction') log.splice(log.findIndex((f) => f.id === r.factId), 1, r.updated);
+      state = r.state;
+    };
+    run('SET_PHASE', { to: 'first_half' });
+    for (const type of ['goal', 'goal', 'penalty_scored', 'own_goal']) run('ADD_FACT', { type, side: 'home', payload: {}, occurredAt: 2_000_000 });
+    expect([sheetCount(state.projection, 'home', 'goal'), sheetCount(state.projection, 'home', 'penalty_scored'), sheetCount(state.projection, 'home', 'own_goal'), sheetCount(state.projection, 'away', 'goal')]).toEqual([2, 1, 1, 0]);
+    // the own goal went to the away side's score
+    expect(state.projection.score).toEqual({ home: 3, away: 1 });
+    run('VOID_FACT', { factId: log.find((f) => f.type === 'goal')!.id, reason: 'offside' });
+    expect(sheetCount(state.projection, 'home', 'goal')).toBe(1);
+  });
+
+  it('a projection stored before the counts existed gets the same counts from its log', () => {
+    const a = getAdapter('football');
+    const cfg = a.defaultConfig;
+    let state: EngineState = { projection: a.initialProjection(cfg), clocks: a.initialClocks(cfg), sequence: 0 };
+    const log: StoredFact[] = [];
+    const run = (type: Parameters<typeof applyCommand>[4], payload: unknown) => {
+      const r = applyCommand(a, cfg, state, log, type, payload, 2_000_000, null);
+      if (r.kind === 'append') log.push({ ...r.entry, id: `00000000-0000-4000-8000-${String(log.length + 1).padStart(12, '0')}` });
+      if (r.kind === 'correction') log.splice(log.findIndex((f) => f.id === r.factId), 1, r.updated);
+      state = r.state;
+    };
+    run('SET_PHASE', { to: 'first_half' });
+    for (const [type, side] of [['goal', 'home'], ['substitution', 'away'], ['goal', 'away'], ['corner', 'home']] as const) run('ADD_FACT', { type, side, payload: {}, occurredAt: 2_000_000 });
+    run('VOID_FACT', { factId: log.find((f) => f.type === 'goal' && f.side === 'away')!.id, reason: 'offside' });
+    expect(tallyOf(log)).toEqual(state.projection.tally);
+    expect(tallyOf(log)).toEqual({ home: { goal: 1, corner: 1 }, away: { substitution: 1 } });
+  });
+
+  it('the walk-out steps can be skipped straight from the fixture', () => {
+    for (const sport of ['football', 'futsal', 'basketball', 'hockey'] as const) {
+      const a = getAdapter(sport);
+      expect(a.allowedTransitions(a.defaultConfig, a.initialProjection(a.defaultConfig)), sport).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'about_to_start']));
     }
   });
 });

@@ -109,12 +109,27 @@ export function stampPhase<C>(adapter: SportAdapter<C>, cfg: C, prev: MatchProje
   return next;
 }
 
-/** One event on the projection: the sport's rules, then possession by time (shared by every sport that taps it). */
+/**
+ * One event on the projection: the sport's rules, then possession by time and the per-team count of each event
+ * (shared by every sport; the scorer's rows read the count when the event has no team statistic of its own).
+ */
 export function applyEvent<C>(adapter: SportAdapter<C>, cfg: C, p: MatchProjection, e: LogEntry): MatchProjection {
-  return trackPossession(adapter.applyFact(cfg, p, e), e);
+  const next = trackPossession(adapter.applyFact(cfg, p, e), e);
+  if (e.side === 'home' || e.side === 'away') {
+    next.tally ??= { home: {}, away: {} };
+    next.tally[e.side][e.type] = (next.tally[e.side][e.type] ?? 0) + 1;
+  }
+  return next;
 }
 
 /** Rebuild the projection from the full ordered log (voids/corrections already applied to entries). */
+/** The per-team count of each event in a log (what applyEvent keeps in `tally`), for a projection stored before it had one. */
+export function tallyOf(log: { category: string; side?: string | null; type: string; voided?: boolean }[]): NonNullable<MatchProjection['tally']> {
+  const tally: NonNullable<MatchProjection['tally']> = { home: {}, away: {} };
+  for (const e of log) if (e.category === 'event' && !e.voided && (e.side === 'home' || e.side === 'away')) tally[e.side][e.type] = (tally[e.side][e.type] ?? 0) + 1;
+  return tally;
+}
+
 export function replay<C>(adapter: SportAdapter<C>, cfg: C, log: LogEntry[]): MatchProjection {
   let p = adapter.initialProjection(cfg);
   for (const e of [...log].sort((a, b) => a.sequence - b.sequence)) {

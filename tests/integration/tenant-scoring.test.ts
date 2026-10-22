@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { competitions, withTenant, memberships, auditLogs } from '@bs/db';
+import { competitions, withTenant, matchState, memberships, auditLogs } from '@bs/db';
 import { catalog, imports, matchesSvc, orgs, scoring, AppError, resolveActor, type Ctx } from '@bs/services';
 import { makeOrg, makeUser, testDeps } from '../helpers';
 
@@ -103,6 +103,40 @@ describe('scoped scorer access (A02, service layer)', () => {
     const l = await lease(ctx, s1.match.id);
     const r = await cmd(ctx, s1.match.id, 'SET_PHASE', { to: 'first_half' }, { leaseVersion: l.leaseVersion });
     expect(r.state.phase).toBe('first_half');
+  });
+});
+
+describe('scorer screens', () => {
+  it("has what is coming up and the last month's matches, earliest first, and nothing older", async () => {
+    const s = await footballSetup(A.ctx, 'win');
+    const local = (daysAgo: number) =>
+      new Intl.DateTimeFormat('sv-SE', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(Date.now() - daysAgo * 86_400_000)).replace(',', '');
+    const at = (daysAgo: number) => matchesSvc.createMatch(A.ctx, { competitionId: s.comp.id, seasonId: s.season.id, homeTeamId: s.home.id, awayTeamId: s.away.id, kickoffLocal: local(daysAgo), timezone: 'Australia/Brisbane' });
+    const recent = await at(10);
+    const old = await at(40);
+    const ids = (await matchesSvc.listScorableMatches(A.ctx)).map((m) => m.id);
+    expect(ids).toContain(recent.id);
+    expect(ids).toContain(s.match.id);
+    expect(ids).not.toContain(old.id);
+    expect(ids.indexOf(recent.id)).toBeLessThan(ids.indexOf(s.match.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('a match stored before the per-team counts gets them from its log, when read and on the next action', async () => {
+    const s = await footballSetup(A.ctx, 'tally');
+    const l = await lease(A.ctx, s.match.id);
+    const go = (type: string, payload: unknown) => cmd(A.ctx, s.match.id, type, payload, { leaseVersion: l.leaseVersion });
+    await go('SET_PHASE', { to: 'first_half' });
+    await go('ADD_FACT', { type: 'goal', side: 'home', payload: {}, occurredAt: Date.now() });
+    await go('ADD_FACT', { type: 'corner', side: 'away', payload: {}, occurredAt: Date.now() });
+    // as an earlier build stored it
+    await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.execute(sql`update match_state set projection = projection - 'tally' where match_id = ${s.match.id} and organisation_id = ${A.org.id}`));
+    const tally = async () => ((await scoring.getMatchState(A.ctx, s.match.id)).projection as { tally?: unknown }).tally;
+    expect(await tally()).toEqual({ home: { goal: 1 }, away: { corner: 1 } });
+    await go('ADD_FACT', { type: 'goal', side: 'home', payload: {}, occurredAt: Date.now() });
+    expect(await tally()).toEqual({ home: { goal: 2 }, away: { corner: 1 } });
+    const [row] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select({ p: matchState.projection }).from(matchState).where(sql`match_id = ${s.match.id} and organisation_id = ${A.org.id}`));
+    expect((row!.p as { tally?: unknown }).tally).toEqual({ home: { goal: 2 }, away: { corner: 1 } }); // stored again
   });
 });
 

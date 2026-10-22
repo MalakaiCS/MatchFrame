@@ -1,7 +1,7 @@
 // Futsal on the scorer phone and the OBS page: a count-down half, accumulated fouls marked at five, a timeout
 // that stops the clock, and a send-off counting down the two minutes a team plays short.
 import { expect, test } from '@playwright/test';
-import { api, clockText, login, startFirstHalf, toSeconds } from './helpers';
+import { api, cellCount, clockText, login, sheetCell, startFirstHalf, toSeconds } from './helpers';
 
 test('futsal: fouls, a timeout and a send-off on the scorer phone and the scorebug', async ({ browser }) => {
   test.setTimeout(120_000);
@@ -21,27 +21,24 @@ test('futsal: fouls, a timeout and a send-off on the scorer phone and the scoreb
   await expect(board).toContainText('1st Half');
   await expect.poll(async () => toSeconds(await clockText(page)), { message: 'the half counts down from 20:00' }).toBeLessThan(20 * 60);
 
-  // each team's column on the phone: one tap per foul, the count beside it
-  const homeCol = page.getByRole('region', { name: 'Bayside, home' });
-  const awayCol = page.getByRole('region', { name: 'Northgate, away' });
+  // each team's half of the foul row: one tap per foul, the count beside it
   // five accumulated fouls: the next one is a 10 m kick
   for (let i = 1; i <= 5; i++) {
-    await homeCol.getByRole('button', { name: /^Fouls,/ }).click();
-    await expect(homeCol.getByRole('button', { name: /^Fouls,/ })).toHaveAccessibleName(`Fouls, ${i}`);
+    await sheetCell(page, 'home', 'foul').click();
+    await expect.poll(() => cellCount(page, 'home', 'foul')).toBe(String(i));
   }
   await expect(board).toContainText('Fouls 5 · next is a 10 m kick');
   await expect(page.getByRole('alert').filter({ hasText: 'Home: 5 accumulated fouls, the next one is a 10 m kick' })).toBeVisible();
 
   // a timeout stops the clock and uses the team's one for the half
-  await awayCol.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('dialog', { name: 'More for Northgate' }).getByRole('button', { name: 'Timeout' }).click();
+  await sheetCell(page, 'away', 'timeout').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(async () => (await api<{ clocks: { main: { running: boolean } } }>(page, `/api/v1/matches/${m.id}/state`)).clocks.main.running).toBe(false);
   await expect(board).toContainText('TO 0');
 
   // a send-off: the team plays a player short for two minutes of playing time (the clock is stopped, so 2:00 stays)
-  await awayCol.getByRole('button', { name: /^Red cards,/ }).click();
-  await expect(awayCol.getByRole('button', { name: /^Red cards,/ })).toHaveAccessibleName('Red cards, 1');
+  await sheetCell(page, 'away', 'red_card').click();
+  await expect.poll(() => cellCount(page, 'away', 'red_card')).toBe('1');
   await expect(board.getByLabel('Northgate a player short')).toHaveText('4 on court · 2:00');
   await expect(page.getByRole('alert').filter({ hasText: /Away a player short \(4 v 5\)/ })).toBeVisible();
 

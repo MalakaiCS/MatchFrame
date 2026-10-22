@@ -107,6 +107,8 @@ export interface MatchProjection {
   sendOffs?: { side: Side; playerId: string | null; atMs: number; endedBy: 'goal' | null; endedAtMs: number | null }[];
   timeouts?: { home: number; away: number };
   possession?: Side | null;
+  /** how many times each event was recorded for each team (undone events are taken out by the replay) */
+  tally?: { home: Record<string, number>; away: Record<string, number> };
   /** possession by match-clock time (football, futsal, hockey, rugby league): see possession.ts */
   possessionTime?: { side: Side | null; sinceMs: number | null; periodId: string | null; ms: { home: number; away: number } };
   stoppageMinutes?: number | null;

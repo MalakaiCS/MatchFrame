@@ -113,7 +113,7 @@ function transitions(cfg: FootballConfig, p: MatchProjection): string[] {
   const tied = p.score.home === p.score.away;
   switch (p.phase) {
     case 'scheduled':
-      return ['ready', 'pre_match', 'first_half', 'postponed', 'cancelled'];
+      return ['ready', 'pre_match', 'players_entering', 'about_to_start', 'first_half', 'postponed', 'cancelled'];
     case 'ready':
       return ['pre_match', 'players_entering', 'about_to_start', 'first_half', 'postponed', 'cancelled'];
     case 'pre_match':

@@ -496,8 +496,12 @@ export async function listScorableMatches(ctx: Ctx) {
   const s = assignedScopes(ctx.actor);
   const scorable = ctx.actor.grants.filter((g) => ['match.score', 'match.stats', 'match.view'].includes(g.action) && g.scopeType === 'match').map((g) => g.scopeId!);
   if (!wide && !scorable.length) return [];
-  const res = await listMatches(ctx, { pageSize: 100, from: new Date(Date.now() - 2 * 86_400_000).toISOString() });
-  return res.items.filter((m) => wide || scorable.includes(m.id) || s.competitionIds.includes(m.competitionId));
+  // what is coming up (nearest first), and the last month's matches for the Completed tab
+  const split = new Date(Date.now() - 12 * 3_600_000).toISOString();
+  const ahead = await listMatches(ctx, { pageSize: 100, from: split });
+  const behind = await listMatches(ctx, { pageSize: 60, from: new Date(Date.now() - 30 * 86_400_000).toISOString(), to: split, sort: '-scheduledAt' });
+  const seen = new Set<string>();
+  return [...behind.items.reverse(), ...ahead.items].filter((m) => !seen.has(m.id) && seen.add(m.id) && (wide || scorable.includes(m.id) || s.competitionIds.includes(m.competitionId)));
 }
 
 export const _internal = { rosterLineup };

@@ -25,6 +25,7 @@ test('scorer enters line-ups from the phone and finds the preferences sheet', as
   const d = await api<{ lineup: { home: { starter: boolean }[] } }>(page, `/api/v1/matches/${matchId}`);
   expect(d.lineup.home.length).toBe(s0 + b0 - 2);
 
+  await page.getByRole('button', { name: 'Match details' }).click();
   await page.getByRole('button', { name: 'Scoring preferences' }).click();
   await expect(page.getByText('Low data mode')).toBeVisible();
   await expect(page.getByText('Sunlight mode (high contrast)')).toBeVisible();

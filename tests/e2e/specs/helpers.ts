@@ -58,21 +58,38 @@ export async function freshMatch(page: Page): Promise<string> {
   return m.id;
 }
 
-/** Kick off straight from the fixture's starting state. The phone's big Next button follows the full flow
- *  (pre-match → players entering → about to start → kick-off), so the direct jump sits under "More options". */
+/** Kick off from the fixture's starting state: skip the walk-out steps on the pregame sheet, then start the half. */
 export async function startFirstHalf(page: Page) {
-  await page.getByRole('region', { name: 'Match phase' }).getByRole('button', { name: 'More options' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '1st Half', exact: true }).click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  const steps = page.getByRole('region', { name: 'Match phase' });
+  for (const s of ['Pre-match', 'Players entering', 'About to start']) await steps.getByRole('button', { name: `Skip ${s}` }).click();
+  await steps.getByRole('button', { name: /^Start / }).click();
   await expect(page.getByRole('region', { name: 'Clock controls' })).toBeVisible();
 }
 
-export const clockText = async (page: Page) => (await page.getByRole('region', { name: 'Score' }).locator('.text-3xl').textContent())!.trim();
+/** End the period from the header's button, choosing the next step in the sheet that opens. */
+export async function endPeriod(page: Page, next: string) {
+  await page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: /^End / }).click();
+  await page.getByRole('dialog').getByRole('button', { name: next, exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Score' })).toContainText(next);
+}
+
+/** In a break: skip the steps still to do and start the next period. */
+export async function startNextPeriod(page: Page, label: string) {
+  const steps = page.getByRole('region', { name: 'Match phase' });
+  const todo = steps.locator('button[aria-label^="Skip "]:enabled');
+  while (await todo.count()) await todo.first().click();
+  await steps.getByRole('button', { name: `Start ${label}` }).click();
+  await expect(page.getByRole('region', { name: 'Score' })).toContainText(label);
+}
+
+export const clockText = async (page: Page) => (await page.locator('[data-clock]').first().textContent())!.trim();
 export const toSeconds = (t: string) => {
   const [m, s] = t.split(':').map(Number);
   return m! * 60 + s!;
 };
-export const score = async (page: Page) => (await page.getByRole('region', { name: 'Score' }).locator('.text-5xl').allTextContents()).map(Number);
+export const score = async (page: Page) => (await page.locator('[data-score-side]').allTextContents()).map(Number);
 
-/** One team's column on the scorer phone ("Harbour, home"): its scoring buttons and statistics with their counts. */
-export const teamColumn = (page: Page, side: 'home' | 'away') => page.getByRole('region', { name: new RegExp(`, ${side}$`) });
+/** One team's half of a row on the scorer sheet; its name reads like "Shot on target, Harbour: 2". */
+export const sheetCell = (page: Page, side: 'home' | 'away', event: string) => page.locator(`[data-side="${side}"][data-event="${event}"]`);
+/** The count a half of a row shows, from its name. */
+export const cellCount = async (page: Page, side: 'home' | 'away', event: string) => (await sheetCell(page, side, event).getAttribute('aria-label'))!.split(': ').pop()!;
