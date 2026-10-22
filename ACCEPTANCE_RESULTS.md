@@ -430,6 +430,41 @@ environment). There is no motion blur: at 1280×720 the wall's edge moves up to 
 30 fps, measured on the exports); 50 or 60 fps exports are smoother. Stingers exported before this change keep the old 800 ms cut point; export again
 and set the transition point to 1000 ms.
 
+## Replay stinger in any browser: parts stay gone after they leave (2026-10-22)
+
+Reported with an exported file ("look at this and you can see what i mean that the webms are broken"): a 1920×1080,
+30 fps stinger with the teams in the Premier look, exported from the hosted app. Same environment as above,
+production build through the single-port launcher, graphics-only mode.
+
+Cause, found on that file: every frame matched a local export up to frame 42 (1400 ms). From frame 43 the word, its
+underline and the crests, whose exits end 180 to 220 ms after the cue goes out, were back at full and left again and
+again: each was drawn at its time into the exit modulo the exit's length (restarts at frames 43, 50 and 56 for the 220
+ms word and crests), so the last frame still showed them. The export held every CSS animation at the frame's instant
+with the Web Animations API (pause, set the time, write the styles) and drew the result; the browser that made the
+file held a finished animation at its time modulo its length, where Chromium here holds it at its end, so the local
+tests passed. Emulating that one behaviour in Chromium (the finished animation's time wrapped before its styles are
+written) reproduced the file: the plate's alpha on frames 50 to 60 matched it within 1 of 255 on every frame.
+
+Fix: the export draws each frame as a still. The renderer's `still` mode works out every entrance, exit and part
+animation for the frame's instant from the same @keyframes text the live outputs play (`packages/graphics/src/react/motion.ts`:
+keyframes read back, each property between the keyframes that give it, eased per interval, the first keyframe before
+the start and the last after the end) and writes it as plain styles, so no CSS animation is left on the replay
+transition to be held. Live outputs are unchanged.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `motion.test.ts` (every entrance and exit read from the live keyframes; opacity, transforms, clips and three-keyframe animations sampled as CSS does; the first keyframe held before the start and the last after the end, at 1×, 1.06×, 1.5×, 2× and 3.64× the length, never coming round again; timing functions with overshoot) and `replay.test.ts` (in every look, plain and with the teams, at all 61 instants of a 30 fps export: no CSS animation in any frame; the wall at -2900 px at the start, at rest at the cut, at +2900 px at the end and never moving back; from 230 ms into the exit every part at opacity 0 on every frame) | 159 tests, 30 files, all pass |
+| The reported file, through the export test's frame checks | fails: not clear at the end (alpha up to 232), more than one change between see-through and covered on frames 48 and 50–60 |
+| The previous build, under the emulated behaviour | fails the same way, frame for frame |
+| The fixed build, 1920×1080 at 30 fps with the teams, Premier, normal and under the emulated behaviour | both pass; the two files are identical frame for frame (no pixel differs by more than 24 of 255), the last frame fully transparent; against the previous build's export in Chromium (correct there), at most 0.002% of a frame's pixels differ by more than 24 of 255 |
+| `tests/e2e/specs/replay-transition.spec.ts`, the match export now under the emulated behaviour: clear at both ends, covered 500–1440 ms, one wall on every frame | pass (both exports; stills in `docs/evidence/e2e/replay-premier-sweep.png`, `replay-premier-plain.png`, `replay-premier-out.png`, `replay-match-teams.png` redrawn by this run) |
+| `themes.spec.ts`, `graphics.spec.ts`, `visual.spec.ts` (336 baselines) on the same build | 22 tests with the two exports, all pass (9.5 min); no baseline changed |
+
+Not claimed: the browser that made the reported file is not known and was not run here; the behaviour was emulated in
+Chromium. `pnpm test:db` and the rest of the browser suite were not re-run for this change (no service or API code
+changed). Stingers exported before this fix in such a browser need exporting again.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
