@@ -72,4 +72,17 @@ export interface SportAdapter<C = unknown> {
   highlightDefaults(cfg: C): string[];
   /** Minute of play (1-based) at a clock reading, for sports whose clock does not count up through the match (futsal). */
   minuteOf?(cfg: C, periodId: string, clockMs: number | null): number | null;
+  /**
+   * The rules that decide a level match (extra time, penalties, a shoot-out, golden point), turned on for knockout
+   * and finals matches. Absent when the sport always decides one (basketball plays overtime).
+   */
+  knockout?: KnockoutRules<C>;
+}
+
+export interface KnockoutRules<C> {
+  /** what a level match goes to, e.g. "Extra time and penalties when level" */
+  label: string;
+  isOn(cfg: C): boolean;
+  /** the same rules with deciding a level match on or off; turning it on keeps rules that already decide one */
+  set(cfg: C, on: boolean): C;
 }

@@ -2,6 +2,7 @@
 // "Club" theme: team colours forward, rounded pills, large badges, centred compositions.
 // Lively motion: pills zoom and drop in with a little overshoot, badges pop, rows cascade.
 import type { CSSProperties } from 'react';
+import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
@@ -265,7 +266,7 @@ function Slate(p: GraphicProps) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, ...animStyle(p, 'fade', 480, 400) }}><ThemeBadge p={p} height={60} /></div>
         <div style={{ fontSize: 54, fontWeight: 900, marginTop: 24, ...animStyle(p, 'rise', 540, 400) }}>{slateMessage(p)}</div>
-        <div style={{ fontSize: 26, opacity: 0.8, ...animStyle(p, 'rise', 620, 360) }}>{p.data.match.competition.name}</div>
+        <div style={{ fontSize: 26, opacity: 0.8, ...animStyle(p, 'rise', 620, 360) }}>{occasionLine(p.data.match)}</div>
         <div style={{ marginTop: 16, ...animStyle(p, 'fade', 720, 400) }}><SponsorMark p={p} placement="detached_logo" height={64} /></div>
       </div>
     </div>

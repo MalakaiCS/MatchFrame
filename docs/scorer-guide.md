@@ -24,12 +24,31 @@ cards and substitutions can only name players who are listed.
   Time → …); *More options* holds the rest, including Abandoned. Starting a period starts the clock from the
   server's anchor, so refreshing or locking the phone does not change it. If a period runs more than ten minutes
   over, the app asks whether you meant to end it.
-* Scores, cards and substitutions are the large buttons; the sport's statistics sit under *Statistics* and only
-  feed the half-time and full-time board. *Match control* holds stoppage time, timeouts, possession and centre
-  passes where the sport has them.
+* **Two team columns**: the home team on the left, the away team on the right, each in its colour. A column has
+  the team's scoring buttons (Goal; Try and Conversion; Goal and Behind), then one row per statistic with its
+  count beside it. Football: Possession, Shots on target, Shots off target, Fouls, Yellow cards, Red cards,
+  Offsides, Corners and Saves. Futsal and hockey have their own (no offsides; hockey has green cards, penalty
+  corners and circle entries), as do rugby league, AFL and netball. *More* under a column holds the rarer events
+  (penalty scored or missed, own goal, second yellow, substitution, timeout…). Basketball keeps its court layout
+  (+1/+2/+3, fouls by type, timeouts and the possession arrow).
+* **Statistics are one tap**: shots, fouls, offsides, corners and saves count at once, with no questions; add the
+  player later from *Recent* (the person icon) if you want it on the record. The counts are the same numbers the
+  half-time and full-time statistics graphics show.
+* **Possession** is timed: tap *Possession* on the side of the team with the ball, and tap the other side when it
+  changes hands. The match clock between taps counts for the team that had the ball (stoppages and breaks never
+  count), the row says *Has the ball* and both rows show the share live. A period change ends the spell, so tap
+  again at the restart. Undo a wrong tap like any other action. Football, futsal, hockey and rugby league.
 * For a score the number updates immediately; choose the player afterwards (*Later* is fine — players are never
   guessed). Players **on the field** are listed first, then the bench. Football goals then ask for the **assist**
-  and the **type** (header, penalty, free kick…); both can be added later from *Recent* with *Details*.
+  and the **type** (header, penalty, free kick…); both can be added later from *Recent* with *Details*. Cards ask
+  for the player first (*Skip player* if you are unsure). *Stoppage time* sits under the columns.
+* **Level at the end**: when the score is level at the end of regulation and the rules have extra time or
+  penalties (all finals, and knockout matches), *Next:* is **Before Extra Time** (or the shoot-out when there is no
+  extra time), then **Penalty Shootout** after extra time; *Full Time* stays under *More options*. When a league
+  match's rules let a draw stand, the phone asks *Does it need a winner?* and **Play extra time and penalties**
+  switches this match to knockout on the spot. *More options* also has the *Knockout* switch (it cannot be
+  turned off during extra time or the shoot-out). During the shoot-out each column has **Scored** and
+  **Missed**, with the kicks shown as ticks and crosses.
 * Substitutions only offer players who can make the change: whoever is on the field comes off, whoever is on the
   bench comes on (rolling-substitution sports also list players who came off earlier).
 * Basketball: +1/+2/+3 per team with the scorer named afterwards, the foul type (personal, offensive, technical,

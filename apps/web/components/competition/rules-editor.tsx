@@ -19,7 +19,8 @@ export function usePresetOptions(sport: string) {
   return { builtIn, mine, own };
 }
 
-export function RulesEditor({ competitionId, sport, current, open, onOpenChange }: { competitionId: string; sport: Sport; current: Record<string, unknown>; open: boolean; onOpenChange: (o: boolean) => void }) {
+/** `target` "finals" edits the competition's finals rules (finals matches), else its rules (the regular season). */
+export function RulesEditor({ competitionId, sport, current, open, onOpenChange, target = 'rules' }: { competitionId: string; sport: Sport; current: Record<string, unknown>; open: boolean; onOpenChange: (o: boolean) => void; target?: 'rules' | 'finals' }) {
   const adapter = getAdapter(sport);
   const fields = useMemo(() => rulesFields(sport), [sport]);
   const { builtIn, mine } = usePresetOptions(sport);
@@ -31,7 +32,7 @@ export function RulesEditor({ competitionId, sport, current, open, onOpenChange 
   const save = useAction(
     async () => {
       if (saveAsPreset) await post('rules-presets', { sport, name: String(cfg.label ?? '').trim(), config: cfg });
-      return patch<{ matchesUpdated: number }>(`competitions/${competitionId}`, { rulesConfig: cfg, applyToUpcoming });
+      return patch<{ matchesUpdated: number }>(`competitions/${competitionId}`, { [target === 'finals' ? 'finalsRulesConfig' : 'rulesConfig']: cfg, applyToUpcoming });
     },
     [['competition', competitionId], ['rules-presets', sport], ['matches', 'competition', competitionId]],
     { success: (r) => `Rules saved${saveAsPreset ? ' and kept as one of your presets' : ''}${r.matchesUpdated ? `; ${r.matchesUpdated} upcoming match${r.matchesUpdated === 1 ? '' : 'es'} updated` : ''}` },
@@ -43,8 +44,8 @@ export function RulesEditor({ competitionId, sport, current, open, onOpenChange 
     <Dialog
       open={open}
       onOpenChange={(o) => { onOpenChange(o); if (o) setCfg(structuredClone(current)); save.reset(); }}
-      title="Rules"
-      description="New fixtures use these rules. A match keeps the rules it started with."
+      title={target === 'finals' ? 'Finals rules' : 'Rules'}
+      description={target === 'finals' ? 'Finals matches use these rules. A match keeps the rules it started with.' : 'New fixtures use these rules. A match keeps the rules it started with.'}
       footer={<><Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button variant="primary" loading={save.isPending} disabled={!parsed.success || (saveAsPreset && !String(cfg.label ?? '').trim())} onClick={() => save.mutate(undefined, { onSuccess: () => onOpenChange(false) })}>Save rules</Button></>}
     >
       <div className="grid gap-3">

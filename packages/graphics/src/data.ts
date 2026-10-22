@@ -173,6 +173,8 @@ export interface RenderData {
     stateVersion: number;
     statRows: { key: string; label: string; unit?: string }[];
     round?: string | null;
+    /** finals matches show their round (Semi-final, Grand Final) beside the competition */
+    stage?: 'regular' | 'finals';
     attendance?: number | null;
     weather?: { summary?: string | null; tempC?: number | null; condition?: string | null } | null;
     officials?: { role: string; name: string }[];
@@ -236,4 +238,9 @@ export function playerIndex(lineup: LineupSnapshot, photo: (assetId: string | nu
   for (const side of ['home', 'away'] as const)
     for (const p of lineup[side]) out[p.playerId] = { playerId: p.playerId, displayName: p.displayName, shortName: p.shortName, number: p.number ?? null, photoUrl: photo(p.photoAssetId), side, position: p.position };
   return out;
+}
+
+/** The competition line under a match header: "Coastal League", or "Coastal League · Grand Final" in the finals. */
+export function occasionLine(match: Pick<RenderData['match'], 'competition' | 'round' | 'stage'>): string {
+  return match.stage === 'finals' && match.round ? `${match.competition.name} · ${match.round}` : match.competition.name;
 }

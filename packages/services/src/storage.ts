@@ -12,8 +12,10 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { AppConfig } from '@bs/config';
+import { mediaBlobs, withTenant, type Db } from '@bs/db';
+import { and, eq, like } from 'drizzle-orm';
 import fs from 'node:fs';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 
 export interface Storage {
   bucket: string;
@@ -39,12 +41,23 @@ export const keys = {
   export: (org: string, job: string) => `org/${org}/exports/${job}.mp4`,
 };
 
-export function createStorage(cfg: AppConfig): Storage {
+/** Files up to this size can be kept in the database when object storage cannot take them. */
+export const DB_FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Object storage. With `db`, small files (images, logos, fonts: up to 25 MB) are kept in the database when the
+ * object store refuses them or cannot be reached, and every read looks there when the store does not have the
+ * key, so uploads work on a host with no working object storage. Larger files (video, recordings) need the store.
+ */
+export function createStorage(cfg: AppConfig, opts: { db?: Db } = {}): Storage {
   const client = new S3Client({
     endpoint: cfg.S3_ENDPOINT,
     region: cfg.S3_REGION,
     forcePathStyle: cfg.S3_FORCE_PATH_STYLE,
     credentials: { accessKeyId: cfg.S3_ACCESS_KEY, secretAccessKey: cfg.S3_SECRET_KEY },
+    // fail fast when the store is unreachable, so the fallback answers instead of a hung request
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 60_000 },
+    maxAttempts: 2,
   });
   const Bucket = cfg.S3_BUCKET;
   const s: Storage = {
@@ -120,5 +133,96 @@ export function createStorage(cfg: AppConfig): Storage {
       });
     },
   };
-  return s;
+  return opts.db ? withDatabaseFallback(s, opts.db) : s;
+}
+
+const orgOfKey = (key: string) => /^org\/([0-9a-f-]{36})\//.exec(key)?.[1] ?? null;
+
+async function toBuffer(body: Buffer | Readable | string): Promise<Buffer> {
+  if (Buffer.isBuffer(body)) return body;
+  if (typeof body === 'string') return Buffer.from(body);
+  const parts: Buffer[] = [];
+  let n = 0;
+  for await (const c of body) {
+    const b = Buffer.isBuffer(c) ? c : Buffer.from(c as Uint8Array);
+    n += b.length;
+    if (n > DB_FALLBACK_MAX_BYTES) throw new Error('File too large to keep without object storage');
+    parts.push(b);
+  }
+  return Buffer.concat(parts);
+}
+
+/** The object store first; the database for small files it cannot take, and for reads of keys it does not have. */
+function withDatabaseFallback(s3: Storage, db: Db): Storage {
+  const blob = async (key: string) => {
+    const org = orgOfKey(key);
+    if (!org) return null;
+    const [b] = await withTenant(db, { organisationId: org }, (t) => t.select().from(mediaBlobs).where(and(eq(mediaBlobs.organisationId, org), eq(mediaBlobs.key, key))));
+    return b ?? null;
+  };
+  const keep = async (key: string, data: Buffer, contentType: string) => {
+    const org = orgOfKey(key);
+    if (!org || data.length > DB_FALLBACK_MAX_BYTES) return false;
+    await withTenant(db, { organisationId: org }, (t) =>
+      t.insert(mediaBlobs).values({ key, organisationId: org, contentType, bytes: data.length, data }).onConflictDoUpdate({ target: mediaBlobs.key, set: { contentType, bytes: data.length, data, createdAt: new Date() } }),
+    );
+    return true;
+  };
+  const readOr = async <T>(key: string, fromStore: () => Promise<T>, fromBlob: (b: NonNullable<Awaited<ReturnType<typeof blob>>>) => T | Promise<T>): Promise<T> => {
+    try {
+      return await fromStore();
+    } catch (e) {
+      const b = await blob(key).catch(() => null);
+      if (b) return fromBlob(b);
+      throw e;
+    }
+  };
+  return {
+    ...s3,
+    async ensureBucket() {
+      await s3.ensureBucket();
+    },
+    async put(key, body, contentType, contentLength) {
+      // small files are buffered so the same bytes can go to the database if the store refuses them
+      const small = orgOfKey(key) && (typeof body === 'string' || Buffer.isBuffer(body) || (contentLength ?? Infinity) <= DB_FALLBACK_MAX_BYTES);
+      if (!small) return s3.put(key, body, contentType, contentLength);
+      const data = await toBuffer(body);
+      try {
+        await s3.put(key, data, contentType, data.length);
+      } catch (e) {
+        if (!(await keep(key, data, contentType))) throw e;
+      }
+    },
+    async putFile(key, path, contentType) {
+      try {
+        return await s3.putFile(key, path, contentType);
+      } catch (e) {
+        const size = fs.statSync(path).size;
+        if (size > DB_FALLBACK_MAX_BYTES || !(await keep(key, fs.readFileSync(path), contentType))) throw e;
+        return size;
+      }
+    },
+    get: (key, range) => readOr(key, () => s3.get(key, range), (b) => ({ body: Readable.from(b.data), contentType: b.contentType, contentLength: b.bytes, etag: `"db-${b.bytes}-${b.createdAt.getTime()}"` })),
+    getBuffer: (key) => readOr(key, () => s3.getBuffer(key), (b) => Buffer.from(b.data)),
+    download: (key, path) => readOr(key, () => s3.download(key, path), (b) => fs.writeFileSync(path, b.data)),
+    async head(key) {
+      const h = await s3.head(key);
+      if (h) return h;
+      const b = await blob(key).catch(() => null);
+      return b ? { contentLength: b.bytes, contentType: b.contentType } : null;
+    },
+    async delete(key) {
+      await s3.delete(key).catch(() => undefined);
+      const org = orgOfKey(key);
+      if (org) await withTenant(db, { organisationId: org }, (t) => t.delete(mediaBlobs).where(and(eq(mediaBlobs.organisationId, org), eq(mediaBlobs.key, key))));
+    },
+    async list(prefix) {
+      const out = await s3.list(prefix).catch(() => [] as { key: string; size: number }[]);
+      const org = orgOfKey(prefix);
+      if (!org) return out;
+      const rows = await withTenant(db, { organisationId: org }, (t) => t.select({ key: mediaBlobs.key, size: mediaBlobs.bytes }).from(mediaBlobs).where(and(eq(mediaBlobs.organisationId, org), like(mediaBlobs.key, `${prefix.replace(/[%_\\]/g, '\\$&')}%`))));
+      const seen = new Set(out.map((o) => o.key));
+      return [...out, ...rows.filter((r) => !seen.has(r.key))];
+    },
+  };
 }

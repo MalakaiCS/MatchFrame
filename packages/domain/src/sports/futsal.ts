@@ -79,10 +79,11 @@ const EVENTS: EventTypeDef[] = [
   { type: 'corner', label: 'Corner', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'save', label: 'Save', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
+  { type: 'possession_change', label: 'Possession', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'shootout_kick', label: 'Penalty kick', group: 'shootout', requiresSide: true, playerField: 'optional', highlightDefault: true },
 ];
 
-export const FUTSAL_STATS = ['goals', 'shots_on_target', 'shots_off_target', 'corners', 'saves', 'fouls', 'yellow_cards', 'red_cards', 'timeouts_used', 'ten_metre_kicks'] as const;
+export const FUTSAL_STATS = ['goals', 'shots_on_target', 'shots_off_target', 'corners', 'saves', 'fouls', 'yellow_cards', 'red_cards', 'timeouts_used', 'ten_metre_kicks', 'possession_pct'] as const;
 
 export const FUTSAL_GOAL_TYPES = ['open_play', 'counter_attack', 'set_piece', 'free_kick', 'long_range', 'power_play', 'penalty', 'second_penalty', 'own_goal'] as const;
 export const FUTSAL_GOAL_TYPE_LABELS: Record<(typeof FUTSAL_GOAL_TYPES)[number], string> = {
@@ -418,10 +419,16 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
       { key: 'red_cards', label: 'Red cards' },
       { key: 'timeouts_used', label: 'Timeouts used' },
       { key: 'ten_metre_kicks', label: '10 m kicks' },
+      { key: 'possession_pct', label: 'Possession', unit: '%' },
       { key: 'goals', label: 'Goals' },
     ],
   }),
   highlightDefaults: () => ['goal', 'own_goal', 'penalty_scored', 'ten_metre_scored', 'penalty_missed', 'ten_metre_missed', 'second_yellow', 'red_card', 'manual_moment'],
+  knockout: {
+    label: 'Extra time and kicks from the penalty mark when level',
+    isOn: (c) => c.extraTime.enabled || c.shootout.enabled,
+    set: (c, on) => (on && (c.extraTime.enabled || c.shootout.enabled) ? c : { ...c, extraTime: { ...c.extraTime, enabled: on }, shootout: { ...c.shootout, enabled: on } }),
+  },
   // the minute of play, however the clock counts: 18:30 left in the first half is the 2nd minute
   minuteOf: (c, periodId, clockMs) => {
     const ms = futsalMatchMs(c, periodId, clockMs);

@@ -200,29 +200,34 @@ describe('highlights and clips', () => {
 });
 
 describe('uploads, quota and retention', () => {
-  it('rejects unsafe uploads by content, accepts and normalises a real image (A48)', async () => {
-    const up = async (name: string, kind: 'image' | 'video', mime: string, body: Buffer) => {
+  it('rejects unsafe uploads by content; a real image is ready at once and the media worker makes its smaller copy (A48)', async () => {
+    const send = async (name: string, kind: 'image' | 'video', mime: string, body: Buffer) => {
       const u = await library.createUpload(ctx, { name, kind, mime, bytes: body.length });
       const r = await fetch(u.uploadUrl, { method: 'PUT', headers: u.headers, body });
       expect(r.ok).toBe(true);
-      await library.completeUpload(ctx, u.assetId);
-      const [j] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(exportJobs).where(eq(exportJobs.sourceId, u.assetId)));
-      return { assetId: u.assetId, result: await runJob(j!.id) };
+      return u.assetId;
     };
+    const job = async (assetId: string) => (await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(exportJobs).where(eq(exportJobs.sourceId, assetId))))[0];
+    const row = async (assetId: string) => (await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.execute(`select state, width, height, error from media_assets where id = '${assetId}'` as never))).rows[0] as { state: string; width: number; height: number; error: string | null };
     await expect(library.createUpload(ctx, { name: 'x.svg', kind: 'image', mime: 'image/svg+xml', bytes: 10 })).rejects.toMatchObject({ code: 'UNSUPPORTED_MEDIA' });
-    const svg = await up('fake.png', 'image', 'image/png', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'));
-    expect(svg.result).toBe('failed');
-    const html = await up('clip.mp4', 'video', 'video/mp4', Buffer.from('<html><body>not a video</body></html>'));
-    expect(html.result).toBe('failed');
+    // markup named .png is refused by the API itself, no worker needed
+    const svg = await send('fake.png', 'image', 'image/png', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'));
+    await expect(library.completeUpload(ctx, svg)).rejects.toMatchObject({ code: 'UNSUPPORTED_MEDIA' });
+    expect(await row(svg)).toMatchObject({ state: 'FAILED', error: expect.stringMatching(/Rejected/) });
+    expect(await job(svg)).toBeUndefined();
+    // video is still checked and converted by the media worker
+    const html = await send('clip.mp4', 'video', 'video/mp4', Buffer.from('<html><body>not a video</body></html>'));
+    expect(await library.completeUpload(ctx, html)).toMatchObject({ state: 'PROCESSING' });
+    expect(await runJob((await job(html))!.id)).toBe('failed');
+    expect((await row(html)).state).toBe('FAILED');
     const png = path.join(os.tmpdir(), `ok-${crypto.randomUUID()}.png`);
     execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=0x3EA6FF:s=2400x800,format=rgba', '-frames:v', '1', png]);
-    const ok = await up('banner.png', 'image', 'image/png', fs.readFileSync(png));
-    expect(ok.result).toBe('completed');
-    const a = (await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.execute(`select state, width, height from media_assets where id = '${ok.assetId}'` as never))).rows[0] as { state: string; width: number; height: number };
-    expect(a).toMatchObject({ state: 'READY', width: 1920, height: 640 });
-    const bad = (await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.execute(`select state, error from media_assets where id = '${svg.assetId}'` as never))).rows[0] as { state: string; error: string };
-    expect(bad.state).toBe('FAILED');
-    expect(bad.error).toMatch(/Rejected/);
+    const ok = await send('banner.png', 'image', 'image/png', fs.readFileSync(png));
+    expect(await library.completeUpload(ctx, ok)).toEqual({ assetId: ok, state: 'READY' });
+    expect(await row(ok)).toMatchObject({ state: 'READY', width: 2400, height: 800 });
+    // the worker's smaller copy replaces it when it runs; the image stays ready throughout
+    expect(await runJob((await job(ok))!.id)).toBe('completed');
+    expect(await row(ok)).toMatchObject({ state: 'READY', width: 1920, height: 640 });
   }, 120_000);
 
   it('blocks new storage work at the quota without touching live sessions; retention keeps pinned media (A47)', async () => {

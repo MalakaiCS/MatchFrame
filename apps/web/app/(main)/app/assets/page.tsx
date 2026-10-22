@@ -7,10 +7,20 @@ import { del, patch, post } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 import { AssetLibrary } from '@/components/asset-library';
+import { ImageField, LogoField } from '@/components/logo-field';
+
+/** a small logo or photo in a table row */
+function Thumb({ id, alt, tall }: { id: string | null; alt: string; tall?: boolean }) {
+  return (
+    <span className={`grid shrink-0 place-items-center overflow-hidden rounded border border-border bg-[repeating-conic-gradient(#1c2c43_0_25%,#131f32_0_50%)] bg-[length:8px_8px] ${tall ? 'h-10 w-8' : 'size-9'}`}>
+      {id ? <img src={`/api/v1/assets/${id}/preview`} alt={alt} className="max-h-full max-w-full object-contain" loading="lazy" /> : <span className="text-[9px] text-muted">—</span>}
+    </span>
+  );
+}
 
 interface Team { id: string; name: string; shortName: string; abbreviation: string; sport: string; primaryColor: string; secondaryColor: string; status: string; logoAssetId: string | null; clubId: string | null }
 interface TeamDetail extends Team { roster: { id: string; seasonId: string; seasonName: string; number: number | null; position: string | null; status: string; player: { id: string; displayName: string } }[] }
-interface Player { id: string; displayName: string; defaultNumber: number | null; position: string | null }
+interface Player { id: string; displayName: string; shortName?: string | null; defaultNumber: number | null; position: string | null; photoAssetId?: string | null }
 interface Comp { id: string; name: string; sport: string }
 
 export default function AssetsPage() {
@@ -36,7 +46,7 @@ function Teams({ full }: { full: boolean }) {
   const teams = useGet<Team[]>(['teams', 'all', archived], `teams${archived ? '?includeArchived=true' : ''}`);
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
-  const blank = { name: '', shortName: '', abbreviation: '', sport: 'football', primaryColor: '#1F6FEB', secondaryColor: '#0B1220' };
+  const blank = { name: '', shortName: '', abbreviation: '', sport: 'football', primaryColor: '#1F6FEB', secondaryColor: '#0B1220', logoAssetId: null as string | null };
   const [form, setForm] = useState(blank);
   const create = useAction((v: typeof form) => post('teams', v), [['teams']], { success: 'Team added' });
   return (
@@ -48,10 +58,10 @@ function Teams({ full }: { full: boolean }) {
       <ErrorNotice error={teams.error} onRetry={() => teams.refetch()} />
       {teams.isLoading ? <Spinner /> : !teams.data?.length ? <EmptyState title="No teams yet" body="Teams take part in fixtures; players join them through season rosters." /> : (
         <Table><thead><tr><th>Team</th><th>Abbr.</th><th>Sport</th><th>Colours</th><th>Status</th><th /></tr></thead><tbody>
-          {teams.data.map((t) => <tr key={t.id}><td>{t.name}<span className="block text-xs text-muted">{t.shortName}</span></td><td className="font-mono">{t.abbreviation}</td><td>{t.sport}</td>
+          {teams.data.map((t) => <tr key={t.id}><td><span className="flex items-center gap-2"><Thumb id={t.logoAssetId} alt={`${t.name} logo`} /><span>{t.name}<span className="block text-xs text-muted">{t.shortName}</span></span></span></td><td className="font-mono">{t.abbreviation}</td><td>{t.sport}</td>
             <td><span className="inline-flex gap-1"><span className="size-4 rounded" style={{ background: t.primaryColor }} title={t.primaryColor} /><span className="size-4 rounded border border-border" style={{ background: t.secondaryColor }} title={t.secondaryColor} /></span></td>
             <td><StatusPill tone={t.status === 'active' ? 'healthy' : 'neutral'}>{t.status}</StatusPill></td>
-            <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setSel(t.id)}>Roster</Button></td></tr>)}
+            <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setSel(t.id)}>{full ? 'Logo, colours & roster' : 'Roster'}</Button></td></tr>)}
         </tbody></Table>
       )}
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); create.reset(); }} title="New team" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.name || form.abbreviation.length < 2} onClick={() => create.mutate({ ...form, shortName: form.shortName || form.name.slice(0, 24) }, { onSuccess: () => { setOpen(false); setForm(blank); } })}>Create</Button></>}>
@@ -60,6 +70,7 @@ function Teams({ full }: { full: boolean }) {
           <Field label="Short name" htmlFor="ts" hint="Approved label for tight graphics"><Input id="ts" maxLength={24} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
           <Field label="Abbreviation" htmlFor="ta" error={create.error?.fieldError('abbreviation')}><Input id="ta" maxLength={5} value={form.abbreviation} onChange={(e) => setForm({ ...form, abbreviation: e.target.value.toUpperCase() })} /></Field>
           <Field label="Sport" htmlFor="tsp"><NativeSelect id="tsp" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><SportOptions /></NativeSelect></Field>
+          <div className="sm:col-span-2"><LogoField label="Team logo" value={form.logoAssetId} onChange={(v) => setForm((f) => ({ ...f, logoAssetId: v }))} /></div>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Primary" htmlFor="tc1"><input id="tc1" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value.toUpperCase() })} /></Field>
             <Field label="Secondary" htmlFor="tc2"><input id="tc2" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value.toUpperCase() })} /></Field>
@@ -83,6 +94,7 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
   const archive = useAction(() => patch(`teams/${id}`, { status: team.data?.status === 'archived' ? 'active' : 'archived' }), [['team', id], ['teams']]);
   const remove = useAction(() => del(`teams/${id}`), [['teams']]);
   const seasons = (comps.data ?? []).filter((c) => c.sport === team.data?.sport && c.currentSeason).map((c) => ({ id: c.currentSeason!.id, label: `${c.name} · ${c.currentSeason!.name}` }));
+  const brand = useAction((v: Partial<Pick<Team, 'logoAssetId' | 'primaryColor' | 'secondaryColor'>>) => patch(`teams/${id}`, v), [['team', id], ['teams']], { success: (_r, v) => ('logoAssetId' in v ? (v.logoAssetId ? 'Logo saved. Upcoming matches show it on their graphics.' : 'Logo removed') : 'Colours saved') });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title={team.data?.name ?? 'Team'} description={hist.data ? `${hist.data.matches} fixture(s) reference this team.` : undefined}
       footer={full ? <>
@@ -91,6 +103,15 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
       </> : null}>
       {team.isLoading ? <Spinner /> : (
         <>
+          <section aria-label="Logo and colours" className="mb-4 grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <LogoField label="Team logo" value={team.data!.logoAssetId} disabled={!full} onChange={(v) => brand.mutateAsync({ logoAssetId: v })} />
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Primary" htmlFor="tb1"><input id="tb1" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.primaryColor} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.primaryColor && brand.mutate({ primaryColor: e.target.value.toUpperCase() })} /></Field>
+              <Field label="Secondary" htmlFor="tb2"><input id="tb2" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.secondaryColor} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.secondaryColor && brand.mutate({ secondaryColor: e.target.value.toUpperCase() })} /></Field>
+            </div>
+            <div className="sm:col-span-2"><ErrorNotice error={brand.error} /></div>
+          </section>
+          <h3 className="mb-1 text-sm font-medium">Roster</h3>
           <Table><thead><tr><th>#</th><th>Player</th><th>Season</th><th>Status</th><th /></tr></thead><tbody>
             {team.data!.roster.map((r) => <tr key={r.id}><td className="tabular">{r.number ?? '—'}</td><td>{r.player.displayName}</td><td className="text-muted">{r.seasonName}</td><td><StatusPill tone={r.status === 'active' ? 'healthy' : 'neutral'}>{r.status}</StatusPill></td><td>{full && r.status === 'active' ? <button className="text-xs text-muted hover:text-live" onClick={() => removeRoster.mutate(r.id)}>End membership</button> : null}</td></tr>)}
             {!team.data!.roster.length ? <tr><td colSpan={5} className="text-center text-muted">No roster entries</td></tr> : null}
@@ -115,6 +136,7 @@ function Players({ full }: { full: boolean }) {
   const players = useGet<Player[]>(['players', search], `players${search ? `?search=${encodeURIComponent(search)}` : ''}`);
   const [form, setForm] = useState({ displayName: '', shortName: '', defaultNumber: '', position: '' });
   const create = useAction(() => post('players', { displayName: form.displayName, shortName: form.shortName || null, defaultNumber: form.defaultNumber ? Number(form.defaultNumber) : null, position: form.position || null }), [['players']]);
+  const [edit, setEdit] = useState<Player | null>(null);
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end gap-2">
@@ -130,9 +152,30 @@ function Players({ full }: { full: boolean }) {
         ) : null}
       </div>
       <ErrorNotice error={create.error ?? players.error} />
-      {players.isLoading ? <Spinner /> : <Table><thead><tr><th>Name</th><th>No.</th><th>Position</th></tr></thead><tbody>{players.data?.map((p) => <tr key={p.id}><td>{p.displayName}</td><td className="tabular">{p.defaultNumber ?? '—'}</td><td>{p.position ?? '—'}</td></tr>)}</tbody></Table>}
+      {players.isLoading ? <Spinner /> : <Table><thead><tr><th>Name</th><th>No.</th><th>Position</th>{full ? <th /> : null}</tr></thead><tbody>{players.data?.map((p) => <tr key={p.id}><td><span className="flex items-center gap-2"><Thumb tall id={p.photoAssetId ?? null} alt={`${p.displayName} photo`} />{p.displayName}</span></td><td className="tabular">{p.defaultNumber ?? '—'}</td><td>{p.position ?? '—'}</td>{full ? <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setEdit(p)}>Photo & details</Button></td> : null}</tr>)}</tbody></Table>}
+      {edit ? <PlayerEdit player={edit} onClose={() => setEdit(null)} /> : null}
       <p className="mt-2 text-xs text-muted">Dates of birth are private and never shown in graphics.</p>
     </>
+  );
+}
+
+function PlayerEdit({ player, onClose }: { player: Player; onClose: () => void }) {
+  const [f, setF] = useState({ displayName: player.displayName, shortName: player.shortName ?? '', defaultNumber: player.defaultNumber == null ? '' : String(player.defaultNumber), position: player.position ?? '' });
+  const photo = useAction((photoAssetId: string | null) => patch(`players/${player.id}`, { photoAssetId }), [['players']], { success: (_r, v) => (v ? 'Photo saved. Player graphics of upcoming matches show it.' : 'Photo removed') });
+  const save = useAction(() => patch(`players/${player.id}`, { displayName: f.displayName, shortName: f.shortName || null, defaultNumber: f.defaultNumber ? Number(f.defaultNumber) : null, position: f.position || null }), [['players']], { success: 'Player saved' });
+  const [photoId, setPhotoId] = useState(player.photoAssetId ?? null);
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={player.displayName} description="The photo is used by player cards, line-ups and the player of the match."
+      footer={<><Button variant="ghost" onClick={onClose}>Close</Button><Button variant="primary" loading={save.isPending} disabled={!f.displayName.trim()} onClick={() => save.mutate(undefined, { onSuccess: onClose })}>Save details</Button></>}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2"><ImageField kind="image" label="Photo" value={photoId} onChange={async (v) => { await photo.mutateAsync(v); setPhotoId(v); }} /></div>
+        <Field label="Display name" htmlFor="pe-n"><Input id="pe-n" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} /></Field>
+        <Field label="Short name" htmlFor="pe-s"><Input id="pe-s" value={f.shortName} onChange={(e) => setF({ ...f, shortName: e.target.value })} /></Field>
+        <Field label="Number" htmlFor="pe-no"><Input id="pe-no" inputMode="numeric" value={f.defaultNumber} onChange={(e) => setF({ ...f, defaultNumber: e.target.value.replace(/\D/g, '') })} /></Field>
+        <Field label="Position" htmlFor="pe-p"><Input id="pe-p" value={f.position} onChange={(e) => setF({ ...f, position: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><ErrorNotice error={save.error ?? photo.error} /></div>
+      </div>
+    </Dialog>
   );
 }
 
@@ -157,14 +200,15 @@ function Venues({ full }: { full: boolean }) {
 }
 
 function Clubs({ full }: { full: boolean }) {
-  const clubs = useGet<{ id: string; name: string; shortName: string | null }[]>(['clubs'], 'clubs');
+  const clubs = useGet<{ id: string; name: string; shortName: string | null; logoAssetId: string | null }[]>(['clubs'], 'clubs');
   const [name, setName] = useState('');
   const create = useAction(() => post('clubs', { name }), [['clubs']], { success: 'Club added' });
+  const setLogo = useAction((v: { id: string; logoAssetId: string | null }) => patch(`clubs/${v.id}`, { logoAssetId: v.logoAssetId }), [['clubs']], { success: (_r, v) => (v.logoAssetId ? 'Club logo saved' : 'Club logo removed') });
   return (
     <>
       {full ? <div className="mb-3 flex items-end gap-2"><Field label="Club name" htmlFor="cl"><Input id="cl" value={name} onChange={(e) => setName(e.target.value)} /></Field><Button variant="primary" disabled={!name.trim()} loading={create.isPending} onClick={() => create.mutate(undefined, { onSuccess: () => setName('') })}>Add club</Button></div> : null}
-      <ErrorNotice error={create.error} />
-      <Table><thead><tr><th>Club</th></tr></thead><tbody>{clubs.data?.map((c) => <tr key={c.id}><td>{c.name}</td></tr>)}{!clubs.data?.length ? <tr><td className="text-muted">No clubs. Clubs group several teams (e.g. seniors and juniors).</td></tr> : null}</tbody></Table>
+      <ErrorNotice error={create.error ?? setLogo.error} />
+      <Table><thead><tr><th>Club</th><th>Logo</th></tr></thead><tbody>{clubs.data?.map((c) => <tr key={c.id}><td>{c.name}</td><td><LogoField label={`${c.name} logo`} value={c.logoAssetId} disabled={!full} onChange={(v) => setLogo.mutateAsync({ id: c.id, logoAssetId: v })} /></td></tr>)}{!clubs.data?.length ? <tr><td colSpan={2} className="text-muted">No clubs. Clubs group several teams (e.g. seniors and juniors).</td></tr> : null}</tbody></Table>
     </>
   );
 }

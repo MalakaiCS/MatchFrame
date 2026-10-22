@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { applyClockAction, ClockActionError, clockDisplayMs, type ClockState } from './clock';
 import type { FactInput, LogEntry, SportAdapter } from './adapter';
 import type { LineupSnapshot, MatchProjection, Side } from './types';
+import { endPossessionSpell, POSSESSION_EVENT, trackPossession } from './possession';
 import { footballAdapter } from './sports/football';
 import { basketballAdapter } from './sports/basketball';
 import { netballAdapter } from './sports/netball';
@@ -62,6 +63,8 @@ export const commandPayloadSchemas = {
     away: z.number().int().min(0).max(999),
     reason: z.string().trim().min(1).max(300),
   }),
+  /** this match decides a level score (extra time, penalties, a shoot-out, golden point) or lets a draw stand */
+  SET_KNOCKOUT: z.object({ on: z.boolean(), reason: z.string().max(300).optional() }),
 } as const;
 
 export type CommandType = keyof typeof commandPayloadSchemas;
@@ -106,17 +109,22 @@ export function stampPhase<C>(adapter: SportAdapter<C>, cfg: C, prev: MatchProje
   return next;
 }
 
+/** One event on the projection: the sport's rules, then possession by time (shared by every sport that taps it). */
+export function applyEvent<C>(adapter: SportAdapter<C>, cfg: C, p: MatchProjection, e: LogEntry): MatchProjection {
+  return trackPossession(adapter.applyFact(cfg, p, e), e);
+}
+
 /** Rebuild the projection from the full ordered log (voids/corrections already applied to entries). */
 export function replay<C>(adapter: SportAdapter<C>, cfg: C, log: LogEntry[]): MatchProjection {
   let p = adapter.initialProjection(cfg);
   for (const e of [...log].sort((a, b) => a.sequence - b.sequence)) {
     if (e.voided) continue;
-    if (e.category === 'phase') p = stampPhase(adapter, cfg, p, adapter.applyPhase(cfg, p, String(e.payload.to)), e.occurredAt ?? null);
+    if (e.category === 'phase') p = stampPhase(adapter, cfg, p, endPossessionSpell(adapter.applyPhase(cfg, p, String(e.payload.to)), String(e.payload.from ?? p.phase), e.clockMs), e.occurredAt ?? null);
     else if (e.category === 'adjustment') {
       p = structuredClone(p);
       p.score.home += Number(e.payload.homeDelta ?? 0);
       p.score.away += Number(e.payload.awayDelta ?? 0);
-    } else p = adapter.applyFact(cfg, p, e);
+    } else p = applyEvent(adapter, cfg, p, e);
     p.lastFactSequence = e.sequence;
   }
   return p;
@@ -125,7 +133,8 @@ export function replay<C>(adapter: SportAdapter<C>, cfg: C, log: LogEntry[]): Ma
 export type EngineResult =
   | { kind: 'append'; entry: Omit<StoredFact, 'id'>; state: EngineState; clockChanged: boolean; phaseChanged?: { from: string; to: string } }
   | { kind: 'correction'; factId: string; correction: 'void' | 'correct'; updated: StoredFact; state: EngineState; reason: string }
-  | { kind: 'clock'; state: EngineState; clockId: string };
+  | { kind: 'clock'; state: EngineState; clockId: string }
+  | { kind: 'rules'; state: EngineState; rulesConfig: unknown; knockout: boolean };
 
 /**
  * Pure application of one validated command. The caller supplies the current state, the full fact log
@@ -153,6 +162,7 @@ export function applyCommand<C>(
     case 'ADD_FACT': {
       const c = parsed.data as CommandPayload<'ADD_FACT'>;
       if (terminal) throw new DomainError('MATCH_CLOSED', 'This match is closed to new facts');
+      if (c.type === POSSESSION_EVENT && phaseDef?.tags.includes('shootout')) throw new DomainError('PHASE_NOT_ALLOWED', 'Possession is not kept during the shoot-out', 'type');
       const input: FactInput = { type: c.type, side: c.side ?? null, playerId: c.playerId ?? null, payload: c.payload };
       const v = adapter.validateFact(cfg, p, input, lineup);
       if (!v.ok) throw new DomainError(v.code, v.message, v.field);
@@ -170,7 +180,7 @@ export function applyCommand<C>(
         occurredAt: c.occurredAt,
         revision: 1,
       };
-      const projection = adapter.applyFact(cfg, p, entry);
+      const projection = applyEvent(adapter, cfg, p, entry);
       const clocks = adapter.clocksForFact(cfg, input, state.clocks, now);
       return { kind: 'append', entry, state: { projection, clocks, sequence: entry.sequence }, clockChanged: clocks !== state.clocks };
     }
@@ -192,7 +202,7 @@ export function applyCommand<C>(
         occurredAt: now,
         revision: 1,
       };
-      const projection = stampPhase(adapter, cfg, p, adapter.applyPhase(cfg, p, c.to), now);
+      const projection = stampPhase(adapter, cfg, p, endPossessionSpell(adapter.applyPhase(cfg, p, c.to), p.phase, entry.clockMs), now);
       projection.lastFactSequence = entry.sequence;
       const clocks = adapter.clocksForPhase(cfg, p.phase, c.to, state.clocks, now);
       return { kind: 'append', entry, state: { projection, clocks, sequence: entry.sequence }, clockChanged: true, phaseChanged: { from: p.phase, to: c.to } };
@@ -244,6 +254,17 @@ export function applyCommand<C>(
       const projection = replay(adapter, cfg, newLog);
       projection.lastFactSequence = state.sequence;
       return { kind: 'correction', factId: target.id, correction: type === 'VOID_FACT' ? 'void' : 'correct', updated, state: { projection, clocks: state.clocks, sequence: state.sequence }, reason: c.reason };
+    }
+    case 'SET_KNOCKOUT': {
+      const c = parsed.data as CommandPayload<'SET_KNOCKOUT'>;
+      const ko = adapter.knockout;
+      if (!ko) throw new DomainError('NOT_SUPPORTED', `${adapter.label} always decides a level match`, 'on', 409);
+      if (terminal || phaseDef?.kind === 'final') throw new DomainError('MATCH_CLOSED', 'The match is over; its rules can no longer change', 'on', 409);
+      const deciding = phaseDef?.tags.some((t) => t === 'extra_time' || t === 'extra_time_interval' || t === 'shootout');
+      if (!c.on && deciding) throw new DomainError('PHASE_NOT_ALLOWED', `${phaseDef!.label} is under way; finish it or end the match instead`, 'on', 409);
+      const next = ko.set(cfg, c.on);
+      if (!adapter.phase(next, p.phase)) throw new DomainError('PHASE_NOT_ALLOWED', `${phaseDef?.label ?? p.phase} does not exist under these rules`, 'on', 409);
+      return { kind: 'rules', state, rulesConfig: next, knockout: ko.isOn(next) };
     }
     case 'CLOCK_ACTION': {
       const c = parsed.data as CommandPayload<'CLOCK_ACTION'>;

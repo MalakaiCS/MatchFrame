@@ -2,7 +2,7 @@
 // all from the audit trail and the accepted facts. Read-only.
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { auditLogs, matchFacts, matches, overlays, users } from '@bs/db';
-import { getAdapter } from '@bs/domain';
+import { getAdapter, POSSESSION_EVENT } from '@bs/domain';
 import { assertCan } from './authz';
 import { notFound } from './errors';
 import { tx, type Ctx } from './context';
@@ -19,6 +19,10 @@ const AUDIT_WORDS: Record<string, (meta: Record<string, unknown>) => string> = {
   'scorer.lease.acquire': () => 'took over scoring',
   'scorer.lease.release': () => 'handed over scoring',
   'scorer.lease.takeover': () => 'took scoring from another device',
+  'match.rules': (m) => {
+    const ko = (m.after as { knockout?: boolean })?.knockout;
+    return ko === undefined ? `changed the match rules (${String(m.reason ?? (m.after as { reason?: string })?.reason ?? 'new rules')})` : ko ? 'made the match a knockout: a level score is decided' : 'let a draw stand in this match';
+  },
   'match.score_adjust': (m) => `adjusted the score (${JSON.stringify(m.after ?? {})})`,
   'match.fact.void': (m) => `undid an event (${String(m.reason ?? 'no reason given')})`,
   'match.fact.correct': () => 'corrected an event',
@@ -54,6 +58,7 @@ export async function matchActivity(ctx: Ctx, matchId: string, limit = 120): Pro
         const to = (f.payload as { to?: string }).to ?? f.type;
         lines.push({ at: f.acceptedAt.toISOString(), who, text: `moved the match to ${phases.find((p) => p.id === to)?.label ?? to}`, kind: 'control' });
       } else if (f.category === 'event') {
+        if (f.type === POSSESSION_EVENT) continue; // taps of who has the ball: the share is in the statistics
         const def = defs.find((d) => d.type === f.type);
         const minute = f.clockMs != null ? ` at ${Math.floor(f.clockMs / 60000) + 1}'` : '';
         lines.push({ at: f.acceptedAt.toISOString(), who, text: `${f.voided ? 'recorded (later undone) ' : 'recorded '}${(def?.label ?? f.type).toLowerCase()}${f.side ? ` for ${f.side === 'home' ? 'the home side' : 'the away side'}` : ''}${minute}`, kind: 'fact' });

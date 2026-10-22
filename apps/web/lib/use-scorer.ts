@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAdapter, type ClockState, type LineupSnapshot, type MatchProjection } from '@bs/domain';
+import { applyEvent, clockDisplayMs, getAdapter, type ClockState, type LineupSnapshot, type MatchProjection } from '@bs/domain';
 import { ApiError, api, get, post, uuid } from './api';
 import { serverNow, useConnectionStatus, useRealtime } from './realtime';
 import { cacheMatch, deleteIntent, deviceId as getDeviceId, getCachedMatch, getIntents, putIntent, type Intent } from './scorer-outbox';
@@ -160,6 +160,8 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
           setAccepted((a) => ({ ...a, [next.commandId]: r.event.eventId }));
           await deleteIntent(next.commandId);
           setNetOk(true);
+          // the match's rules changed (knockout on or off): fetch them again
+          if (next.type === 'SET_KNOCKOUT') void loadAll();
         } catch (e) {
           const ae = e as ApiError;
           if (ae.status === 0) {
@@ -195,7 +197,7 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
       flushing.current = false;
       await reloadIntents();
     }
-  }, [matchId, userId, acquire, applyServerState, reloadIntents]);
+  }, [matchId, userId, acquire, applyServerState, reloadIntents, loadAll]);
 
   /**
    * Offline chain reconciliation: if nobody changed the match while we were offline (server version equals the
@@ -305,7 +307,10 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
 
   useRealtime('match', matchId, (e) => {
     const p = e.payload as Record<string, unknown>;
-    if (e.topic === 'match.state.updated') applyServerState({ stateVersion: p.stateVersion as number, sequence: p.sequence as number, phase: p.phase as string, projection: p.projection as MatchProjection, clocks: p.clocks as Record<string, ClockState> });
+    if (e.topic === 'match.state.updated') {
+      applyServerState({ stateVersion: p.stateVersion as number, sequence: p.sequence as number, phase: p.phase as string, projection: p.projection as MatchProjection, clocks: p.clocks as Record<string, ClockState> });
+      if (p.rulesChanged) void loadAll();
+    }
     if (e.topic === 'scorer.lease.changed') {
       const l = p.lease as Lease;
       setLease(l);
@@ -370,7 +375,7 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
     let seq = state.sequence;
     for (const i of pending) {
       try {
-        if (i.type === 'ADD_FACT') p = adapter.applyFact(match.rulesConfig as never, p, { sequence: ++seq, category: 'event', type: String(i.payload.type), side: i.payload.side as never, playerId: (i.payload.playerId as string) ?? null, payload: (i.payload.payload as Record<string, unknown>) ?? {}, periodId: p.phase });
+        if (i.type === 'ADD_FACT') p = applyEvent(adapter, match.rulesConfig as never, p, { sequence: ++seq, category: 'event', type: String(i.payload.type), side: i.payload.side as never, playerId: (i.payload.playerId as string) ?? null, payload: (i.payload.payload as Record<string, unknown>) ?? {}, periodId: p.phase, clockMs: state.clocks.main ? clockDisplayMs(state.clocks.main, Number(i.payload.occurredAt) || Date.now()) : null });
         if (i.type === 'SET_PHASE') p = adapter.applyPhase(match.rulesConfig as never, p, String(i.payload.to));
       } catch {
         /* display only */

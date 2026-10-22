@@ -40,10 +40,11 @@ const EVENTS: EventTypeDef[] = [
   { type: 'penalty_stroke_missed', label: 'Penalty stroke missed', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: true },
   { type: 'circle_entry', label: 'Circle entry', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
+  { type: 'possession_change', label: 'Possession', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'shootout_stroke', label: 'Shoot-out attempt', group: 'shootout', requiresSide: true, playerField: 'optional', highlightDefault: true },
 ];
 
-export const HOCKEY_STATS = ['goals', 'shots', 'penalty_corners', 'circle_entries', 'green_cards', 'yellow_cards', 'red_cards'] as const;
+export const HOCKEY_STATS = ['goals', 'shots', 'penalty_corners', 'circle_entries', 'green_cards', 'yellow_cards', 'red_cards', 'possession_pct'] as const;
 
 const payloadSchemas: Record<string, z.ZodType> = {
   goal: z.object({ goalType: z.enum(['field', 'penalty_corner', 'penalty_stroke']).optional(), assistId: z.string().uuid().nullable().optional() }),
@@ -218,8 +219,10 @@ export const hockeyAdapter: SportAdapter<HockeyConfig> = {
       { key: 'green_cards', label: 'Green cards' },
       { key: 'yellow_cards', label: 'Yellow cards' },
       { key: 'red_cards', label: 'Red cards' },
+      { key: 'possession_pct', label: 'Possession', unit: '%' },
       { key: 'goals', label: 'Goals' },
     ],
   }),
   highlightDefaults: () => ['goal', 'penalty_stroke_missed', 'red_card', 'manual_moment'],
+  knockout: { label: 'Shoot-out when level', isOn: (c) => c.shootout.enabled, set: (c, on) => ({ ...c, shootout: { ...c.shootout, enabled: on } }) },
 };

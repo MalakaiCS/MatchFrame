@@ -7,7 +7,7 @@ import { createQueues, createStorage, library, mediaJobs, QUEUE, redisConnection
 
 const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_WORKER_URL, { max: 8, application_name: 'bs-media-worker' });
-const storage = createStorage(config);
+const storage = createStorage(config, { db }); // small files fall back to the database when object storage fails
 const queues = createQueues(config.REDIS_URL);
 const d = { db, storage, workerId: `media-${process.pid}` };
 const concurrency = Number(process.env.MEDIA_JOB_CONCURRENCY ?? 1);

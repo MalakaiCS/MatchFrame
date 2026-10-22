@@ -13,6 +13,7 @@ import { BulkRoundDialog, RolloverDialog, StandingsRulesCard } from '@/component
 import { DemoButton } from '@/components/demo-button';
 import { RulesEditor, usePresetOptions } from '@/components/competition/rules-editor';
 import { LogoField } from '@/components/logo-field';
+import { FinalsPanel } from '@/components/competition/finals';
 import type { Sport } from '@bs/domain';
 
 interface Competition {
@@ -21,6 +22,7 @@ interface Competition {
   seasons: { id: string; name: string; startsOn: string | null; endsOn: string | null; status: string }[];
   themeProfileId: string | null; gamePlanVersionId: string | null; outputDefaults: Record<string, unknown>; logoAssetId: string | null;
   standingsRules?: Record<string, unknown> | null;
+  finals?: { rulesConfig: Record<string, unknown>; rulesDescription: string[]; own: boolean; knockoutLabel: string | null };
 }
 
 export default function CompetitionDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +59,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <Tab value="overview">Overview</Tab>
           <Tab value="fixtures">Fixtures ({fixtures.data?.total ?? 0})</Tab>
           <Tab value="table">Table</Tab>
+          <Tab value="finals">Finals</Tab>
           <Tab value="results">Results & fixtures</Tab>
           <Tab value="players">Players</Tab>
           <Tab value="production">Graphics & production</Tab>
@@ -79,7 +82,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Rules</h2>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">{comp.rulesDescription.map((r) => <li key={r}>{r}</li>)}</ul>
-            <p className="mt-3 text-xs text-muted">Rules version {comp.rulesVersion}. Running and completed matches keep the rules they started with; upcoming matches nobody has started scoring take changed rules.</p>
+            <p className="mt-3 text-xs text-muted">Rules version {comp.rulesVersion}. Running and completed matches keep the rules they started with; upcoming matches nobody has started scoring take changed rules.{comp.finals ? ` Finals: ${comp.finals.own ? 'their own rules' : comp.finals.knockoutLabel ? `these rules with ${comp.finals.knockoutLabel.toLowerCase()}` : 'these rules'} (Finals tab).` : ''}</p>
             {full ? (
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <Field label="Apply preset" htmlFor="preset">
@@ -101,6 +104,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           {fixtures.isLoading ? <Spinner /> : <MatchTable rows={fixtures.data?.items ?? []} tz={tz} />}
         </TabPanel>
         <TabPanel value="table"><SeasonStandings seasons={comp.seasons} /></TabPanel>
+        <TabPanel value="finals"><FinalsPanel competition={comp} canEdit={full} /></TabPanel>
         <TabPanel value="results"><SeasonResults seasons={comp.seasons} tz={tz} /></TabPanel>
         <TabPanel value="players"><SeasonPlayers seasons={comp.seasons} sport={comp.sport} /></TabPanel>
         <TabPanel value="production">

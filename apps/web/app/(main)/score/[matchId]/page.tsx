@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { use, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, CloudOff, Pause, Play, RotateCcw, Settings2, Undo2, UserRound, Users } from 'lucide-react';
-import { FUTSAL_GOAL_TYPES, FUTSAL_GOAL_TYPE_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS, clockDisplayMs, getAdapter, onField, type DisplayModel, type EventTypeDef, type LineupPlayer } from '@bs/domain';
+import { AlertTriangle, ArrowRight, Check, CloudOff, MoreHorizontal, Pause, Play, RotateCcw, Settings2, Undo2, UserRound, Users, X } from 'lucide-react';
+import { FUTSAL_GOAL_TYPES, FUTSAL_GOAL_TYPE_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS, POSSESSION_EVENT, clockDisplayMs, getAdapter, onField, possessionShare, scorerBoard, type DisplayModel, type EventTypeDef, type LineupPlayer } from '@bs/domain';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, Switch, cx } from '@bs/ui';
 import { get } from '@/lib/api';
 import { feedback, tone, useScorerPrefs } from '@/lib/feedback';
@@ -28,6 +28,15 @@ const DETAIL_GOAL_TYPES = GOAL_TYPES.filter((g) => g !== 'own_goal' && g !== 'pe
 // futsal penalties and 10 m kicks have their own buttons
 const FUTSAL_DETAIL_GOAL_TYPES = FUTSAL_GOAL_TYPES.filter((g) => g !== 'own_goal' && g !== 'penalty' && g !== 'second_penalty');
 const GOAL_LABELS: Record<string, string> = { ...GOAL_TYPE_LABELS, ...FUTSAL_GOAL_TYPE_LABELS };
+/** a statistic row in a team's column: the label on the left, the count on the right */
+const ROW = 'flex min-h-12 w-full items-center justify-between gap-2 rounded-md border bg-bg px-3 text-sm transition active:scale-[0.98] enabled:hover:bg-elevated disabled:opacity-50';
+const CARD_COLOUR: Record<string, string> = { yellow_card: '#F5C518', second_yellow: '#F5C518', green_card: '#2EA043', red_card: '#E5484D', sin_bin: '#F5C518', send_off: '#E5484D' };
+/** black or white text, whichever reads on the team's colour */
+function onColour(hex: string) {
+  const n = Number.parseInt(hex.replace('#', ''), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#0B1220' : '#FFFFFF';
+}
 
 function useTicker(ms = 200) {
   const [, set] = useState(0);
@@ -56,6 +65,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const [bbReset, setBbReset] = useState(true);
   const [settings, setSettings] = useState(false);
   const [quickUndo, setQuickUndo] = useState<{ commandId: string; label: string; at: number } | null>(null);
+  const [moreFor, setMoreFor] = useState<Side | null>(null);
   const warned = useRef(0);
 
   const adapter = s.match ? getAdapter(s.match.sport) : null;
@@ -114,6 +124,20 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const expectedStarters = STARTERS[m.sport] ?? 1;
   const lineupThin = (['home', 'away'] as const).some((sd) => playersOf(sd).filter((p) => p.starter).length < expectedStarters);
   const foulLimit = m.sport === 'basketball' ? ((cfg as { playerFoulLimit?: number }).playerFoulLimit ?? 5) : null;
+  // two team columns (every sport but basketball, which keeps its court layout): scoring, then each statistic with its count
+  const board = scorerBoard(m.sport);
+  const allDefs = adapter.eventTypes(cfg);
+  const defOf = (type: string) => allDefs.find((e) => e.type === type);
+  const allowedNow = (type: string) => events.some((e) => e.type === type);
+  const showBoard = !!board && access !== 'view' && (phase.kind === 'play' || phase.kind === 'break' || phase.kind === 'final') && proj.phase !== 'shootout';
+  const liveShare = board?.possession ? possessionShare(proj, mainClock ? clockDisplayMs(mainClock, s.serverNow()) : null) : null;
+  const shootoutEv = events.find((e) => e.group === 'shootout');
+  // a level match whose rules let the draw stand, at the end of regulation: offer to decide it instead
+  const ko = adapter.knockout;
+  const koOn = !!ko?.isOn(cfg);
+  const level = proj.score.home === proj.score.away;
+  const regulationEnd = phase.kind === 'play' && !phase.tags.some((t) => t === 'extra_time' || t === 'shootout') && transitions.includes('full_time');
+  const offerKnockout = !!ko && !koOn && level && regulationEnd && access === 'score';
   const isBbFoulStep = (p: typeof pick) => !!p && p.ev.type === 'foul' && m.sport === 'basketball' && !p.extra?.foulType;
 
   const playerNote = (id: string) => {
@@ -242,6 +266,20 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
     setQuickUndo(null);
   };
 
+  /** a tap in a team's column: scores go out at once (who scored follows), cards and changes ask the player first, statistics just count */
+  const recordFor = async (evType: string, side: Side) => {
+    const e = defOf(evType);
+    if (!e) return;
+    if (e.group === 'score' && e.playerField !== 'none' && playersOf(side).length) {
+      const cid = await sendFact(e, side);
+      setPlayerFor({ commandId: cid, side, label: e.label, eventType: e.type });
+      return;
+    }
+    const asksPlayer = e.group === 'change' || (e.group === 'discipline' && e.type !== 'foul' && e.playerField !== 'none' && playersOf(side).length > 0);
+    if (asksPlayer) return setPick({ ev: e, side });
+    await sendFact(e, side);
+  };
+
   const clockAction = (action: 'start' | 'pause' | 'resume', clockId = 'main') => s.enqueue('CLOCK_ACTION', { clockId, action }, `Clock ${action}`);
   const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
   const ev = (type: string) => events.find((e) => e.type === type)!;
@@ -359,6 +397,60 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           ))}
           {access === 'score' ? <label className="col-span-2 flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={bbReset} onChange={(e) => setBbReset(e.target.checked)} className="size-5" /> Reset shot clock on 2/3-point scores</label> : null}
         </section>
+      ) : showBoard ? (
+        <>
+          <section className="grid grid-cols-2 gap-2" aria-label="Teams">
+            {(['home', 'away'] as const).map((side) => {
+              const t = team(side);
+              const stats = proj.stats[side] ?? {};
+              const can = (type: string) => { const e = defOf(type); return !!e && allowedNow(type) && (e.group === 'stat' ? canStats : canScore); };
+              const more = board!.more.filter((type) => defOf(type));
+              const has = proj.possession === side;
+              return (
+                <section key={side} aria-label={`${t.shortName}, ${side}`} className="grid content-start gap-2 rounded-[var(--radius-card)] border border-border bg-panel p-2" style={{ borderTop: `4px solid ${t.primaryColor}` }}>
+                  <h2 className="truncate text-center text-sm font-semibold">{t.shortName}</h2>
+                  {board!.scoring.filter((type) => defOf(type)).map((type) => (
+                    <Button key={type} size="touch" className="w-full text-lg font-bold" style={{ background: t.primaryColor, color: onColour(t.primaryColor) }} disabled={!can(type)} onClick={() => void recordFor(type, side)}>{defOf(type)!.label}</Button>
+                  ))}
+                  {board!.possession && defOf(POSSESSION_EVENT) ? (
+                    <button type="button" aria-pressed={has} aria-label={`Possession, ${liveShare ? `${liveShare[side]}%` : 'none yet'}`} disabled={!can(POSSESSION_EVENT)} onClick={() => void recordFor(POSSESSION_EVENT, side)} className={cx(ROW, has ? 'border-primary bg-primary/15 font-semibold' : 'border-border')}>
+                      <span className="min-w-0 truncate text-left">{has ? 'Has the ball' : 'Possession'}</span>
+                      <span className="text-lg font-bold tabular">{liveShare ? `${liveShare[side]}%` : '–'}</span>
+                    </button>
+                  ) : null}
+                  {board!.rows.filter((r) => defOf(r.type)).map((r) => (
+                    <button key={r.type} type="button" aria-label={r.stat ? `${r.label}, ${stats[r.stat] ?? 0}` : r.label} disabled={!can(r.type)} onClick={() => void recordFor(r.type, side)} className={cx(ROW, 'border-border')}>
+                      <span className="flex min-w-0 items-center gap-1.5 text-left">{CARD_COLOUR[r.type] ? <span className="h-3.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: CARD_COLOUR[r.type] }} aria-hidden /> : null}<span className="truncate">{r.label}</span></span>
+                      {r.stat ? <span className="text-lg font-bold tabular">{stats[r.stat] ?? 0}</span> : null}
+                    </button>
+                  ))}
+                  {more.length ? <Button size="md" variant="ghost" className="border border-border" disabled={!more.some(can)} onClick={() => setMoreFor(side)}><MoreHorizontal className="size-4" /> More</Button> : null}
+                </section>
+              );
+            })}
+          </section>
+          {board!.possession && phase.kind === 'play' && !proj.possession && canStats ? <p className="-mt-1 text-center text-xs text-muted">Tap Possession for the team with the ball; it counts match-clock time until the other team&apos;s tap.</p> : null}
+          {access === 'score' && controlEvents.some((e) => !e.requiresSide) ? (
+            <section className="flex flex-wrap gap-2" aria-label="Match control">
+              {controlEvents.filter((e) => !e.requiresSide).map((e) => <Button key={e.type} size="md" variant="secondary" disabled={!canScore} onClick={() => onEvent(e)}>{e.label}</Button>)}
+            </section>
+          ) : null}
+        </>
+      ) : proj.phase === 'shootout' && shootoutEv && access === 'score' ? (
+        <section className="grid grid-cols-2 gap-2" aria-label="Shootout">
+          {(['home', 'away'] as const).map((side) => {
+            const t = team(side);
+            const kicks = proj.shootout?.kicks.filter((k) => k.side === side) ?? [];
+            return (
+              <section key={side} aria-label={`${t.shortName}, ${side}`} className="grid content-start gap-2 rounded-[var(--radius-card)] border border-border bg-panel p-2" style={{ borderTop: `4px solid ${t.primaryColor}` }}>
+                <h2 className="flex items-center justify-between text-sm font-semibold"><span className="truncate">{t.shortName}</span><span className="text-2xl tabular">{proj.shootout?.[side] ?? 0}</span></h2>
+                <Button size="touch" variant="primary" disabled={!canScore} onClick={() => void sendFact(shootoutEv, side, { scored: true })}><Check className="size-5" /> Scored</Button>
+                <Button size="touch" variant="secondary" disabled={!canScore} onClick={() => void sendFact(shootoutEv, side, { scored: false })}><X className="size-5" /> Missed</Button>
+                <ol className="flex flex-wrap gap-1" aria-label={`${t.shortName} kicks`}>{kicks.map((k, i) => <li key={i} className={cx('grid size-6 place-items-center rounded-full text-xs font-bold', k.scored ? 'bg-healthy text-bg' : 'bg-live text-bg')} aria-label={k.scored ? 'scored' : 'missed'}>{k.scored ? '✓' : '✗'}</li>)}</ol>
+              </section>
+            );
+          })}
+        </section>
       ) : events.length ? (
         <>
           {access === 'score' && primaryEvents.length ? (
@@ -393,6 +485,12 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
             <h2 className="text-xs font-medium text-muted">Now: {phase.label}</h2>
             {otherPhases.length ? <button className="min-h-9 text-xs text-muted underline" onClick={() => setMorePhases(true)}>More options</button> : null}
           </div>
+          {offerKnockout ? (
+            <div className="mb-2 grid gap-2 rounded-md border border-primary/50 bg-primary/10 p-3 text-sm" role="status">
+              <span>Level. This match&apos;s rules let a draw stand. Does it need a winner?</span>
+              <Button size="touch" variant="primary" disabled={!canScore} onClick={() => void s.enqueue('SET_KNOCKOUT', { on: true, reason: 'level at the end of regulation: the match needs a winner' }, ko!.label)}>Play {ko!.label.replace(/ when level$/, '').toLowerCase()}</Button>
+            </div>
+          ) : null}
           {nextPhase ? (
             <Button size="touch" variant={nextPhase.kind === 'play' ? 'primary' : 'secondary'} className="w-full justify-between" disabled={!canScore} onClick={() => setPhaseConfirm(nextPhase.id)}>
               <span>Next: {nextPhase.label}</span><ArrowRight className="size-5" />
@@ -420,7 +518,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         <h2 className="mb-2 text-xs font-medium text-muted">Recent</h2>
         <ul className="grid gap-1 text-sm">
           {pending.map((i) => <li key={i.commandId} className="flex items-center gap-2 text-warning"><StatusPill tone="warning">{i.status === 'sending' ? 'sending' : 'pending'}</StatusPill>{i.label}</li>)}
-          {(facts.data ?? []).filter((f) => f.category === 'event').slice(-12).reverse().map((f) => {
+          {(facts.data ?? []).filter((f) => f.category === 'event' && f.type !== POSSESSION_EVENT).slice(-12).reverse().map((f) => {
             const pl = nameOf(f.playerId);
             const assist = nameOf(f.payload?.assistId as string | undefined);
             const goalType = f.payload?.goalType ? GOAL_LABELS[String(f.payload.goalType)] ?? String(f.payload.goalType) : null;
@@ -429,11 +527,11 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
               <li key={f.id} className={cx('flex min-h-11 items-center gap-2', f.voided && 'line-through opacity-50')}>
                 <span className="w-10 text-xs text-muted tabular">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : ''}</span>
                 <span className="min-w-0 flex-1">
-                  {f.type.replace(/_/g, ' ')} {f.side ? team(f.side).abbreviation : ''} {pl ? `· ${pl}` : ''}
+                  {defOf(f.type)?.label ?? f.type.replace(/_/g, ' ')}{f.type === 'shootout_kick' || f.type === 'shootout_stroke' ? (f.payload?.scored ? ' (scored)' : ' (missed)') : ''} {f.side ? team(f.side).abbreviation : ''} {pl ? `· ${pl}` : ''}
                   {assist || goalType ? <span className="block text-xs text-muted">{[assist ? `assist ${assist}` : null, goalType].filter(Boolean).join(' · ')}</span> : null}
                 </span>
                 {detailsMissing ? <Button size="sm" variant="ghost" aria-label={`Goal details for ${pl ?? 'goal'}`} onClick={() => setGoalDetails({ factId: f.id, side: f.side!, scorerId: f.playerId, step: 'assist' })}>Details</Button> : null}
-                {access === 'score' && !f.voided && !f.playerId && f.side ? <Button size="sm" variant="ghost" aria-label="Add player" onClick={() => setPlayerFor({ factId: f.id, side: f.side!, label: f.type.replace(/_/g, ' '), eventType: f.type })}><UserRound className="size-4" /></Button> : null}
+                {access === 'score' && !f.voided && !f.playerId && f.side && defOf(f.type)?.playerField !== 'none' ? <Button size="sm" variant="ghost" aria-label="Add player" onClick={() => setPlayerFor({ factId: f.id, side: f.side!, label: f.type.replace(/_/g, ' '), eventType: f.type })}><UserRound className="size-4" /></Button> : null}
                 {access === 'score' && !f.voided ? <Button size="sm" variant="ghost" aria-label={`Undo ${f.type}`} disabled={!canScore} onClick={() => { setUndo(f); setReason(''); }}><Undo2 className="size-4" /></Button> : null}
               </li>
             );
@@ -441,6 +539,16 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           {!s.online ? <li className="text-xs text-muted">History refreshes when you are back online.</li> : null}
         </ul>
       </section>
+
+      {/* the rarer events of one team's column */}
+      <Dialog open={!!moreFor} onOpenChange={(o) => !o && setMoreFor(null)} title={moreFor ? `More for ${team(moreFor).shortName}` : ''} description="Penalties, own goals, second yellows, changes…">
+        <div className="grid grid-cols-2 gap-2">
+          {moreFor && board ? board.more.filter((type) => defOf(type)).map((type) => {
+            const e = defOf(type)!;
+            return <Button key={type} size="touch" variant={e.group === 'score' ? 'primary' : e.group === 'discipline' ? 'danger' : 'secondary'} disabled={!allowedNow(type) || !(e.group === 'stat' ? canStats : canScore)} onClick={() => { const side = moreFor; setMoreFor(null); void recordFor(type, side); }}>{e.label}</Button>;
+          }) : null}
+        </div>
+      </Dialog>
 
       {/* team picker */}
       <Dialog open={!!pick && !pick.side} onOpenChange={(o) => !o && setPick(null)} title={pick?.ev.label ?? ''} description="Which team?">
@@ -527,6 +635,12 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
       <Dialog open={morePhases} onOpenChange={setMorePhases} title="Other options" description="Skip a step or end the match early. Each move is confirmed.">
         <div className="grid gap-2">
           {otherPhases.map((def) => <Button key={def.id} size="touch" variant={def.kind === 'terminal' ? 'danger' : 'secondary'} disabled={!canScore} onClick={() => { setMorePhases(false); setPhaseConfirm(def.id); }}>{def.label}</Button>)}
+          {ko && phase.kind !== 'final' && phase.kind !== 'terminal' ? (
+            <div className="mt-2 border-t border-border pt-3">
+              <Switch label={`Knockout: ${ko.label.toLowerCase()}`} checked={koOn} disabled={!canScore || (koOn && phase.tags.some((t) => t === 'extra_time' || t === 'extra_time_interval' || t === 'shootout'))} onCheckedChange={(on) => void s.enqueue('SET_KNOCKOUT', { on }, on ? ko.label : 'A draw stands')} />
+              <p className="mt-1 text-xs text-muted">{koOn ? 'A level score at the end goes to the decider instead of a draw.' : 'Off: a level score at the end is a draw.'} Finals matches are knockout from the start.</p>
+            </div>
+          ) : null}
         </div>
       </Dialog>
 

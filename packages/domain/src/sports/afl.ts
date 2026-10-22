@@ -207,4 +207,5 @@ export const aflAdapter: SportAdapter<AflConfig> = {
     ],
   }),
   highlightDefaults: () => ['goal', 'manual_moment'],
+  knockout: { label: 'Extra time when level', isOn: (c) => c.extraTime.enabled, set: (c, on) => ({ ...c, extraTime: { ...c.extraTime, enabled: on } }) },
 };

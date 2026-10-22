@@ -73,3 +73,6 @@ export const toSeconds = (t: string) => {
   return m! * 60 + s!;
 };
 export const score = async (page: Page) => (await page.getByRole('region', { name: 'Score' }).locator('.text-5xl').allTextContents()).map(Number);
+
+/** One team's column on the scorer phone ("Harbour, home"): its scoring buttons and statistics with their counts. */
+export const teamColumn = (page: Page, side: 'home' | 'away') => page.getByRole('region', { name: new RegExp(`, ${side}$`) });

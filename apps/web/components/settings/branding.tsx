@@ -5,13 +5,12 @@ import { useEffect, useState } from 'react';
 import { Button, Card, ErrorNotice, Field, Input, Spinner, Switch } from '@bs/ui';
 import { patch } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
+import { LogoField } from '@/components/logo-field';
 
 interface Org { id: string; name: string; customDomain: string | null; branding: { productName?: string | null; logoAssetId?: string | null; primaryColor?: string | null; accentColor?: string | null; supportEmail?: string | null; hideVendor?: boolean } | null }
-interface Asset { id: string; name: string; kind: string }
 
 export function BrandingPanel({ owner, admin }: { owner: boolean; admin: boolean }) {
   const org = useGet<Org>(['org'], 'organisations/current');
-  const logos = useGet<{ items?: Asset[] } | Asset[]>(['assets', 'logos'], 'assets?kind=logo&pageSize=100');
   const [b, setB] = useState<NonNullable<Org['branding']>>({});
   const [domain, setDomain] = useState('');
   useEffect(() => {
@@ -23,7 +22,6 @@ export function BrandingPanel({ owner, admin }: { owner: boolean; admin: boolean
   const save = useAction(() => patch('organisations/current', { branding: { productName: b.productName || null, logoAssetId: b.logoAssetId || null, primaryColor: b.primaryColor || null, accentColor: b.accentColor || null, supportEmail: b.supportEmail || null, hideVendor: !!b.hideVendor } }), [['org'], ['me']], { success: 'Branding saved. Reload to see it in the app.' });
   const saveDomain = useAction(() => patch('organisations/current', { customDomain: domain.trim() || null }), [['org']], { success: 'Custom domain saved' });
   if (org.isLoading) return <Spinner />;
-  const assetList = Array.isArray(logos.data) ? logos.data : logos.data?.items ?? [];
   const canEdit = admin;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -32,12 +30,7 @@ export function BrandingPanel({ owner, admin }: { owner: boolean; admin: boolean
         <p className="mb-3 text-xs text-muted">Shown in the app header, on sign-in and on the public match centre for this organisation.</p>
         <div className="grid gap-3">
           <Field label="Product name" htmlFor="b-name" hint="Replaces the product name in menus and emails"><Input id="b-name" disabled={!canEdit} value={b.productName ?? ''} onChange={(e) => setB({ ...b, productName: e.target.value })} placeholder="e.g. Harbour League TV" /></Field>
-          <Field label="Logo" htmlFor="b-logo" hint="Upload logos under Assets first">
-            <select id="b-logo" disabled={!canEdit} className="h-9 w-full rounded-md border border-border bg-bg px-2 text-sm" value={b.logoAssetId ?? ''} onChange={(e) => setB({ ...b, logoAssetId: e.target.value || null })}>
-              <option value="">None</option>
-              {assetList.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </Field>
+          <LogoField label="Organisation logo" value={b.logoAssetId ?? null} disabled={!canEdit} onChange={(v) => setB({ ...b, logoAssetId: v })} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Primary colour" htmlFor="b-p"><div className="flex items-center gap-2"><input id="b-p" type="color" disabled={!canEdit} className="size-9 rounded border border-border bg-bg" value={b.primaryColor ?? '#3ea6ff'} onChange={(e) => setB({ ...b, primaryColor: e.target.value })} /><Input aria-label="Primary colour hex" disabled={!canEdit} value={b.primaryColor ?? ''} placeholder="#3ea6ff" onChange={(e) => setB({ ...b, primaryColor: e.target.value || null })} /></div></Field>
             <Field label="Accent colour" htmlFor="b-a"><div className="flex items-center gap-2"><input id="b-a" type="color" disabled={!canEdit} className="size-9 rounded border border-border bg-bg" value={b.accentColor ?? '#45d6e8'} onChange={(e) => setB({ ...b, accentColor: e.target.value })} /><Input aria-label="Accent colour hex" disabled={!canEdit} value={b.accentColor ?? ''} placeholder="#45d6e8" onChange={(e) => setB({ ...b, accentColor: e.target.value || null })} /></div></Field>

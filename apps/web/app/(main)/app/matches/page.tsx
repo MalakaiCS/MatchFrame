@@ -8,6 +8,7 @@ import { ApiError, get, post, put } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 import { MatchTable, type MatchRow } from '@/components/match-table';
+import { FINALS_ROUND_NAMES } from '@bs/domain';
 
 interface Filters { from: string; to: string; sport: string; competitionId: string; status: string; view: 'table' | 'cards'; sort: 'scheduledAt' | '-scheduledAt' }
 const DEFAULTS: Filters = { from: '', to: '', sport: '', competitionId: '', status: '', view: 'table', sort: 'scheduledAt' };
@@ -82,7 +83,7 @@ function MatchesInner() {
 }
 
 function NewFixture({ comps, tz, initialCompetition, onClose }: { comps: Comp[]; tz: string; initialCompetition: string; onClose: () => void }) {
-  const [form, setForm] = useState({ competitionId: initialCompetition || comps[0]?.id || '', seasonId: '', homeTeamId: '', awayTeamId: '', venueId: '', round: '', kickoffLocal: '', timezone: tz, externalId: '' });
+  const [form, setForm] = useState({ competitionId: initialCompetition || comps[0]?.id || '', seasonId: '', homeTeamId: '', awayTeamId: '', venueId: '', round: '', stage: 'regular' as 'regular' | 'finals', kickoffLocal: '', timezone: tz, externalId: '' });
   const comp = useGet<Comp & { seasons: { id: string; name: string }[] }>(['competition', form.competitionId], form.competitionId ? `competitions/${form.competitionId}` : null);
   const teams = useGet<{ id: string; name: string }[]>(['teams', comp.data?.sport], comp.data ? `teams?sport=${comp.data.sport}` : null);
   const venues = useGet<{ id: string; name: string; timezone: string }[]>(['venues'], 'venues');
@@ -100,7 +101,16 @@ function NewFixture({ comps, tz, initialCompetition, onClose }: { comps: Comp[];
         <Field label="Home team" htmlFor="nh" error={fe('homeTeamId')}><NativeSelect id="nh" value={form.homeTeamId} onChange={(e) => setForm({ ...form, homeTeamId: e.target.value })}><option value="">Choose…</option>{teams.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect></Field>
         <Field label="Away team" htmlFor="na" error={fe('awayTeamId')}><NativeSelect id="na" value={form.awayTeamId} onChange={(e) => setForm({ ...form, awayTeamId: e.target.value })}><option value="">Choose…</option>{teams.data?.filter((t) => t.id !== form.homeTeamId).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect></Field>
         <Field label="Venue" htmlFor="nv"><NativeSelect id="nv" value={form.venueId} onChange={(e) => { const v = venues.data?.find((x) => x.id === e.target.value); setForm({ ...form, venueId: e.target.value, timezone: v?.timezone ?? form.timezone }); }}><option value="">None</option>{venues.data?.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</NativeSelect></Field>
-        <Field label="Round" htmlFor="nr"><Input id="nr" value={form.round} onChange={(e) => setForm({ ...form, round: e.target.value })} /></Field>
+        <Field label="Stage" htmlFor="nst" hint={form.stage === 'finals' ? 'Knockout: a level score goes to extra time or penalties (the competition\'s finals rules); never counts for the ladder.' : 'Counts for the ladder.'}>
+          <NativeSelect id="nst" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as 'regular' | 'finals', round: e.target.value === 'finals' && !form.round ? 'Grand Final' : form.round })}>
+            <option value="regular">Regular season</option>
+            <option value="finals">Finals</option>
+          </NativeSelect>
+        </Field>
+        <Field label="Round" htmlFor="nr" hint={form.stage === 'finals' ? 'e.g. Quarter-final, Semi-final, Grand Final' : undefined}>
+          <Input id="nr" list={form.stage === 'finals' ? 'finals-rounds' : undefined} value={form.round} onChange={(e) => setForm({ ...form, round: e.target.value })} />
+          <datalist id="finals-rounds">{FINALS_ROUND_NAMES.map((r) => <option key={r} value={r} />)}</datalist>
+        </Field>
         <Field label="Kick-off (local)" htmlFor="nk" error={fe('kickoffLocal')}><Input id="nk" type="datetime-local" value={form.kickoffLocal} onChange={(e) => setForm({ ...form, kickoffLocal: e.target.value })} /></Field>
         <Field label="Timezone (IANA)" htmlFor="nt" error={fe('timezone')}><Input id="nt" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></Field>
         <Field label="External ID" htmlFor="ne" hint="Optional reference from your fixture system"><Input id="ne" value={form.externalId} onChange={(e) => setForm({ ...form, externalId: e.target.value })} /></Field>

@@ -159,7 +159,7 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
             <div className="text-xs font-medium text-muted">Logo</div>
             <div className="mt-1 flex items-center gap-2">
               <div className="grid h-12 w-20 place-items-center overflow-hidden rounded border border-border bg-[repeating-conic-gradient(#1c2c43_0_25%,#131f32_0_50%)] bg-[length:12px_12px]">{logoPreview ? <img src={logoPreview} alt="Logo preview" className="max-h-10 max-w-full object-contain" /> : <span className="text-[10px] text-muted">none</span>}</div>
-              <input ref={file} type="file" hidden accept="image/png,image/jpeg,image/webp" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
+              <input ref={file} type="file" hidden accept="image/*" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
               <Button size="sm" loading={uploading} onClick={() => file.current?.click()}><Upload className="size-4" /> {logoPreview ? 'Replace' : 'Upload'}</Button>
               {logoPreview ? <Button size="sm" variant="ghost" onClick={() => { setCfg({ ...cfg, logoAssetId: null }); setLogoPreview(null); }}>Remove</Button> : null}
             </div>

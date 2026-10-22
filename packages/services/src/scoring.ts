@@ -264,6 +264,22 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
       };
       outbox.push({ ...base, topic: 'match.fact.corrected', payload: event as never });
       await audit(t, ctx.actor, result.correction === 'void' ? 'match_fact.void' : 'match_fact.correct', 'match_fact', result.factId, { before, after: result.updated, reason: result.reason });
+    } else if (result.kind === 'rules') {
+      // knockout on or off for this match: its rules change, the score and clock stay as they are
+      const reason = (env.payload as { reason?: string }).reason ?? null;
+      await t.update(matches).set({ rulesConfig: result.rulesConfig as Record<string, unknown>, updatedAt: acceptedAt }).where(eq(matches.id, matchId));
+      event = {
+        eventId: env.commandId,
+        organisationId: ctx.actor.organisationId,
+        matchId,
+        sequence: state.sequence,
+        stateVersion: newVersion,
+        type: 'rules_changed',
+        occurredAt: acceptedAt.toISOString(),
+        acceptedAt: acceptedAt.toISOString(),
+        payload: { knockout: result.knockout, reason },
+      };
+      await audit(t, ctx.actor, 'match.rules', 'match', matchId, { before: { rulesConfig: m.rulesConfig }, after: { rulesConfig: result.rulesConfig as object, knockout: result.knockout }, reason: reason ?? (result.knockout ? 'knockout: a level score is decided' : 'a draw stands') });
     } else {
       const p = env.payload as { action: string; clockId: string; ms?: number; reason?: string };
       event = {
@@ -290,7 +306,7 @@ export async function handleMatchCommand(ctx: Ctx, matchId: string, input: unkno
 
     const snapshot = { stateVersion: newVersion, sequence: result.state.sequence, phase: result.state.projection.phase, projection: result.state.projection, clocks: result.state.clocks };
     if (clocksChanged) outbox.push({ ...base, topic: 'clock.anchor.updated', payload: { matchId, stateVersion: newVersion, clocks: result.state.clocks as never, serverNow: now } });
-    outbox.push({ ...base, topic: 'match.state.updated', payload: { matchId, ...snapshot, status: newStatus, serverNow: now } as never });
+    outbox.push({ ...base, topic: 'match.state.updated', payload: { matchId, ...snapshot, status: newStatus, serverNow: now, ...(result.kind === 'rules' ? { rulesChanged: true } : {}) } as never });
     await enqueueOutbox(t, outbox);
 
     const response: CommandResponse = { accepted: true, commandId: env.commandId, event: event!, state: snapshot };

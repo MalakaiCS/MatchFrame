@@ -37,12 +37,12 @@ export function AssetLibrary() {
         <NativeSelect aria-label="Kind" className="w-auto" value={kind} onChange={(e) => setKind(e.target.value)}><option value="">All files</option><option value="image">Images</option><option value="logo">Logos</option><option value="video">Video</option><option value="audio">Audio</option></NativeSelect>
         <Input aria-label="Search files" className="max-w-xs" placeholder="Search by name or tag" value={search} onChange={(e) => setSearch(e.target.value)} />
         {usage.data ? <span className="text-xs text-muted">{mb(usage.data.storageBytes)} of {Math.round(usage.data.storageLimitBytes / 1024 ** 3)} GB used · max upload {mb(usage.data.maxUploadBytes)}</span> : null}
-        <input ref={file} type="file" hidden accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
+        <input ref={file} type="file" hidden accept="image/*,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
         <Button variant="primary" className="ml-auto" disabled={!!busy} onClick={() => file.current?.click()}><Upload className="size-4" /> Upload</Button>
       </div>
       {busy ? <p role="status" className="text-sm text-muted">{busy}</p> : null}
       <ErrorNotice error={err ?? assets.error} />
-      {assets.isLoading ? <Spinner /> : !assets.data?.length ? <EmptyState title="No media files" body="Upload PNG/JPEG/WebP images, MP4/MOV/WebM video or audio. Files are checked by content and converted to broadcast formats." /> : (
+      {assets.isLoading ? <Spinner /> : !assets.data?.length ? <EmptyState title="No media files" body="Upload images (PNG, JPEG, WebP, SVG and other formats your browser opens: ready at once), MP4/MOV/WebM video or audio (checked and converted for broadcast)." /> : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {assets.data.map((a) => (
             <div key={a.id} className="rounded border border-border p-2 text-xs">

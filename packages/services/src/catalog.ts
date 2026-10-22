@@ -4,6 +4,7 @@ import {
   clubs,
   competitions,
   matchFacts,
+  matchLineups,
   matches,
   matchState,
   mediaAssets,
@@ -15,14 +16,14 @@ import {
   venues,
   type Tx,
 } from '@bs/db';
-import { getAdapter, isValidTimeZone, SPORTS } from '@bs/domain';
+import { finalsRules, getAdapter, isValidTimeZone, SPORTS, type LineupSnapshot, type TeamSnapshot } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan, assignedScopes, hasWideRead } from './authz';
 import { audit } from './audit';
 import { conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
-import { reloadCompetitionOutputsTx } from './overlays';
+import { reloadCompetitionOutputsTx, reloadMatchOutputsTx } from './overlays';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
 const name = z.string().trim().min(1).max(100);
@@ -34,6 +35,8 @@ export const competitionInput = z.object({
   sport: z.enum(SPORTS),
   rulesPreset: z.string().optional(),
   rulesConfig: z.record(z.string(), z.unknown()).optional(),
+  /** rules for finals matches; null = the competition's rules with a level score decided */
+  finalsRulesConfig: z.record(z.string(), z.unknown()).nullable().optional(),
   defaultTimezone: z.string().refine(isValidTimeZone, 'Unknown IANA timezone'),
   logoAssetId: z.string().uuid().nullable().optional(),
   themeProfileId: z.string().uuid().nullable().optional(),
@@ -64,11 +67,65 @@ function resolveRules(sport: string, preset?: string, cfg?: Record<string, unkno
   return { rulesVersion: adapter.rulesVersion, rulesConfig: r.data as Record<string, unknown> };
 }
 
-/** A competition logo must be one of the organisation's own images. */
-async function checkLogo(t: Tx, ctx: Ctx, assetId: string | null | undefined) {
+/** Finals rules as given (validated like any rules), or null for "the competition's rules, knockout". */
+function resolveFinalsRules(sport: string, cfg: Record<string, unknown> | null) {
+  if (!cfg) return null;
+  const r = getAdapter(sport).configSchema.safeParse(cfg);
+  if (!r.success) throw invalid('Invalid finals rules', r.error.issues.map((i) => ({ field: `finalsRulesConfig.${i.path.join('.')}`, message: i.message })));
+  return r.data as Record<string, unknown>;
+}
+
+/** The rules a match of this stage takes from its competition. */
+export function stageRules(c: typeof competitions.$inferSelect, stage: 'regular' | 'finals'): Record<string, unknown> {
+  return stage === 'finals' ? finalsRules(getAdapter(c.sport), c.rulesConfig, c.finalsRulesConfig) : c.rulesConfig;
+}
+
+/** A logo or photo must be one of the organisation's own images. */
+async function checkLogo(t: Tx, ctx: Ctx, assetId: string | null | undefined, field = 'logoAssetId') {
   if (!assetId) return;
   const [a] = await t.select({ kind: mediaAssets.kind }).from(mediaAssets).where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.organisationId, ctx.actor.organisationId)));
-  if (!a || !['image', 'logo'].includes(a.kind)) throw invalid('Choose an image for the logo', [{ field: 'logoAssetId', message: 'Not one of your images' }]);
+  if (!a || !['image', 'logo'].includes(a.kind)) throw invalid(field === 'photoAssetId' ? 'Choose an image for the photo' : 'Choose an image for the logo', [{ field, message: 'Not one of your images' }]);
+}
+
+/** How a match keeps a team (taken when the match is made, refreshed for upcoming matches when the team changes). */
+export function teamSnapshot(t: typeof teams.$inferSelect): TeamSnapshot {
+  return { id: t.id, name: t.name, shortName: t.shortName, abbreviation: t.abbreviation, primaryColor: t.primaryColor, secondaryColor: t.secondaryColor, logoAssetId: t.logoAssetId };
+}
+
+const UPCOMING = ['scheduled', 'live'];
+
+/** A team's name, colours and logo as upcoming and live matches show them (their copy is taken when the match is made). */
+async function refreshTeamInMatchesTx(t: Tx, organisationId: string, team: typeof teams.$inferSelect) {
+  const ms = await t.select({ id: matches.id, home: matches.homeTeamId }).from(matches).where(and(eq(matches.organisationId, organisationId), inArray(matches.status, UPCOMING), or(eq(matches.homeTeamId, team.id), eq(matches.awayTeamId, team.id))));
+  for (const m of ms) {
+    const side = m.home === team.id ? 'home' : 'away';
+    await t.update(matchLineups).set({ teams: sql`jsonb_set(${matchLineups.teams}, ${`{${side}}`}::text[], ${JSON.stringify(teamSnapshot(team))}::jsonb)`, updatedAt: new Date() }).where(and(eq(matchLineups.matchId, m.id), eq(matchLineups.organisationId, organisationId)));
+  }
+  await reloadMatchOutputsTx(t, organisationId, ms.map((m) => m.id));
+}
+
+/** A player's photo in the line-ups of upcoming and live matches. */
+async function refreshPlayerPhotoTx(t: Tx, organisationId: string, playerId: string, photoAssetId: string | null) {
+  const rows = await t
+    .select({ matchId: matchLineups.matchId, snapshot: matchLineups.snapshot })
+    .from(matchLineups)
+    .innerJoin(matches, eq(matches.id, matchLineups.matchId))
+    .where(and(eq(matchLineups.organisationId, organisationId), inArray(matches.status, UPCOMING), sql`${matchLineups.snapshot}::text like ${`%${playerId}%`}`));
+  const changed: string[] = [];
+  for (const r of rows) {
+    const snap = r.snapshot as unknown as LineupSnapshot;
+    let hit = false;
+    for (const side of ['home', 'away'] as const)
+      for (const p of snap[side] ?? []) {
+        if (p.playerId !== playerId) continue;
+        p.photoAssetId = photoAssetId;
+        hit = true;
+      }
+    if (!hit) continue;
+    await t.update(matchLineups).set({ snapshot: snap as never, updatedAt: new Date() }).where(eq(matchLineups.matchId, r.matchId));
+    changed.push(r.matchId);
+  }
+  await reloadMatchOutputsTx(t, organisationId, changed);
 }
 
 /** An organisation's own preset ("org:<id>" in a rules-preset field): its saved settings, or an error if it is not one of this organisation's for this sport. */
@@ -92,30 +149,33 @@ async function rulesFor(t: Tx, ctx: Ctx, sport: string, preset: string | undefin
  * competition's new rules, as if they had been created under them: their rules and their untouched match state
  * (clock lengths, timeouts) start again from the new rules. Matches with anything recorded keep theirs.
  */
-async function retuneUntouchedMatches(t: Tx, ctx: Ctx, competitionId: string, rules: { rulesVersion: string; rulesConfig: Record<string, unknown> }) {
+async function retuneUntouchedMatches(t: Tx, ctx: Ctx, competitionId: string, stage: 'regular' | 'finals', rules: { rulesVersion: string; rulesConfig: Record<string, unknown> }) {
   const rows = await t
     .select({ m: matches, s: matchState })
     .from(matches)
     .innerJoin(matchState, eq(matchState.matchId, matches.id))
-    .where(and(eq(matches.competitionId, competitionId), eq(matches.organisationId, ctx.actor.organisationId), eq(matches.status, 'scheduled'), eq(matchState.sequence, 0)))
+    .where(and(eq(matches.competitionId, competitionId), eq(matches.organisationId, ctx.actor.organisationId), eq(matches.stage, stage), eq(matches.status, 'scheduled'), eq(matchState.sequence, 0)))
     .for('update');
-  const now = nowMs(ctx);
-  for (const { m, s } of rows) {
-    const adapter = getAdapter(m.sport);
-    const cfg = rules.rulesConfig as never;
-    const projection = adapter.initialProjection(cfg);
-    const clocks = adapter.initialClocks(cfg);
-    const stateVersion = s.stateVersion + 1;
-    await t.update(matches).set({ sportRulesVersion: rules.rulesVersion, rulesConfig: rules.rulesConfig, updatedAt: new Date(now) }).where(eq(matches.id, m.id));
-    await t.update(matchState).set({ stateVersion, projection: projection as never, clocks: clocks as never, updatedAt: new Date(now) }).where(and(eq(matchState.matchId, m.id), eq(matchState.stateVersion, s.stateVersion)));
-    const base = { organisationId: ctx.actor.organisationId, aggregateType: 'match', aggregateId: m.id, aggregateSeq: stateVersion };
-    await enqueueOutbox(t, [
-      { ...base, topic: 'clock.anchor.updated', payload: { matchId: m.id, stateVersion, clocks: clocks as never, serverNow: now } },
-      { ...base, topic: 'match.state.updated', payload: { matchId: m.id, stateVersion, sequence: 0, phase: projection.phase, projection, clocks, status: m.status, serverNow: now } as never },
-    ]);
-    await audit(t, ctx.actor, 'match.rules', 'match', m.id, { before: { rulesConfig: m.rulesConfig }, after: { rulesConfig: rules.rulesConfig, reason: 'competition rules changed before the match was scored' } });
-  }
+  for (const { m, s } of rows) await retuneMatchTx(t, ctx, m, s, rules, 'competition rules changed before the match was scored');
   return rows.length;
+}
+
+/** One untouched match (nothing recorded) takes new rules, its state starting again from them. */
+export async function retuneMatchTx(t: Tx, ctx: Ctx, m: typeof matches.$inferSelect, s: typeof matchState.$inferSelect, rules: { rulesVersion: string; rulesConfig: Record<string, unknown> }, reason: string) {
+  const now = nowMs(ctx);
+  const adapter = getAdapter(m.sport);
+  const cfg = rules.rulesConfig as never;
+  const projection = adapter.initialProjection(cfg);
+  const clocks = adapter.initialClocks(cfg);
+  const stateVersion = s.stateVersion + 1;
+  await t.update(matches).set({ sportRulesVersion: rules.rulesVersion, rulesConfig: rules.rulesConfig, updatedAt: new Date(now) }).where(eq(matches.id, m.id));
+  await t.update(matchState).set({ stateVersion, projection: projection as never, clocks: clocks as never, updatedAt: new Date(now) }).where(and(eq(matchState.matchId, m.id), eq(matchState.stateVersion, s.stateVersion)));
+  const base = { organisationId: ctx.actor.organisationId, aggregateType: 'match', aggregateId: m.id, aggregateSeq: stateVersion };
+  await enqueueOutbox(t, [
+    { ...base, topic: 'clock.anchor.updated', payload: { matchId: m.id, stateVersion, clocks: clocks as never, serverNow: now } },
+    { ...base, topic: 'match.state.updated', payload: { matchId: m.id, stateVersion, sequence: 0, phase: projection.phase, projection, clocks, status: m.status, serverNow: now, rulesChanged: true } as never },
+  ]);
+  await audit(t, ctx.actor, 'match.rules', 'match', m.id, { before: { rulesConfig: m.rulesConfig }, after: { rulesConfig: rules.rulesConfig, reason } });
 }
 
 function competitionScopeFilter(ctx: Ctx): SQL | undefined {
@@ -159,7 +219,14 @@ export async function getCompetition(ctx: Ctx, id: string) {
     assertCan(ctx.actor, 'competition.read', { competitionId: c.id });
     const ss = await t.select().from(seasons).where(eq(seasons.competitionId, id)).orderBy(asc(seasons.startsOn));
     const adapter = getAdapter(c.sport);
-    return { ...c, seasons: ss, rulesDescription: adapter.describeRules(c.rulesConfig as never), presets: adapter.presets.map((p) => ({ id: p.id, label: p.label })) };
+    const finals = stageRules(c, 'finals');
+    return {
+      ...c,
+      seasons: ss,
+      rulesDescription: adapter.describeRules(c.rulesConfig as never),
+      presets: adapter.presets.map((p) => ({ id: p.id, label: p.label })),
+      finals: { rulesConfig: finals, rulesDescription: adapter.describeRules(finals as never), own: !!c.finalsRulesConfig, knockoutLabel: adapter.knockout?.label ?? null },
+    };
   });
 }
 
@@ -177,6 +244,7 @@ export async function createCompetition(ctx: Ctx, input: z.input<typeof competit
         shortName: d.shortName ?? null,
         sport: d.sport,
         ...rules,
+        finalsRulesConfig: resolveFinalsRules(d.sport, d.finalsRulesConfig ?? null),
         defaultTimezone: d.defaultTimezone,
         logoAssetId: d.logoAssetId ?? null,
         themeProfileId: d.themeProfileId ?? null,
@@ -200,14 +268,18 @@ export async function updateCompetition(ctx: Ctx, id: string, input: Partial<z.i
     await checkLogo(t, ctx, d.logoAssetId);
     // Rules changes never affect matches that already pinned a rules version (matches.rules_config snapshot).
     const rules = d.rulesPreset || d.rulesConfig ? await rulesFor(t, ctx, c.sport, d.rulesPreset, { ...(d.rulesPreset ? {} : c.rulesConfig), ...(d.rulesConfig ?? {}) }) : null;
-    const { rulesPreset: _p, rulesConfig: _c, ...rest } = d;
+    const finalsChanged = d.finalsRulesConfig !== undefined;
+    const { rulesPreset: _p, rulesConfig: _c, finalsRulesConfig: _f, ...rest } = d;
     const [u] = await t
       .update(competitions)
-      .set({ ...rest, ...(rules ?? {}), updatedAt: new Date() })
+      .set({ ...rest, ...(rules ?? {}), ...(finalsChanged ? { finalsRulesConfig: resolveFinalsRules(c.sport, d.finalsRulesConfig ?? null) } : {}), updatedAt: new Date() })
       .where(eq(competitions.id, id))
       .returning();
-    await audit(t, ctx.actor, d.status === 'archived' ? 'competition.archive' : 'competition.update', 'competition', id, { before: { name: c.name, status: c.status, ...(rules ? { rulesConfig: c.rulesConfig } : {}) }, after: d });
-    const matchesUpdated = rules && applyToUpcoming ? await retuneUntouchedMatches(t, ctx, id, rules) : 0;
+    await audit(t, ctx.actor, d.status === 'archived' ? 'competition.archive' : 'competition.update', 'competition', id, { before: { name: c.name, status: c.status, ...(rules ? { rulesConfig: c.rulesConfig } : {}), ...(finalsChanged ? { finalsRulesConfig: c.finalsRulesConfig } : {}) }, after: d });
+    let matchesUpdated = 0;
+    if (applyToUpcoming && rules) matchesUpdated += await retuneUntouchedMatches(t, ctx, id, 'regular', rules);
+    // finals follow the competition's rules unless they have their own
+    if (applyToUpcoming && (finalsChanged || (rules && !u!.finalsRulesConfig))) matchesUpdated += await retuneUntouchedMatches(t, ctx, id, 'finals', { rulesVersion: u!.rulesVersion, rulesConfig: stageRules(u!, 'finals') });
     if (d.logoAssetId !== undefined && d.logoAssetId !== c.logoAssetId) await reloadCompetitionOutputsTx(t, ctx.actor.organisationId, id);
     return { ...u!, matchesUpdated };
   });
@@ -260,9 +332,22 @@ export async function createClub(ctx: Ctx, input: z.input<typeof clubInput>) {
   assertCan(ctx.actor, 'competition.write');
   const d = clubInput.parse(input);
   return tx(ctx, async (t) => {
+    await checkLogo(t, ctx, d.logoAssetId);
     const [c] = await t.insert(clubs).values({ organisationId: ctx.actor.organisationId, ...d }).returning();
     await audit(t, ctx.actor, 'club.create', 'club', c!.id, { after: d });
     return c!;
+  });
+}
+
+export async function updateClub(ctx: Ctx, id: string, input: Partial<z.input<typeof clubInput>> & { status?: 'active' | 'archived' }) {
+  assertCan(ctx.actor, 'competition.write');
+  const d = clubInput.partial().extend({ status: z.enum(['active', 'archived']).optional() }).parse(input);
+  return tx(ctx, async (t) => {
+    await checkLogo(t, ctx, d.logoAssetId);
+    const [c] = await t.update(clubs).set({ ...d, updatedAt: new Date() }).where(and(eq(clubs.id, id), eq(clubs.organisationId, ctx.actor.organisationId))).returning();
+    if (!c) throw notFound('Club');
+    await audit(t, ctx.actor, 'club.update', 'club', id, { after: d });
+    return c;
   });
 }
 
@@ -328,6 +413,7 @@ export async function createTeam(ctx: Ctx, input: z.input<typeof teamInput>, t0?
   assertCan(ctx.actor, 'competition.write');
   const d = teamInput.parse(input);
   const run = async (t: Tx) => {
+    await checkLogo(t, ctx, d.logoAssetId);
     const [team] = await t.insert(teams).values({ organisationId: ctx.actor.organisationId, ...d }).returning();
     await audit(t, ctx.actor, 'team.create', 'team', team!.id, { after: { name: d.name } });
     return team!;
@@ -342,7 +428,10 @@ export async function updateTeam(ctx: Ctx, id: string, input: Partial<z.input<ty
     if (!team) throw notFound('Team');
     const brandingOnly = Object.keys(d).every((k) => ['logoAssetId', 'primaryColor', 'secondaryColor', 'awayPrimaryColor', 'awaySecondaryColor'].includes(k));
     assertCan(ctx.actor, brandingOnly ? 'team_assets.write' : 'competition.write', { teamIds: [id], ownerTeamId: id });
+    await checkLogo(t, ctx, d.logoAssetId);
     const [u] = await t.update(teams).set({ ...d, updatedAt: new Date() }).where(eq(teams.id, id)).returning();
+    const shown = ['name', 'shortName', 'abbreviation', 'logoAssetId', 'primaryColor', 'secondaryColor'] as const;
+    if (shown.some((k) => d[k] !== undefined && d[k] !== team[k])) await refreshTeamInMatchesTx(t, ctx.actor.organisationId, u!);
     await audit(t, ctx.actor, d.status === 'archived' ? 'team.archive' : 'team.update', 'team', id, { before: { name: team.name, status: team.status }, after: d });
     return u!;
   });
@@ -396,6 +485,7 @@ export async function createPlayer(ctx: Ctx, input: z.input<typeof playerInput>)
   assertCan(ctx.actor, 'competition.write');
   const d = playerInput.parse(input);
   return tx(ctx, async (t) => {
+    await checkLogo(t, ctx, d.photoAssetId, 'photoAssetId');
     const [p] = await t.insert(players).values({ organisationId: ctx.actor.organisationId, ...d }).returning();
     await audit(t, ctx.actor, 'player.create', 'player', p!.id, { after: { displayName: d.displayName } });
     return p!;
@@ -406,8 +496,11 @@ export async function updatePlayer(ctx: Ctx, id: string, input: Partial<z.input<
   assertCan(ctx.actor, 'competition.write');
   const d = playerInput.partial().parse(input);
   return tx(ctx, async (t) => {
+    await checkLogo(t, ctx, d.photoAssetId, 'photoAssetId');
+    const [before] = await t.select({ photoAssetId: players.photoAssetId }).from(players).where(and(eq(players.id, id), eq(players.organisationId, ctx.actor.organisationId)));
     const [p] = await t.update(players).set({ ...d, updatedAt: new Date() }).where(and(eq(players.id, id), eq(players.organisationId, ctx.actor.organisationId))).returning();
     if (!p) throw notFound('Player');
+    if (d.photoAssetId !== undefined && d.photoAssetId !== before?.photoAssetId) await refreshPlayerPhotoTx(t, ctx.actor.organisationId, id, d.photoAssetId);
     await audit(t, ctx.actor, 'player.update', 'player', id, { after: { ...d, dateOfBirth: d.dateOfBirth ? '[set]' : undefined } });
     return p;
   });

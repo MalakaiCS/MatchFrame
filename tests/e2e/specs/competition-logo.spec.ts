@@ -53,7 +53,7 @@ test('competition logo: upload on the competition, shown in the app and in the g
   await page.goto(`/app/competitions/${comp.id}`);
   await page.getByLabel('Upload competition logo').setInputFiles({ name: `logo-${tag}.png`, mimeType: 'image/png', buffer: png() });
   await expect(page.getByText('Logo saved', { exact: false })).toBeVisible();
-  // checked and converted by the media worker, then on the graphics
+  // ready as soon as the upload completes, then on the graphics
   await expect.poll(logoUrl, { timeout: 30_000 }).toMatch(/\/api\/v1\/public\/assets\//);
   await page.reload();
   const header = page.getByRole('heading', { level: 1 });

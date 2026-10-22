@@ -143,7 +143,8 @@ async function notify(d: MediaJobDeps, job: typeof exportJobs.$inferSelect, stat
 
 async function onFailure(d: MediaJobDeps, job: typeof exportJobs.$inferSelect, reason: string) {
   await withTenant(d.db, { organisationId: job.organisationId }, async (t) => {
-    if (job.kind === 'asset_normalise') await t.update(mediaAssets).set({ state: 'FAILED', error: reason.slice(0, 500), updatedAt: new Date() }).where(eq(mediaAssets.id, job.sourceId));
+    // an image already in use stays ready when its smaller copy cannot be made
+    if (job.kind === 'asset_normalise') await t.update(mediaAssets).set({ state: 'FAILED', error: reason.slice(0, 500), updatedAt: new Date() }).where(and(eq(mediaAssets.id, job.sourceId), eq(mediaAssets.state, 'PROCESSING')));
     if (job.kind === 'clip_extract') {
       await t.update(clips).set({ state: 'FAILED', updatedAt: new Date() }).where(eq(clips.id, job.sourceId));
       await t.update(highlightRequests).set({ state: 'FAILED', reason: reason.slice(0, 300), updatedAt: new Date() }).where(eq(highlightRequests.clipId, job.sourceId));
@@ -231,6 +232,9 @@ async function normaliseAsset(d: MediaJobDeps, job: typeof exportJobs.$inferSele
     mime = 'audio/mp4';
   }
   await withTenant(d.db, { organisationId: org }, async (t) => {
+    // an archived asset stays archived; its new copies are not attached
+    const [cur] = await t.select({ state: mediaAssets.state }).from(mediaAssets).where(eq(mediaAssets.id, a.id));
+    if (cur?.state === 'ARCHIVED') return;
     await t.delete(assetDerivatives).where(eq(assetDerivatives.assetId, a.id));
     await t.insert(assetDerivatives).values(derivs);
     await t.update(mediaAssets).set({ state: 'READY', detectedMime: mime, width, height, durationMs, error: null, updatedAt: new Date() }).where(eq(mediaAssets.id, a.id));

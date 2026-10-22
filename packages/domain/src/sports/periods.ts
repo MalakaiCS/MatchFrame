@@ -84,16 +84,17 @@ export function periodTransitions(spec: PeriodSpec, p: MatchProjection, opts: { 
   };
   if (pre[p.phase]) return pre[p.phase]!;
   const per = periodOf(p.phase);
+  // level with extra time or a shootout on: they come next, full time stays available
   const endOfRegulation = () => {
-    const out = ['full_time'];
+    const out: string[] = [];
     if (tied && opts.extraTime && spec.extra) out.push('extra_time_break');
     if (tied && opts.shootout && spec.shootout) out.push('shootout');
-    return [...out, 'abandoned'];
+    return [...out, 'full_time', 'abandoned'];
   };
   if (per?.kind === 'reg') return per.n < spec.count ? [per.n === half ? 'half_time' : `break_${per.n}`, 'abandoned'] : endOfRegulation();
   if (per?.kind === 'et' && spec.extra) {
     if (per.n < spec.extra.count) return [`et_break_${per.n}`, 'abandoned'];
-    return tied && opts.shootout && spec.shootout ? ['full_time', 'shootout', 'abandoned'] : ['full_time', 'abandoned'];
+    return tied && opts.shootout && spec.shootout ? ['shootout', 'full_time', 'abandoned'] : ['full_time', 'abandoned'];
   }
   let m = /^break_(\d+)$/.exec(p.phase);
   if (m) return [`p${Number(m[1]) + 1}`, 'abandoned'];

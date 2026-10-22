@@ -2,6 +2,7 @@
 // "Minimal" theme: light flat panels, hairline rules, single-row scorebug, bar-chart stats.
 // Quiet motion: panels fade and rise, rules draw across, text settles in on a short stagger.
 import type { CSSProperties } from 'react';
+import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { sharedGraphics, type Chrome } from './shared-graphics';
@@ -259,7 +260,7 @@ function Ticker(p: GraphicProps) {
 function Slate(p: GraphicProps) {
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#F3F6FB', color: '#0B1220', fontFamily: p.data.theme.font, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 220px', gap: 26, ...animStyle(p, 'fade') }} data-graphic="slate">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...animStyle(p, 'wipe', 150, 420) }}><span style={{ fontSize: 22, letterSpacing: 5, color: '#5b6577' }}>{p.data.match.competition.name.toUpperCase()}</span><ThemeBadge p={p} height={56} /></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...animStyle(p, 'wipe', 150, 420) }}><span style={{ fontSize: 22, letterSpacing: 5, color: '#5b6577' }}>{occasionLine(p.data.match).toUpperCase()}</span><ThemeBadge p={p} height={56} /></div>
       <Versus p={p} delayMs={260} />
       <div style={{ fontSize: 46, fontWeight: 300, ...animStyle(p, 'rise', 460, 400) }}>{slateMessage(p)}</div>
       <div style={animStyle(p, 'fade', 560, 400)}><SponsorMark p={p} placement="detached_logo" height={60} /></div>

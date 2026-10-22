@@ -10,7 +10,14 @@
    preset*, and can be deleted from the same form. *Also use for upcoming matches nobody has started scoring*
    (on by default) gives the new rules to fixtures that have nothing recorded yet, not even a phase step, and
    resets their untouched clock to the new length; a match with anything recorded keeps the rules it has.
-1. **Fixture** — Matches → open the fixture. Check teams, venue, kickoff (shown in the organisation timezone,
+   **Finals rules**: finals matches use the competition's rules with a level score decided (extra time and
+   penalties in football and futsal, a shoot-out in hockey, golden point in rugby league, extra time in AFL and
+   netball). *Competition → Finals → Edit finals rules* gives the finals their own rules (for example extra time
+   2×10); *Use the competition's rules* goes back. A single match can be made a **knockout** (Match → Overview →
+   Rules → *Knockout*) before scoring starts, and from the scorer's phone once it has started.
+1. **Fixture** — Matches → open the fixture. *New fixture* has a **Stage**: *Regular season* (counts for the
+   ladder) or *Finals* (knockout rules; never counts for the ladder; the round is a name such as Quarter-final,
+   Semi-final or Grand Final). The stage of an upcoming match can be changed on its Overview tab. Check teams, venue, kickoff (shown in the organisation timezone,
    stored in UTC) and the lineup snapshot. Lineups lock at kickoff; later roster changes never rewrite them.
    *Create a round* on the competition's Fixtures tab makes a whole round at once and can copy another match's
    look, automation and output format.
@@ -123,6 +130,17 @@ background works best, JPEG and WebP too) or choose one of your images. It shows
 the app, and on the graphics of every match in the competition, whichever look they use: in the title bar of
 full-screen graphics (line-ups, stats, tables) and on the holding slate, in place of the look's own logo. Outputs
 that are open pick it up straight away; *Remove* goes back to the look's logo.
+
+**Logos and photos everywhere they are used.** Every image field has *Upload*, *Choose from your images* and
+*Remove*: competition logo (Overview), team logo and colours (*Assets → Teams → Logo, colours & roster*, or in the
+*New team* form), player photo (*Assets → Players → Photo & details*), club logo (*Assets → Clubs*), organisation
+logo (*Settings → Branding*), sponsor creatives (*Sponsors → Add creative*) and the look's logo (*Themes*). Any
+image the browser opens works (PNG, JPEG, WebP, SVG, GIF, AVIF…): it is converted on the device to a PNG (logos,
+keeping transparency) or JPEG photo no larger than 2048 px, and is **ready as soon as it has uploaded**, with no
+wait for the media worker. A new team logo or player photo reaches the graphics of the team's upcoming and live
+matches at once; finished matches keep the logo they were played with. When object storage is not configured or
+cannot be reached, images, logos and fonts (up to 25 MB) are kept in the database instead, so uploads still work;
+video and recordings need object storage.
 
 ## Graphics
 
@@ -243,8 +261,18 @@ bounce, push back, final siren); the animated background and match header can be
 ## Season data
 
 Competition → *Table*, *Results & fixtures* and *Players* show the league table (points for a win, draw, loss
-and bye and the tiebreakers are set under *Table rules*), every round with scores, and player totals across the
-season. *Roll over* on an active season creates the next one, carries rosters forward and archives the old
+and bye and the tiebreakers are set under *Table rules*; only regular-season matches count), every round with
+scores (the finals after the regular season, shoot-outs shown as pens), and player totals across the season.
+
+**Finals series** — Competition → *Finals*. Choose a format: *Top 2* (Grand Final), *Top 4* (semi-finals 1st v
+4th and 2nd v 3rd, then the Grand Final), *Top 6* (elimination finals 3rd v 6th and 4th v 5th while 1st and 2nd
+have the week off; 1st then meets the lower-placed winner) or *Top 8* (quarter-finals 1v8, 4v5, 2v7, 3v6, then
+semi-finals and the Grand Final). The first round comes from the ladder (a warning shows while regular-season
+matches are still to be played); give each match a kick-off and venue and press *Create*. Each next round is
+offered as soon as every match of the last one has a winner (a level score is decided by extra time and
+penalties), with the better-placed team at home. The matches are ordinary fixtures with an OBS link from the
+start, and their graphics show the round beside the competition (*Coastal League · Grand Final*). A finals match
+can also be added by hand (New fixture, Stage *Finals*). *Roll over* on an active season creates the next one, carries rosters forward and archives the old
 season with its results and tables intact. The same table, fixtures and top scorers are available as graphics.
 
 ## Sponsors and reports

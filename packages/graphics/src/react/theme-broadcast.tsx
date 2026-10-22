@@ -2,6 +2,7 @@
 // "Broadcast" theme: dark angled panels, team-colour stripes, slide/wipe motion, stacked two-row scorebug.
 // Every graphic builds in parts (panel, stripe, badge, text) on a short stagger and exits as one.
 import type { CSSProperties } from 'react';
+import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
@@ -322,7 +323,7 @@ function BreakScore(p: GraphicProps) {
         <div style={animStyle(p, 'slide-right', 220, 420)}><Fitted full={team(p, 'away').name} short={team(p, 'away').shortName} width={330} fontPx={40} measure={p.measure} /></div>
       </div>
       {d.shootout ? <div style={{ textAlign: 'center', fontSize: 30, ...animStyle(p, 'rise', 420, 320) }}>Penalties {d.shootout.home}–{d.shootout.away}</div> : null}
-      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 24, opacity: 0.8, ...animStyle(p, 'rise', 460, 320) }}>{p.data.match.competition.name}</div>
+      <div style={{ textAlign: 'center', marginTop: 10, fontSize: 24, opacity: 0.8, ...animStyle(p, 'rise', 460, 320) }}>{occasionLine(p.data.match)}</div>
       {p.cue.variables.showSponsor !== false ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, ...animStyle(p, 'fade', 540, 300) }}><SponsorMark p={p} placement="detached_logo" height={64} /></div> : null}
     </FullPanel>
   );
@@ -385,7 +386,7 @@ function Slate(p: GraphicProps) {
       <div style={animStyle(p, 'fade', 100, 400)}><ThemeBadge p={p} height={80} /></div>
       <div style={{ width: 1100 }}><TeamsHeader p={p} delayMs={200} /></div>
       <div style={{ fontSize: 52, fontWeight: 800, ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
-      <div style={{ fontSize: 28, opacity: 0.7, ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>
+      <div style={{ fontSize: 28, opacity: 0.7, ...animStyle(p, 'rise', 500, 360) }}>{occasionLine(p.data.match)}</div>
       <div style={animStyle(p, 'fade', 600, 400)}><SponsorMark p={p} placement="detached_logo" height={80} /></div>
     </div>
   );

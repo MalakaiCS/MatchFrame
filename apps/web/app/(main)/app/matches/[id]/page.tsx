@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Suspense, use, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Card, ErrorNotice, Field, InfoTip, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
+import { Button, Card, ErrorNotice, Field, InfoTip, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { patch } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isFull, streamingOn, useMe } from '@/lib/session';
@@ -25,10 +25,11 @@ export interface MatchDetail {
   competition: { id: string; name: string; themeProfileId?: string | null }; season: { id: string; name: string }; venue: { name: string } | null;
   teams: { home: { id: string; name: string; abbreviation: string; primaryColor: string }; away: { id: string; name: string; abbreviation: string; primaryColor: string } };
   lineup: { home: LineupPlayer[]; away: LineupPlayer[] }; lineupLocked: boolean;
-  state: { phase: string; projection: { score: { home: number; away: number }; shootout: { home: number; away: number } | null; stats: Record<string, Record<string, number>> }; stateVersion: number };
+  state: { phase: string; projection: { score: { home: number; away: number }; shootout: { home: number; away: number } | null; stats: Record<string, Record<string, number>> }; stateVersion: number; sequence?: number };
   lease: { holderName: string | null; expiresAt: string | null; leaseVersion: number; takenOverFrom: string | null } | null;
   scorers: { membershipId: string; name: string }[];
-  rules: { description: string[]; phases: { id: string; label: string }[]; capabilities: { statRows: { key: string; label: string }[] } };
+  rules: { description: string[]; phases: { id: string; label: string }[]; capabilities: { statRows: { key: string; label: string }[] }; knockout?: { label: string; on: boolean } | null };
+  stage?: 'regular' | 'finals';
   homeTeamId: string; awayTeamId: string; seasonId: string; scoringSource: string; scorerSourceDelayMs: number;
   publicToken: string | null;
   officials?: { role: string; name: string }[] | null; attendance?: number | null; weather?: { summary?: string | null; tempC?: number | null; condition?: string | null } | null;
@@ -36,6 +37,36 @@ export interface MatchDetail {
 interface Fact { id: string; sequence: number; category: string; type: string; side: string | null; playerId: string | null; periodId: string; clockMs: number | null; occurredAt: string; acceptedAt: string; source: string; actorName: string | null; voided: boolean; revision: number; historical: boolean; payload: Record<string, unknown>; corrections: { kind: string; reason: string; createdAt: string }[] }
 
 const TABS = ['overview', 'lineup', 'facts', 'runsheet', 'activity', 'overlays', 'streams', 'media'];
+
+/** The match's rules; before scoring starts, its stage (regular season or finals) and knockout can change here. */
+function MatchRules({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
+  const untouched = d.status === 'scheduled' && !d.state.sequence;
+  const save = useAction((v: { stage?: 'regular' | 'finals'; knockout?: boolean }) => patch(`matches/${d.id}`, v), [['match', d.id]], { success: (_r, v) => (v.stage ? (v.stage === 'finals' ? 'Now a finals match: knockout rules, left out of the ladder' : 'Now a regular-season match') : v.knockout ? 'A level score is decided in this match' : 'A draw stands in this match') });
+  const ko = d.rules.knockout;
+  return (
+    <Card className="p-4">
+      <h2 className="mb-2 font-medium">Rules</h2>
+      <ul className="list-disc pl-5 text-sm text-muted">{d.rules.description.map((x) => <li key={x}>{x}</li>)}</ul>
+      {canEdit ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Field label="Stage" htmlFor="m-stage" hint={d.stage === 'finals' ? 'Never counts for the ladder.' : 'Counts for the ladder.'}>
+            <NativeSelect id="m-stage" value={d.stage ?? 'regular'} disabled={save.isPending} onChange={(e) => save.mutate({ stage: e.target.value as 'regular' | 'finals' })}>
+              <option value="regular">Regular season</option>
+              <option value="finals">Finals</option>
+            </NativeSelect>
+          </Field>
+          {ko ? (
+            <div className="grid content-start gap-1">
+              <Switch label={`Knockout: ${ko.label.toLowerCase()}`} checked={ko.on} disabled={!untouched || save.isPending} onCheckedChange={(v) => save.mutate({ knockout: v })} />
+              <p className="text-xs text-muted">{untouched ? 'A level score goes to extra time, penalties or the sport\'s decider instead of a draw.' : 'Scoring has started: switch it in the scorer, under More options.'}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <ErrorNotice error={save.error} />
+    </Card>
+  );
+}
 
 function Inner({ id }: { id: string }) {
   const me = useMe();
@@ -65,7 +96,7 @@ function Inner({ id }: { id: string }) {
       <PageHeader
         crumbs={<><Link href="/app/matches" className="hover:text-text">Matches</Link> / <Link href={`/app/competitions/${d.competition.id}`} className="hover:text-text">{d.competition.name}</Link></>}
         title={`${d.teams.home.name} v ${d.teams.away.name}`}
-        subtitle={<>{fmtDate(d.scheduledAt, tz, { dateStyle: 'full', timeStyle: 'short' })} ({tz}) · {d.season.name}{d.round ? ` · ${d.round}` : ''}{d.venue ? ` · ${d.venue.name}` : ''}</>}
+        subtitle={<>{fmtDate(d.scheduledAt, tz, { dateStyle: 'full', timeStyle: 'short' })} ({tz}) · {d.season.name}{d.round ? ` · ${/^\d+$/.test(d.round) ? `Round ${d.round}` : d.round}` : ''}{d.venue ? ` · ${d.venue.name}` : ''}{d.stage === 'finals' ? <StatusPill className="ml-2" tone="primary">Finals</StatusPill> : null}</>}
         actions={<><Button asChild variant="ghost"><Link href={`/app/matches/${d.id}/commentary`}>Commentator view</Link></Button><Button asChild><Link href={`/score/${d.id}`}>Open scorer</Link></Button></>}
       />
       <Card className="mb-4 flex flex-wrap items-center gap-6 p-4">
@@ -90,7 +121,7 @@ function Inner({ id }: { id: string }) {
             </tbody></Table>
           </Card>
           <div className="grid gap-4">
-            <Card className="p-4"><h2 className="mb-2 font-medium">Rules</h2><ul className="list-disc pl-5 text-sm text-muted">{d.rules.description.map((x) => <li key={x}>{x}</li>)}</ul></Card>
+            <MatchRules d={d} canEdit={full} />
             {full ? <ScoringSetup d={d} /> : null}
             <SharePanel matchId={d.id} publicToken={d.publicToken} canEdit={full} />
             <MatchInfoEditor matchId={d.id} match={d} canEdit={full} />

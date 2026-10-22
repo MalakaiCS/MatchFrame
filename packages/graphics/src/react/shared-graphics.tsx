@@ -207,7 +207,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     const round = p.data.match.round ?? null;
     const all = season?.fixtures ?? [];
     const list = mode === 'results' ? all.filter((f) => f.score && !f.live) : mode === 'next' ? all.filter((f) => f.round !== round) : all.filter((f) => round === null || f.round === round);
-    const title = String(p.cue.variables.title ?? '') || (mode === 'results' ? t(p, 'RESULTS') : mode === 'next' ? t(p, 'NEXT ROUND') : round ? `${t(p, 'ROUND')} ${round}` : t(p, 'FIXTURES'));
+    const title = String(p.cue.variables.title ?? '') || (mode === 'results' ? t(p, 'RESULTS') : mode === 'next' ? t(p, 'NEXT ROUND') : round ? (/^\d+$/.test(round) ? `${t(p, 'ROUND')} ${round}` : round) : t(p, 'FIXTURES'));
     return C.frame(
       p,
       title.toUpperCase(),

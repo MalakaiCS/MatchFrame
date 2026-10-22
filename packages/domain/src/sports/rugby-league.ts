@@ -44,9 +44,10 @@ const EVENTS: EventTypeDef[] = [
   { type: 'six_again', label: 'Six again', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'line_break', label: 'Line break', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
+  { type: 'possession_change', label: 'Possession', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
 ];
 
-export const RUGBY_LEAGUE_STATS = ['points', 'tries', 'conversions', 'penalty_goals', 'field_goals', 'errors', 'penalties', 'six_agains', 'line_breaks', 'interchanges'] as const;
+export const RUGBY_LEAGUE_STATS = ['points', 'tries', 'conversions', 'penalty_goals', 'field_goals', 'errors', 'penalties', 'six_agains', 'line_breaks', 'interchanges', 'possession_pct'] as const;
 
 const payloadSchemas: Record<string, z.ZodType> = {
   field_goal: z.object({ points: z.union([z.literal(1), z.literal(2)]).default(1) }),
@@ -230,7 +231,9 @@ export const rugbyLeagueAdapter: SportAdapter<RugbyLeagueConfig> = {
       { key: 'penalties', label: 'Penalties conceded' },
       { key: 'six_agains', label: 'Six agains' },
       { key: 'interchanges', label: 'Interchanges' },
+      { key: 'possession_pct', label: 'Possession', unit: '%' },
     ],
   }),
   highlightDefaults: () => ['try', 'penalty_try', 'field_goal', 'send_off', 'manual_moment'],
+  knockout: { label: 'Golden point when level', isOn: (c) => c.goldenPoint.enabled, set: (c, on) => ({ ...c, goldenPoint: { ...c.goldenPoint, enabled: on } }) },
 };

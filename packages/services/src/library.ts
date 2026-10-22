@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 import {
+  assetDerivatives,
   clips,
   compilations,
   creatives,
@@ -31,7 +32,8 @@ import { publicId, randomToken, sha256, safeEqual } from './crypto';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
-import { keys, type Storage } from './storage';
+import { DB_FALLBACK_MAX_BYTES, keys, type Storage } from './storage';
+import { imageInfo } from './image-info';
 import type { JobQueues } from './queues';
 import type { Readable } from 'node:stream';
 
@@ -123,25 +125,46 @@ export async function receiveUpload(ctx: Ctx, assetId: string, body: Readable, c
   return { ok: true };
 }
 
+/**
+ * Called after the file arrived. Images and logos are checked here (their bytes must be a PNG, JPEG or WebP image
+ * up to 8000 px) and are ready at once, the original serving the graphics; the media worker may later make a
+ * smaller copy, but nothing waits for it. Video, audio and fonts are checked and converted by the media worker.
+ */
 export async function completeUpload(ctx: Ctx, assetId: string) {
   if (!ctx.storage) throw new AppError('STORAGE_UNAVAILABLE', 503, 'Object storage is not configured');
-  const job = await tx(ctx, async (t) => {
+  const r = await tx(ctx, async (t) => {
     const [a] = await t.select().from(mediaAssets).where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.organisationId, ctx.actor.organisationId)));
     if (!a) throw notFound('Asset');
-    if (a.state !== 'UPLOADING') return null;
+    if (a.state !== 'UPLOADING') return { job: null, state: a.state, rejected: null };
     const head = await ctx.storage!.head(a.originalKey);
     if (!head) throw invalid('The upload has not arrived in storage yet', undefined, 'UPLOAD_MISSING');
-    if (a.expectedBytes && head.contentLength !== a.expectedBytes) {
-      await t.update(mediaAssets).set({ state: 'FAILED', error: 'Uploaded size does not match the declared size', updatedAt: new Date() }).where(eq(mediaAssets.id, assetId));
-      throw invalid('Uploaded size does not match the declared size', undefined, 'UPLOAD_SIZE_MISMATCH');
+    const fail = async (error: string, code: string) => {
+      await t.update(mediaAssets).set({ state: 'FAILED', error, updatedAt: new Date() }).where(eq(mediaAssets.id, assetId));
+      return { job: null, state: 'FAILED', rejected: { error, code } };
+    };
+    if (a.expectedBytes && head.contentLength !== a.expectedBytes) return fail('Uploaded size does not match the declared size', 'UPLOAD_SIZE_MISMATCH');
+    const queue = async (params: Record<string, unknown>) =>
+      (await t.insert(exportJobs).values({ organisationId: ctx.actor.organisationId, kind: 'asset_normalise', sourceType: 'asset', sourceId: assetId, jobKey: `asset:${assetId}`, params, state: 'QUEUED', createdBy: ctx.actor.userId }).onConflictDoNothing().returning())[0] ?? null;
+    await audit(t, ctx.actor, 'asset.upload', 'media_asset', assetId, { after: { name: a.name, bytes: head.contentLength } });
+    if ((a.kind === 'image' || a.kind === 'logo') && head.contentLength <= DB_FALLBACK_MAX_BYTES) {
+      const data = await ctx.storage!.getBuffer(a.originalKey);
+      const info = imageInfo(data);
+      if (!info) return fail('Rejected: the file is not a PNG, JPEG or WebP image', 'UNSUPPORTED_MEDIA');
+      if (info.width > 8000 || info.height > 8000) return fail('Rejected: images larger than 8000 px are not accepted', 'IMAGE_TOO_LARGE');
+      const checksum = crypto.createHash('sha256').update(data).digest('hex');
+      const derivative = (purpose: string) => ({ organisationId: ctx.actor.organisationId, assetId, purpose, objectKey: a.originalKey, mime: info.mime, bytes: data.length, width: info.width, height: info.height, durationMs: null, checksum });
+      await t.insert(assetDerivatives).values([derivative('broadcast'), derivative('thumbnail')]).onConflictDoNothing();
+      await t.update(mediaAssets).set({ state: 'READY', bytes: data.length, detectedMime: info.mime, width: info.width, height: info.height, error: null, updatedAt: new Date() }).where(eq(mediaAssets.id, assetId));
+      // a smaller copy for broadcast and a thumbnail, when a media worker runs; the image is in use either way
+      return { job: await queue({ kind: a.kind, optimise: true }), state: 'READY', rejected: null };
     }
     await t.update(mediaAssets).set({ state: 'PROCESSING', bytes: head.contentLength, updatedAt: new Date() }).where(eq(mediaAssets.id, assetId));
-    const [j] = await t.insert(exportJobs).values({ organisationId: ctx.actor.organisationId, kind: 'asset_normalise', sourceType: 'asset', sourceId: assetId, jobKey: `asset:${assetId}`, params: { kind: a.kind }, state: 'QUEUED', createdBy: ctx.actor.userId }).onConflictDoNothing().returning();
-    await audit(t, ctx.actor, 'asset.upload', 'media_asset', assetId, { after: { name: a.name, bytes: head.contentLength } });
-    return j ?? null;
+    return { job: await queue({ kind: a.kind }), state: 'PROCESSING', rejected: null };
   });
-  if (job) await ctx.queues?.addMedia({ kind: 'export', organisationId: ctx.actor.organisationId, exportJobId: job.id }, { jobId: job.id });
-  return { assetId, state: 'PROCESSING' };
+  // refused after the transaction, so the asset stays marked FAILED with the reason
+  if (r.rejected) throw invalid(r.rejected.error.replace(/^Rejected: /, ''), [{ field: 'file', message: r.rejected.error }], r.rejected.code);
+  if (r.job) await ctx.queues?.addMedia({ kind: 'export', organisationId: ctx.actor.organisationId, exportJobId: r.job.id }, { jobId: r.job.id }).catch(() => undefined);
+  return { assetId, state: r.state };
 }
 
 export async function archiveAsset(ctx: Ctx, assetId: string) {

@@ -19,7 +19,7 @@ import {
   users,
   type Tx,
 } from '@bs/db';
-import { getAdapter, isValidTimeZone, resolveLocalTime, type LineupPlayer, type LineupSnapshot, type Sport, type TeamSnapshot } from '@bs/domain';
+import { getAdapter, isValidTimeZone, resolveLocalTime, type FinalsBracket, type LineupPlayer, type LineupSnapshot, type Sport } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan, assignedScopes, can, hasWideRead } from './authz';
 import { audit } from './audit';
@@ -28,6 +28,7 @@ import { tx, type Ctx } from './context';
 import { createOverlay, enqueuePlanAttached } from './overlays';
 import { ensureStarterPlan } from './gameplans';
 import { enqueueOutbox } from './outbox';
+import { retuneMatchTx, stageRules, teamSnapshot } from './catalog';
 
 export const matchInput = z.object({
   competitionId: z.string().uuid(),
@@ -36,6 +37,8 @@ export const matchInput = z.object({
   awayTeamId: z.string().uuid(),
   venueId: z.string().uuid().nullable().optional(),
   round: z.string().trim().max(40).nullable().optional(),
+  /** finals matches take the competition's finals rules (a level score is decided) and stay out of the ladder */
+  stage: z.enum(['regular', 'finals']).optional(),
   externalId: z.string().trim().max(100).nullable().optional(),
   kickoffLocal: z.string(),
   timezone: z.string().refine(isValidTimeZone, 'Unknown IANA timezone'),
@@ -44,9 +47,7 @@ export const matchInput = z.object({
   scorerSourceDelayMs: z.number().int().min(0).max(120_000).optional(),
 });
 
-export function teamSnapshot(t: typeof teams.$inferSelect): TeamSnapshot {
-  return { id: t.id, name: t.name, shortName: t.shortName, abbreviation: t.abbreviation, primaryColor: t.primaryColor, secondaryColor: t.secondaryColor, logoAssetId: t.logoAssetId };
-}
+export { teamSnapshot };
 
 async function rosterLineup(t: Tx, teamId: string, seasonId: string): Promise<LineupPlayer[]> {
   const rows = await t
@@ -67,7 +68,7 @@ async function rosterLineup(t: Tx, teamId: string, seasonId: string): Promise<Li
   }));
 }
 
-export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInput> & { scheduledAt?: Date }) {
+export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInput> & { scheduledAt?: Date; bracket?: FinalsBracket }) {
   if (d.homeTeamId === d.awayTeamId) throw invalid('Home and away team must differ', [{ field: 'awayTeamId', message: 'Choose a different team' }]);
   const [comp] = await t.select().from(competitions).where(and(eq(competitions.id, d.competitionId), eq(competitions.organisationId, ctx.actor.organisationId)));
   if (!comp) throw notFound('Competition');
@@ -85,6 +86,8 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
     scheduledAt = r.utc;
   }
   const adapter = getAdapter(comp.sport);
+  const stage = d.bracket ? 'finals' : (d.stage ?? 'regular');
+  const rulesConfig = stageRules(comp, stage);
   const [m] = await t
     .insert(matches)
     .values({
@@ -95,12 +98,14 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
       awayTeamId: away.id,
       venueId: d.venueId ?? null,
       round: d.round ?? null,
+      stage,
+      bracket: (d.bracket as unknown as Record<string, unknown>) ?? null,
       externalId: d.externalId ?? null,
       scheduledAt,
       timezone: d.timezone,
       sport: comp.sport,
       sportRulesVersion: comp.rulesVersion,
-      rulesConfig: comp.rulesConfig,
+      rulesConfig,
       isDemo: d.isDemo ?? false,
       gamePlanVersionId: comp.gamePlanVersionId,
       scoringSource: d.scoringSource ?? 'courtside',
@@ -108,7 +113,7 @@ export async function createMatchTx(ctx: Ctx, t: Tx, d: z.infer<typeof matchInpu
       createdBy: ctx.actor.userId,
     })
     .returning();
-  const cfg = comp.rulesConfig as never;
+  const cfg = rulesConfig as never;
   await t.insert(matchState).values({
     matchId: m!.id,
     organisationId: ctx.actor.organisationId,
@@ -271,6 +276,8 @@ export async function getMatch(ctx: Ctx, id: string) {
         eventTypes: adapter.eventTypes(cfg),
         capabilities: adapter.capabilities(cfg),
         allowedTransitions: adapter.allowedTransitions(cfg, state!.projection as never),
+        /** knockout: a level score is decided (extra time, penalties…); null when the sport always decides one */
+        knockout: adapter.knockout ? { label: adapter.knockout.label, on: adapter.knockout.isOn(cfg) } : null,
       },
     };
   });
@@ -279,6 +286,9 @@ export async function getMatch(ctx: Ctx, id: string) {
 export const matchUpdateInput = z.object({
   venueId: z.string().uuid().nullable().optional(),
   round: z.string().trim().max(40).nullable().optional(),
+  stage: z.enum(['regular', 'finals']).optional(),
+  /** before anything is recorded: a level score is decided (extra time, penalties…); once scoring starts, the scorer switches it */
+  knockout: z.boolean().optional(),
   kickoffLocal: z.string().optional(),
   timezone: z.string().refine(isValidTimeZone, 'Unknown IANA timezone').optional(),
   status: z.enum(['scheduled', 'postponed', 'cancelled', 'archived']).optional(),
@@ -306,7 +316,25 @@ export async function updateMatch(ctx: Ctx, id: string, input: z.input<typeof ma
       set.scheduleVersion = m.scheduleVersion + 1; // obsolete schedule jobs carry the old version and are rejected
     }
     for (const k of ['venueId', 'round', 'status', 'scoringSource', 'scorerSourceDelayMs', 'gamePlanVersionId', 'attendance', 'weather', 'officials'] as const) if (d[k] !== undefined) (set as Record<string, unknown>)[k] = d[k];
+    if (d.stage && d.stage !== m.stage) set.stage = d.stage;
     const [u] = await t.update(matches).set(set).where(eq(matches.id, id)).returning();
+    if (set.stage || d.knockout !== undefined) {
+      // a match nobody has scored yet takes the rules of its new stage (finals: a level score is decided)
+      const [s] = await t.select().from(matchState).where(eq(matchState.matchId, id)).for('update');
+      const [comp] = await t.select().from(competitions).where(eq(competitions.id, m.competitionId));
+      const untouched = !!s && m.status === 'scheduled' && s.sequence === 0;
+      let cfg = set.stage && comp ? stageRules(comp, set.stage as 'regular' | 'finals') : u!.rulesConfig;
+      const ko = getAdapter(m.sport).knockout;
+      if (d.knockout !== undefined) {
+        if (!ko) throw invalid(`${getAdapter(m.sport).label} always decides a level match`, [{ field: 'knockout', message: 'Not available for this sport' }]);
+        if (!untouched) throw conflict('MATCH_STARTED', 'Scoring has started: switch it from the scorer');
+        cfg = ko.set(cfg as never, d.knockout);
+      }
+      if (untouched && JSON.stringify(cfg) !== JSON.stringify(u!.rulesConfig)) {
+        const reason = d.knockout !== undefined ? (d.knockout ? 'knockout: a level score is decided' : 'a draw stands') : `moved to the ${set.stage === 'finals' ? 'finals' : 'regular season'}`;
+        await retuneMatchTx(t, ctx, u!, s!, { rulesVersion: u!.sportRulesVersion, rulesConfig: cfg }, reason);
+      }
+    }
     if (set.scheduleVersion) {
       await t.update(streamOutputs).set({ scheduleVersion: sql`${streamOutputs.scheduleVersion} + 1` }).where(eq(streamOutputs.matchId, id));
       await enqueueOutbox(t, { organisationId: m.organisationId, topic: 'match.rescheduled', aggregateType: 'match', aggregateId: id, payload: { scheduleVersion: set.scheduleVersion, scheduledAt: set.scheduledAt } });

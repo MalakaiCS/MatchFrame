@@ -50,7 +50,8 @@ describe('football adapter (A07)', () => {
     h.fact('penalty_scored', 'home', (t += 1000), { playerId: uuid(3) });
     h.fact('goal', 'away', (t += 1000));
     expect(h.state.projection.score).toEqual({ home: 2, away: 2 });
-    expect(footballAdapter.allowedTransitions(cfg, h.state.projection)).toContain('extra_time_break');
+    // level after 90 minutes: extra time is the next step, then penalties; full time stays available
+    expect(footballAdapter.allowedTransitions(cfg, h.state.projection)).toEqual(['extra_time_break', 'shootout', 'full_time', 'abandoned']);
     for (const p of ['extra_time_break', 'et_first_half', 'et_half_time', 'et_second_half']) h.phase(p, (t += 1000));
     expect(clockDisplayMs(h.state.clocks.main!, t)).toBe(105 * 60_000);
     h.phase('shootout', (t += 1000));

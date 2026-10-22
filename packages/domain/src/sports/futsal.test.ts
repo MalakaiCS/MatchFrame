@@ -47,7 +47,7 @@ describe('futsal', () => {
     expect(futsalAdapter.phases(KNOCKOUT).map((p) => p.id)).toEqual(expect.arrayContaining(['extra_time_break', 'et1', 'et_break_1', 'et2', 'shootout']));
     expect(futsalAdapter.phase(KNOCKOUT, 'shootout')?.label).toBe('Kicks from the penalty mark');
     const level = { ...futsalAdapter.initialProjection(KNOCKOUT), phase: 'p2' };
-    expect(futsalAdapter.allowedTransitions(KNOCKOUT, level)).toEqual(['full_time', 'extra_time_break', 'shootout', 'abandoned']);
+    expect(futsalAdapter.allowedTransitions(KNOCKOUT, level)).toEqual(['extra_time_break', 'shootout', 'full_time', 'abandoned']);
     expect(futsalAdapter.allowedTransitions(STANDARD, level)).toEqual(['full_time', 'abandoned']);
 
     const h = harness(STANDARD);

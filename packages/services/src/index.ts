@@ -47,3 +47,4 @@ export * as importsExtra from './imports-extra';
 export * as contact from './contact';
 export * as staffSvc from './staff';
 export * as transitionsSvc from './transitions';
+export * as finalsSvc from './finals';

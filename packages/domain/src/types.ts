@@ -107,6 +107,8 @@ export interface MatchProjection {
   sendOffs?: { side: Side; playerId: string | null; atMs: number; endedBy: 'goal' | null; endedAtMs: number | null }[];
   timeouts?: { home: number; away: number };
   possession?: Side | null;
+  /** possession by match-clock time (football, futsal, hockey, rugby league): see possession.ts */
+  possessionTime?: { side: Side | null; sinceMs: number | null; periodId: string | null; ms: { home: number; away: number } };
   stoppageMinutes?: number | null;
   /** when the current phase began (server ms) */
   phaseStartedAt?: number | null;

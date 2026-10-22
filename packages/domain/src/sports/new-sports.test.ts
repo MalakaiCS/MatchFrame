@@ -37,7 +37,7 @@ describe('period phase model', () => {
     const ids = periodPhases(spec).map((p) => p.id);
     expect(ids).toEqual(['scheduled', 'ready', 'pre_match', 'players_entering', 'about_to_start', 'p1', 'break_1', 'p2', 'half_time', 'second_half_entering', 'second_half_ready', 'p3', 'break_3', 'p4', 'extra_time_break', 'et1', 'et_break_1', 'et2', 'full_time', 'postponed', 'abandoned', 'cancelled']);
     const base = netballAdapter.initialProjection({} as never);
-    expect(periodTransitions(spec, { ...base, phase: 'p4', score: { home: 1, away: 1 } }, { extraTime: true, shootout: false })).toEqual(['full_time', 'extra_time_break', 'abandoned']);
+    expect(periodTransitions(spec, { ...base, phase: 'p4', score: { home: 1, away: 1 } }, { extraTime: true, shootout: false })).toEqual(['extra_time_break', 'full_time', 'abandoned']);
     expect(periodTransitions(spec, { ...base, phase: 'p4', score: { home: 2, away: 1 } }, { extraTime: true, shootout: false })).toEqual(['full_time', 'abandoned']);
     expect(periodTransitions(spec, { ...base, phase: 'half_time' }, { extraTime: true, shootout: false })).toEqual(['second_half_entering', 'second_half_ready', 'p3', 'abandoned']);
   });
@@ -83,7 +83,7 @@ describe('rugby league', () => {
     h.phase('half_time', (t += 1000));
     h.phase('p2', (t += 1000));
     expect(clockDisplayMs(h.state.clocks.main!, t)).toBe(40 * 60_000); // second half counts on from 40:00
-    expect(rugbyLeagueAdapter.allowedTransitions(cfg, h.state.projection)).toEqual(['full_time', 'extra_time_break', 'abandoned']);
+    expect(rugbyLeagueAdapter.allowedTransitions(cfg, h.state.projection)).toEqual(['extra_time_break', 'full_time', 'abandoned']);
   });
 });
 
@@ -121,7 +121,7 @@ describe('hockey', () => {
     expect(h.fact('substitution', 'home', (t += 1000), { payload: { playerOutId: uuid(3), playerInId: uuid(1) } }).kind).toBe('append'); // rolling: may return
     expect(h.state.projection.players[uuid(2)]).toMatchObject({ assists: 1 });
     expect(h.state.projection.stats.away).toMatchObject({ green_cards: 1 });
-    expect(hockeyAdapter.allowedTransitions(cfg, h.state.projection)).toEqual(['full_time', 'shootout', 'abandoned']);
+    expect(hockeyAdapter.allowedTransitions(cfg, h.state.projection)).toEqual(['shootout', 'full_time', 'abandoned']);
     h.phase('shootout', (t += 1000));
     expect(() => h.fact('goal', 'home', (t += 1000))).toThrow(/shoot-out/);
     h.fact('shootout_stroke', 'home', (t += 1000), { payload: { scored: true } });

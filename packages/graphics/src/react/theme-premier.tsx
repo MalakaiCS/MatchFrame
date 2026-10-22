@@ -4,7 +4,7 @@
 // glow and a geometric sans. Graphics build in layers: the panel wipes in, a light sweep crosses it, the words rise.
 // An original design in that spirit: no league marks, lions or wordmarks anywhere.
 import type { CSSProperties, ReactNode } from 'react';
-import type { RenderTeam } from '../data';
+import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
@@ -537,7 +537,7 @@ function BreakScore(p: GraphicProps) {
         {side('away')}
       </div>
       {d.shootout ? <div style={{ textAlign: 'center', marginTop: 14, fontSize: 26, color: c.electric, fontWeight: 700, ...CAPS, ...animStyle(p, 'rise', 420, 320) }}>{t(p, 'Penalties')} {d.shootout.home}–{d.shootout.away}</div> : null}
-      <div style={{ textAlign: 'center', marginTop: 18, fontSize: 20, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 460, 320) }}>{p.data.match.competition.name}</div>
+      <div style={{ textAlign: 'center', marginTop: 18, fontSize: 20, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 460, 320) }}>{occasionLine(p.data.match)}</div>
       {p.cue.variables.showSponsor !== false ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}><SponsorPlate p={p} placement="detached_logo" height={58} delayMs={540} /></div> : null}
     </FullPanel>
   );
@@ -623,7 +623,7 @@ function Slate(p: GraphicProps) {
         <Glass p={p} radius={14} inner={{ padding: '30px 36px' }}><TeamsHeader p={p} delayMs={200} crest={100} centre={t(p, 'VS')} /></Glass>
       </div>
       <div style={{ position: 'relative', fontSize: 54, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
-      <div style={{ position: 'relative', fontSize: 22, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>
+      <div style={{ position: 'relative', fontSize: 22, color: c.onMuted, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', ...animStyle(p, 'rise', 500, 360) }}>{occasionLine(p.data.match)}</div>
       <div style={{ position: 'relative', ...animStyle(p, 'fade', 600, 400) }}><SponsorMark p={p} placement="detached_logo" height={80} light /></div>
     </div>
   );

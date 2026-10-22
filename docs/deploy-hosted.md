@@ -92,7 +92,10 @@ DEFAULT_TIMEZONE=Australia/Brisbane
 ```
 
 Uploads from the app (images, logos, fonts, videos) go through the API on the app's own address and from there to
-the bucket, so the bucket needs no CORS rules and stays private. `POST /api/v1/assets/uploads` still returns a
+the bucket, so the bucket needs no CORS rules and stays private. Images and logos are checked by the API itself and
+are ready at once (the media worker only makes a smaller copy later, if it runs). If the bucket is missing,
+misconfigured or unreachable, images, logos and fonts up to 25 MB are kept in the database (`media_blobs`) and
+served from there, so logos still upload; video, clips and recordings need the bucket. `POST /api/v1/assets/uploads` still returns a
 presigned `uploadUrl` for API clients that want to send large files straight to storage; that needs CORS on the
 bucket for the caller's origin.
 

@@ -68,16 +68,17 @@ describe('competition logo', () => {
     const A = await makeOrg(deps, 'Upload A');
     const B = await makeOrg(deps, 'Upload B');
     const ctx = { ...A.ctx, storage };
-    const body = Buffer.from('not checked here: the media worker checks the content');
+    const body = Buffer.from('not an image: checked when the upload completes');
     const u = await library.createUpload(ctx, { name: 'cup.png', kind: 'logo', mime: 'image/png', bytes: body.length });
     const send = (c: typeof ctx, type: string, b: Buffer) => library.receiveUpload(c, u.assetId, Readable.from(b), type, b.length);
     await expect(send(ctx, 'image/jpeg', body)).rejects.toMatchObject({ code: 'UNSUPPORTED_MEDIA' });
     await expect(send(ctx, 'image/png', Buffer.concat([body, body]))).rejects.toMatchObject({ code: 'UPLOAD_SIZE_MISMATCH' });
     await expect(send({ ...B.ctx, storage }, 'image/png', body)).rejects.toMatchObject({ code: 'NOT_FOUND' });
     expect(await send(ctx, 'image/png', body)).toEqual({ ok: true });
-    expect(await library.completeUpload(ctx, u.assetId)).toBeTruthy();
+    // the bytes are not an image: refused when the upload completes, and the asset says why
+    await expect(library.completeUpload(ctx, u.assetId)).rejects.toMatchObject({ code: 'UNSUPPORTED_MEDIA' });
     const [a] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(mediaAssets).where(eq(mediaAssets.id, u.assetId)));
-    expect(a).toMatchObject({ state: 'PROCESSING', bytes: body.length });
+    expect(a).toMatchObject({ state: 'FAILED', error: 'Rejected: the file is not a PNG, JPEG or WebP image' });
     await expect(send(ctx, 'image/png', body)).rejects.toMatchObject({ code: 'UPLOAD_CLOSED' });
   });
 });

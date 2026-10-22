@@ -5,6 +5,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   doublePrecision,
   foreignKey,
@@ -146,6 +147,8 @@ export const competitions = pgTable(
     outputDefaults: jsonb('output_defaults').$type<Record<string, unknown>>().notNull().default({}),
     /** league table rules (points per result, tie-breakers); empty = the sport's default */
     standingsRules: jsonb('standings_rules').$type<Record<string, unknown>>().notNull().default({}),
+    /** rules for finals matches; null = the competition's rules with a level score decided (extra time, penalties…) */
+    finalsRulesConfig: jsonb('finals_rules_config').$type<Record<string, unknown>>(),
     status: text('status').notNull().default('active'), // active | archived
     createdBy: text('created_by'),
     createdAt: created(),
@@ -290,6 +293,10 @@ export const matches = pgTable(
     seasonId: uuid('season_id').notNull(),
     externalId: text('external_id'),
     round: text('round'),
+    /** regular season (counts for the ladder) or finals (knockout, never in the ladder) */
+    stage: text('stage').notNull().default('regular'),
+    /** finals only: { format, week, slot, seeds: { home, away } } */
+    bracket: jsonb('bracket').$type<Record<string, unknown>>(),
     homeTeamId: uuid('home_team_id').notNull(),
     awayTeamId: uuid('away_team_id').notNull(),
     venueId: uuid('venue_id'),
@@ -325,6 +332,7 @@ export const matches = pgTable(
     foreignKey({ columns: [t.awayTeamId, t.organisationId], foreignColumns: [teams.id, teams.organisationId] }),
     foreignKey({ columns: [t.venueId, t.organisationId], foreignColumns: [venues.id, venues.organisationId] }),
     check('matches_teams_differ', sql`${t.homeTeamId} <> ${t.awayTeamId}`),
+    check('matches_stage_chk', sql`${t.stage} in ('regular','finals')`),
     index('matches_org_sched_idx').on(t.organisationId, t.scheduledAt),
   ],
 );
@@ -1231,6 +1239,25 @@ export const assetDerivatives = pgTable(
     unique('asset_derivatives_uq').on(t.assetId, t.purpose),
     foreignKey({ columns: [t.assetId, t.organisationId], foreignColumns: [mediaAssets.id, mediaAssets.organisationId] }).onDelete('cascade'),
   ],
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+
+/**
+ * Stored files kept in the database when object storage cannot take them (not configured, unreachable): small
+ * files only (images, logos, fonts). Keyed by the same object key, so reads fall back here transparently.
+ */
+export const mediaBlobs = pgTable(
+  'media_blobs',
+  {
+    key: text('key').primaryKey(),
+    organisationId: org(),
+    contentType: text('content_type').notNull(),
+    bytes: integer('bytes').notNull(),
+    data: bytea('data').notNull(),
+    createdAt: created(),
+  },
+  (t) => [index('media_blobs_org_idx').on(t.organisationId)],
 );
 
 export const highlightRequests = pgTable(

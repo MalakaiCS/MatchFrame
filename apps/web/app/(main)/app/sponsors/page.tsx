@@ -8,6 +8,7 @@ import { PlacementThumb } from '@/components/sponsors/placement-thumb';
 import { post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { useMe } from '@/lib/session';
+import { ImageField } from '@/components/logo-field';
 
 interface Creative { id: string; name: string; kind: string; width: number | null; height: number | null; approvalStatus: string; assetState: string; url: string | null; expiresAt: string | null }
 interface Brand { id: string; name: string; category: string | null; creativeSets: { id: string; name: string; creatives: Creative[] }[] }
@@ -88,8 +89,9 @@ export default function SponsorsPage() {
         <ErrorNotice error={addBrand.error} />
       </Dialog>
 
-      <Dialog open={!!crOpen} onOpenChange={(o) => !o && setCrOpen(null)} title="Add creative" description="Choose a processed image or video from the asset library. Creatives need approval before they can air." footer={<Button variant="primary" disabled={!cr.assetId || !cr.name} onClick={async () => { await addCreative.mutateAsync(undefined as never); setCrOpen(null); }}>Add</Button>}>
-        <Field label="Asset" htmlFor="c-asset"><NativeSelect id="c-asset" value={cr.assetId} onChange={(e) => setCr({ assetId: e.target.value, name: cr.name || (assets.data?.find((a) => a.id === e.target.value)?.name ?? '') })}><option value="">Choose…</option>{assets.data?.filter((a) => ['image', 'logo', 'video'].includes(a.kind)).map((a) => <option key={a.id} value={a.id} disabled={a.state !== 'READY'}>{a.name} · {a.width}×{a.height} {a.state !== 'READY' ? `(${a.state})` : ''}</option>)}</NativeSelect></Field>
+      <Dialog open={!!crOpen} onOpenChange={(o) => !o && setCrOpen(null)} title="Add creative" description="Upload an image, or choose an image or video from the asset library. Creatives need approval before they can air." footer={<Button variant="primary" disabled={!cr.assetId || !cr.name} onClick={async () => { await addCreative.mutateAsync(undefined as never); setCrOpen(null); }}>Add</Button>}>
+        <div className="mb-3"><ImageField label="Creative" kind="image" value={cr.assetId || null} onChange={(v) => { setCr({ assetId: v ?? '', name: cr.name || (v ? 'Sponsor creative' : '') }); void assets.refetch(); }} /></div>
+        <Field label="Or choose a file" htmlFor="c-asset" hint="Videos are uploaded under Assets → Images, video & audio"><NativeSelect id="c-asset" value={cr.assetId} onChange={(e) => setCr({ assetId: e.target.value, name: cr.name || (assets.data?.find((a) => a.id === e.target.value)?.name ?? '') })}><option value="">Choose…</option>{assets.data?.filter((a) => ['image', 'logo', 'video'].includes(a.kind) && (a.state === 'READY' || a.id === cr.assetId)).map((a) => <option key={a.id} value={a.id}>{a.name}{a.width ? ` · ${a.width}×${a.height}` : ''}</option>)}</NativeSelect></Field>
         <Field label="Name" htmlFor="c-name"><Input id="c-name" value={cr.name} onChange={(e) => setCr({ ...cr, name: e.target.value })} /></Field>
         <ErrorNotice error={addCreative.error} />
       </Dialog>

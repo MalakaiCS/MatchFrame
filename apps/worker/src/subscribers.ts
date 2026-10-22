@@ -117,7 +117,7 @@ function loop(name: string, everyMs: number, fn: () => Promise<unknown>) {
 export async function startBackground(ctx: WorkerCtx) {
   const d = { db: ctx.db, config: ctx.config, workerId: ctx.workerId };
   const mailer = ctx.mailer ?? createMailer(ctx.config);
-  const storage = ctx.storage ?? createStorage(ctx.config);
+  const storage = ctx.storage ?? createStorage(ctx.config, { db: ctx.db });
   const push = pushSvc.createPushSender(ctx.config);
   const stops = [
     loop('automation', 150, () => automationSvc.automationTick(d)),

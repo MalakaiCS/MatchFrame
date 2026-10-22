@@ -72,6 +72,7 @@ const EVENTS: EventTypeDef[] = [
   { type: 'offside', label: 'Offside', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'foul', label: 'Foul', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
+  { type: 'possession_change', label: 'Possession', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
   { type: 'stoppage_announced', label: 'Stoppage time', group: 'control', requiresSide: false, playerField: 'none', highlightDefault: false },
   { type: 'shootout_kick', label: 'Shootout kick', group: 'shootout', requiresSide: true, playerField: 'optional', highlightDefault: true },
 ];
@@ -130,10 +131,11 @@ function transitions(cfg: FootballConfig, p: MatchProjection): string[] {
     case 'second_half_ready':
       return ['second_half', 'abandoned'];
     case 'second_half': {
-      const out = ['full_time'];
+      // level with extra time or penalties on: they come next, full time stays available
+      const out: string[] = [];
       if (tied && cfg.extraTime.enabled) out.push('extra_time_break');
       if (tied && cfg.shootout.enabled) out.push('shootout');
-      return [...out, 'abandoned'];
+      return [...out, 'full_time', 'abandoned'];
     }
     case 'extra_time_break':
       return ['et_first_half', 'abandoned'];
@@ -142,7 +144,7 @@ function transitions(cfg: FootballConfig, p: MatchProjection): string[] {
     case 'et_half_time':
       return ['et_second_half', 'abandoned'];
     case 'et_second_half':
-      return tied && cfg.shootout.enabled ? ['full_time', 'shootout', 'abandoned'] : ['full_time', 'abandoned'];
+      return tied && cfg.shootout.enabled ? ['shootout', 'full_time', 'abandoned'] : ['full_time', 'abandoned'];
     case 'shootout':
       return ['full_time', 'abandoned'];
     case 'postponed':
@@ -375,6 +377,11 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
     ],
   }),
   highlightDefaults: () => ['goal', 'own_goal', 'penalty_scored', 'penalty_missed', 'red_card', 'manual_moment'],
+  knockout: {
+    label: 'Extra time and penalties when level',
+    isOn: (c) => c.extraTime.enabled || c.shootout.enabled,
+    set: (c, on) => (on && (c.extraTime.enabled || c.shootout.enabled) ? c : { ...c, extraTime: { ...c.extraTime, enabled: on }, shootout: { ...c.shootout, enabled: on } }),
+  },
 };
 
 export type { LineupSnapshot, ClockState };

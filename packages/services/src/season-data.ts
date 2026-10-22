@@ -26,7 +26,7 @@ import { tx, type Ctx } from './context';
 type MatchRow = typeof matches.$inferSelect;
 
 export interface TeamRef { id: string; name: string; shortName: string; abbreviation: string; logoAssetId: string | null; primaryColor: string; secondaryColor: string }
-const teamRef = (t: typeof teams.$inferSelect): TeamRef => ({ id: t.id, name: t.name, shortName: t.shortName, abbreviation: t.abbreviation, logoAssetId: t.logoAssetId, primaryColor: t.primaryColor, secondaryColor: t.secondaryColor });
+export const teamRef = (t: typeof teams.$inferSelect): TeamRef => ({ id: t.id, name: t.name, shortName: t.shortName, abbreviation: t.abbreviation, logoAssetId: t.logoAssetId, primaryColor: t.primaryColor, secondaryColor: t.secondaryColor });
 
 async function seasonRow(ctx: Ctx, t: Tx, seasonId: string) {
   const [s] = await t.select().from(seasons).where(and(eq(seasons.id, seasonId), eq(seasons.organisationId, ctx.actor.organisationId)));
@@ -38,7 +38,7 @@ async function seasonRow(ctx: Ctx, t: Tx, seasonId: string) {
 }
 
 /** A match counts for the table once it reached its final phase (or was marked completed). */
-const isFinal = (m: MatchRow, phase: string | undefined) => m.status === 'completed' || phase === 'full_time';
+export const isFinal = (m: MatchRow, phase: string | undefined) => m.status === 'completed' || phase === 'full_time';
 
 async function resultsFor(t: Tx, organisationId: string, where: ReturnType<typeof and>) {
   const rows = await t
@@ -47,12 +47,16 @@ async function resultsFor(t: Tx, organisationId: string, where: ReturnType<typeo
     .innerJoin(matchState, eq(matchState.matchId, matches.id))
     .where(and(eq(matches.organisationId, organisationId), where));
   const results: StandingsResult[] = [];
+  /** regular-season results only: finals never count for the ladder */
+  const ladder: StandingsResult[] = [];
   for (const r of rows) {
     if (!isFinal(r.m, r.phase) || r.m.isDemo) continue;
     const proj = r.projection as unknown as MatchProjection;
-    results.push({ matchId: r.m.id, homeTeamId: r.m.homeTeamId, awayTeamId: r.m.awayTeamId, homeScore: proj.score.home, awayScore: proj.score.away, playedAt: r.m.scheduledAt.toISOString(), round: r.m.round });
+    const res = { matchId: r.m.id, homeTeamId: r.m.homeTeamId, awayTeamId: r.m.awayTeamId, homeScore: proj.score.home, awayScore: proj.score.away, playedAt: r.m.scheduledAt.toISOString(), round: r.m.round };
+    results.push(res);
+    if (r.m.stage !== 'finals') ladder.push(res);
   }
-  return { rows, results };
+  return { rows, results, ladder };
 }
 
 async function seasonTeams(t: Tx, organisationId: string, seasonId: string, matchRows: { m: MatchRow }[]) {
@@ -67,6 +71,17 @@ async function seasonTeams(t: Tx, organisationId: string, seasonId: string, matc
   return t.select().from(teams).where(and(inArray(teams.id, [...ids]), eq(teams.organisationId, organisationId)));
 }
 
+/** The season's ladder (regular-season results only), top first, with the teams. */
+export async function ladderTx(t: Tx, organisationId: string, seasonId: string, competition: typeof competitions.$inferSelect) {
+  const { rows, ladder } = await resultsFor(t, organisationId, eq(matches.seasonId, seasonId));
+  const ts = await seasonTeams(t, organisationId, seasonId, rows);
+  const rules = standingsRules(competition.sport as Sport, competition.standingsRules as Partial<StandingsRules>);
+  const table = computeStandings(ts.map((x) => x.id), ladder, rules, Object.fromEntries(ts.map((x) => [x.id, x.name])));
+  const byId = new Map(ts.map((x) => [x.id, teamRef(x)]));
+  const regularLeft = rows.filter((r) => r.m.stage !== 'finals' && !r.m.isDemo && !isFinal(r.m, r.phase) && !['cancelled', 'abandoned', 'postponed', 'archived'].includes(r.m.status)).length;
+  return { table, teams: byId, regularLeft };
+}
+
 export interface StandingsResponse {
   season: { id: string; name: string; status: string };
   competition: { id: string; name: string; shortName: string | null; sport: Sport; logoAssetId: string | null };
@@ -78,7 +93,7 @@ export interface StandingsResponse {
 export async function getStandings(ctx: Ctx, seasonId: string): Promise<StandingsResponse> {
   return tx(ctx, async (t) => {
     const { season, competition } = await seasonRow(ctx, t, seasonId);
-    const { rows, results } = await resultsFor(t, ctx.actor.organisationId, eq(matches.seasonId, seasonId));
+    const { rows, ladder: results } = await resultsFor(t, ctx.actor.organisationId, eq(matches.seasonId, seasonId));
     const ts = await seasonTeams(t, ctx.actor.organisationId, seasonId, rows);
     const rules = standingsRules(competition.sport as Sport, competition.standingsRules as Partial<StandingsRules>);
     const names = Object.fromEntries(ts.map((x) => [x.id, x.name]));
@@ -107,10 +122,12 @@ export interface FixtureItem {
   away: TeamRef;
   score: { home: number; away: number } | null;
   scoreDetail: { home: string; away: string } | null;
+  stage: 'regular' | 'finals';
+  shootout: { home: number; away: number } | null;
 }
 
-/** Every match of the season, grouped by round in kick-off order; results carry the score. */
-export async function getFixtures(ctx: Ctx, seasonId: string): Promise<{ rounds: { round: string | null; matches: FixtureItem[] }[] }> {
+/** Every match of the season, grouped by round in kick-off order (the regular season, then the finals); results carry the score. */
+export async function getFixtures(ctx: Ctx, seasonId: string): Promise<{ rounds: { round: string | null; stage: 'regular' | 'finals'; matches: FixtureItem[] }[] }> {
   return tx(ctx, async (t) => {
     const { competition } = await seasonRow(ctx, t, seasonId);
     const rows = await t
@@ -142,17 +159,21 @@ export async function getFixtures(ctx: Ctx, seasonId: string): Promise<{ rounds:
         away: snap.away ?? { id: r.m.awayTeamId, name: 'Away', shortName: 'Away', abbreviation: 'AWY', logoAssetId: null, primaryColor: '#888888', secondaryColor: '#000000' },
         score: started ? { ...proj.score } : null,
         scoreDetail: detail,
+        stage: r.m.stage === 'finals' ? 'finals' : 'regular',
+        shootout: started && proj.shootout ? { home: proj.shootout.home, away: proj.shootout.away } : null,
       };
     });
-    const groups = new Map<string | null, FixtureItem[]>();
+    const groups = new Map<string, { round: string | null; stage: 'regular' | 'finals'; matches: FixtureItem[] }>();
     for (const it of items) {
-      const k = it.round ?? null;
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(it);
+      const k = `${it.stage}:${it.round ?? ''}`;
+      if (!groups.has(k)) groups.set(k, { round: it.round ?? null, stage: it.stage, matches: [] });
+      groups.get(k)!.matches.push(it);
     }
-    const rounds = [...groups.entries()].map(([round, ms]) => ({ round, matches: ms }));
-    // numeric rounds in order, then named rounds, then unscheduled
+    const rounds = [...groups.values()];
+    // numeric rounds in order, then named rounds, then unscheduled; the finals after the regular season
     rounds.sort((a, b) => {
+      if (a.stage !== b.stage) return a.stage === 'finals' ? 1 : -1;
+      if (a.stage === 'finals') return (a.matches[0]?.scheduledAt ?? '').localeCompare(b.matches[0]?.scheduledAt ?? '');
       if (a.round === null) return 1;
       if (b.round === null) return -1;
       const na = Number(a.round), nb = Number(b.round);
@@ -193,7 +214,7 @@ export async function getMatchPreview(ctx: Ctx, matchId: string): Promise<MatchP
     if (seasonResults.rows.length) {
       const rules = standingsRules(comp!.sport as Sport, comp!.standingsRules as Partial<StandingsRules>);
       const sTeams = await seasonTeams(t, ctx.actor.organisationId, m.seasonId, seasonResults.rows);
-      const table = computeStandings(sTeams.map((x) => x.id), seasonResults.results, rules, Object.fromEntries(sTeams.map((x) => [x.id, x.name])));
+      const table = computeStandings(sTeams.map((x) => x.id), seasonResults.ladder, rules, Object.fromEntries(sTeams.map((x) => [x.id, x.name])));
       standings = { home: table.find((r) => r.teamId === m.homeTeamId) ?? null, away: table.find((r) => r.teamId === m.awayTeamId) ?? null, rules };
     }
     return {
@@ -349,7 +370,7 @@ export async function renderSeasonTx(t: Tx, organisationId: string, m: MatchRow,
     .orderBy(asc(matches.scheduledAt));
   const results: StandingsResult[] = [];
   for (const r of rows) {
-    if (!isFinal(r.m, r.phase) || r.m.isDemo) continue;
+    if (!isFinal(r.m, r.phase) || r.m.isDemo || r.m.stage === 'finals') continue;
     const proj = r.projection as unknown as MatchProjection;
     results.push({ matchId: r.m.id, homeTeamId: r.m.homeTeamId, awayTeamId: r.m.awayTeamId, homeScore: proj.score.home, awayScore: proj.score.away, playedAt: r.m.scheduledAt.toISOString(), round: r.m.round });
   }

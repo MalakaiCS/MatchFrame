@@ -21,24 +21,27 @@ test('futsal: fouls, a timeout and a send-off on the scorer phone and the scoreb
   await expect(board).toContainText('1st Half');
   await expect.poll(async () => toSeconds(await clockText(page)), { message: 'the half counts down from 20:00' }).toBeLessThan(20 * 60);
 
-  const record = async (label: string, team: string, player = true) => {
-    await page.getByRole('button', { name: label, exact: true }).click();
-    await page.getByRole('dialog').getByRole('button', { name: team, exact: true }).click();
-    if (player) await page.getByRole('button', { name: 'Skip player' }).click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-  };
+  // each team's column on the phone: one tap per foul, the count beside it
+  const homeCol = page.getByRole('region', { name: 'Bayside, home' });
+  const awayCol = page.getByRole('region', { name: 'Northgate, away' });
   // five accumulated fouls: the next one is a 10 m kick
-  for (let i = 0; i < 5; i++) await record('Foul', 'Bayside');
+  for (let i = 1; i <= 5; i++) {
+    await homeCol.getByRole('button', { name: /^Fouls,/ }).click();
+    await expect(homeCol.getByRole('button', { name: /^Fouls,/ })).toHaveAccessibleName(`Fouls, ${i}`);
+  }
   await expect(board).toContainText('Fouls 5 · next is a 10 m kick');
   await expect(page.getByRole('alert').filter({ hasText: 'Home: 5 accumulated fouls, the next one is a 10 m kick' })).toBeVisible();
 
   // a timeout stops the clock and uses the team's one for the half
-  await record('Timeout', 'Northgate', false);
+  await awayCol.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('dialog', { name: 'More for Northgate' }).getByRole('button', { name: 'Timeout' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(async () => (await api<{ clocks: { main: { running: boolean } } }>(page, `/api/v1/matches/${m.id}/state`)).clocks.main.running).toBe(false);
   await expect(board).toContainText('TO 0');
 
   // a send-off: the team plays a player short for two minutes of playing time (the clock is stopped, so 2:00 stays)
-  await record('Red card', 'Northgate');
+  await awayCol.getByRole('button', { name: /^Red cards,/ }).click();
+  await expect(awayCol.getByRole('button', { name: /^Red cards,/ })).toHaveAccessibleName('Red cards, 1');
   await expect(board.getByLabel('Northgate a player short')).toHaveText('4 on court · 2:00');
   await expect(page.getByRole('alert').filter({ hasText: /Away a player short \(4 v 5\)/ })).toBeVisible();
 

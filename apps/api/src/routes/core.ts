@@ -1,6 +1,6 @@
 // Identity, organisation, catalog, fixtures, matches and scoring routes (/api/v1).
 import { z } from 'zod';
-import { AppError, apiKeysSvc, catalog, imports, matchesSvc, orgs, prefs, scoring, seasonData, staffSvc } from '@bs/services';
+import { AppError, apiKeysSvc, catalog, finalsSvc, imports, matchesSvc, orgs, prefs, scoring, seasonData, staffSvc } from '@bs/services';
 import { fixtureTemplateCsv, STAFF_LABELS } from '@bs/domain';
 import type { AppBundle } from '../app';
 
@@ -117,10 +117,14 @@ export function registerCoreRoutes(b: AppBundle) {
   app.get('/api/v1/seasons/:id/standings', async (req) => seasonData.getStandings(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/seasons/:id/fixtures', async (req) => seasonData.getFixtures(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/seasons/:id/player-stats', async (req) => seasonData.getSeasonPlayerStats(await ctxFor(req), P(id, req.params).id));
+  // finals series: the ladder's top teams in knockout rounds, each round from the winners of the last
+  app.get('/api/v1/seasons/:id/finals', async (req) => finalsSvc.getFinals(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/seasons/:id/finals/rounds', async (req, reply) => reply.code(201).send(await finalsSvc.createFinalsRound(await ctxFor(req), P(id, req.params).id, req.body as never)));
   app.post('/api/v1/seasons/:id/rollover', async (req, reply) => reply.code(201).send(await seasonData.rolloverSeason(await ctxFor(req), P(id, req.params).id, req.body as never)));
 
   app.get('/api/v1/clubs', async (req) => catalog.listClubs(await ctxFor(req)));
   app.post('/api/v1/clubs', async (req, reply) => reply.code(201).send(await catalog.createClub(await ctxFor(req), req.body as never)));
+  app.patch('/api/v1/clubs/:id', async (req) => catalog.updateClub(await ctxFor(req), P(id, req.params).id, req.body as never));
   app.get('/api/v1/teams', async (req) => catalog.listTeams(await ctxFor(req), req.query as never));
   app.post('/api/v1/teams', async (req, reply) => reply.code(201).send(await catalog.createTeam(await ctxFor(req), req.body as never)));
   app.get('/api/v1/teams/:id', async (req) => catalog.getTeam(await ctxFor(req), P(id, req.params).id));

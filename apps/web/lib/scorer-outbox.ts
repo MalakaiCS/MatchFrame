@@ -7,7 +7,7 @@ export type IntentStatus = 'queued' | 'sending' | 'needs_review' | 'rejected';
 export interface Intent {
   commandId: string;
   matchId: string;
-  type: 'ADD_FACT' | 'VOID_FACT' | 'CORRECT_FACT' | 'SET_PHASE' | 'CLOCK_ACTION' | 'ADJUST_SCORE';
+  type: 'ADD_FACT' | 'VOID_FACT' | 'CORRECT_FACT' | 'SET_PHASE' | 'CLOCK_ACTION' | 'ADJUST_SCORE' | 'SET_KNOCKOUT';
   payload: Record<string, unknown>;
   createdAt: number;
   /** created while disconnected (or when the send failed on the network) → requires review on reconnect */

@@ -284,6 +284,17 @@ export async function reloadCompetitionOutputsTx(t: Tx, organisationId: string, 
   return rows.length;
 }
 
+/** Open outputs of these matches load their data again (a team's logo or a player's photo changed). */
+export async function reloadMatchOutputsTx(t: Tx, organisationId: string, matchIds: string[]) {
+  if (!matchIds.length) return 0;
+  const rows = await t.select({ o: overlays, s: overlayState }).from(overlays).innerJoin(overlayState, eq(overlayState.overlayId, overlays.id)).where(and(eq(overlays.organisationId, organisationId), inArray(overlays.matchId, matchIds)));
+  for (const { o, s } of rows) {
+    const [n] = await t.update(overlayState).set({ revision: sql`${overlayState.revision} + 1`, updatedAt: new Date() }).where(eq(overlayState.overlayId, o.id)).returning();
+    await enqueueOutbox(t, { organisationId, topic: 'overlay.state.updated', aggregateType: 'overlay', aggregateId: o.id, payload: { ...publicState(n ?? s, o), themeChanged: true } });
+  }
+  return rows.length;
+}
+
 /** Output format: broadcast 16:9, vertical 9:16 for a social stream, or the venue screen layout. */
 export async function setOverlayFormat(ctx: Ctx, overlayId: string, format: '16:9' | '9:16' | 'venue') {
   return tx(ctx, async (t) => {
@@ -536,6 +547,7 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
         stateVersion: st!.stateVersion,
         statRows,
         round: m!.round,
+        stage: m!.stage === 'finals' ? 'finals' : 'regular',
         attendance: m!.attendance,
         weather: (m!.weather as RenderData['match']['weather']) ?? null,
         officials: (m!.officials as { role: string; name: string }[]) ?? [],

@@ -10,7 +10,7 @@
 // shown, how things arrive and what the animated background draws. Every look is an original design in that
 // spirit and carries no league or broadcaster marks, names or typefaces.
 import type { CSSProperties, ReactNode } from 'react';
-import type { RenderTeam } from '../data';
+import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type AnimKind, type GraphicProps, type ThemeComponents } from './stage';
 import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
@@ -873,7 +873,7 @@ export function packTheme(k: Pack): ThemeComponents {
           {side('away')}
         </div>
         {d.shootout ? <div style={{ textAlign: 'center', marginTop: 14, fontSize: 25, color: c.hi, fontWeight: 700, ...caps(), ...animStyle(p, 'rise', 420, 320) }}>{t(p, 'Penalties')} {d.shootout.home}–{d.shootout.away}</div> : null}
-        <div style={{ textAlign: 'center', marginTop: 18, fontSize: 19, color: c.muted, fontWeight: 600, ...caps(2), ...animStyle(p, 'rise', 460, 320) }}>{p.data.match.competition.name}</div>
+        <div style={{ textAlign: 'center', marginTop: 18, fontSize: 19, color: c.muted, fontWeight: 600, ...caps(2), ...animStyle(p, 'rise', 460, 320) }}>{occasionLine(p.data.match)}</div>
         {p.cue.variables.showSponsor !== false ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}><SponsorPlate p={p} c={c} placement="detached_logo" height={56} delayMs={540} /></div> : null}
       </Board>
     );
@@ -1053,7 +1053,7 @@ export function packTheme(k: Pack): ThemeComponents {
           <Panel c={c} inner={{ padding: '30px 36px' }}><TeamsHeader p={p} delayMs={200} crest={98} centre={t(p, 'VS')} /></Panel>
         </div>
         <div style={{ position: 'relative', fontSize: 52, fontWeight: Math.min(900, k.weight + 100), ...caps(3), ...animStyle(p, 'rise', 420, 420) }}>{slateMessage(p)}</div>
-        <div style={{ position: 'relative', fontSize: 21, opacity: 0.75, fontWeight: 600, ...caps(2), ...animStyle(p, 'rise', 500, 360) }}>{p.data.match.competition.name}</div>
+        <div style={{ position: 'relative', fontSize: 21, opacity: 0.75, fontWeight: 600, ...caps(2), ...animStyle(p, 'rise', 500, 360) }}>{occasionLine(p.data.match)}</div>
         <div style={{ position: 'relative', ...animStyle(p, 'fade', 600, 400) }}><SponsorMark p={p} placement="detached_logo" height={80} light /></div>
       </div>
     );

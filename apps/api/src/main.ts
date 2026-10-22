@@ -9,7 +9,7 @@ import { rendererHooks } from './renderer-hooks';
 
 const config = getConfig();
 const { db, pool } = createDb(config.DATABASE_URL, { max: 20, application_name: 'bs-api' });
-const storage = createStorage(config);
+const storage = createStorage(config, { db }); // small files fall back to the database when object storage fails
 const queues = createQueues(config.REDIS_URL);
 // graphics-only deployments have no media provider; stream routes are not registered
 const media: MediaProvider | undefined = config.STREAMING_ENABLED ? mediaControl.createMediaProvider(config) : undefined;

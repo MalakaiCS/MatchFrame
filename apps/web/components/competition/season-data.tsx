@@ -10,10 +10,10 @@ interface Season { id: string; name: string; status: string }
 interface TeamRef { id: string; name: string; shortName: string; abbreviation: string; primaryColor: string }
 interface StandingRow { position: number; teamId: string; played: number; won: number; drawn: number; lost: number; byes: number; for: number; against: number; difference: number; percentage: number; points: number; winPct: number; team: TeamRef }
 interface Standings { rules: { rankBy: string; unit: string; win: number; draw: number; loss: number }; rows: StandingRow[]; resultsCounted: number }
-interface Fixture { id: string; round: string | null; scheduledAt: string; timezone: string; status: string; phase: string; isDemo: boolean; venue: string | null; home: TeamRef; away: TeamRef; score: { home: number; away: number } | null; scoreDetail: { home: string; away: string } | null }
+interface Fixture { id: string; round: string | null; scheduledAt: string; timezone: string; status: string; phase: string; isDemo: boolean; venue: string | null; home: TeamRef; away: TeamRef; score: { home: number; away: number } | null; scoreDetail: { home: string; away: string } | null; stage?: 'regular' | 'finals'; shootout?: { home: number; away: number } | null }
 interface PlayerRow { playerId: string; displayName: string; team: TeamRef | null; appearances: number; starts: number; goals: number; assists: number; points: number; yellow: number; red: number; fouls: number; breakdown: Record<string, number> }
 
-function useSeasonPick(seasons: Season[]) {
+export function useSeasonPick(seasons: Season[]) {
   const [seasonId, setSeasonId] = useState(seasons.find((s) => s.status === 'active')?.id ?? seasons[0]?.id ?? '');
   useEffect(() => {
     if (!seasonId && seasons.length) setSeasonId(seasons.find((s) => s.status === 'active')?.id ?? seasons[0]!.id);
@@ -21,7 +21,7 @@ function useSeasonPick(seasons: Season[]) {
   return [seasonId, setSeasonId] as const;
 }
 
-function SeasonSelect({ seasons, value, onChange }: { seasons: Season[]; value: string; onChange: (v: string) => void }) {
+export function SeasonSelect({ seasons, value, onChange }: { seasons: Season[]; value: string; onChange: (v: string) => void }) {
   if (seasons.length <= 1) return null;
   return (
     <label className="mb-3 flex items-center gap-2 text-sm text-muted">Season
@@ -59,7 +59,7 @@ export function SeasonStandings({ seasons }: { seasons: Season[] }) {
               {!q.data.rows.length ? <tr><td colSpan={11} className="text-center text-muted">No teams in this season yet.</td></tr> : null}
             </tbody>
           </Table>
-          <p className="p-3 text-xs text-muted">{q.data.resultsCounted} result{q.data.resultsCounted === 1 ? '' : 's'} counted · {q.data.rules.win} for a win, {q.data.rules.draw} for a draw{q.data.rules.loss ? `, ${q.data.rules.loss} for a loss` : ''}. Completed matches count; demo matches never do. The same table is available as a graphic in every control room.</p>
+          <p className="p-3 text-xs text-muted">{q.data.resultsCounted} result{q.data.resultsCounted === 1 ? '' : 's'} counted · {q.data.rules.win} for a win, {q.data.rules.draw} for a draw{q.data.rules.loss ? `, ${q.data.rules.loss} for a loss` : ''}. Completed regular-season matches count; finals and demo matches never do. The same table is available as a graphic in every control room.</p>
         </Card>
       )}
     </div>
@@ -68,7 +68,7 @@ export function SeasonStandings({ seasons }: { seasons: Season[] }) {
 
 export function SeasonResults({ seasons, tz }: { seasons: Season[]; tz: string }) {
   const [seasonId, setSeasonId] = useSeasonPick(seasons);
-  const q = useGet<{ rounds: { round: string | null; matches: Fixture[] }[] }>(['fixtures', seasonId], seasonId ? `seasons/${seasonId}/fixtures` : null);
+  const q = useGet<{ rounds: { round: string | null; stage?: 'regular' | 'finals'; matches: Fixture[] }[] }>(['fixtures', seasonId], seasonId ? `seasons/${seasonId}/fixtures` : null);
   if (!seasons.length) return <p className="text-sm text-muted">Add a season first.</p>;
   return (
     <div>
@@ -77,13 +77,13 @@ export function SeasonResults({ seasons, tz }: { seasons: Season[]; tz: string }
       {q.isLoading || !q.data ? <Spinner /> : !q.data.rounds.length ? <p className="text-sm text-muted">No fixtures in this season yet.</p> : (
         <div className="grid gap-4">
           {q.data.rounds.map((r) => (
-            <Card key={r.round ?? 'none'} className="p-3">
-              <h3 className="mb-2 text-sm font-medium">{r.round ?? 'Unrounded'}</h3>
+            <Card key={`${r.stage ?? 'regular'}:${r.round ?? 'none'}`} className="p-3">
+              <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">{r.round ? (/^\d+$/.test(r.round) ? `Round ${r.round}` : r.round) : 'Unrounded'}{r.stage === 'finals' ? <StatusPill tone="primary">Finals</StatusPill> : null}</h3>
               <ul className="divide-y divide-border/60">
                 {r.matches.map((m) => (
                   <li key={m.id} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2 py-1.5 text-sm">
                     <span className={cx('truncate text-right', m.score && m.score.home > m.score.away && 'font-semibold')}>{m.home.name}</span>
-                    <Link href={`/app/matches/${m.id}`} className="min-w-16 rounded bg-elevated px-2 py-0.5 text-center tabular hover:bg-primary hover:text-bg">{m.score ? `${m.scoreDetail?.home ?? m.score.home} – ${m.scoreDetail?.away ?? m.score.away}` : fmtDate(m.scheduledAt, m.timezone || tz, { timeStyle: 'short' })}</Link>
+                    <Link href={`/app/matches/${m.id}`} className="min-w-16 rounded bg-elevated px-2 py-0.5 text-center tabular hover:bg-primary hover:text-bg">{m.score ? `${m.scoreDetail?.home ?? m.score.home} – ${m.scoreDetail?.away ?? m.score.away}${m.shootout ? ` (${m.shootout.home}–${m.shootout.away} pens)` : ''}` : fmtDate(m.scheduledAt, m.timezone || tz, { timeStyle: 'short' })}</Link>
                     <span className={cx('truncate', m.score && m.score.away > m.score.home && 'font-semibold')}>{m.away.name}</span>
                     <span className="flex items-center gap-1 text-xs text-muted"><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? m.phase.replace(/_/g, ' ') : m.status === 'completed' ? 'FT' : fmtDate(m.scheduledAt, m.timezone || tz, { dateStyle: 'short' })}</StatusPill>{m.isDemo ? <StatusPill tone="warning">demo</StatusPill> : null}</span>
                   </li>
