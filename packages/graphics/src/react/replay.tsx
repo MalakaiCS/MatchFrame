@@ -1,11 +1,17 @@
 'use client';
-// The replay transition in every look. Slanted bands in the look's colours (with the teams: home on the left, away
-// on the right) sweep in from the left until they cover the whole frame, the word REPLAY lands in the middle
-// (between the two crests with the teams), then everything sweeps on to the right. It plays live on the transition
-// layer and is exported frame by frame as a transparent WebM for an OBS or vMix stinger.
+// The replay transition in every look. A wall of slanted bands in the look's colours (with the teams: home on the
+// left, away on the right), edged with a bright stripe, sweeps in from the left until it covers the whole frame, the
+// word REPLAY lands in the middle (between the two crests with the teams), then the wall sweeps on to the right.
+// The bands move as one, so the frame never shows through between them. It plays live on the transition layer and
+// is exported frame by frame as a transparent WebM for an OBS or vMix stinger (2 s, cut at 1 s).
 import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, partAnim, type GraphicProps } from './stage';
 import { Fitted, Logo, ThemeBadge, t, team } from './common';
+
+/** The wall's sweep (ms): in over `in`; after the hold, a short pause, then on and away over `out`. */
+export const REPLAY_SWEEP = { in: 720, outDelay: 60, out: 740 } as const;
+// a soft start and landing in; out starts gently and leaves at a steady pace (no last-frame jump at 25/30 fps)
+const SWEEP_EASE = { in: 'cubic-bezier(.45,.05,.25,1)', out: 'cubic-bezier(.55,0,.45,1)' };
 
 interface ReplayStyle {
   /** slant of the bands (degrees, as skewX) */
@@ -107,7 +113,7 @@ function plateStyle(p: GraphicProps, s: ReplayStyle): { box: CSSProperties; ink:
 
 function Rule({ p, s, withTeams }: { p: GraphicProps; s: ReplayStyle; withTeams: boolean }) {
   const th = p.data.theme;
-  const anim = partAnim(p, 'grow-x', 430, 260, 0, 160);
+  const anim = partAnim(p, 'grow-x', 560, 280, 0, 180);
   const base: CSSProperties = { height: 8, marginTop: 22, transformOrigin: 'left', ...anim };
   if (withTeams) return <div style={{ ...base, background: `linear-gradient(90deg, ${team(p, 'home').primaryColor} 0 50%, ${team(p, 'away').primaryColor} 50% 100%)` }} />;
   switch (s.rule) {
@@ -127,7 +133,7 @@ function Rule({ p, s, withTeams }: { p: GraphicProps; s: ReplayStyle; withTeams:
 function TeamBlock({ p, which }: { p: GraphicProps; which: 'home' | 'away' }) {
   const tm = team(p, which);
   return (
-    <div style={{ display: 'grid', justifyItems: 'center', gap: 18, width: 340, ...partAnim(p, which === 'home' ? 'slide-left' : 'slide-right', 340, 320, 0, 200) }}>
+    <div style={{ display: 'grid', justifyItems: 'center', gap: 18, width: 340, ...partAnim(p, which === 'home' ? 'slide-left' : 'slide-right', 420, 340, 0, 220) }}>
       <div style={{ width: 200, height: 200, borderRadius: '50%', background: '#FFFFFF', display: 'grid', placeItems: 'center', boxShadow: `0 0 0 8px ${tm.primaryColor}, 0 24px 60px rgba(0,0,0,.45)` }}>
         <Logo url={tm.logoUrl} label={tm.abbreviation ?? tm.shortName ?? tm.name} size={140} color={tm.primaryColor} radius={70} />
       </div>
@@ -143,35 +149,38 @@ export function ReplayTransition(p: GraphicProps): ReactNode {
   const withTeams = p.cue.variables.teams === true;
   const word = (typeof p.cue.variables.text === 'string' && p.cue.variables.text.trim()) || t(p, 'REPLAY');
   const colours = bandColours(p, s, withTeams);
-  const n = colours.length;
   const texture = TEXTURES[s.texture];
   const plate = plateStyle(p, s);
+  const edge = mix(withTeams ? '#FFFFFF' : th.accent, '#FFFFFF', 0.25);
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', fontFamily: th.font }} data-graphic="replay">
-      {/* the bands: the rightmost travels furthest, so it sets off first; they leave onwards, to the right */}
-      <div style={{ position: 'absolute', top: '-12%', height: '124%', left: '-26%', width: '152%', display: 'flex', transform: `skewX(${s.angle}deg)` }}>
-        {colours.map((c, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              marginRight: -3,
-              background: [texture, `linear-gradient(180deg, ${mix(c, '#FFFFFF', 0.12)} 0%, ${c} 45%, ${mix(c, '#000000', 0.2)} 100%)`].filter(Boolean).join(', '),
-              boxShadow: '-18px 0 40px rgba(0,0,0,.28)',
-              ...partAnim(p, 'sweep', (n - 1 - i) * 40, 470, 60 + (n - 1 - i) * 30, 460),
-            }}
-          />
-        ))}
+      {/* the wall: every band moves with it, edged with a bright stripe at the front (in) and the back (out) */}
+      <div style={{ position: 'absolute', top: '-12%', height: '124%', left: '-26%', width: '152%', ...partAnim(p, 'sweep', 0, REPLAY_SWEEP.in, REPLAY_SWEEP.outDelay, REPLAY_SWEEP.out, SWEEP_EASE) }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', transform: `skewX(${s.angle}deg)` }}>
+          <div style={{ width: 22, flex: 'none', background: edge, boxShadow: `0 0 36px ${alpha(edge, 0.75)}` }} />
+          {colours.map((c, i) => (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                marginRight: -3,
+                background: [texture, `linear-gradient(180deg, ${mix(c, '#FFFFFF', 0.12)} 0%, ${c} 45%, ${mix(c, '#000000', 0.2)} 100%)`].filter(Boolean).join(', '),
+                boxShadow: '-18px 0 40px rgba(0,0,0,.28)',
+              }}
+            />
+          ))}
+          <div style={{ width: 22, flex: 'none', background: edge, boxShadow: `0 0 36px ${alpha(edge, 0.75)}` }} />
+        </div>
       </div>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 64 }}>
         {withTeams ? <TeamBlock p={p} which="home" /> : null}
-        <div style={{ display: 'grid', justifyItems: 'center', ...partAnim(p, 'zoom', 280, 320, 0, 200) }}>
-          {!withTeams ? <div style={{ marginBottom: 26, ...partAnim(p, 'fade', 420, 240, 0, 150) }}><ThemeBadge p={p} height={96} /></div> : null}
+        <div style={{ display: 'grid', justifyItems: 'center', ...partAnim(p, 'zoom', 360, 340, 0, 220) }}>
+          {!withTeams ? <div style={{ marginBottom: 26, ...partAnim(p, 'fade', 480, 260, 0, 160) }}><ThemeBadge p={p} height={96} /></div> : null}
           <div style={{ position: 'relative', overflow: 'hidden', ...plate.box }}>
             <span style={{ display: 'block', fontSize: withTeams ? 132 : 172, lineHeight: 1, fontWeight: s.weight, fontStyle: s.italic ? 'italic' : 'normal', letterSpacing: `${s.tracking}em`, marginRight: `-${s.tracking}em`, textTransform: 'uppercase', color: plate.ink, whiteSpace: 'nowrap', textShadow: s.plate === 'none' || s.plate === 'glass' ? '0 6px 28px rgba(0,0,0,.45)' : undefined }}>
               {word}
             </span>
-            {s.shine ? <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '35%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent)', opacity: 0, ...animStyle(p, 'shine', 520, 520) }} /> : null}
+            {s.shine ? <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '35%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent)', opacity: 0, ...animStyle(p, 'shine', 700, 560) }} /> : null}
             <Rule p={p} s={s} withTeams={withTeams} />
           </div>
         </div>

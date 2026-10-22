@@ -52,8 +52,10 @@ export async function encodeTransition(ctx: Ctx, body: Readable, length: number,
       '-f', 'image2pipe', '-framerate', String(q.fps), '-c:v', 'png', '-i', 'pipe:0',
       '-frames:v', String(MAX_FRAMES),
       '-vf', `scale=${w}:${h}:flags=lanczos,format=yuva420p`,
-      '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '28',
-      '-deadline', 'good', '-cpu-used', '4', '-row-mt', '1', '-auto-alt-ref', '0',
+      // near-lossless for flat colours, gradients and hard slanted edges (CRF 16, a slower preset); a 2 s stinger
+      // is still only a few MB
+      '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '16',
+      '-deadline', 'good', '-cpu-used', '2', '-row-mt', '1', '-auto-alt-ref', '0',
       '-metadata:s:v:0', 'alpha_mode=1', '-an', out,
     ];
     await new Promise<void>((resolve, reject) => {

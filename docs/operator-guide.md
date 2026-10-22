@@ -163,8 +163,10 @@ decides it, and *Northgate win 4–3 on penalties* as soon as one team can no lo
 left (so a shoot-out can end before all five are taken). After that no more kicks are accepted; kicks that were not
 needed are dimmed. It updates live as the scorer records each kick, in every look (football, futsal and hockey).
 
-**Replay transition (OBS or vMix stinger).** In every look, slanted bands in the look's colours sweep in, cover
-the whole frame with REPLAY in the middle, then sweep on and away (1.6 s). It comes in two versions:
+**Replay transition (OBS or vMix stinger).** In every look, a wall of slanted bands in the look's colours, edged
+with a bright stripe, sweeps in, covers the whole frame with REPLAY in the middle, then sweeps on and away (2 s).
+The bands move as one, so the picture never shows through between them on the way in or out. It comes in two
+versions:
 * *Plain*: the look only. *Themes → a look → Replay transition (WebM)* (opened from one of your own looks, it
   carries your colours and logo).
 * *This match*: home's colours, crest and name on the left, away's on the right. *Match → OBS link → Replay
@@ -173,8 +175,8 @@ the whole frame with REPLAY in the middle, then sweep on and away (1.6 s). It co
 Choose the size (1920×1080 or 1280×720), the frame rate (25, 30, 50 or 60, the same as your OBS or vMix output)
 and, if you like, your own word instead of REPLAY, then *Export WebM*. Every frame is drawn exactly and encoded on
 the server as a transparent WebM (VP9 with alpha). In OBS: *Scene Transitions → + → Stinger*, choose the file, set
-*Transition Point Type* to *Time* and *Transition Point* to **800 ms** (the frame is fully covered from 650 ms to
-1000 ms). In vMix: set a Stinger transition to the file with its transition point (delay) at 800 ms. The replay
+*Transition Point Type* to *Time* and *Transition Point* to **1000 ms** (the frame is fully covered from 500 ms
+to 1440 ms). In vMix: set a Stinger transition to the file with its transition point (delay) at 1000 ms. The replay
 transition is also one of the look's graphics, so it can be put on air on the output's transition layer.
 
 ## In the control room

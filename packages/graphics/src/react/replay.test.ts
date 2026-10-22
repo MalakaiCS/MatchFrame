@@ -29,9 +29,11 @@ const lower = (p: GraphicProps) => html(p).toLowerCase();
 describe('replay transition', () => {
   it('is a full-frame transition whose timeline matches the exported stinger', () => {
     expect(replay).toMatchObject({ layer: 'transition', bounds: { x: 0, y: 0, w: 1, h: 1 } });
-    // the cue goes out at holdMs (from the start), and is gone after the exit
+    // the cue goes out at holdMs (from the start), and is gone after the exit: about two seconds in all
     expect(replay.holdMs! + replay.exitMs).toBe(REPLAY_TRANSITION.totalMs);
-    expect(REPLAY_TRANSITION.coveredFromMs).toBe(replay.entranceMs);
+    expect(REPLAY_TRANSITION.totalMs).toBe(2000);
+    expect(REPLAY_TRANSITION.coveredFromMs).toBeLessThanOrEqual(replay.entranceMs);
+    expect(REPLAY_TRANSITION.coveredUntilMs).toBeGreaterThan(replay.holdMs!);
     expect(REPLAY_TRANSITION.transitionPointMs).toBeGreaterThan(REPLAY_TRANSITION.coveredFromMs);
     expect(REPLAY_TRANSITION.transitionPointMs).toBeLessThan(Math.min(REPLAY_TRANSITION.coveredUntilMs, replay.holdMs!));
   });
@@ -52,18 +54,21 @@ describe('replay transition', () => {
     }
   });
 
-  it('every band is in place by the end of the entrance and gone by the end of the exit', () => {
-    const theme = DEFAULT_THEMES.premier;
-    const delays = (p: GraphicProps) => [...html(p).matchAll(/animation-name:bs-sweep-(?:in|out);animation-duration:(\d+)ms;animation-delay:(-?\d+)ms/g)].map((m) => Number(m[2]) + Number(m[1]));
-    const inEnds = delays(props(theme, { phase: 'in', offsetMs: 0 }));
-    expect(inEnds.length).toBe(5);
-    expect(Math.max(...inEnds)).toBeLessThanOrEqual(replay.entranceMs);
-    const outEnds = delays(props(theme, { phase: 'out', offsetMs: 0 }));
-    expect(outEnds.length).toBe(5);
-    expect(Math.max(...outEnds)).toBeLessThanOrEqual(replay.exitMs);
-    expect(Math.min(...outEnds.map((e, i) => e - [460, 460, 460, 460, 460][i]!))).toBeGreaterThanOrEqual(60); // nothing moves for the first 60 ms of the exit
-    // at the transition point (hold), the bands rest in place: no animation at all
-    expect(delays(props(theme, { phase: 'hold', offsetMs: REPLAY_TRANSITION.transitionPointMs }))).toEqual([]);
+  it('the bands move as one wall (no gaps between them), in place by the end of the entrance and gone by the end of the exit', () => {
+    const sweeps = (p: GraphicProps) => [...html(p).matchAll(/animation-name:bs-sweep-(?:in|out);animation-duration:(\d+)ms;animation-delay:(-?\d+)ms/g)].map((m) => ({ dur: Number(m[1]), delay: Number(m[2]) }));
+    for (const theme of Object.values(DEFAULT_THEMES)) {
+      for (const variables of [{}, { teams: true }]) {
+        const inn = sweeps(props(theme, { phase: 'in', offsetMs: 0, variables }));
+        expect(inn, theme.themeKey).toHaveLength(1);
+        expect(inn[0]!.delay + inn[0]!.dur).toBeLessThanOrEqual(replay.entranceMs);
+        const out = sweeps(props(theme, { phase: 'out', offsetMs: 0, variables }));
+        expect(out).toHaveLength(1);
+        expect(out[0]!.delay).toBeGreaterThanOrEqual(60); // nothing moves for the first 60 ms of the exit
+        expect(out[0]!.delay + out[0]!.dur).toBeLessThanOrEqual(replay.exitMs);
+        // at the transition point (hold), the wall rests in place: no animation at all
+        expect(sweeps(props(theme, { phase: 'hold', offsetMs: REPLAY_TRANSITION.transitionPointMs, variables }))).toEqual([]);
+      }
+    }
   });
 });
 

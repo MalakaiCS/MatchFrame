@@ -252,7 +252,7 @@ export function animStyle(p: GraphicProps, kind: AnimKind, delayMs = 0, durMs?: 
  * A part on its own schedule in both phases: in after `inDelay` over `inDur`, out after `outDelay` over `outDur`
  * (all within the graphic's entrance and exit times), so parts can also stagger their exit, e.g. transition bands.
  */
-export function partAnim(p: GraphicProps, kind: AnimKind, inDelay: number, inDur: number, outDelay = 0, outDur = p.t.exitMs - outDelay): CSSProperties {
+export function partAnim(p: GraphicProps, kind: AnimKind, inDelay: number, inDur: number, outDelay = 0, outDur = p.t.exitMs - outDelay, ease?: { in?: string; out?: string }): CSSProperties {
   if (p.data.theme.motion === 'none') return {};
   const out = p.phase === 'out';
   const delay = out ? outDelay : inDelay;
@@ -265,7 +265,7 @@ export function partAnim(p: GraphicProps, kind: AnimKind, inDelay: number, inDur
     animationDuration: `${dur}ms`,
     animationDelay: `${delay - start}ms`,
     animationFillMode: 'both',
-    animationTimingFunction: out ? 'cubic-bezier(.55,0,.8,.2)' : 'cubic-bezier(.16,.84,.24,1)',
+    animationTimingFunction: out ? (ease?.out ?? 'cubic-bezier(.55,0,.8,.2)') : (ease?.in ?? 'cubic-bezier(.16,.84,.24,1)'),
   };
 }
 
