@@ -122,6 +122,17 @@ describe('scorer screens', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('a busy day of earlier matches never pushes the next kick-off off the list', async () => {
+    const s = await footballSetup(A.ctx, 'busy');
+    const local = (minsAgo: number) =>
+      new Intl.DateTimeFormat('sv-SE', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(Date.now() - minsAgo * 60_000)).replace(',', '');
+    // 110 fixtures in the last eleven hours, none of them started
+    for (const batch of [0, 1])
+      await matchesSvc.bulkCreateMatches(A.ctx, { competitionId: s.comp.id, seasonId: s.season.id, timezone: 'Australia/Brisbane', fixtures: Array.from({ length: 55 }, (_, i) => ({ homeTeamId: s.home.id, awayTeamId: s.away.id, kickoffLocal: local(10 + (batch * 55 + i) * 6) })) });
+    const ids = (await matchesSvc.listScorableMatches(A.ctx)).map((m) => m.id);
+    expect(ids).toContain(s.match.id);
+  });
+
   it('a match stored before the per-team counts gets them from its log, when read and on the next action', async () => {
     const s = await footballSetup(A.ctx, 'tally');
     const l = await lease(A.ctx, s.match.id);

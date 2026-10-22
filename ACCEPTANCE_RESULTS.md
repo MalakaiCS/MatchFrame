@@ -357,6 +357,29 @@ The database fallback keeps files of up to 25 MB and makes database backups larg
 still need object storage. HEIC photos convert only in browsers that open them (Safari). Not tried on the hosted
 deployment.
 
+## Scorer redesign: match list, pregame steps, mirrored live sheet (2026-10-22)
+
+Requested with six screenshots of another scorer app: "This is how I want it to look at the scorer" (a match list
+with *Live & upcoming*, *Not started* and *Completed* tabs and match cards; a pregame screen with the match details
+and skippable walk-out steps; a live screen with the clock controls in a dark header over a white sheet of mirrored
+event rows). Built in MatchFrame's own styling: no logo, name or artwork from the reference. Same environment,
+production build through the single-port launcher, graphics-only mode, Chromium at 430×932 (phone emulation).
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: every sheet row names an event of its sport and a row with a statistic moves it; the count of an event with no statistic (goal, penalty scored, own goal) is per team and an undo takes it back; a projection stored before the counts existed gets the same counts from its log (`tallyOf` equals the replayed tally, voided events left out); the walk-out steps can be skipped straight from the fixture (football, futsal, basketball, hockey); possession by time unchanged | 144 tests, 28 files, all pass |
+| `pnpm test:db`: the scorer list has the coming matches and the last month's (a match 10 days ago listed before the upcoming one, one 40 days ago left out, no duplicates); 110 unstarted fixtures in the last eleven hours do not push the next kick-off off the list (this test fails on the first version of the list, which took the 100 earliest matches from twelve hours back); a match whose stored state has no counts gets them from its log when read, and the next goal makes them 2 and stores them again | 76 tests, 11 files, all pass |
+| `tests/e2e/specs/scorer-board.spec.ts`: pregame sheet with the match details, *Start 1st Half* disabled until Pre-match, Players entering and About to start are done or skipped (`docs/evidence/e2e/scorer-pregame.png`); the football rows in order on both halves; one tap each with the count on that team's half only; possession 4 s home then away: home share above away, summing to 100, `possession_pct` in the statistics; a goal then who scored, assist and type; a card asks for the player first; the header's undo takes back the last corner at once; counts match the server's statistics (`scorer-two-sides.png`). A level league match: *End 2nd Half* offers Full Time first and *Play extra time and penalties instead* (`scorer-knockout-offer.png`); after the switch the next step is Before Extra Time; extra time with its break, then the shoot-out rows, Pens 1–0 (`scorer-shootout.png`). The match list: three tabs, the filter sheet narrows to the new match, its card shows *vs*, the kick-off and *Not started* (`scorer-list.png`); the ⋮ menu; the compact list is kept across a reload; the card opens the scorer | 3 tests, all pass |
+| `scorer.spec.ts` (A13–A15), `futsal.spec.ts` and `features.spec.ts` (line-ups, preferences under *Match details*) on the new screen | pass |
+| Full `pnpm test:e2e` | 51 tests, 51 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 30.3 min), on the build before the last three changes (counts from the log for older matches, the list's separate windows, the header's undo waiting for an action still sending) |
+| `scorer-board`, `scorer`, `futsal`, `features` specs on the final build | 13 of 13 pass, twice, each straight after a restart of the stack. Earlier runs on intermediate builds: the list test once could not find the new match (the cause of the list change above, reproduced by the database test); the sheet test failed once after a restart and passed in four runs since; its error was not kept. The likely cause, now fixed: the header's undo pressed while the corner was still sending fell through to the reason dialog for an older event |
+
+Not claimed: checked in Chromium at phone size, not on a phone. A skipped walk-out step is remembered on that phone
+until the period starts (it is not recorded); after a reload the steps before the current one show as done. Matches
+already under way when this is deployed get their per-team counts from their log; nothing else about them changes.
+Not tried on the hosted deployment.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

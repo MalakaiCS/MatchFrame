@@ -298,9 +298,10 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
     feedback(prefs, 'tick');
     setQuickUndo(null);
   };
-  /** the header's undo: the action just recorded at once, an older one with a reason */
+  /** the header's undo: the action just recorded at once (it waits while that is still sending), an older one with a reason */
+  const quickUndoOpen = !!quickUndo && undoLeftS > 0;
   const undoLast = () => {
-    if (quickUndo && undoLeftS > 0 && quickUndoReady) return void quickUndoNow();
+    if (quickUndoOpen) return void (quickUndoReady && quickUndoNow());
     if (lastFact && access === 'score') {
       setUndo(lastFact);
       setReason('');
@@ -483,7 +484,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         <button type="button" aria-label="Match events" className={HEAD_BTN} onClick={() => setEventsOpen(true)}><List className="size-5" /></button>
         <button type="button" aria-label="Match details" className={HEAD_BTN} onClick={() => setDetailsOpen(true)}><Info className="size-5" /></button>
         <span className="flex-1" />
-        {access !== 'view' ? <button type="button" aria-label="Undo the last action" className={HEAD_BTN} disabled={!canStats || (!(access === 'score' && lastFact) && !(quickUndo && undoLeftS > 0))} onClick={undoLast}><Undo2 className="size-5" /></button> : null}
+        {access !== 'view' ? <button type="button" aria-label="Undo the last action" className={HEAD_BTN} disabled={!canStats || (quickUndoOpen ? !quickUndoReady : !(access === 'score' && lastFact))} onClick={undoLast}><Undo2 className="size-5" /></button> : null}
         {ending ? (
           <button type="button" className="scorer-display ml-1 min-h-11 rounded-lg bg-primary px-4 text-[16px] font-semibold text-white disabled:opacity-40" disabled={!canScore} onClick={() => setEndOpen(true)}>
             End {proj.phase === 'shootout' ? 'shoot-out' : phase.label}
