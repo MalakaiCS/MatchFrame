@@ -320,6 +320,43 @@ Not claimed: the files were not loaded into OBS or vMix here (no OBS or vMix in 
 are the format both document for stingers (WebM VP9 with alpha) and the alpha channel read back frame by frame.
 Only 16:9 sizes are offered; on a live vertical (9:16) output the transition's centre plate is cropped.
 
+## Two-sided scorer, uploads, extra time and penalties, finals (2026-10-22)
+
+Requested: "Make the scorer a lot more UI friendly. Split it into 2 sides. 1 team on each side with all the
+different stats. Goals, Shot On Target, Shot Off Target, Fouls, Possession, Yellow Cards, Red Cards, Offsides (if
+applies to sport)"; "the ability to upload logos and so on … fix that by any means necessary"; "Extra Time &
+Penalties don't work when the competition is set in it. Also some competitions have a regular season then a Finals
+Season which is Quarter finals, Semi Finals, Grand Finals and so on." Same environment, production build through
+the single-port launcher, graphics-only mode.
+
+Causes found:
+
+* **Extra time and penalties**: level at the end of regulation, the allowed next steps were listed with Full Time
+  first, and the phone's *Next:* button takes the first, so it offered *Next: Full Time*; extra time and the
+  shoot-out were only under *More options* (football and every sport on the shared period model). And a league's
+  rules (draws stand) applied to every match of the competition, so a cup tie or a final had no way to decide a
+  draw once it had started.
+* **Uploads**: an image could only be used after the media worker had checked and converted it with FFmpeg, from
+  object storage. With no media worker running, no FFmpeg, or a bucket that is missing or misconfigured, images
+  stayed *processing* or failed. Team logos, player photos and club logos had no upload field at all; the
+  organisation logo was a list of files uploaded elsewhere.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: level after regulation, extra time then penalties come first (football, futsal, netball, rugby league, hockey); knockout rules for every sport but basketball (turning them on keeps rules that already decide a draw; valid under each sport's schema); `SET_KNOCKOUT` makes extra time the next step in a league match, adds futsal's extra-time phases, and is refused during extra time, after the match and for basketball; finals brackets for top 2/4/6/8 (1v8, 4v5, 2v7, 3v6; neighbouring winners; top 6 byes; better-placed team at home), waiting for winners, the shoot-out deciding a level match, too few teams refused; possession by match-clock time (taps, the live share, the spell ending at half time, breaks not counted, a void replayed, none in the shoot-out); every scorer-board row names an event of its sport and its count moves with it; image sizes read from PNG, JPEG and WebP bytes, markup and truncated files refused; the finals round beside the competition on graphics | 141 tests, 28 files, all pass |
+| `pnpm test:db`: `finals.test.ts` (a league season's ladder → semi-finals 1v4 and 2v3 with knockout rules; a level semi-final through extra time to penalties via the scoring service, next steps checked at each stage; the Grand Final from the winners; the ladder and fixtures leave the finals out; own finals rules validated and given to the untouched Grand Final; a match moved to the finals takes knockout rules; another organisation gets NOT_FOUND; a league match switched to knockout while level, audited, refused in extra time and after full time); `uploads.test.ts` (object storage unreachable: a PNG is kept in `media_blobs`, ready at once, served back byte for byte, listed and deleted; another organisation's tenant context sees no row; markup refused with its reason; team logo, player photo and club logo only from the organisation's images; a new team logo and player photo reach the upcoming match's graphics and reload its output; a finished match keeps its logo); `media-library.test.ts` A48 (markup refused by the API itself; a real image ready at once at 2400×800, then the media worker's 1920×640 copy, still ready); `competition-logo.test.ts` (a non-image completes as FAILED with the reason) | 73 tests, 11 files, all pass |
+| `tests/e2e/specs/scorer-board.spec.ts` (430×932 phone): the football column order (Goal, Possession, Shots on target, Shots off target, Fouls, Yellow cards, Red cards, Offsides, Corners, Saves); one tap each with the count on that team's side only; possession taps 4 s home then away: home share above away, summing to 100, `possession_pct` in the match statistics; a goal then who scored, assist and type; a card asks for the player first; *More* holds penalties; counts match the server's statistics (`docs/evidence/e2e/scorer-two-sides.png`). A league match level at 0–0 in the 2nd half: *Next: Full Time* and the *Does it need a winner?* offer (`scorer-knockout-offer.png`); *Play extra time and penalties* → *Next: Before Extra Time*, rules knockout on; extra time, then *Next: Penalty Shootout*, two shoot-out columns, Pens 1–0 | pass |
+| `tests/e2e/specs/finals.spec.ts`: Finals tab with two regular-season matches unplayed (warning shown), finals rules from the league's rules with extra time and penalties, top 4 pairings 1st v 4th, kick-offs entered, no sideways scrolling, *Create semi-finals* → waiting for winners; both matches stage finals with knockout on; the match page shows the Finals pill, Stage and the Knockout switch; Results & fixtures lists Round 1 then the Semi-finals (`finals-start.png`, `finals-semi-final.png`) | pass |
+| `tests/e2e/specs/uploads.spec.ts`: an SVG team logo in the New team form → a ready 1024×1024 PNG at once, shown in the teams table; a GIF player photo under *Photo & details* → a ready PNG, shown in the players table; a file that is not an image says so (`uploads-team-logo.png`). `scorer.spec.ts` (A13–A15) and `futsal.spec.ts` updated to the team columns | pass |
+| Full `pnpm test:e2e` on the final build | 50 tests, 50 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 28.3 min). Two earlier full runs are not counted: the first, started straight after a container restart, failed the automation flow (the stopped worker's automation lease had not expired, so the new worker's commands were refused) and the finals spec, whose no-sideways-scrolling check found the finals columns overflowing (fixed: both columns and the ladder rows now shrink to their track); the second failed only the plain replay export, still drawing frame 37 of 41 at its 120 s download wait on a loaded 4 vCPU host (39.5 s in the run before, 43.8 s in two runs alone afterwards; the wait is now 300 s) |
+
+Not claimed: the scorer was checked in Chromium at phone size, not on a phone; possession is only as good as
+the taps. Top 6 and top 8 brackets are covered by unit tests; the browser and database tests create top-4 finals.
+The database fallback keeps files of up to 25 MB and makes database backups larger; video, clips and recordings
+still need object storage. HEIC photos convert only in browsers that open them (Safari). Not tried on the hosted
+deployment.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

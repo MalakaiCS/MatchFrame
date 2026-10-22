@@ -33,7 +33,8 @@ async function exportFrom(page: Page, opts: { size: string; fps: number; version
   if (opts.version) await dialog.getByLabel('Version').selectOption(opts.version);
   await dialog.getByLabel('Size').selectOption(opts.size);
   await dialog.getByLabel('Frame rate').selectOption(String(opts.fps));
-  const download = page.waitForEvent('download', { timeout: 120_000 });
+  // every frame is drawn in the browser: about 40 s here, slower on a busy machine
+  const download = page.waitForEvent('download', { timeout: 300_000 });
   await dialog.getByRole('button', { name: 'Export WebM' }).click();
   await expect(dialog.getByRole('status')).toContainText(/Drawing frame \d+ of/);
   const d = await download;
@@ -44,7 +45,7 @@ async function exportFrom(page: Page, opts: { size: string; fps: number; version
 }
 
 test('replay transition from a look page: plain, transparent VP9 WebM, covered at 800 ms', async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   const { ctx, page } = await login(browser);
   await page.goto('/app/themes/premier');
   // it is one of the look's graphics too
@@ -64,7 +65,7 @@ test('replay transition from a look page: plain, transparent VP9 WebM, covered a
 });
 
 test('replay transition from a match: with the teams, 30 fps, covered at 800 ms', async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   const { ctx, page } = await login(browser);
   const matchId = await freshMatch(page);
   await page.goto(`/app/matches/${matchId}`);

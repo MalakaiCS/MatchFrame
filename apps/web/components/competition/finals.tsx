@@ -109,7 +109,7 @@ export function FinalsPanel({ competition, canEdit }: { competition: { id: strin
       <ErrorNotice error={q.error} />
       {q.isLoading || !d ? <Spinner /> : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="grid min-w-0 content-start gap-4">
+          <div className="grid min-w-0 content-start gap-4 [&>*]:min-w-0">
             <Card className="p-4" role="region" aria-label="Next in the finals">
               {d.next.kind === 'start' ? (
                 <>
@@ -169,7 +169,7 @@ export function FinalsPanel({ competition, canEdit }: { competition: { id: strin
             </Card>
           </div>
 
-          <div className="grid content-start gap-4">
+          <div className="grid min-w-0 content-start gap-4 [&>*]:min-w-0">
             <Card className="p-4">
               <h2 className="mb-2 font-medium">Finals rules</h2>
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted">{d.rules.description.map((r) => <li key={r}>{r}</li>)}</ul>
@@ -184,7 +184,7 @@ export function FinalsPanel({ competition, canEdit }: { competition: { id: strin
             <Card className="p-4">
               <h2 className="mb-2 font-medium">Ladder</h2>
               {d.ladder.length ? (
-                <ol className="grid gap-1 text-sm">{d.ladder.map((r) => <li key={r.team.id} className="flex items-center gap-2"><span className="w-6 text-right tabular text-muted">{r.position}</span><span className="size-2.5 rounded-sm" style={{ background: r.team.primaryColor }} aria-hidden /><span className="min-w-0 flex-1 truncate">{r.team.name}</span><span className="tabular text-muted">{r.points}</span></li>)}</ol>
+                <ol className="grid gap-1 text-sm">{d.ladder.map((r) => <li key={r.team.id} className="flex min-w-0 items-center gap-2"><span className="w-6 text-right tabular text-muted">{r.position}</span><span className="size-2.5 rounded-sm" style={{ background: r.team.primaryColor }} aria-hidden /><span className="min-w-0 flex-1 truncate">{r.team.name}</span><span className="tabular text-muted">{r.points}</span></li>)}</ol>
               ) : <p className="text-sm text-muted">No results yet.</p>}
             </Card>
           </div>
