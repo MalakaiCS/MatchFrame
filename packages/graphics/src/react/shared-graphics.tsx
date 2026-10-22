@@ -5,8 +5,9 @@
 // of that look without three copies of the content.
 import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
-import type { RenderFixture, RenderStandingRow } from '../data';
+import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, inkOn, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
+import { shootoutLine, shootoutStatus } from '@bs/domain';
+import { COLOUR_CLASH_THRESHOLD, colourDistance, type RenderFixture, type RenderStandingRow } from '../data';
 import { ReplayTransition } from './replay';
 
 export interface Chrome {
@@ -372,35 +373,96 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     );
   };
 
+  // The shoot-out: one bar with the crests at its ends, the names and the score in the middle; under each name a
+  // marker per kick (scored, missed, still to take, the next one ringed), and a line on where it stands: kick N of
+  // five, sudden death, a kick that wins it or must be scored, and the winner once one team cannot be caught.
   const Shootout = (p: GraphicProps) => {
     const so = p.data.match.projection.shootout;
+    const st = shootoutStatus(so, p.data.match.rulesConfig);
+    const th = p.data.theme;
     const h = team(p, 'home');
     const a = team(p, 'away');
-    const kicks = (s: 'home' | 'away') => (so?.kicks ?? []).filter((k) => k.side === s);
-    const n = Math.max(5, kicks('home').length, kicks('away').length);
-    const row = (s: 'home' | 'away', i: number) => {
-      const tm = s === 'home' ? h : a;
-      const ks = kicks(s);
+    const tm = (s: 'home' | 'away') => (s === 'home' ? h : a);
+    const kicksOf = (s: 'home' | 'away') => (so?.kicks ?? []).filter((k) => k.side === s);
+    // the first five always show; sudden death adds one per round reached (the last few if it runs long)
+    const sdRounds = Math.max(0, Math.max(st.taken.home, st.taken.away, st.next ? st.round : 0) - st.rounds);
+    const sdShown = Math.min(sdRounds, 3);
+    const sdFrom = st.rounds + sdRounds - sdShown;
+    const GREEN = '#2FBF71';
+    const RED = '#E5484D';
+    const dot = (s: 'home' | 'away', i: number) => {
+      const kick = kicksOf(s)[i];
+      const isNext = !kick && st.next === s && i === st.taken[s];
+      const bg = !kick ? 'rgba(10,14,22,.72)' : kick.scored ? GREEN : RED;
+      const unneeded = !kick && !!st.winner; // decided before this kick was needed
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, ...animStyle(p, s === 'home' ? 'slide-left' : 'slide-right', 120 + i * 90, 380) }}>
-          <Logo url={tm.logoUrl} label={tm.abbreviation} size={44} color={tm.primaryColor} radius={6} />
-          <span style={{ width: 70, fontSize: 26, fontWeight: 800 }}>{tm.abbreviation}</span>
-          <span style={{ display: 'flex', gap: 10 }}>
-            {Array.from({ length: n }, (_, k) => {
-              const kick = ks[k];
-              const bg = !kick ? 'transparent' : kick.scored ? '#55D99D' : '#E5484D';
-              return <span key={k} style={{ width: 30, height: 30, borderRadius: '50%', border: `3px solid ${kick ? bg : 'rgba(255,255,255,.4)'}`, background: bg, display: 'inline-grid', placeItems: 'center', color: '#0B1220', fontWeight: 900, fontSize: 18, ...changeStyle(p, `k-${s}-${k}`, kick ? (kick.scored ? 'y' : 'n') : '-') }}>{kick ? (kick.scored ? '✓' : '✕') : ''}</span>;
-            })}
-          </span>
-          <span style={{ fontSize: 40, fontWeight: 900, fontVariantNumeric: 'tabular-nums', marginLeft: 8, ...changeStyle(p, `so-${s}`, so?.[s] ?? 0) }}>{so?.[s] ?? 0}</span>
-        </div>
+        <span key={i} aria-label={kick ? (kick.scored ? 'scored' : 'missed') : isNext ? 'next' : 'to take'} data-kick={kick ? (kick.scored ? 'scored' : 'missed') : isNext ? 'next' : 'pending'}
+          style={{ width: 40, height: 40, borderRadius: '50%', flex: 'none', display: 'inline-grid', placeItems: 'center', background: bg, opacity: unneeded ? 0.4 : 1,
+            boxShadow: isNext ? `0 0 0 3px ${th.accent}, 0 0 14px ${withAlpha(th.accent, 0.7)}` : kick ? 'inset 0 -3px 0 rgba(0,0,0,.22), 0 1px 3px rgba(0,0,0,.35)' : 'inset 0 2px 4px rgba(0,0,0,.6)',
+            ...changeStyle(p, `k-${s}-${i}`, kick ? (kick.scored ? 'y' : 'n') : isNext ? 'next' : '-') }}>
+          {kick ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {kick.scored ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />}
+            </svg>
+          ) : null}
+        </span>
       );
     };
+    const dots = (s: 'home' | 'away') => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 9, justifyContent: s === 'home' ? 'flex-start' : 'flex-end' }}>
+        {Array.from({ length: st.rounds }, (_, i) => dot(s, i))}
+        {sdShown ? <span style={{ width: 2, height: 26, background: withAlpha(th.text, 0.35), margin: '0 3px' }} aria-hidden /> : null}
+        {Array.from({ length: sdShown }, (_, i) => dot(s, sdFrom + i))}
+      </span>
+    );
+    const names = { home: h.shortName || h.name, away: a.shortName || a.name };
+    let line = shootoutLine(st, names);
+    if (!st.winner && !st.pressure && st.next) line += ` · ${names[st.next]} ${t(p, 'to kick')}`;
+    const lineColour = st.winner ? tm(st.winner).primaryColor : st.pressure ? th.accent : null;
+    // the score plate and title tab in the look's main colour, or its dark base where that matches the panel
+    const plate = colourDistance(th.primary, th.panel) < COLOUR_CLASH_THRESHOLD ? th.secondary : th.primary;
+    const crest = (s: 'home' | 'away') => (
+      <span style={{ position: 'absolute', top: '50%', [s === 'home' ? 'left' : 'right']: -34, transform: 'translateY(-50%)', width: 104, height: 104, borderRadius: '50%', background: tm(s).primaryColor, border: `4px solid ${th.text}`, boxShadow: '0 6px 18px rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', overflow: 'hidden', ...animStyle(p, 'zoom', 160, 420) }}>
+        <Logo url={tm(s).logoUrl} label={tm(s).abbreviation} size={78} color={tm(s).primaryColor} radius={39} />
+      </span>
+    );
     return (
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 150, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content', background: p.data.theme.panel, color: p.data.theme.text, fontFamily: p.data.theme.font, borderRadius: p.data.theme.radius, padding: '18px 34px', display: 'grid', gap: 12, boxShadow: '0 8px 30px rgba(0,0,0,.35)', ...C.card?.(p), ...animStyle(p, 'slide-up') }} data-graphic="shootout">
-        <div style={{ fontSize: 16, letterSpacing: 4, opacity: 0.75, textAlign: 'center', ...animStyle(p, 'fade', 80, 300) }}>{t(p, p.data.match.sport === 'hockey' ? 'SHOOT-OUT' : p.data.match.sport === 'futsal' ? 'PENALTIES' : 'PENALTY SHOOT-OUT')}</div>
-        {row('home', 0)}
-        {row('away', 1)}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 96, marginLeft: 'auto', marginRight: 'auto', width: 1180, fontFamily: th.font, color: th.text, ...animStyle(p, 'slide-up') }} data-graphic="shootout" data-shootout-state={st.winner ? 'decided' : st.suddenDeath ? 'sudden_death' : 'regulation'}>
+        {/* the title tab */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span style={{ background: plate, color: inkOn(plate, th.secondary), padding: '7px 40px 9px', borderRadius: `${Math.min(th.radius, 14)}px ${Math.min(th.radius, 14)}px 0 0`, fontSize: 21, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', ...animStyle(p, 'rise', 80, 320) }}>
+            {t(p, p.data.match.sport === 'hockey' ? 'Shoot-out' : p.data.match.sport === 'futsal' ? 'Kicks from the penalty mark' : 'Penalty shoot-out')}
+          </span>
+        </div>
+        {/* names and score */}
+        {/* crests outside the panel, so a look that cuts its panels (slants, notches) never clips them */}
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px 1fr', alignItems: 'center', height: 84, background: th.panel, borderRadius: th.radius, boxShadow: '0 10px 30px rgba(0,0,0,.4)', ...C.card?.(p) }}>
+            <span style={{ paddingLeft: 96, paddingRight: 20, fontSize: 38, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right', ...animStyle(p, 'slide-left', 140, 380) }}>{names.home}</span>
+            <span style={{ alignSelf: 'stretch', display: 'grid', placeItems: 'center', background: plate, color: inkOn(plate, th.secondary), clipPath: 'polygon(0 0, 100% 0, 88% 100%, 12% 100%)', fontSize: 58, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: 2 }}>
+              <span>
+                <span style={changeStyle(p, 'so-home', st.scored.home)}>{st.scored.home}</span>
+                <span style={{ opacity: 0.7, margin: '0 12px' }}>:</span>
+                <span style={changeStyle(p, 'so-away', st.scored.away)}>{st.scored.away}</span>
+              </span>
+            </span>
+            <span style={{ paddingLeft: 20, paddingRight: 96, fontSize: 38, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...animStyle(p, 'slide-right', 140, 380) }}>{names.away}</span>
+          </div>
+          {crest('home')}
+          {crest('away')}
+        </div>
+        {/* the kicks */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 1fr', alignItems: 'center', margin: '0 70px', padding: '10px 26px', background: withAlpha(th.panel, 0.82), borderRadius: `0 0 ${th.radius}px ${th.radius}px`, boxShadow: '0 8px 20px rgba(0,0,0,.35)', ...animStyle(p, 'wipe-up', 220, 360) }}>
+          <span style={{ paddingLeft: 40 }}>{dots('home')}</span>
+          <span aria-hidden />
+          <span style={{ paddingRight: 40 }}>{dots('away')}</span>
+        </div>
+        {/* where it stands */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+          <span data-shootout-line style={{ background: lineColour ?? withAlpha(th.panel, 0.9), color: lineColour ? inkOn(lineColour) : th.text, padding: '6px 22px', borderRadius: 999, fontSize: 20, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', ...changeStyle(p, 'so-line', line), ...animStyle(p, 'rise', 300, 320) }}>
+            {line}
+          </span>
+        </div>
       </div>
     );
   };

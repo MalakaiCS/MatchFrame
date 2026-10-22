@@ -265,6 +265,14 @@ export function presentedBy(p: GraphicProps): string {
 
 // ---------------------------------------------------------------- match header (ident) and animated background
 
+/** Dark ink on a light colour, white on a dark one (6-digit hex; anything else counts as dark). */
+export function inkOn(bg: string, dark = '#0B1220'): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(bg);
+  if (!m) return '#FFFFFF';
+  const [r, g, b] = [m[1]!, m[2]!, m[3]!].map((x) => parseInt(x, 16) / 255);
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! > 0.6 ? dark : '#FFFFFF';
+}
+
 /** "#38003C" at 0.6 → "rgba(56,0,60,0.6)"; anything that is not a 6-digit hex is returned unchanged. */
 export function withAlpha(hex: string, a: number): string {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);

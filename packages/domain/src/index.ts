@@ -26,3 +26,4 @@ export * from './rules-fields';
 export * from './staff';
 export * from './possession';
 export * from './scorer-board';
+export * from './shootout';

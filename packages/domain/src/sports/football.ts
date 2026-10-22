@@ -15,6 +15,7 @@ import {
 } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
+import { shootoutStatus } from '../shootout';
 
 export const footballConfigSchema = z.object({
   periodMinutes: z.number().int().min(5).max(60),
@@ -185,6 +186,7 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
     const allowedKinds = def.phases ?? ['play'];
     if (!allowedKinds.includes(phase.kind)) return err('PHASE_NOT_ALLOWED', `${def.label} cannot be recorded during ${phase.label}`, 'type');
     if (f.type === 'shootout_kick' && p.phase !== 'shootout') return err('PHASE_NOT_ALLOWED', 'Shootout kicks are only valid during the shootout', 'type');
+    if (f.type === 'shootout_kick' && shootoutStatus(p.shootout, 5).winner) return err('SHOOTOUT_DECIDED', 'The shoot-out is already decided. End it, or undo the kick that decided it first', 'type');
     if (p.phase === 'shootout' && def.group === 'score') return err('PHASE_NOT_ALLOWED', 'Use shootout kicks during the shootout; they never change the match score', 'type');
     if (def.requiresSide && !sideSchema.safeParse(f.side).success) return err('SIDE_REQUIRED', 'Choose a team', 'side');
     const schema = payloadSchemas[f.type];

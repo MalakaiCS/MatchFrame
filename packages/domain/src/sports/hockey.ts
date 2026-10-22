@@ -6,6 +6,7 @@ import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import { err, ok, type DisplayModel, type EventTypeDef, type PhaseDef, type Result, type Side } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
+import { shootoutStatus } from '../shootout';
 import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const hockeyConfigSchema = z.object({
@@ -86,6 +87,7 @@ export const hockeyAdapter: SportAdapter<HockeyConfig> = {
     const phase = phasesFor(c).find((x) => x.id === p.phase)!;
     if (!(def.phases ?? ['play']).includes(phase.kind)) return err('PHASE_NOT_ALLOWED', `${def.label} cannot be recorded during ${phase.label}`, 'type');
     if (f.type === 'shootout_stroke' && p.phase !== 'shootout') return err('PHASE_NOT_ALLOWED', 'Shoot-out attempts are only valid during the shoot-out', 'type');
+    if (f.type === 'shootout_stroke' && shootoutStatus(p.shootout, 5).winner) return err('SHOOTOUT_DECIDED', 'The shoot-out is already decided. End it, or undo the kick that decided it first', 'type');
     if (p.phase === 'shootout' && def.group === 'score') return err('PHASE_NOT_ALLOWED', 'Use shoot-out attempts during the shoot-out; they never change the match score', 'type');
     if (def.requiresSide && !sideSchema.safeParse(f.side).success) return err('SIDE_REQUIRED', 'Choose a team', 'side');
     const schema = payloadSchemas[f.type];

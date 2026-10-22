@@ -20,6 +20,8 @@ import {
   possessionShare,
   scorerSheet,
   sheetCount,
+  shootoutLine,
+  shootoutStatus,
   type DisplayModel,
   type EventTypeDef,
   type LineupPlayer,
@@ -390,20 +392,38 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   ) : null;
 
   // ------------------------------------------------------------------ the shoot-out
+  // where the shoot-out stands: the team to kick next is ringed; once it is decided no more kicks are taken
+  const so = shootoutStatus(proj.shootout, cfg);
+  const soNames = { home: team('home').shortName, away: team('away').shortName };
+  const soLine = shootoutLine(so, soNames) + (!so.winner && !so.pressure && so.next ? ` · ${soNames[so.next]} to kick` : '');
+  const soSlots = (side: Side) => {
+    const ks = proj.shootout?.kicks.filter((k) => k.side === side) ?? [];
+    const n = Math.max(so.rounds, ks.length + (so.next === side ? 1 : 0));
+    return Array.from({ length: n }, (_, i) => ({ kick: ks[i], next: !ks[i] && so.next === side && i === ks.length, sudden: i >= so.rounds }));
+  };
   const shootoutRows = shootoutEv ? (
     <div role="region" aria-label="Shootout">
+      <p role="status" data-shootout-line className={cx('scorer-display mx-4 mt-4 rounded-lg px-4 py-2.5 text-center text-[16px] font-semibold', so.winner ? 'text-white' : so.pressure ? 'bg-[#fff4d6] text-[#7a4b00]' : 'bg-[var(--sc-press)] text-[var(--sc-ink)]')} style={so.winner ? { background: head(so.winner) } : undefined}>
+        {soLine}
+      </p>
+      {so.winner ? <p className="mx-4 mt-2 text-center text-sm text-[var(--sc-muted)]">Decided: no more kicks are needed. Use <b>End shoot-out</b> at the top to finish the match.</p> : null}
       {([['scored', true], ['missed', false]] as const).map(([word, scored]) => (
         <MirrorRow key={word} centre={<CentreBadge home={head('home')} away={head('away')}>{scored ? <Check className="size-5" /> : <X className="size-5" />}</CentreBadge>}>
           {SIDES.map((side) => {
             const n = proj.shootout?.kicks.filter((k) => k.side === side && k.scored === scored).length ?? 0;
-            return <HalfCell key={side} side={side} eventType={`shootout_${word}`} team={team(side)} label={scored ? 'Scored' : 'Missed'} count={n} disabled={!canScore} onTap={() => void sendFact(shootoutEv, side, { scored })} testLabel={sideLabel(side, scored ? 'Scored' : 'Missed', n)} />;
+            return <HalfCell key={side} side={side} eventType={`shootout_${word}`} team={team(side)} label={scored ? 'Scored' : 'Missed'} count={n} active={so.next === side} disabled={!canScore || !!so.winner} onTap={() => void sendFact(shootoutEv, side, { scored })} testLabel={sideLabel(side, scored ? 'Scored' : 'Missed', n)} />;
           }) as [React.ReactNode, React.ReactNode]}
         </MirrorRow>
       ))}
       <div className="grid grid-cols-2 gap-4 px-4 py-3">
         {SIDES.map((side) => (
-          <ol key={side} className={cx('flex flex-wrap gap-1', side === 'away' && 'justify-end')} aria-label={`${team(side).shortName} kicks`}>
-            {(proj.shootout?.kicks.filter((k) => k.side === side) ?? []).map((k, i) => <li key={i} className={cx('grid size-6 place-items-center rounded-full text-xs font-bold text-white', k.scored ? 'bg-[#16a34a]' : 'bg-[#dc2626]')} aria-label={k.scored ? 'scored' : 'missed'}>{k.scored ? '✓' : '✗'}</li>)}
+          <ol key={side} className={cx('flex flex-wrap items-center gap-1.5', side === 'away' && 'justify-end')} aria-label={`${team(side).shortName} kicks`}>
+            {soSlots(side).map((x, i) => (
+              <li key={i} aria-label={x.kick ? (x.kick.scored ? 'scored' : 'missed') : x.next ? 'next' : 'to take'}
+                className={cx('grid size-7 place-items-center rounded-full text-xs font-bold text-white', x.kick ? (x.kick.scored ? 'bg-[#16a34a]' : 'bg-[#dc2626]') : 'bg-[#2a2f38]', x.next && 'ring-2 ring-primary ring-offset-2', x.sudden && i === so.rounds && 'ml-2')}>
+                {x.kick ? (x.kick.scored ? '✓' : '✗') : ''}
+              </li>
+            ))}
           </ol>
         ))}
       </div>

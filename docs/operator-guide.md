@@ -154,6 +154,15 @@ information strap, shoot-out tracker, timeout, sponsor graphic, stinger wipe, re
 full-frame media and the ticker (which can carry the other live scores of the round). Goal, card and substitution
 graphics can carry a "presented by" sponsor; those appearances count in the sponsor delivery report.
 
+**Penalty shoot-out tracker.** One bar with both crests at its ends, the names and the shoot-out score in the
+middle, and under each name a marker per kick: green with a tick for a goal, red with a cross for a miss, dark for a
+kick still to take, and the next kick ringed. The first five kicks always show (futsal: the number in the rules);
+sudden death adds a marker per round after a divider. The line below says where it stands: *Kick 3 of 5 · Harbour
+to kick*, *Sudden death · round 7*, *Harbour score to win* or *Harbour must score to stay in* when the next kick
+decides it, and *Northgate win 4–3 on penalties* as soon as one team can no longer be caught with the kicks it has
+left (so a shoot-out can end before all five are taken). After that no more kicks are accepted; kicks that were not
+needed are dimmed. It updates live as the scorer records each kick, in every look (football, futsal and hockey).
+
 **Replay transition (OBS or vMix stinger).** In every look, slanted bands in the look's colours sweep in, cover
 the whole frame with REPLAY in the middle, then sweep on and away (1.6 s). It comes in two versions:
 * *Plain*: the look only. *Themes → a look → Replay transition (WebM)* (opened from one of your own looks, it

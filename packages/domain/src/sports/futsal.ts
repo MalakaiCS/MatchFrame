@@ -12,6 +12,7 @@ import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import { err, ok, otherSide, type DisplayModel, type EventTypeDef, type MatchProjection, type PhaseDef, type Result, type Side } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
+import { shootoutStatus } from '../shootout';
 import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const futsalConfigSchema = z.object({
@@ -200,6 +201,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
     const phase = phasesFor(c).find((x) => x.id === p.phase)!;
     if (!(def.phases ?? ['play']).includes(phase.kind)) return err('PHASE_NOT_ALLOWED', `${def.label} cannot be recorded during ${phase.label}`, 'type');
     if (f.type === 'shootout_kick' && p.phase !== 'shootout') return err('PHASE_NOT_ALLOWED', 'Penalty kicks of the shoot-out are only valid during the kicks from the penalty mark', 'type');
+    if (f.type === 'shootout_kick' && shootoutStatus(p.shootout, c).winner) return err('SHOOTOUT_DECIDED', 'The shoot-out is already decided. End it, or undo the kick that decided it first', 'type');
     if (p.phase === 'shootout' && (def.group === 'score' || f.type === 'foul' || f.type === 'timeout')) return err('PHASE_NOT_ALLOWED', 'Use penalty kicks during the kicks from the penalty mark; they never change the match score', 'type');
     if (def.requiresSide && !sideSchema.safeParse(f.side).success) return err('SIDE_REQUIRED', 'Choose a team', 'side');
     if (f.type === 'timeout') {

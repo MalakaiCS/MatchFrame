@@ -79,8 +79,11 @@ first). A red banner says when the starting line-ups are not filled in, with a l
   is no extra time), then **Penalty Shootout** after extra time; *Full Time* is below it. When a league match's
   rules let a draw stand, the sheet asks *Does it need a winner?* and **Play extra time and penalties** switches
   this match to knockout on the spot. *More options* also has the *Knockout* switch (it cannot be turned off during
-  extra time or the shoot-out). During the shoot-out the sheet has a **Scored** and a **Missed** row, with the
-  kicks shown as ticks and crosses.
+  extra time or the shoot-out). During the shoot-out the sheet has a **Scored** and a **Missed** row, the
+  kicks so far as ticks and crosses with the next one ringed, and a line on where it stands (*Kick 3 of 5 · Harbour
+  to kick*, *Harbour must score to stay in*, *Sudden death · round 6*). The team to kick next is tinted. As soon as
+  one team can no longer be caught, the line says who won (*Northgate win 4–3 on penalties*), the buttons stop
+  taking kicks and *End shoot-out* finishes the match; undo the deciding kick if it was recorded by mistake.
 * Substitutions only offer players who can make the change: whoever is on the field comes off, whoever is on the
   bench comes on (rolling-substitution sports also list players who came off earlier).
 * Basketball: +1/+2/+3 per team with the scorer named afterwards, the foul type (personal, offensive, technical,
