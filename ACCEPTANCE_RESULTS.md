@@ -380,6 +380,56 @@ until the period starts (it is not recorded); after a reload the steps before th
 already under way when this is deployed get their per-team counts from their log; nothing else about them changes.
 Not tried on the hosted deployment.
 
+## Penalty shoot-out tracker (2026-10-22)
+
+Requested with a picture of a shoot-out bar (flags at the ends, names, a big score, a row of kick markers under each
+team): "graphics like the attached to clearly show what stage penalty shots are at and when misses are calculated".
+Built in each look's own styling; nothing from the picture (a stock image) is used. Before this the tracker showed the
+kicks, but nothing worked out the state of the shoot-out: no next kicker, no sudden death, no early finish, and kicks
+were accepted after it was decided. Same environment, production build through the single-port launcher,
+graphics-only mode.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `shootout.test.ts`: before the first kick (best of five); kicks alternate from whoever kicked first; decided as soon as a team cannot be caught with the kicks it has left (3 of 3 against 0 of 3), not while it still can; the next kick scores to win (4 of 4 against 3 of 4) or must be scored to stay in (after a miss with one kick left); sudden death level after five each, a split pair ends it, a half pair never does; futsal's own number of kicks; a kick recorded after the decision does not reopen it; football, futsal and hockey refuse a kick once it is decided (`SHOOTOUT_DECIDED`) and take kicks again after the deciding one is undone | 153 tests, 29 files, all pass |
+| `pnpm test:db`: the finals test that decides a level semi-final on penalties through the scoring service; the starter-flow upgrades with the new fingerprints | 76 tests, 11 files, all pass |
+| `tests/e2e/specs/shootout.spec.ts`: a match on a fresh copy of the football starter flow, taken through extra time to the shoot-out by the scoring API; the starter flow puts the tracker on the OBS page (1920×1080) by itself: *Best of 5, then sudden death*; after four kicks the markers read scored, missed, next, to take, to take / scored, scored, to take ×3 and the line *Kick 3 of 5 · Harbour to kick* (`docs/evidence/e2e/shootout-kick-3.png`); four more and *Harbour must score to stay in* at 3:4 (`shootout-must-score.png`); the miss: *Northgate win 4–3 on penalties*, state *decided*, Northgate's fifth never needed (`shootout-decided.png`); another kick refused with 422 `SHOOTOUT_DECIDED`; the scorer phone shows the same line, its Scored button disabled and *End shoot-out* in the header (`scorer-shootout-decided.png`) | pass |
+| Starter flows: football, futsal and hockey put the tracker on air at the shoot-out and keep it until full time (unit test: no other sport's flow has the step); new fingerprints recorded; on worker start | "updated 44 untouched starter plan(s) to the current starter flow" |
+| Visual baselines: the shoot-out tracker in all ten looks rewritten (the only baselines that changed); a look that cuts its panels (Meister) no longer clips the crests | 10 baselines; the other 326 unchanged |
+| Full `pnpm test:e2e` on the final build | 52 tests, 52 pass, 0 skipped, 0 flaky (`docs/evidence/e2e/results.json`, 27.4 min). Two earlier full runs are not counted: both failed the football automation flow, first in the run (the home line-up was still in the output's state 13 s after its 8 s), and the second also this spec (the take raced the starter flow's extra-time kick-off step, which clears the lower layer). Causes fixed: the worker's housekeeping pass opened a transaction per live output in each scan every 250 ms; with 170 automated live outputs left in this database by earlier runs the clock and wall-clock scans took about 220 and 280 ms each and the whole pass much longer under load. They now take published plans from the cache before opening a transaction (about 20 ms each), and the scorebug sponsor rotation settles each output once per 30 s rotation. The spec now lets the starter flow put the tracker on air |
+
+Not claimed: the kick order is taken from the kicks as recorded (the first kick sets it; ABAB through sudden death),
+so a competition that changes the order in sudden death (some hockey rules) shows the next kicker from that pattern.
+Hockey uses five attempts each. Checked in Chromium; not on the hosted deployment.
+
+## Replay stinger: 2 s, one wall, clean on the way out (2026-10-22)
+
+Requested: "the exporting of the replay stinger transitions is horrible and breaks on the transition out. Can you
+also make the transition roughly 2 seconds as 1.6 seconds seems too short." Same environment, production build
+through the single-port launcher, graphics-only mode.
+
+Cause, found on an exported file (every frame laid over grey): each band moved on its own staggered schedule across
+2900 px, so on the way out (and on the way in) the bands pulled apart and see-through stripes opened across the middle
+of the picture; the exit's easing accelerated so hard that its last frames jumped hundreds of pixels at 25/30 fps.
+FFmpeg also encoded at CRF 28 on a fast preset. The earlier export test only looked at the first frame, the frame at
+the cut and the last frame, so it never saw the exit.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: the replay transition runs 2000 ms (cue out at 1200 ms, exit 800 ms), the cut (1000 ms) inside the cover and before the exit; in every look, plain and with the teams, exactly one sweep animation (the wall, not one per band), in place by the end of the entrance, setting off 60 ms into the exit and gone by its end, and at rest at the cut | 153 tests, 29 files, all pass |
+| `tests/e2e/specs/replay-transition.spec.ts`, both exports (plain from the Premier look page at 25 fps, with the teams from a match at 30 fps, 1280×720): VP9 WebM with alpha, 51 and 61 frames; every frame read back with libvpx: clear at both ends, **every** frame fully covered from 500 ms to 1440 ms (minimum alpha above 245), and on every frame, on three rows, at most one change between see-through and covered (one solid wall, no gap between bands); stills of the sweep in, the cut and the way out (`docs/evidence/e2e/replay-premier-sweep.png`, `replay-premier-plain.png`, `replay-premier-out.png`, `replay-match-teams.png`) | pass |
+| Measured cover window on the exported files | 480–1440 ms at 25 fps, 467–1467 ms at 30 fps; stated as 500–1440 ms, cut at 1000 ms (dialog, operator guide) |
+| Encoding | CRF 16, `-cpu-used 2`: 195 kB (plain, 25 fps) and 307 kB (teams, 30 fps) at 1280×720 |
+| Visual baselines | unchanged (the look page shows the stinger at full cover) |
+| Full `pnpm test:e2e` on the final build | 52 tests, 52 pass (see the shoot-out section above) |
+
+Not claimed: the files were checked frame by frame here, not loaded into OBS or vMix (neither runs in this
+environment). There is no motion blur: at 1280×720 the wall's edge moves up to 272 px a frame at 25 fps (230 px at
+30 fps, measured on the exports); 50 or 60 fps exports are smoother. Stingers exported before this change keep the old 800 ms cut point; export again
+and set the transition point to 1000 ms.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
