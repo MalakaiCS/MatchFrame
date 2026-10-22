@@ -1,11 +1,13 @@
-// Frame-accurate export of an animated graphic. For every frame the graphic is remounted at that instant (`setTime`),
-// its CSS animations are held exactly there and written inline, and the node is drawn to a canvas with a
-// transparent background. The frames (PNG with alpha) go to the API, which encodes them with FFmpeg: browsers can
-// record video, but not frame by frame and not with an alpha channel.
+// Frame-accurate export of an animated graphic. For every frame the graphic is remounted at that instant (`setTime`)
+// as a still: the renderer writes each entrance and exit as plain styles for that instant (`Renderer still`), because
+// browsers differ in how they hold a paused or finished CSS animation (one held a finished exit at its time modulo
+// its length, so parts that had left came back). Any other CSS animation inside is held where it is and written
+// inline. The node is drawn to a canvas with a transparent background, and the frames (PNG with alpha) go to the
+// API, which encodes them with FFmpeg: browsers can record video, but not frame by frame and not with an alpha channel.
 import { getFontEmbedCSS, toCanvas } from 'html-to-image';
 import { ApiError } from './api';
 
-/** Hold every animation inside `root` at its start (the remount put it at the frame's instant) and make it still. */
+/** Hold any CSS animation left inside `root` at its start (the remount put it at the frame's instant) and make it still. */
 export function freezeAnimations(root: HTMLElement) {
   for (const a of root.getAnimations({ subtree: true })) {
     a.pause();

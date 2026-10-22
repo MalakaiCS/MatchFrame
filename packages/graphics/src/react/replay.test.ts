@@ -86,3 +86,41 @@ describe('part animations', () => {
     expect(partAnim(p({ data: { theme: { motion: 'none' } } as never }), 'sweep', 0, 400)).toEqual({});
   });
 });
+
+describe('replay transition as still frames (the WebM export)', () => {
+  // the frames of a 2 s export at 30 fps, each drawn the way the export draws it: in, held, then out
+  const frames = Array.from({ length: 61 }, (_, i) => Math.min(REPLAY_TRANSITION.totalMs, (i * 1000) / 30));
+  const at = (theme: ThemeConfig, t: number, variables: Record<string, unknown>) => {
+    const phase = t < replay.entranceMs ? 'in' : t < replay.holdMs! ? 'hold' : 'out';
+    return html({ ...props(theme, { phase, offsetMs: phase === 'out' ? t - replay.holdMs! : t, variables }), still: true });
+  };
+  const wallX = (markup: string) => {
+    const t = /left:-26%;width:152%;?([^"]*)"/.exec(markup)![1]!;
+    const m = /transform:translateX\((-?[\d.]+)px\)/.exec(t);
+    return m ? Number(m[1]) : /transform:none/.test(t) || !/transform/.test(t) ? 0 : Number.NaN;
+  };
+  const opacities = (markup: string) => [...markup.matchAll(/opacity:([\d.]+)/g)].map((m) => Number(m[1]));
+
+  it('has no CSS animation in any frame: every part is a plain style for that instant', () => {
+    for (const theme of Object.values(DEFAULT_THEMES)) for (const variables of [{}, { teams: true }]) for (const t of frames) expect(at(theme, t, variables), `${theme.themeKey} ${t} ms`).not.toMatch(/animation/);
+  });
+
+  it('the wall arrives, rests at the cut and leaves; the word, crests and badge leave and stay gone to the last frame', () => {
+    for (const theme of Object.values(DEFAULT_THEMES)) {
+      for (const variables of [{}, { teams: true }]) {
+        const key = `${theme.themeKey}${variables.teams ? ' teams' : ''}`;
+        const xs = frames.map((t) => wallX(at(theme, t, variables)));
+        expect(xs[0], key).toBe(-2900);
+        expect(xs.at(-1), key).toBe(2900);
+        for (let i = 1; i < xs.length; i++) expect(xs[i]!, `${key} frame ${i}`).toBeGreaterThanOrEqual(xs[i - 1]!);
+        expect(wallX(at(theme, REPLAY_TRANSITION.transitionPointMs, variables)), key).toBe(0);
+        // every part has finished leaving 220 ms into the exit; from then on each one is at opacity 0, never back
+        for (const t of frames.filter((f) => f >= replay.holdMs! + 230)) {
+          const o = opacities(at(theme, t, variables));
+          expect(o.length, `${key} ${t} ms`).toBeGreaterThan(0);
+          expect(o.every((v) => v === 0), `${key} ${t} ms: ${o.join(',')}`).toBe(true);
+        }
+      }
+    }
+  });
+});

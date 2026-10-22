@@ -176,8 +176,10 @@ versions:
   transition → Export replay transition*, in that output's look; the same dialog also offers the plain version.
 
 Choose the size (1920×1080 or 1280×720), the frame rate (25, 30, 50 or 60, the same as your OBS or vMix output)
-and, if you like, your own word instead of REPLAY, then *Export WebM*. Every frame is drawn exactly and encoded on
-the server as a transparent WebM (VP9 with alpha). In OBS: *Scene Transitions → + → Stinger*, choose the file, set
+and, if you like, your own word instead of REPLAY, then *Export WebM*. Every frame is drawn exactly as a still at its
+instant (plain styles, not the browser's animations, so the file is the same whichever browser exports it) and
+encoded on the server as a transparent WebM (VP9 with alpha). A stinger exported before 22 October whose word or
+crests come back after leaving needs exporting again. In OBS: *Scene Transitions → + → Stinger*, choose the file, set
 *Transition Point Type* to *Time* and *Transition Point* to **1000 ms** (the frame is fully covered from 500 ms
 to 1440 ms). In vMix: set a Stinger transition to the file with its transition point (delay) at 1000 ms. The replay
 transition is also one of the look's graphics, so it can be put on air on the output's transition layer.

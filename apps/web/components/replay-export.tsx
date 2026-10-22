@@ -1,7 +1,7 @@
 'use client';
 // Replay transition for OBS or vMix: the look's replay transition, plain or with the match's teams, exported as a
 // transparent WebM (VP9 with alpha) to use as a stinger. The preview plays it on a loop; the export draws every
-// frame at its exact instant at full size, and the server encodes them.
+// frame at its exact instant at full size, as a still (plain styles, no CSS animations), and the server encodes them.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Film } from 'lucide-react';
@@ -151,7 +151,7 @@ export function ReplayExportDialog({ open, onOpenChange, data, teams, fileBase, 
       {open ? (
         <div aria-hidden style={{ position: 'fixed', left: -20000, top: 0, width: DESIGN.width, height: DESIGN.height, pointerEvents: 'none' }}>
           <div ref={capture} style={{ position: 'absolute', left: 0, top: 0, width: DESIGN.width, height: DESIGN.height, overflow: 'hidden' }}>
-            {frameAt != null ? <Stage format="16:9"><Renderer key={frameAt} state={frozen} data={exportData} themes={THEMES} serverNow={() => ORIGIN + frameAt} /></Stage> : null}
+            {frameAt != null ? <Stage format="16:9"><Renderer key={frameAt} still state={frozen} data={exportData} themes={THEMES} serverNow={() => ORIGIN + frameAt} /></Stage> : null}
           </div>
         </div>
       ) : null}

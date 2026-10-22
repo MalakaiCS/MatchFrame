@@ -2,6 +2,8 @@
 // (with the teams). Each download is checked with FFmpeg: VP9 WebM with an alpha channel, the frame count and rate
 // asked for (2 s), transparent at the start and the end, fully covered at the transition point (1000 ms) and through
 // the whole cover, and on the way in and out one solid wall (the picture never shows through between the bands).
+// The match export runs in a browser that holds a finished animation at its time modulo its length, as the one did
+// that made a stinger whose word and crests came back after leaving: the export must not depend on it.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -47,6 +49,21 @@ function still(file: string, n: number, out: string) {
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-c:v', 'libvpx-vp9', '-i', file, '-f', 'lavfi', '-i', 'color=c=0x3a4250:s=1280x720', '-filter_complex', `[0:v]select=eq(n\\,${n}),setpts=PTS-STARTPTS,scale=1280:720[f];[1:v][f]overlay=shortest=1`, '-frames:v', '1', out]);
 }
 
+/** Make the page's browser hold a finished animation at (time into it) modulo its length when its styles are taken. */
+async function loopFinishedAnimations(page: Page) {
+  await page.addInitScript(() => {
+    const commit = Animation.prototype.commitStyles;
+    Animation.prototype.commitStyles = function (this: Animation) {
+      const e = this.effect as KeyframeEffect | null;
+      const d = Number(e?.getComputedTiming().duration);
+      const now = Number(this.currentTime) || 0;
+      const local = now - Number(e?.getTiming().delay ?? 0);
+      if (d > 0 && local > d) this.currentTime = now - (local - (local % d));
+      commit.call(this);
+    };
+  });
+}
+
 async function exportFrom(page: Page, opts: { size: string; fps: number; version?: 'teams' | 'plain' }) {
   const dialog = page.getByRole('dialog', { name: 'Replay transition for OBS or vMix' });
   await expect(dialog).toBeVisible();
@@ -90,6 +107,7 @@ test('replay transition from a look page: plain, transparent VP9 WebM, covered a
 test('replay transition from a match: with the teams, 30 fps, covered at 1000 ms, one wall in and out', async ({ browser }) => {
   test.setTimeout(420_000);
   const { ctx, page } = await login(browser);
+  await loopFinishedAnimations(page);
   const matchId = await freshMatch(page);
   await page.goto(`/app/matches/${matchId}`);
   await page.getByRole('tab', { name: 'OBS link' }).click();

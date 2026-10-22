@@ -5,6 +5,7 @@ import { findTemplate, LAYER_Z, type Layer, type TemplateDef } from '../catalog'
 import type { Cue, OverlayPublicState } from '../state';
 import { formatSize, resolveColourClash, type OutputFormat, type RenderCreative, type RenderData } from '../data';
 import { canvasMeasure, type Measure } from '../fit';
+import { parseKeyframes, sampleKeyframes, type KeyframeTable } from './motion';
 
 export const STAGE_W = 1920;
 export const STAGE_H = 1080;
@@ -63,6 +64,8 @@ export interface GraphicProps {
   offsetMs: number;
   /** per-renderer animation memory (see animStyle / changeStyle); absent in static thumbnails */
   memo?: AnimMemo;
+  /** a still frame at `now` (exports): entrances and exits are plain styles for that instant, not CSS animations */
+  still?: boolean;
 }
 
 /** Remembers when each animation was first rendered, so its CSS delay stays constant across re-renders. */
@@ -90,6 +93,8 @@ export interface RendererProps {
   onVisible?: (visible: Cue[], now: number) => void;
   slots?: Record<string, { creativeId: string; decisionId: string } | undefined>;
   monitor?: boolean;
+  /** draw a still frame at `serverNow()` (see GraphicProps.still) */
+  still?: boolean;
 }
 
 function phaseOf(c: Cue, t: TemplateDef, now: number): { phase: 'in' | 'hold' | 'out'; offset: number } {
@@ -146,7 +151,7 @@ export function playSting(kind: 'score' | 'card' | 'tick') {
 }
 
 /** Renders the on-air state from an explicit snapshot. Shared by overlay, preview, rehearsal and programme. */
-export function Renderer({ state, data: rawData, themes, serverNow, customDefs = [], renderCustom, onVisible, slots, monitor }: RendererProps) {
+export function Renderer({ state, data: rawData, themes, serverNow, customDefs = [], renderCustom, onVisible, slots, monitor, still }: RendererProps) {
   // Colour clash resolution and the custom font are applied once per snapshot, so every graphic reads the same teams.
   const data = useMemo(() => {
     const { home, away } = resolveColourClash(rawData.match.teams.home, rawData.match.teams.away);
@@ -176,7 +181,7 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
     const { phase, offset } = phaseOf(cue, t, now);
     if (phase === 'out' && offset > t.exitMs) return null;
     if (phase !== 'out') visible.push(cue);
-    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset, memo };
+    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset, memo, still };
     const Comp = cue.templateKey.startsWith('custom:') ? renderCustom : comps[cue.templateKey.replace('builtin:', '')];
     if (!Comp) return null;
     return (
@@ -215,6 +220,13 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
 
 export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine' | 'sweep';
 
+let table: KeyframeTable | undefined;
+/** Keyframe animation `name` `localMs` into it (fill both), as plain styles: a still frame for an export. */
+function stillAt(name: string, localMs: number, durMs: number, timing: string): CSSProperties {
+  table ??= parseKeyframes(KEYFRAMES);
+  return sampleKeyframes(table, name, durMs > 0 ? localMs / durMs : 1, timing);
+}
+
 /** Timeline offset when this animation was first rendered (constant afterwards). */
 function firstOffset(p: GraphicProps, key: string): number {
   if (!p.memo) return p.offsetMs;
@@ -238,13 +250,15 @@ export function animStyle(p: GraphicProps, kind: AnimKind, delayMs = 0, durMs?: 
   const dur = out ? p.t.exitMs : (durMs ?? p.t.entranceMs);
   if (!out && p.offsetMs >= delayMs + dur) return {};
   const name = `bs-${kind}-${out ? 'out' : 'in'}`;
+  const timing = out ? 'cubic-bezier(.5,0,.75,0)' : kind === 'zoom' || kind === 'drop' ? 'cubic-bezier(.34,1.56,.64,1)' : 'cubic-bezier(.2,.8,.2,1)';
+  if (p.still) return stillAt(name, out ? p.offsetMs : p.offsetMs - delayMs, dur, timing);
   const start = firstOffset(p, `${name}:${delayMs}`);
   return {
     animationName: name,
     animationDuration: `${dur}ms`,
     animationDelay: `${out ? -start : delayMs - start}ms`,
     animationFillMode: 'both',
-    animationTimingFunction: out ? 'cubic-bezier(.5,0,.75,0)' : kind === 'zoom' || kind === 'drop' ? 'cubic-bezier(.34,1.56,.64,1)' : 'cubic-bezier(.2,.8,.2,1)',
+    animationTimingFunction: timing,
   };
 }
 
@@ -259,13 +273,15 @@ export function partAnim(p: GraphicProps, kind: AnimKind, inDelay: number, inDur
   const dur = out ? outDur : inDur;
   if (!out && p.offsetMs >= delay + dur) return {};
   const name = `bs-${kind}-${out ? 'out' : 'in'}`;
+  const timing = out ? (ease?.out ?? 'cubic-bezier(.55,0,.8,.2)') : (ease?.in ?? 'cubic-bezier(.16,.84,.24,1)');
+  if (p.still) return stillAt(name, p.offsetMs - delay, dur, timing);
   const start = firstOffset(p, `${name}:${delay}:part`);
   return {
     animationName: name,
     animationDuration: `${dur}ms`,
     animationDelay: `${delay - start}ms`,
     animationFillMode: 'both',
-    animationTimingFunction: out ? (ease?.out ?? 'cubic-bezier(.55,0,.8,.2)') : (ease?.in ?? 'cubic-bezier(.16,.84,.24,1)'),
+    animationTimingFunction: timing,
   };
 }
 
@@ -275,7 +291,7 @@ export const stagger = (p: GraphicProps, i: number, kind: AnimKind = 'rise', sta
 /** Short emphasis when a live value changes while the graphic is on air (score, period, clock state). */
 export function changeStyle(p: GraphicProps, id: string, value: unknown, kind: 'pop' | 'flip' = 'pop', durMs = 700): CSSProperties {
   const still: CSSProperties = { display: 'inline-block' };
-  if (!p.memo || p.data.theme.motion === 'none') return still;
+  if (!p.memo || p.still || p.data.theme.motion === 'none') return still;
   const k = `chg:${p.cue.cueId}:${id}`;
   let m = p.memo.get(k) as ChangeMemo | undefined;
   if (!m) {
