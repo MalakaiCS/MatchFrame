@@ -15,10 +15,20 @@ import type { GamePlan } from './automation';
  *   match header (with the countdown to the second half) and the match stats then take turns, 30 s each, until
  *   the players walk back out.
  * - Players entering (2nd half): the board animates out, then the background; the scorebug returns 7 s later.
+ * - Penalty shoot-out: the shoot-out tracker (kicks, where it stands, the winner), on air until full time.
  * - Full time: 30 s after the whistle, the animated background with the final score on the match header and
  *   "Thank you for watching".
  * The animated background and the boards on it sit above every graphic except the stinger transition.
  */
+/** The shoot-out: its tracker comes up and stays (kicks, where it stands, the winner) until full time. */
+const SHOOTOUT_PLAYLIST: GamePlan['playlists'][number] = {
+  id: 'shootout', name: 'Shoot-out: the shoot-out tracker, on until full time', kind: 'in_play', priority: 2, promotional: false, cooldownMs: 0,
+  triggers: [{ id: 't_shootout', type: 'phase', phaseTags: ['shootout'], phaseIds: [] }],
+  guards: [],
+  repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+  items: [{ id: 'so_tracker', action: 'show', templateKey: 'builtin:shootout', offsetMs: 800, durationMs: null }],
+};
+
 export const FOOTBALL_STARTER: GamePlan = {
   version: 1,
   sport: 'football',
@@ -124,6 +134,7 @@ export const FOOTBALL_STARTER: GamePlan = {
         { id: 'enter2_bug', action: 'scorebug_show', offsetMs: 7000 },
       ],
     },
+    SHOOTOUT_PLAYLIST,
     {
       id: 'full_time', name: 'Full time: after 30 s, final score on the match header with a thank-you', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ft', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
@@ -210,7 +221,7 @@ export const BASKETBALL_STARTER: GamePlan = {
  * both lineups as the players enter, an "about to start" banner, the period banner at each start, a graphic for
  * every score, card and change, score + stats + sponsor at every interval, and the final board.
  */
-export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents: string[]; cardEvents: string[]; changeEvents: string[]; finalLabel?: string }): GamePlan {
+export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents: string[]; cardEvents: string[]; changeEvents: string[]; finalLabel?: string; shootout?: boolean }): GamePlan {
   const playlists: GamePlan['playlists'] = [
     {
       id: 'pre_match', name: 'Pre-match: match ident and sponsor', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
@@ -306,13 +317,14 @@ export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents:
       ],
     },
   );
+  if (o.shootout) playlists.splice(playlists.findIndex((pl) => pl.id === 'full_time'), 0, SHOOTOUT_PLAYLIST);
   return { version: 1, sport, defaultScorebug: true, freshnessMs: 10_000, playlists };
 }
 
 export const NETBALL_STARTER = periodStarter('netball', { startWord: 'Centre pass', scoreEvents: ['goal'], cardEvents: [], changeEvents: ['substitution'] });
 export const RUGBY_LEAGUE_STARTER = periodStarter('rugby_league', { startWord: 'Kick-off', scoreEvents: ['try', 'penalty_try', 'penalty_goal', 'field_goal'], cardEvents: ['sin_bin', 'send_off'], changeEvents: ['interchange'] });
 export const AFL_STARTER = periodStarter('afl', { startWord: 'First bounce', scoreEvents: ['goal'], cardEvents: [], changeEvents: ['interchange'], finalLabel: 'FINAL SIREN' });
-export const HOCKEY_STARTER = periodStarter('hockey', { startWord: 'Push back', scoreEvents: ['goal'], cardEvents: ['green_card', 'yellow_card', 'red_card'], changeEvents: ['substitution'] });
+export const HOCKEY_STARTER = periodStarter('hockey', { startWord: 'Push back', scoreEvents: ['goal'], cardEvents: ['green_card', 'yellow_card', 'red_card'], changeEvents: ['substitution'], shootout: true });
 
 /**
  * Futsal match flow, in Auto mode: the football flow above (background and match header from the moment the match

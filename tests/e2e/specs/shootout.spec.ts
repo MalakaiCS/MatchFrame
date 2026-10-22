@@ -1,6 +1,6 @@
-// The penalty shoot-out on the OBS page and the scorer phone: a marker per kick (scored, missed, still to take, the
-// next one ringed), where it stands (kick N of 5, a kick that must be scored), the winner as soon as one team cannot
-// be caught, and no more kicks after that.
+// The penalty shoot-out on the OBS page and the scorer phone: the starter flow puts the tracker on air at the
+// shoot-out; a marker per kick (scored, missed, still to take, the next one ringed), where it stands (kick N of 5, a
+// kick that must be scored), the winner as soon as one team cannot be caught, and no more kicks after that.
 import { expect, test, type Page } from '@playwright/test';
 import { api, freshMatch, login } from './helpers';
 
@@ -25,20 +25,23 @@ test('penalty shoot-out: kicks, the next kick, a must-score kick and the winner 
     const st = await api<{ stateVersion: number }>(page, `/api/v1/matches/${id}/state`);
     return call(page, 'POST', `/api/v1/matches/${id}/commands`, { commandId: crypto.randomUUID(), expectedStateVersion: st.stateVersion, scorerLeaseVersion: (lease.body as { leaseVersion: number }).leaseVersion, deviceId: 'e2e-shootout', type, payload });
   };
-  // level after extra time: on to the shoot-out
-  for (const to of ['first_half', 'half_time', 'second_half', 'extra_time_break', 'et_first_half', 'et_half_time', 'et_second_half', 'shootout']) expect((await send('SET_PHASE', { to })).status, to).toBe(200);
-  const kick = async (side: 'home' | 'away', scored: boolean) => (await send('ADD_FACT', { type: 'shootout_kick', side, payload: { scored }, occurredAt: Date.now() })).status;
-
-  const d = await api<{ teams: Record<'home' | 'away', { shortName: string }> }>(page, `/api/v1/matches/${id}`);
-  const [H, A] = [d.teams.home.shortName, d.teams.away.shortName];
-  const [ov] = await api<{ id: string }[]>(page, `/api/v1/matches/${id}/overlays`);
-  const urls = await api<{ production: string }>(page, `/api/v1/overlays/${ov!.id}/urls`);
+  // an output on a fresh copy of the football starter flow
+  const plan = await api<{ id: string }>(page, '/api/v1/game-plans', { name: `E2E shoot-out ${id.slice(0, 4)}`, sport: 'football', fromStarter: true });
+  const version = await api<{ id: string }>(page, `/api/v1/game-plans/${plan.id}/publish`, {});
+  const ov = await api<{ id: string }>(page, `/api/v1/matches/${id}/overlays`, { name: 'E2E shoot-out' });
+  expect((await call(page, 'PUT', `/api/v1/overlays/${ov.id}/game-plan`, { gamePlanVersionId: version.id })).status).toBe(200);
+  const urls = await api<{ production: string }>(page, `/api/v1/overlays/${ov.id}/urls`);
   const obsCtx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const obs = await obsCtx.newPage();
   await obs.goto(urls.production);
-  expect((await call(page, 'POST', `/api/v1/overlays/${ov!.id}/commands`, { commandId: crypto.randomUUID(), command: { type: 'TAKE_IN', templateKey: 'builtin:shootout', force: true } })).status).toBe(200);
+
+  // level after extra time: on to the shoot-out, where the starter flow puts the tracker on air by itself
+  for (const to of ['first_half', 'half_time', 'second_half', 'extra_time_break', 'et_first_half', 'et_half_time', 'et_second_half', 'shootout']) expect((await send('SET_PHASE', { to })).status, to).toBe(200);
+  const kick = async (side: 'home' | 'away', scored: boolean) => (await send('ADD_FACT', { type: 'shootout_kick', side, payload: { scored }, occurredAt: Date.now() })).status;
+  const d = await api<{ teams: Record<'home' | 'away', { shortName: string }> }>(page, `/api/v1/matches/${id}`);
+  const [H, A] = [d.teams.home.shortName, d.teams.away.shortName];
   const g = obs.locator('[data-graphic="shootout"]');
-  await expect(g).toBeVisible({ timeout: 20_000 });
+  await expect(g).toBeVisible({ timeout: 30_000 });
   const marks = async () => g.locator('[data-kick]').evaluateAll((els) => els.map((e) => e.getAttribute('data-kick')));
   const line = g.locator('[data-shootout-line]');
   await expect(line).toHaveText(/Best of 5, then sudden death/i);

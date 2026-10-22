@@ -51,5 +51,6 @@ test('futsal: fouls, a timeout and a send-off on the scorer phone and the scoreb
   await expect(bug).toContainText('F 5 ◆');
   await expect(bug).toContainText(/1[0-9]:[0-5]\d/);
   await obs.screenshot({ path: '../../docs/evidence/e2e/futsal-scorebug.png' });
+  await obs.context().close();
   await ctx.close();
 });

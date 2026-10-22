@@ -161,7 +161,10 @@ sudden death adds a marker per round after a divider. The line below says where 
 to kick*, *Sudden death · round 7*, *Harbour score to win* or *Harbour must score to stay in* when the next kick
 decides it, and *Northgate win 4–3 on penalties* as soon as one team can no longer be caught with the kicks it has
 left (so a shoot-out can end before all five are taken). After that no more kicks are accepted; kicks that were not
-needed are dimmed. It updates live as the scorer records each kick, in every look (football, futsal and hockey).
+needed are dimmed. It updates live as the scorer records each kick, in every look (football, futsal and hockey), and the starter
+flows put it on air by themselves when the shoot-out starts. An existing plan that is still an untouched copy of an
+older starter flow gets this step when the worker next starts; an edited plan does not (add a *Penalty Shootout*
+phase step that shows the shoot-out tracker).
 
 **Replay transition (OBS or vMix stinger).** In every look, a wall of slanted bands in the look's colours, edged
 with a bright stripe, sweeps in, covers the whole frame with REPLAY in the middle, then sweeps on and away (2 s).
@@ -221,6 +224,7 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 | *Half Time* | nothing changes for 10 s (the scorebug shows the half-time score); then the animated background animates in over everything, the scorebug goes, and the match header (score, HALF TIME, "2nd Half in 14:08") and the match stats take turns, 30 s each, header first, until the players come back out |
 | *Players entering (2nd half)* | the board on air animates out, then the background 0.4 s later; the scorebug comes back 7 s later. No line-ups the second time |
 | *2nd Half* | scorebug (already in) and the "Kick-off" banner |
+| *Penalty Shootout* | the shoot-out tracker comes up under the scorebug and stays, updating with every kick, until full time (also in the futsal and hockey starter flows) |
 | *Full Time* | the scorebug stays for 30 s, then the animated background, scorebug out, and the match header with the final score, FULL TIME and "Thank you for watching" |
 
 A line-up board only goes to air for a team whose line-up has been entered (at least one starter). If a side has

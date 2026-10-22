@@ -90,3 +90,17 @@ describe('kicks once the shoot-out is decided', () => {
     }
   });
 });
+
+describe('the starter flows', () => {
+  it('put the shoot-out tracker on air at the shoot-out and keep it there (football, futsal, hockey only)', async () => {
+    const { STARTER_PLANS } = await import('./starter-plans');
+    for (const [sport, plan] of Object.entries(STARTER_PLANS)) {
+      const pl = plan!.playlists.find((p) => p.triggers.some((t) => t.type === 'phase' && t.phaseTags.includes('shootout')));
+      if (!['football', 'futsal', 'hockey'].includes(sport)) {
+        expect(pl, sport).toBeUndefined();
+        continue;
+      }
+      expect(pl?.items, sport).toEqual([expect.objectContaining({ action: 'show', templateKey: 'builtin:shootout', durationMs: null })]);
+    }
+  });
+});

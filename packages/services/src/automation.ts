@@ -92,6 +92,14 @@ export async function releaseLease(db: Db, owner: string) {
 // ------------------------------------------------------------------ helpers
 
 const planCache = new Map<string, { plan: GamePlan; sport: string }>();
+/**
+ * A published plan for the housekeeping scans: from the cache when it is there (published versions are immutable),
+ * so the scans that run every 250 ms over every live output open no transaction for it.
+ */
+async function planOf(d: AutomationDeps, organisationId: string, versionId: string) {
+  return planCache.get(versionId) ?? (await withTenant(d.db, { organisationId }, (t) => planFor(t, versionId)));
+}
+
 async function planFor(t: Tx, versionId: string) {
   const hit = planCache.get(versionId);
   if (hit) return hit;
@@ -593,7 +601,7 @@ export async function scanClockTriggers(d: AutomationDeps) {
     .where(and(eq(overlays.status, 'active'), sql`${overlays.gamePlanVersionId} is not null`, eq(matches.status, 'live')));
   let fired = 0;
   for (const r of rows) {
-    const pv = await withTenant(d.db, { organisationId: r.o.organisationId }, (t) => planFor(t, r.o.gamePlanVersionId!));
+    const pv = await planOf(d, r.o.organisationId, r.o.gamePlanVersionId!);
     if (!pv || !pv.plan.playlists.some((p) => p.triggers.some((x) => x.type === 'match_clock'))) continue;
     const main = (r.ms.clocks as Record<string, ClockState>).main;
     if (!main) continue;
@@ -627,7 +635,7 @@ export async function scanWallClockTriggers(d: AutomationDeps) {
     .where(and(eq(overlays.status, 'active'), sql`${overlays.gamePlanVersionId} is not null`, inArray(matches.status, ['scheduled', 'live']), sql`${matches.scheduledAt} between ${new Date(at - 12 * 3600_000)} and ${new Date(at + 12 * 3600_000)}`));
   let fired = 0;
   for (const r of rows) {
-    const pv = await withTenant(d.db, { organisationId: r.o.organisationId }, (t) => planFor(t, r.o.gamePlanVersionId!));
+    const pv = await planOf(d, r.o.organisationId, r.o.gamePlanVersionId!);
     if (!pv) continue;
     for (const pl of pv.plan.playlists)
       for (const tr of pl.triggers) {
@@ -645,20 +653,32 @@ export async function scanWallClockTriggers(d: AutomationDeps) {
   return fired;
 }
 
-/** Rotate the scorebug sponsor slot on visible scorebugs (Auto mode, not inhibited). */
+/** Per output, the rotation (and the slot it showed) already settled: the decision is the same for the whole rotation. */
+const slotSettled = new Map<string, string>();
+
+/** Rotate the scorebug sponsor slot on visible scorebugs (Auto mode, not inhibited), once per output per rotation. */
 export async function rotateScorebugSlots(d: AutomationDeps, fence: Fence) {
   const at = now(d);
   const bucket = Math.floor(at / SLOT_ROTATION_MS);
   const rows = await d.db.select({ s: overlayState, o: overlays }).from(overlayState).innerJoin(overlays, eq(overlays.id, overlayState.overlayId)).where(and(eq(overlayState.scorebugVisible, true), eq(overlayState.mode, 'auto'), eq(overlayState.inhibited, false), eq(overlays.status, 'active')));
+  if (slotSettled.size > 20_000) slotSettled.clear();
   let changed = 0;
   for (const r of rows) {
+    const cur = (r.s.slots as OverlayPublicState['slots'])?.scorebug_logo;
+    // decided for this rotation and still showing what was decided: nothing to do until the next rotation
+    if (slotSettled.get(r.o.id) === `${bucket}:${cur?.decisionId ?? ''}`) continue;
     await withTenant(d.db, { organisationId: r.o.organisationId }, async (t) => {
       const dec = await decide(t, r.o.organisationId, { matchId: r.o.matchId, overlayId: r.o.id, placement: 'scorebug_logo', requestKey: `slot:${r.o.id}:scorebug_logo:${bucket}`, now: at });
-      const cur = (r.s.slots as OverlayPublicState['slots'])?.scorebug_logo;
       const want = dec.outcome === 'selected' && dec.creativeId ? { creativeId: dec.creativeId, decisionId: dec.id, campaignId: dec.campaignId } : undefined;
-      if (cur?.decisionId === want?.decisionId || (!cur && !want)) return;
+      if (cur?.decisionId === want?.decisionId || (!cur && !want)) {
+        slotSettled.set(r.o.id, `${bucket}:${cur?.decisionId ?? ''}`);
+        return;
+      }
       const st = await mutateOverlayStateTx(t, r.o.organisationId, r.o.id, fence, (s) => ({ ...s, slots: { ...(s.slots ?? {}), scorebug_logo: want } }), at);
-      if (st) changed++;
+      if (st) {
+        changed++;
+        slotSettled.set(r.o.id, `${bucket}:${want?.decisionId ?? ''}`);
+      }
     });
   }
   return changed;
