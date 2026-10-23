@@ -145,14 +145,14 @@ video and recordings need object storage.
 
 ## Graphics
 
-Thirty built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
+The built-in graphics render in every look: scorebug, match header (teams, ground and kick-off time with a
 countdown before the match; the score, the break and a countdown to the restart during a break; the final score and
 an optional closing message such as "Thank you for watching"), animated background, team line-up, formation, goal /
 score event, score update, card, substitution, kick-off and period banners, lower third, player card (with
 headshots from the asset library), match statistics, live statistic comparison, break and final score, match
 summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match
 information strap, shoot-out tracker, timeout, added time (football), video review (rugby league), sponsor
-graphic, stinger wipe, replay transition, holding slate, full-frame media and the ticker (which can carry the other
+graphic, stinger wipe, replay transition, the highlights title panel, holding slate, full-frame media and the ticker (which can carry the other
 live scores of the round). Goal, card and substitution
 graphics can carry a "presented by" sponsor; those appearances count in the sponsor delivery report.
 
@@ -175,6 +175,11 @@ the scorebug with the team, *SIN BIN* and the playing time left (*6:22*), counti
 once read *2× SIN BIN* with the one that ends first. Futsal's send-off shows the team's time a player short the same
 way (*SENT OFF 1:11*). The tabs sit under the scorebug on whichever side the look puts it, and go when the time is
 up. The sin bin's length is in the competition's rules (*Sin bin: minutes of playing time off the field*).
+
+**Red cards on the scorebug.** A red card (football's second yellow too, hockey's red, a rugby league send-off)
+puts a small red card on that team's side of the scorebug, standing up out of its edge beside the crest (out of the
+end of the team's row in the stacked scorebugs). A second one shows its number on the card (*2*, *3*). It stays
+for the rest of the match, in every look and in highlights packages.
 
 **Video review (rugby league).** While the video referee checks a try (or a captain's challenge), a bar comes up in
 the lower middle of the frame: the team's crest and name, *Checking*, and *TRY?* (*CHALLENGE*). When the scorer
@@ -323,6 +328,43 @@ Media → highlights are created automatically for goals/key events from the rec
 post-roll has been recorded (usually within ~30 s). *Edit* to trim, choose 16:9 / 9:16 / 1:1 with a crop
 position and add intro/outro creatives, then download from Exports. *Share* creates an expiring link (revocable).
 A corrected event marks its clip **stale** — review it before publishing.
+
+### Highlights package from a video of the match
+
+Match → **Highlights** makes a highlights video (1920×1080 MP4) from a recording of the whole match and the
+scorer's log, with this match's graphics. Football, futsal, hockey, rugby league and AFL; basketball and netball
+score too often to pick moments from the log.
+
+1. **Upload the video** (MP4, MOV, MKV or WebM, up to 40 GB): the recording from OBS, a camera or the stream. It
+   goes up in parts; if the connection drops, choose the same file again and it carries on from where it stopped.
+   A small preview is made once it is in.
+2. **Mark the kick-off**: play the preview to the kick-off and press *Kick-off is here*, or type the time (*m:ss*
+   or *h:mm:ss*). A period without its own mark follows the one before it (a recording that ran through half
+   time); mark each half if the recording was stopped at the break. *Save kick-off times*.
+3. **Check the moments.** Goals, tries and red cards always go in, each goal with a slow-motion replay; chances
+   (shots on target, saves) fill the package to the length chosen. Untick a moment to leave it out, or move it by
+   2 s if the scorer recorded it early or late; the play button shows it in the preview.
+4. **Make the highlights.** Choose about how long, the title, the end board's message, the replay speed and which
+   parts to show (title panel, scorebug, replay transition, full time, end board; turn the scorebug off when the
+   video already shows one). The browser then draws the graphics — **keep the page open until it says the graphics
+   are in** — and the media worker makes the video. It appears under *Highlights made* to download, share (a
+   7-day link) or make a thumbnail for.
+
+The package: the title panel over the first clip, the clips in match order with the scorebug (the score, clock and
+red cards as they were at that moment), each goal's replay behind the replay transition with the goal strap (the
+scorebug comes off for the replay), the red card strap with its clip, the final whistle with the full-time score,
+and the end board. Clips are joined with short crossfades and keep the match sound.
+
+### Thumbnails
+
+Match → **Thumbnails** has a thumbnail for each kind of video of the match — *Live stream*, *Highlights*,
+*Extended highlights*, *Full match* and one with your own words (*MATCH REPLAY*, *GRAND FINAL*) — in this match's
+look: the competition's logo, round, date and name across the top with the kind of video on a tag, and both teams
+below on their colours with their crests and names. Download one as a PNG, or *Download all*; 1280×720 is
+YouTube's size, 1920×1080 is also offered. *Show the score* puts the score between the crests (off by default, so
+the thumbnail keeps the result back); the team names can be left off. They follow the crests, team colours, look
+and wording you set, so upload crests and the competition's logo first. A made highlights package has its own
+*Thumbnail* button (*Extended highlights* for one of 7 minutes or longer).
 
 ## Trying it out
 

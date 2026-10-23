@@ -60,6 +60,11 @@ first). A red banner says when the starting line-ups are not filled in, with a l
   10 m kicks and timeouts; hockey has shots, penalty corners, circle entries and green, yellow and red cards; rugby
   league, AFL and netball have their own rows. Basketball keeps its court controls (+1/+2/+3, fouls by type,
   timeouts and the possession arrow) under the clock.
+* **Tap it as it happens.** The highlights package is cut from the match video at the time each goal, card or
+  chance was tapped: a goal's clip runs from 20 s before the tap to 8 s after (a red card's 12 s to 6 s, a
+  chance's 10 s to 3 s), and its slow-motion replay shows from 11 s to 2 s before the tap, so it shows the goal
+  when it was tapped 2 to 11 seconds after the ball went in. The
+  producer can move a moment in 2 s steps if it was tapped early or late.
 * **Statistics are one tap**: shots, saves, corners, fouls and offsides count at once, with no questions; add the
   player later from *Match events* (the person icon) if you want it on the record. The counts are the same numbers
   the half-time and full-time statistics graphics show.

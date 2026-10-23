@@ -69,9 +69,10 @@ export const HIGHLIGHT_TIMING = {
   crossfadeMs: 300,
   /** a cut hidden behind the replay transition (one frame at 25 fps) */
   cutMs: 40,
-  /** the replay: from this long before the recorded moment to this long before it, slowed down */
-  replayFrom: 12_000,
-  replayTo: 5_000,
+  /** the replay: from this long before the recorded moment to this long before it, slowed down (it shows the goal
+   *  for a scorer who taps 2 to 11 s after the ball goes in) */
+  replayFrom: 11_000,
+  replayTo: 2_000,
   fullTimeLead: 10_000,
   fullTimeAfter: 3_000,
   /** the final score shows for the last part of the full-time clip */

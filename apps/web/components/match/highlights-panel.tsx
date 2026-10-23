@@ -4,7 +4,7 @@
 // cards go in; chances fill it to the length chosen), and make it: the browser draws the graphics, the media worker
 // cuts the video, slows the replays and lays the graphics over it. The file is downloaded or shared from here.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clapperboard, Download, Film, Pause, Play, Share2, Trash2, Upload } from 'lucide-react';
+import { Clapperboard, Download, Film, Image as ImageIcon, Pause, Play, Share2, Trash2, Upload } from 'lucide-react';
 import { getAdapter, highlightOptionsDefaults, HIGHLIGHT_SPORTS, periodStarts, planHighlights, videoAt, type HighlightOptions, type StoredFact } from '@bs/domain';
 import type { RenderData } from '@bs/graphics';
 import { Button, Card, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, Switch } from '@bs/ui';
@@ -12,6 +12,7 @@ import { api, ApiError, del, post, put } from '@/lib/api';
 import { useCopy, useGet } from '@/lib/hooks';
 import { putWithProgress, uploadMatchVideo, type MatchVideo } from '@/lib/match-video-upload';
 import { useHighlightsDrawing } from '@/components/highlights-drawing';
+import { saveBlob, thumbnailName, useThumbnailMaker } from '@/components/thumbnail-maker';
 import { useQueryClient } from '@tanstack/react-query';
 
 type Source = { sport: string; rulesConfig: unknown; facts: StoredFact[]; videos: MatchVideo[] };
@@ -73,7 +74,7 @@ export function HighlightsPanel({ matchId, canEdit }: { matchId: string; canEdit
       {video?.state === 'READY' && adapter ? (
         <Maker key={video.id} matchId={matchId} canEdit={canEdit} video={video} facts={src.data!.facts} adapter={adapter} cfg={cfg} renderData={rd.data?.data ?? null} renderError={rd.error ?? overlays.error} onDone={() => void qc.invalidateQueries({ queryKey: ['highlight-packages', matchId] })} onStale={() => void qc.invalidateQueries({ queryKey: ['highlights-source', matchId] })} />
       ) : null}
-      <Packages pkgs={pkgs.data ?? []} canEdit={canEdit} refresh={() => void qc.invalidateQueries({ queryKey: ['highlight-packages', matchId] })} />
+      <Packages pkgs={pkgs.data ?? []} canEdit={canEdit} renderData={rd.data?.data ?? null} refresh={() => void qc.invalidateQueries({ queryKey: ['highlight-packages', matchId] })} />
     </div>
   );
 }
@@ -320,10 +321,23 @@ function Maker({ matchId, canEdit, video, facts, adapter, cfg, renderData, rende
 
 // ------------------------------------------------------------------ packages made
 
-function Packages({ pkgs, canEdit, refresh }: { pkgs: Pkg[]; canEdit: boolean; refresh: () => void }) {
+/** a package this long or longer gets the extended highlights thumbnail */
+const EXTENDED_MS = 7 * 60_000;
+
+function Packages({ pkgs, canEdit, renderData, refresh }: { pkgs: Pkg[]; canEdit: boolean; renderData: RenderData | null; refresh: () => void }) {
   const copy = useCopy();
+  const thumbs = useThumbnailMaker();
   const [err, setErr] = useState<Error | null>(null);
   if (!pkgs.length) return null;
+  const thumbnail = async (p: Pkg) => {
+    if (!renderData) return;
+    const kind = (p.durationMs ?? 0) >= EXTENDED_MS ? 'extended' : 'highlights';
+    try {
+      saveBlob(await thumbs.make(renderData, { kind }), thumbnailName(renderData, kind === 'extended' ? 'extended highlights' : 'highlights'));
+    } catch (e) {
+      setErr(e as Error);
+    }
+  };
   const share = async (p: Pkg) => {
     try {
       const s = await post<{ watchUrl: string }>('shares', { resourceType: 'export', resourceId: p.id, expiresInHours: 24 * 7 });
@@ -334,6 +348,7 @@ function Packages({ pkgs, canEdit, refresh }: { pkgs: Pkg[]; canEdit: boolean; r
   };
   return (
     <Card className="grid gap-2 p-4">
+      {thumbs.node}
       <h3 className="font-medium">Highlights made</h3>
       <ul className="grid gap-2" aria-label="Highlights made">
         {pkgs.map((p) => (
@@ -345,6 +360,7 @@ function Packages({ pkgs, canEdit, refresh }: { pkgs: Pkg[]; canEdit: boolean; r
             <StatusPill tone={p.state === 'COMPLETED' ? 'healthy' : p.state === 'FAILED' ? 'live' : p.state === 'CANCELLED' || p.state === 'EXPIRED' ? 'neutral' : 'warning'}>{PKG_STATE[p.state] ?? p.state}</StatusPill>
             {p.error ? <span className="w-full text-live">{p.error}</span> : null}
             {p.downloadUrl ? <a className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline" href={p.downloadUrl}><Download className="size-4" /> Download</a> : null}
+            {p.downloadUrl && renderData ? <Button size="sm" variant="ghost" onClick={() => void thumbnail(p)}><ImageIcon className="size-4" /> Thumbnail</Button> : null}
             {p.downloadUrl && canEdit ? <Button size="sm" variant="ghost" onClick={() => void share(p)}><Share2 className="size-4" /> Share link</Button> : null}
             {canEdit && ['UPLOADING', 'QUEUED', 'RUNNING'].includes(p.state) ? <Button size="sm" variant="ghost" onClick={() => void api(`exports/${p.id}/cancel`, { method: 'POST', json: {} }).then(refresh).catch((e: Error) => setErr(e))}>Cancel</Button> : null}
           </li>

@@ -62,6 +62,8 @@ test('highlights: upload the match video, mark the kick-off, make the package', 
   await expect(moments.locator('[data-moment="goal"][data-included="true"]')).toHaveCount(1);
   await expect(moments.locator('[data-moment="red_card"][data-included="true"]')).toHaveCount(1);
   await expect(page.locator('[data-summary]')).toContainText('2 moments · 1 replay');
+  // the sticky app header would sit over the top of the capture
+  await page.addStyleTag({ content: 'header, nav[aria-label="Main (compact)"] { visibility: hidden !important; }' });
   await page.getByRole('tabpanel').screenshot({ path: `${EVIDENCE}/highlights-tab.png` });
 
   await page.getByRole('button', { name: 'Make the highlights' }).click();

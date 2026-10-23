@@ -14,3 +14,4 @@ import { ligaTheme, majorTheme, southernTheme, continentalTheme, primetimeTheme,
 import type { ThemeKey } from '../data';
 import type { ThemeComponents } from './stage';
 export const THEMES: Record<ThemeKey, ThemeComponents> = { broadcast: broadcastTheme, minimal: minimalTheme, club: clubTheme, premier: premierTheme, liga: ligaTheme, major: majorTheme, southern: southernTheme, continental: continentalTheme, primetime: primetimeTheme, meister: meisterTheme };
+export { MatchThumbnail, THUMBNAIL_KINDS, THUMBNAIL_SIZE, type ThumbnailKind, type ThumbnailOptions } from './thumbnail';

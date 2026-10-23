@@ -66,7 +66,7 @@ describe('highlights: the package', () => {
     const [clip, replay] = p.segments;
     expect(clip).toMatchObject({ videoFromMs: 12 * MIN - 20_000, videoToMs: 12 * MIN + 8_000, speed: 1, join: 'none', outFromMs: 0 });
     expect(replay).toMatchObject({ videoFromMs: 12 * MIN - T.replayFrom, videoToMs: 12 * MIN - T.replayTo, speed: 0.75, join: 'cut' });
-    expect(replay!.outToMs - replay!.outFromMs).toBe(Math.round(7_000 / 0.75));
+    expect(replay!.outToMs - replay!.outFromMs).toBe(Math.round((T.replayFrom - T.replayTo) / 0.75));
     const stinger = p.cues.find((c) => c.templateKey === 'builtin:replay')!;
     expect(stinger.fromMs).toBe(replay!.outFromMs - T.stingerCutMs);
     const strap = p.cues.find((c) => c.id === `strap-${replay!.factIds[0]}`)!;
