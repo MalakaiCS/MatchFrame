@@ -49,8 +49,8 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await expect(sheetCell(page, 'away', 'possession_change')).toHaveAttribute('aria-pressed', 'true');
   await expect(sheetCell(page, 'home', 'possession_change')).toHaveAttribute('aria-pressed', 'false');
   await page.waitForTimeout(1500);
-  const pct = async (side: 'home' | 'away') => Number(/(\d+)%/.exec(await cellCount(page, side, 'possession_change'))?.[1] ?? NaN);
-  const [h, a] = [await pct('home'), await pct('away')];
+  // both halves read from the same moment: the shares move with the running clock
+  const [h, a] = await page.evaluate(() => (['home', 'away'] as const).map((s) => Number(/(\d+)%/.exec(document.querySelector(`[data-side="${s}"][data-event="possession_change"]`)?.getAttribute('aria-label') ?? '')?.[1] ?? NaN)));
   expect(h + a).toBe(100);
   expect(h).toBeGreaterThan(a);
   await expect.poll(async () => (await api<{ projection: { stats: { home: Record<string, number> } } }>(page, `/api/v1/matches/${id}/state`)).projection.stats.home.possession_pct ?? 0).toBeGreaterThan(50);
