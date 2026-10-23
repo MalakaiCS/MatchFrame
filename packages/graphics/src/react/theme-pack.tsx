@@ -12,7 +12,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type AnimKind, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -332,6 +332,7 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 22 : 25, fontWeight: Math.max(700, k.weight), lineHeight: 1, letterSpacing: 1 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, letterSpacing: 1, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
+          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.hi }} /> : null}
         </div>
       );
@@ -376,6 +377,7 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 21 : 24, fontWeight: Math.max(700, k.weight), lineHeight: 1 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
+          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.hot }} /> : null}
         </span>
       );
@@ -412,6 +414,7 @@ export function packTheme(k: Pack): ThemeComponents {
           <span style={{ width: 10, background: tm.primaryColor }} />
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', minWidth: 132 }}>
             <span style={{ fontSize: slim ? 21 : 25, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
+            <RedCard p={p} side={s} size={slim ? 20 : 24} />
             {det ? <span style={{ fontSize: 12, color: c.muted }}>{det}</span> : null}
             {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.electric, marginLeft: 'auto' }} /> : null}
           </span>
@@ -450,6 +453,7 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 23 : 27, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
+          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ alignSelf: 'center', width: 8, height: 8, background: c.electric }} /> : null}
         </span>
       );

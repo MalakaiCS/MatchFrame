@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
 import { sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -21,6 +21,7 @@ function Scorebug(p: GraphicProps) {
       <span style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', borderLeft: s === 'away' ? '1px solid #d5dbe5' : undefined, flexDirection: s === 'away' ? 'row-reverse' : 'row', ...animStyle(p, 'rise', 100 + i * 80, 320) }}>
         <span style={{ width: 4, height: 30, background: t.primaryColor, transformOrigin: 'bottom', ...animStyle(p, 'grow-y', 60 + i * 80, 280) }} />
         <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: 2 }}>{t.abbreviation}</span>
+        <RedCard p={p} side={s} size={26} />
         <span style={{ fontSize: 30, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 30, textAlign: 'center' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.possession === s ? <span style={{ fontSize: 14, color: p.data.theme.accent }}>◆</span> : null}
       </span>

@@ -73,6 +73,8 @@ export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: 
   // the scorebug's countdown tabs: an away player in the sin bin (rugby league), the away team a player short (futsal)
   if (opts.timers && sport === 'rugby_league') proj.sinBins = [{ side: 'away', playerId: null, atMs: rugbyLeagueMatchMs(cfg as never, 'p2', clocks.main.baseMs)! - 218_000, endedAtMs: null }];
   if (opts.timers && sport === 'futsal') proj.sendOffs = [{ side: 'away', playerId: null, atMs: futsalMatchMs(cfg as never, 'p2', clocks.main.baseMs)! - 49_000, endedBy: null, endedAtMs: null }];
+  // and the red card on the scorebug for the away team, in the sports that have them
+  if (opts.timers && (sport === 'football' || sport === 'futsal' || sport === 'hockey')) proj.stats = { ...proj.stats, away: { ...proj.stats.away, red_cards: 1 } };
   if (opts.review && sport === 'rugby_league') proj.review = { subject: 'try', side: 'home', outcome: null, sequence: 1 };
   const mk = (n: number, side: 'home' | 'away') => ({ playerId: `00000000-0000-4000-8000-${side === 'home' ? '1' : '2'}${String(n).padStart(11, '0')}`, displayName: ['Mia Torres', 'Léa Ångström', 'Kai Fitzgerald-Montgomery', 'Noah Ito', 'Aroha Te Huia', 'Theo Rossi', 'Isla Walker', 'Mateo Ramírez', 'Zoe Okafor', 'Finn Larsen', 'Ana Silva'][n % 11]!, number: n + 1, starter: n < (sport === 'futsal' ? 5 : 11), photoAssetId: null });
   const lineup = { home: Array.from({ length: 14 }, (_, i) => mk(i, 'home')), away: Array.from({ length: 14 }, (_, i) => mk(i, 'away')) };

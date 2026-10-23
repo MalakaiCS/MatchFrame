@@ -300,6 +300,31 @@ export function ScorebugTabs({ p }: { p: GraphicProps }) {
   );
 }
 
+/** How many players a team has had sent off: red cards (and second yellows), or a rugby league send-off. */
+export function redCards(p: GraphicProps, s: 'home' | 'away'): number {
+  const st = p.data.match.projection.stats?.[s] ?? {};
+  return (st.red_cards ?? 0) + (st.send_offs ?? 0);
+}
+
+/**
+ * The red card beside a team on the scorebug, with the number on it for two or more; nothing for a team with none.
+ * `size` is the card's height. With `reserve`, a team with none keeps the card's space while the other team has one,
+ * so a scorebug with a row per team keeps its scores in line.
+ */
+export function RedCard({ p, side, size = 26, reserve = false }: { p: GraphicProps; side: 'home' | 'away'; size?: number; reserve?: boolean }) {
+  const n = redCards(p, side);
+  // evaluated on every render, so a card shown during the match pops in on air
+  const pop = changeStyle(p, `red-${side}`, n);
+  const w = Math.round(size * 0.74);
+  if (!n) return reserve && redCards(p, side === 'home' ? 'away' : 'home') ? <span aria-hidden style={{ width: w, flex: 'none' }} /> : null;
+  const tm = p.data.match.teams[side];
+  return (
+    <span data-red-cards={side} data-count={n} role="img" aria-label={`${tm.shortName || tm.name}: ${n} red card${n > 1 ? 's' : ''}`} style={{ ...pop, display: 'inline-grid', placeItems: 'center', flex: 'none', alignSelf: 'center', width: w, height: size, boxSizing: 'border-box', borderRadius: Math.max(2, Math.round(size * 0.12)), border: `${size >= 22 ? 2 : 1.5}px solid #FFFFFF`, background: 'linear-gradient(155deg, #FF4040 0%, #D0121B 70%)', boxShadow: '0 2px 6px rgba(0,0,0,.45)', color: '#FFFFFF', fontSize: Math.round(size * 0.6), fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', fontFamily: 'inherit', rotate: '6deg' }}>
+      {n > 1 ? n : null}
+    </span>
+  );
+}
+
 /** "PRESENTED BY" caption used beside moment sponsors (goals, cards, player of the match). */
 export function presentedBy(p: GraphicProps): string {
   return t(p, 'PRESENTED BY');

@@ -6,7 +6,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -158,6 +158,7 @@ function Scorebug(p: GraphicProps) {
           <span style={{ fontSize: slim ? 22 : 26, fontWeight: 700, lineHeight: 1, letterSpacing: 1 }}>{tm.abbreviation}</span>
           {detail || fouls ? <span style={{ fontSize: 12, color: c.onMuted, letterSpacing: 1, lineHeight: 1.25 }}>{[detail, fouls].filter(Boolean).join(' · ')}</span> : null}
         </span>
+        <RedCard p={p} side={s} size={slim ? 22 : 26} />
         {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.electric, boxShadow: `0 0 10px ${c.electric}` }} /> : null}
       </div>
     );

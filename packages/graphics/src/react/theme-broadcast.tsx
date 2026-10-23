@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 
 const SX = 96; // 5% title-safe
@@ -34,6 +34,7 @@ function ScorebugStrip(p: GraphicProps) {
         <span style={{ width: 8, alignSelf: 'stretch', background: tm.primaryColor }} />
         <Logo url={tm.logoUrl} label={tm.abbreviation} size={34} color={tm.primaryColor} radius={4} />
         <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
+        <RedCard p={p} side={s} size={30} />
         <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'center' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.scoreDetail ? <span style={{ fontSize: 16, opacity: 0.75 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
         {d.fouls ? <span style={{ fontSize: 15, opacity: 0.8 }}>F {d.fouls[s]}{d.bonus?.[s] ? ' ◆' : ''}</span> : null}
@@ -70,6 +71,7 @@ function ScorebugBox(p: GraphicProps) {
         <span style={{ width: 8, alignSelf: 'stretch', background: t.primaryColor, transformOrigin: 'top', ...animStyle(p, 'grow-y', 60 + i * 70, 300) }} />
         <Logo url={t.logoUrl} label={t.abbreviation} size={32} color={t.primaryColor} radius={4} />
         <span style={{ width: 84, fontSize: 30, fontWeight: 800, letterSpacing: 1 }}>{t.abbreviation}</span>
+        <RedCard p={p} side={s} size={28} reserve />
         {d.possession === s ? <span style={{ color: th.accent, fontSize: 22 }}>●</span> : <span style={{ width: 14 }} />}
         <span style={{ minWidth: 52, textAlign: 'right', fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.scoreDetail ? <span style={{ fontSize: 15, opacity: 0.75, width: 48 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}

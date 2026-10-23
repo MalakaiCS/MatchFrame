@@ -88,3 +88,25 @@ describe('the video review graphic', () => {
     expect(draw('premier', 'review', props('premier', 'rugby_league', 'builtin:review', { variables: { outcome: 'auto' } }))).toBe('');
   });
 });
+
+describe('red cards on the scorebug', () => {
+  const stats = (home: Record<string, number>, away: Record<string, number>) => ({ home, away }) as never;
+  it('in every look and both scorebug variants: a card beside the team sent off, the number on it from two', () => {
+    for (const key of THEME_KEYS) {
+      for (const variant of ['box', 'strip'] as const) {
+        const theme = { scorebug: { ...DEFAULT_THEMES[key].scorebug, variant } };
+        const none = draw(key, 'scorebug', props(key, 'football', 'builtin:scorebug', { theme }));
+        expect(none, key).not.toContain('data-red-cards');
+        const html = draw(key, 'scorebug', props(key, 'football', 'builtin:scorebug', { theme, projection: { stats: stats({ red_cards: 1 }, { red_cards: 2, yellow_cards: 3 }) } }));
+        expect(html, `${key} ${variant}`).toMatch(/data-red-cards="home" data-count="1"[^>]*aria-label="Harbour: 1 red card"[^>]*><\/span>/);
+        expect(html, `${key} ${variant}`).toMatch(/data-red-cards="away" data-count="2"[^>]*aria-label="Bayside: 2 red cards"[^>]*>2<\/span>/);
+      }
+    }
+  });
+
+  it('a rugby league send-off counts as a red card; only the team that had one shows it', () => {
+    const html = draw('broadcast', 'scorebug', props('broadcast', 'rugby_league', 'builtin:scorebug', { projection: { stats: stats({}, { send_offs: 1 }) } }));
+    expect(html).toContain('data-red-cards="away" data-count="1"');
+    expect(html).not.toContain('data-red-cards="home"');
+  });
+});
