@@ -465,6 +465,38 @@ Not claimed: the browser that made the reported file is not known and was not ru
 Chromium. `pnpm test:db` and the rest of the browser suite were not re-run for this change (no service or API code
 changed). Stingers exported before this fix in such a browser need exporting again.
 
+## Match officials on air and team colours from the crest (2026-10-23)
+
+Requested from the list of ideas: "Add 2, 3, 4, 15": football added time (the fourth official's board), sin-bin and
+send-off countdowns on the scorebug, the video referee decision graphic, and team colours picked from an uploaded
+crest. Same environment, production build through the single-port launcher, graphics-only mode.
+
+Found on the way: a partial team update (a logo saved, a team archived) filled in the create defaults, because zod's
+`.partial()` still applies `.default()`, so saving a logo reset a team's colours to the default blue and navy. Notes
+(`kind`) and webhooks (`enabled`) had the same problem. Updates now keep only the fields that were sent
+(`packages/services/src/patch.ts`).
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `suspensions.test.ts` (sin bin from the rules' minutes, 10 for rules stored before the setting; on playing time, time after the siren not counted and the rest carried into the second half; the player back where they were when it is up, a bench player to the bench; not brought back early by an interchange; two at once, the countdown of the first to end; a send-off ends it; undo; one video review at a time, its decision, undoing the decision, dropped at the end of the period; added time for the rest of the half; futsal's send-off as a timer; the starter flows), `officials.test.ts` (the tabs under the scorebug in all ten looks, left, right and centred; the board from the scorer or the graphic's minutes; the review's pending, TRY and NO TRY states, the captain's challenge, the operator's setting over the scorer, nothing without a review), `palette.test.ts` (crest colours: background and see-through pixels left out, a solid crest kept, the colourful colour over its outline, shades and anti-aliased edges as one colour, a second colour that reads against the first, nothing from a see-through picture), `patch.test.ts` (an update keeps only the fields sent) | 183 tests, 34 files, all pass |
+| `pnpm test:db`: `uploads.test.ts` now saves a logo on a team with its own colours and checks they are kept; starter-flow upgrades with the new football and rugby league fingerprints | 76 tests, 11 files, all pass |
+| `tests/e2e/specs/officials.spec.ts`: football: *Added time* → +3 on the phone; the board on the OBS page, *+3* and *3 minutes* (`docs/evidence/e2e/added-time-board.png`), then *ADDED +3* under the scorebug (`added-time-scorebug.png`); rugby league: a sin bin counting down on the phone (`scorer-sin-bin.png`) and the OBS scorebug (`sin-bin-scorebug.png`); a video review on air as *TRY?* (`review-pending.png`), *Try* on the phone puts 4 points on the score and the graphic turns green (`review-try.png`), then leaves; a captain's challenge decided *Unsuccessful*; a new team's colours filled in from its crest, and *Use crest colours* on an existing netball team (`crest-colours.png`) | 3 tests, all pass |
+| Visual baselines: the added-time board in all ten looks, and the rugby league scorebug with a sin bin and the video review in all ten looks (30 new); the broadcast futsal and rugby league scorebug previews now show their countdown tab, and the Club look's match information strap no longer shows a team crest (it is about the match, not a team) (3 changed) | 366 baselines |
+| Full `pnpm test:e2e` on the final build | not clean, so not counted as a pass. The final run of 65 tests (27.9 min): 63 pass, 2 fail: the football automation flow (the home line-up still in the output's state 13 s after its 8 s, cause below) and `visual.spec.ts` Meister football (`page.addStyleTag: Target crashed`, the browser tab crashed on opening the page while the session's disk allowance was at 97%; space freed). Run alone afterwards on the same build, both pass (2.7 min; 47 s). The run before it, on the same app build, had 63 pass, 2 fail, both from this change's tests: the look page's football count (28, now 29 with the added-time board) and the scorer sheet's possession check (the two live shares read at different moments added to 102; now read at once); the automation flow passed in that run, and both fixed specs pass since (4 tests, 32 s). A first run, on a build without the last sin-bin and review changes, was stopped after 25 tests (the automation flow had failed the same way). The JSON report of these runs was not kept: `docs/evidence/e2e/results.json` still records the 22 October run |
+
+Cause of the automation flow failure, not fixed here: the worker's housekeeping pass runs the scorebug sponsor rotation
+before it takes expired graphics out of the outputs' state. Every 30 s the rotation makes a sponsor decision for each
+output with its scorebug up (253 here, left live by earlier runs), each decision adds a row to `sponsor_decisions`, and
+each one counts all of the organisation's earlier decisions (241,000 rows by the end of these runs). Sampled every
+100 ms, that count was running in about 60% of samples, so a timed graphic can stay in an output's state seconds past
+its time and clock triggers can fire late. The OBS page takes the graphic out on time (it times it locally). It is a
+growth problem in the sponsor code, not in this change; a bounded count (or one decision per change) is needed.
+
+Not claimed: checked in Chromium on this machine, not on the hosted deployment, a real phone or in OBS. Crest
+colours are suggestions from the picture's pixels: a crest drawn mostly in an outline colour, or with a gradient,
+can need the colours picked by hand. A sin bin recorded without a clock reading (an import) does not count down.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
