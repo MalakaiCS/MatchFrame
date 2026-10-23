@@ -58,9 +58,18 @@ export async function renderFrames(o: FrameRender): Promise<Blob> {
   return new Blob(parts, { type: 'application/vnd.matchframe.png-sequence' });
 }
 
-/** Send the frames to be encoded as a VP9 WebM with alpha; returns the file. */
-export async function encodeWebm(frames: Blob, q: { fps: number; size: string; name: string }, signal?: AbortSignal): Promise<{ file: Blob; frames: number }> {
-  const r = await fetch(`/api/v1/transitions/encode?${new URLSearchParams({ fps: String(q.fps), size: q.size, name: q.name })}`, {
+/** The frame at `atMs` alone, as a PNG with a transparent background. */
+export async function renderStill(o: Omit<FrameRender, 'fps' | 'durationMs' | 'onProgress' | 'signal'> & { atMs: number }): Promise<Blob> {
+  await document.fonts.ready;
+  await o.setTime(o.atMs);
+  freezeAnimations(o.node);
+  const canvas = await toCanvas(o.node, { width: o.design.width, height: o.design.height, canvasWidth: o.width, canvasHeight: o.height, pixelRatio: 1, fontEmbedCSS: await getFontEmbedCSS(o.node), skipAutoScale: true });
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The picture could not be drawn'))), 'image/png'));
+}
+
+/** Send the frames to be encoded with alpha (a VP9 WebM, or a ProRes 4444 MOV for editing programs); returns the file. */
+export async function encodeVideo(frames: Blob, q: { fps: number; size: string; name: string; format?: 'webm' | 'mov' }, signal?: AbortSignal): Promise<{ file: Blob; frames: number }> {
+  const r = await fetch(`/api/v1/transitions/encode?${new URLSearchParams({ fps: String(q.fps), size: q.size, name: q.name, format: q.format ?? 'webm' })}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'content-type': 'application/vnd.matchframe.png-sequence' },

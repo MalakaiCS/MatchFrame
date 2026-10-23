@@ -28,6 +28,7 @@ describe('transition encoding', () => {
     expect(transitionFileName('Replay — Harbour v Bayside (Premier)')).toBe('replay-harbour-v-bayside-premier.webm');
     expect(transitionFileName('../../etc')).toBe('etc.webm');
     expect(transitionFileName(undefined)).toBe('replay-transition.webm');
+    expect(transitionFileName('Match Highlights', 'mov')).toBe('match-highlights.mov');
   });
 
   it('refuses what it should not encode', async () => {
@@ -36,7 +37,27 @@ describe('transition encoding', () => {
     await expect(encodeTransition(ctx(), one, 1, { fps: 29, size: '1920x1080' })).rejects.toThrow(/Frame rate/);
     await expect(encodeTransition(ctx(), one, 1, { fps: 30, size: '800x600' as never })).rejects.toThrow();
     await expect(encodeTransition(ctx(), one, 0, { fps: 30, size: '1920x1080' })).rejects.toMatchObject({ code: 'LENGTH_REQUIRED' });
+    await expect(encodeTransition(ctx(), one, 1, { fps: 30, size: '1920x1080', format: 'avi' as never })).rejects.toThrow();
   });
+
+  it.skipIf(!hasFfmpeg)('encodes PNG frames to a ProRes 4444 MOV with alpha for editing programs: clear, covered, clear', async () => {
+    const frames = Array.from({ length: 15 }, (_, i) => encodePng(1280, 720, () => (i >= 5 && i < 10 ? [233, 0, 82, 255] : [0, 0, 0, 0])));
+    const body = Buffer.concat(frames);
+    const r = await encodeTransition(ctx(), Readable.from(body), body.length, { fps: 25, size: '1280x720', name: 'Match Highlights title', format: 'mov' });
+    expect([r.fileName, r.contentType, r.frames]).toEqual(['match-highlights-title.mov', 'video/quicktime', 15]);
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bs-tr-test-')), r.fileName);
+    fs.writeFileSync(file, r.file);
+    const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', file]).toString()) as { streams: { codec_name: string; profile: string; pix_fmt: string; width: number; height: number; r_frame_rate: string }[]; format: { format_name: string } };
+    expect(probe.format.format_name).toContain('mov');
+    expect(probe.streams[0]).toMatchObject({ codec_name: 'prores', profile: '4444', pix_fmt: 'yuva444p12le', width: 1280, height: 720, r_frame_rate: '25/1' });
+    const alpha = (n: number) => {
+      const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select=eq(n\\,${n}),alphaextract,scale=64:36`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'gray', 'pipe:1']);
+      return raw.reduce((a, b) => a + b, 0) / raw.length;
+    };
+    expect(alpha(0)).toBeLessThan(2);
+    expect(alpha(7)).toBeGreaterThan(253);
+    expect(alpha(14)).toBeLessThan(2);
+  }, 60_000);
 
   it.skipIf(!hasFfmpeg)('encodes PNG frames to VP9 WebM with alpha: clear, covered, clear', async () => {
     // 15 frames of 1280x720: transparent, then fully covered in the middle, then transparent again

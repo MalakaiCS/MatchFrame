@@ -9,7 +9,7 @@ import { REPLAY_TRANSITION, findTemplate, type OverlayPublicState, type RenderDa
 import { Keyframes, Renderer, Stage, THEMES } from '@bs/graphics/react';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect } from '@bs/ui';
 import type { ApiError } from '@/lib/api';
-import { downloadBlob, encodeWebm, frameCount, renderFrames } from '@/lib/frame-export';
+import { downloadBlob, encodeVideo, frameCount, renderFrames } from '@/lib/frame-export';
 
 const replay = findTemplate('builtin:replay')!;
 const DESIGN = { width: 1920, height: 1080 };
@@ -86,7 +86,7 @@ export function ReplayExportDialog({ open, onOpenChange, data, teams, fileBase, 
         onProgress: (done, total) => setStep({ kind: 'drawing', done, total }),
       });
       setStep({ kind: 'encoding' });
-      const r = await encodeWebm(frames, { fps, size, name }, ac.signal);
+      const r = await encodeVideo(frames, { fps, size, name }, ac.signal);
       downloadBlob(r.file, `${name}.webm`);
       setStep({ kind: 'done', name: `${name}.webm`, bytes: r.file.size, frames: r.frames });
     } catch (e) {

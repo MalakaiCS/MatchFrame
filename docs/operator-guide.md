@@ -355,6 +355,16 @@ red cards as they were at that moment), each goal's replay behind the replay tra
 scorebug comes off for the replay), the red card strap with its clip, the final whistle with the full-time score,
 and the end board. Clips are joined with short crossfades and keep the match sound.
 
+**Title graphics for your edit.** Under the package, *Title graphics for your edit* has the title panel on its own
+— *Match Highlights* and *Extended Match Highlights* (the title can be changed) — in this match's look, with the
+competition, both teams, the round, the ground, and the date with the kick-off time. The rest of the frame is
+see-through, so it lays over your footage in an editing program. Download it as a **MOV** (ProRes 4444 with
+transparency: Premiere Pro, Final Cut Pro and DaVinci Resolve keep the see-through part), a **WebM** (VP9 with
+transparency) or a transparent **PNG**; choose the size (1920×1080 or 1280×720), the frame rate of your edit and how
+long it stays on screen (3–10 s) before it animates out. The video starts and ends clear, so it can go straight on
+a track above the first clip. It is offered for every sport, including those without highlights packages. The
+ground and kick-off time come from the match: change them there and the title follows.
+
 ### Thumbnails
 
 Match → **Thumbnails** has a thumbnail for each kind of video of the match — *Live stream*, *Highlights*,

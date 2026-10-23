@@ -13,6 +13,7 @@ import { useCopy, useGet } from '@/lib/hooks';
 import { putWithProgress, uploadMatchVideo, type MatchVideo } from '@/lib/match-video-upload';
 import { useHighlightsDrawing } from '@/components/highlights-drawing';
 import { saveBlob, thumbnailName, useThumbnailMaker } from '@/components/thumbnail-maker';
+import { HighlightsTitleExport } from './highlights-title-export';
 import { useQueryClient } from '@tanstack/react-query';
 
 type Source = { sport: string; rulesConfig: unknown; facts: StoredFact[]; videos: MatchVideo[] };
@@ -66,7 +67,14 @@ export function HighlightsPanel({ matchId, canEdit }: { matchId: string; canEdit
 
   if (src.isLoading) return <Spinner />;
   if (src.error) return <ErrorNotice error={src.error} />;
-  if (!offered) return <Card className="p-4 text-sm text-muted">Highlights are made from the scorer&apos;s goals, tries, cards and chances. They are not offered for {src.data?.sport} yet: it scores too often to pick the moments from the log.</Card>;
+  const titles = rd.data?.data ? <HighlightsTitleExport data={rd.data.data} /> : null;
+  if (!offered)
+    return (
+      <div className="grid gap-4">
+        <Card className="p-4 text-sm text-muted">Highlights packages are made from the scorer&apos;s goals, tries, cards and chances. They are not offered for {src.data?.sport} yet: it scores too often to pick the moments from the log. The title graphics below are, for a package you edit yourself.</Card>
+        {titles}
+      </div>
+    );
 
   return (
     <div className="grid gap-4">
@@ -75,6 +83,7 @@ export function HighlightsPanel({ matchId, canEdit }: { matchId: string; canEdit
         <Maker key={video.id} matchId={matchId} canEdit={canEdit} video={video} facts={src.data!.facts} adapter={adapter} cfg={cfg} renderData={rd.data?.data ?? null} renderError={rd.error ?? overlays.error} onDone={() => void qc.invalidateQueries({ queryKey: ['highlight-packages', matchId] })} onStale={() => void qc.invalidateQueries({ queryKey: ['highlights-source', matchId] })} />
       ) : null}
       <Packages pkgs={pkgs.data ?? []} canEdit={canEdit} renderData={rd.data?.data ?? null} refresh={() => void qc.invalidateQueries({ queryKey: ['highlight-packages', matchId] })} />
+      {titles}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export function registerGraphicsRoutes(b: AppBundle) {
   app.addContentTypeParser('application/vnd.matchframe.png-sequence', (_req, payload, done) => done(null, payload));
   app.post('/api/v1/transitions/encode', async (req, reply) => {
     const r = await transitionsSvc.encodeTransition(await ctxFor(req), req.body as Readable, Number(req.headers['content-length']), req.query as never);
-    return reply.header('content-type', 'video/webm').header('content-disposition', `attachment; filename="${r.fileName}"`).header('x-frames', String(r.frames)).header('cache-control', 'no-store').send(r.file);
+    return reply.header('content-type', r.contentType).header('content-disposition', `attachment; filename="${r.fileName}"`).header('x-frames', String(r.frames)).header('cache-control', 'no-store').send(r.file);
   });
 
   app.get('/api/v1/themes', async (req) => themesSvc.listThemes(await ctxFor(req)));

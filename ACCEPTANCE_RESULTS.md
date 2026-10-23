@@ -546,6 +546,28 @@ the hosted deployment, or uploaded to YouTube. The browser must stay open while 
 Packages are 16:9 only. Highlights are not offered for basketball and netball. Thumbnails are downloaded from
 the browser; there is no thumbnail link for another system to fetch.
 
+### Title graphics for an edit (2026-10-23)
+
+Requested: the highlights title graphics on their own, "Match Highlights" and "Extended Match Highlights" with the
+date, time and location of the match, to edit in by hand. The title panel now shows the kick-off time with the date,
+and a title of three words or more puts its first words on a small ruled line above the last two (*EXTENDED* over
+MATCH HIGHLIGHTS). The Highlights tab exports it alone for any sport. The transition encoder takes a ProRes 4444 MOV
+as well as the VP9 WebM, and up to 900 frames (15 s at 60 fps).
+
+Found on the way: a clip that was not a whole number of frames long ended one frame before its exit finished
+(5.45 s at 25 fps: the last frame at 5.44 s still showed 9% of the panel). The length is now rounded up to whole
+frames, so the last frame is clear.
+
+| Check | Result |
+| --- | --- |
+| `pnpm test`: `transitions.test.ts` (a ProRes 4444 MOV with alpha, 1280×720 at 25 fps, 15 frames: clear, covered, clear; the file name; an unknown format refused), `highlights-intro.test.ts` (in every look: the title, both teams, the round, the ground and *SATURDAY 24 OCTOBER 2026 · 3:00 PM*; the *EXTENDED* line for a longer title and not for MATCH HIGHLIGHTS; no ground or round when the match has none) | 212 tests, 39 files, all pass |
+| Regression: `replay-transition.spec.ts` (both WebM exports, now through the shared encode call) and `highlights.spec.ts` (the package, its title panel now with the time) | 3 tests, pass |
+| `tests/e2e/specs/highlights-title.spec.ts`: a fixture at one of the organisation's grounds; both previews show the round, the ground and the date with the kick-off time, *EXTENDED* only on the second (`highlights-title-export.png`); *Download Match Highlights (MOV)*: ProRes 4444 with alpha, 1920×1080, 25 fps, 138 frames (5 s on screen, then out), clear on the first and last frames, solid on the panel and clear beside it in the middle (`highlights-title-match.png`, frame 50); *Download Extended Match Highlights (PNG)*: 1920×1080, solid panel, see-through beside it (`highlights-title-extended.png`) | 1 test, passes (1.4 min) |
+| Visual baselines, the ten football runs | 10 pass; the title panels' new time line is inside the 2% tolerance, so their baselines were not rewritten |
+
+Not claimed: the MOV was checked with FFmpeg here, not opened in Premiere, Final Cut or DaVinci Resolve (none run in
+this environment).
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

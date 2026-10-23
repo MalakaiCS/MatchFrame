@@ -13,9 +13,13 @@ import type { Ctx } from './context';
 
 export const TRANSITION_FPS = [24, 25, 30, 50, 60] as const;
 export const TRANSITION_SIZES = ['1920x1080', '1280x720'] as const;
-/** 10 s at 60 fps; a stinger is far shorter */
-const MAX_FRAMES = 600;
-const MAX_BYTES = 400 * 1024 * 1024;
+/** WebM (VP9 with alpha) for OBS and vMix; MOV (ProRes 4444 with alpha) for editing programs */
+export const TRANSITION_FORMATS = ['webm', 'mov'] as const;
+export type TransitionFormat = (typeof TRANSITION_FORMATS)[number];
+const CONTENT_TYPE: Record<TransitionFormat, string> = { webm: 'video/webm', mov: 'video/quicktime' };
+/** 15 s at 60 fps: a stinger is about 2 s, a title for an edit up to about 11 */
+const MAX_FRAMES = 900;
+const MAX_BYTES = 600 * 1024 * 1024;
 const MAX_AT_ONCE = 2;
 const TIMEOUT_MS = 180_000;
 let running = 0;
@@ -24,19 +28,29 @@ export const encodeQuery = z.object({
   fps: z.coerce.number().refine((n) => (TRANSITION_FPS as readonly number[]).includes(n), `Frame rate must be one of ${TRANSITION_FPS.join(', ')}`),
   size: z.enum(TRANSITION_SIZES),
   name: z.string().trim().max(120).optional(),
+  format: z.enum(TRANSITION_FORMATS).default('webm'),
 });
 
 /** A file name for the download: letters, digits and dashes. */
-export function transitionFileName(name: string | undefined): string {
+export function transitionFileName(name: string | undefined, format: TransitionFormat = 'webm'): string {
   const base = (name ?? 'replay-transition').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').toLowerCase().slice(0, 80);
-  return `${base || 'replay-transition'}.webm`;
+  return `${base || 'replay-transition'}.${format}`;
 }
 
+/** FFmpeg's encoding arguments for each format, both keeping the alpha channel. */
+const ENCODE: Record<TransitionFormat, string[]> = {
+  // near-lossless for flat colours, gradients and hard slanted edges (CRF 16, a slower preset); a 2 s stinger is
+  // still only a few MB
+  webm: ['-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '16', '-deadline', 'good', '-cpu-used', '2', '-row-mt', '1', '-auto-alt-ref', '0', '-metadata:s:v:0', 'alpha_mode=1'],
+  // ProRes 4444 with a 16-bit alpha plane: what Premiere, Final Cut and DaVinci Resolve take with its transparency
+  mov: ['-c:v', 'prores_ks', '-profile:v', '4', '-pix_fmt', 'yuva444p10le', '-alpha_bits', '16', '-vendor', 'apl0'],
+};
+
 /**
- * Encode PNG frames (concatenated, in order) to a VP9 WebM with alpha at `fps`, scaled to the size asked for.
- * Returns the file's bytes. `ffmpeg` can be pointed elsewhere for tests.
+ * Encode PNG frames (concatenated, in order) to a video with alpha at `fps`, scaled to the size asked for: a VP9
+ * WebM, or a ProRes 4444 MOV. Returns the file's bytes. `ffmpeg` can be pointed elsewhere for tests.
  */
-export async function encodeTransition(ctx: Ctx, body: Readable, length: number, input: z.input<typeof encodeQuery>, opts: { ffmpeg?: string } = {}): Promise<{ file: Buffer; fileName: string; frames: number }> {
+export async function encodeTransition(ctx: Ctx, body: Readable, length: number, input: z.input<typeof encodeQuery>, opts: { ffmpeg?: string } = {}): Promise<{ file: Buffer; fileName: string; contentType: string; frames: number }> {
   assertCan(ctx.actor, 'theme.use');
   const q = encodeQuery.parse(input);
   if (!Number.isInteger(length) || length <= 0) throw new AppError('LENGTH_REQUIRED', 411, 'Send the frames with their size (Content-Length)');
@@ -46,17 +60,14 @@ export async function encodeTransition(ctx: Ctx, body: Readable, length: number,
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bs-transition-'));
   try {
     const [w, h] = q.size.split('x').map(Number) as [number, number];
-    const out = path.join(dir, 'out.webm');
+    const out = path.join(dir, `out.${q.format}`);
     const args = [
       '-hide_banner', '-loglevel', 'error', '-y',
       '-f', 'image2pipe', '-framerate', String(q.fps), '-c:v', 'png', '-i', 'pipe:0',
       '-frames:v', String(MAX_FRAMES),
-      '-vf', `scale=${w}:${h}:flags=lanczos,format=yuva420p`,
-      // near-lossless for flat colours, gradients and hard slanted edges (CRF 16, a slower preset); a 2 s stinger
-      // is still only a few MB
-      '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '16',
-      '-deadline', 'good', '-cpu-used', '2', '-row-mt', '1', '-auto-alt-ref', '0',
-      '-metadata:s:v:0', 'alpha_mode=1', '-an', out,
+      '-vf', `scale=${w}:${h}:flags=lanczos,format=${q.format === 'mov' ? 'yuva444p10le' : 'yuva420p'}`,
+      ...ENCODE[q.format],
+      '-an', out,
     ];
     await new Promise<void>((resolve, reject) => {
       const p = spawn(opts.ffmpeg ?? 'ffmpeg', args, { stdio: ['pipe', 'ignore', 'pipe'] });
@@ -78,7 +89,7 @@ export async function encodeTransition(ctx: Ctx, body: Readable, length: number,
     });
     const file = await fs.readFile(out);
     const frames = await countFrames(out, opts.ffmpeg);
-    return { file, fileName: transitionFileName(q.name), frames };
+    return { file, fileName: transitionFileName(q.name, q.format), contentType: CONTENT_TYPE[q.format], frames };
   } finally {
     running--;
     await fs.rm(dir, { recursive: true, force: true });

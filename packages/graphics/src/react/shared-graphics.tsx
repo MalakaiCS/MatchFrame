@@ -640,16 +640,23 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     const plate = colourDistance(th.primary, th.panel) < COLOUR_CLASH_THRESHOLD ? th.secondary : th.primary;
     const ink = inkOn(plate, th.secondary);
     const words = t(p, String(v.title || 'MATCH HIGHLIGHTS')).toUpperCase().split(/\s+/);
-    const lines = words.length > 1 ? [words[0]!, words.slice(1).join(' ')] : words;
+    // a longer title keeps its last two words as the title and puts the rest on a small line above (EXTENDED)
+    const kicker = words.length > 2 ? words.slice(0, -2).join(' ') : null;
+    const main = kicker ? words.slice(-2) : words;
+    const lines = main.length > 1 ? [main[0]!, main.slice(1).join(' ')] : main;
     // both lines at one size: the size the longer fits in the panel (measured a little narrow for the heavier weight)
     const titlePx = Math.min(...lines.map((l) => fitLabel({ full: l, maxWidth: 430, fontPx: lines.length > 1 ? 92 : 80, minFontPx: 44, measure: p.measure }).fontPx));
     let date = '';
+    let time = '';
     try {
       date = new Intl.DateTimeFormat('en-AU', { timeZone: m.timezone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(m.scheduledAt));
+      time = new Intl.DateTimeFormat('en-AU', { timeZone: m.timezone, hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(m.scheduledAt)).replace(/\s/g, ' ');
     } catch {
-      // an unknown time zone: no date
+      // an unknown time zone: no date or time
     }
-    const facts = [m.round, m.venue, date].filter((x): x is string => !!x);
+    // the round, the ground, then the day and kick-off time
+    const facts = [m.round, m.venue, [date, time].filter(Boolean).join(' · ')].filter((x): x is string => !!x).map((f) => f.toUpperCase());
+    const rule = withAlpha(ink === '#FFFFFF' ? '#FFFFFF' : '#000000', 0.35);
     const crest = (s: 'home' | 'away', i: number) => {
       const tm = team(p, s);
       return (
@@ -663,6 +670,13 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
       <div data-graphic="highlights_intro" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 34, padding: '64px 44px', boxSizing: 'border-box', background: `linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.3)), ${plate}`, color: ink, fontFamily: th.font, boxShadow: '14px 0 44px rgba(0,0,0,.4)', ...animStyle(p, 'wipe', 0, 520) }}>
         {badgeUrl(p) ? <span style={animStyle(p, 'rise', 160, 380)}><ThemeBadge p={p} height={104} /></span> : <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.85, ...animStyle(p, 'rise', 160, 380) }}>{m.competition.shortName || m.competition.name}</span>}
         <div style={{ display: 'grid', justifyItems: 'center', ...animStyle(p, 'rise', 240, 420) }}>
+          {kicker ? (
+            <span data-title-kicker style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12, fontSize: Math.round(titlePx * 0.36), fontWeight: 800, letterSpacing: 6, whiteSpace: 'nowrap' }}>
+              <span style={{ width: 34, height: 2, background: rule }} />
+              {kicker}
+              <span style={{ width: 34, height: 2, background: rule }} />
+            </span>
+          ) : null}
           {lines.map((l) => <span key={l} style={{ fontSize: titlePx, fontWeight: 900, lineHeight: 0.95, letterSpacing: 1, textAlign: 'center', whiteSpace: 'nowrap' }}>{l}</span>)}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 16 }}>
@@ -671,7 +685,8 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
         </div>
         {facts.length ? (
           <div style={{ display: 'grid', justifyItems: 'center', gap: 6, paddingTop: 22, borderTop: `2px solid ${withAlpha(ink === '#FFFFFF' ? '#FFFFFF' : '#000000', 0.25)}`, width: '86%', ...animStyle(p, 'rise', 560, 380) }}>
-            {facts.map((f, i) => <span key={f} style={{ fontSize: i === 0 ? 24 : 21, fontWeight: i === 0 ? 800 : 600, letterSpacing: 1.5, textTransform: 'uppercase', textAlign: 'center', opacity: i === 0 ? 1 : 0.85 }}>{f}</span>)}
+            {/* each on one line, smaller if it must be (measured narrow for the letter spacing) */}
+            {facts.map((f, i) => <span key={f} style={{ fontSize: fitLabel({ full: f, maxWidth: 360, fontPx: i === 0 ? 24 : 21, minFontPx: 15, measure: p.measure }).fontPx, fontWeight: i === 0 ? 800 : 600, letterSpacing: 1.5, textAlign: 'center', whiteSpace: 'nowrap', opacity: i === 0 ? 1 : 0.85 }}>{f}</span>)}
           </div>
         ) : null}
         {v.line ? <span style={{ marginTop: 6, padding: '10px 22px', borderRadius: Math.min(th.radius, 10), background: th.accent, color: inkOn(th.accent), fontSize: 22, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', ...animStyle(p, 'rise', 660, 380) }}>{String(v.line)}</span> : null}
