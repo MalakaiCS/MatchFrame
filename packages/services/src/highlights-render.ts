@@ -86,6 +86,18 @@ export function writeTrack(dir: string, name: string, track: OverlayTrack, frame
 const sec = (ms: number) => (ms / 1000).toFixed(3);
 
 /**
+ * A clip read over the network waits, connected, while the clips before it are made; the storage closes a
+ * connection left idle, and without these FFmpeg takes the cut-off read as the end of the clip (its picture stops).
+ */
+const RECONNECT = ['-reconnect', '1', '-reconnect_on_network_error', '1', '-reconnect_delay_max', '30'];
+/**
+ * Seconds of picture past each part's end. A join starts on the first frame at or after its time, so the part
+ * before it can run out of frames inside the join, and xfade then ends the whole picture there; the join drops
+ * what is left over, and the last part's spare is cut by the package's length.
+ */
+const SPARE = 0.2;
+
+/**
  * FFmpeg arguments for a package: one input per clip (seeking into the source), black and silence for the end
  * board, the graphics tracks, then scale, slow down, join and lay the graphics over.
  */
@@ -96,19 +108,20 @@ export function composeArgs(plan: Pick<HighlightPlan, 'segments' | 'durationMs'>
   let input = 0;
   const vs: string[] = [];
   const as: string[] = [];
+  const remote = /^https?:/.test(o.src);
   for (const [i, s] of plan.segments.entries()) {
     const len = (s.outToMs - s.outFromMs) / 1000;
     if (s.kind === 'end_card') {
-      args.push('-f', 'lavfi', '-t', len.toFixed(3), '-i', `color=c=black:s=${W}x${H}:r=${fps}`);
+      args.push('-f', 'lavfi', '-t', (len + SPARE).toFixed(3), '-i', `color=c=black:s=${W}x${H}:r=${fps}`);
       filters.push(`[${input}:v]format=yuv420p,setsar=1,settb=AVTB[v${i}]`);
       input++;
       args.push('-f', 'lavfi', '-t', len.toFixed(3), '-i', 'anullsrc=r=48000:cl=stereo');
       filters.push(`[${input}:a]aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}]`);
       input++;
     } else {
-      args.push('-ss', sec(s.videoFromMs), '-t', sec(s.videoToMs - s.videoFromMs), '-i', o.src);
+      args.push(...(remote ? RECONNECT : []), '-ss', sec(s.videoFromMs), '-t', sec(s.videoToMs - s.videoFromMs), '-i', o.src);
       const v = input++;
-      filters.push(`[${v}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,setpts=(PTS-STARTPTS)/${s.speed},fps=${fps},trim=duration=${len.toFixed(3)},format=yuv420p,settb=AVTB[v${i}]`);
+      filters.push(`[${v}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,setpts=(PTS-STARTPTS)/${s.speed},fps=${fps},tpad=stop_mode=clone:stop_duration=${SPARE},trim=duration=${(len + SPARE).toFixed(3)},format=yuv420p,settb=AVTB[v${i}]`);
       if (o.hasAudio) filters.push(`[${v}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS${s.speed !== 1 ? `,atempo=${s.speed}` : ''},apad,atrim=duration=${len.toFixed(3)}[a${i}]`);
       else {
         args.push('-f', 'lavfi', '-t', len.toFixed(3), '-i', 'anullsrc=r=48000:cl=stereo');
@@ -182,7 +195,7 @@ export async function probeMatchVideo(d: MediaJobDeps, job: Job, tmp: string, ff
   await progress(0.1);
   const preview = path.join(tmp, 'preview.mp4');
   const audio = info.audio ? ['-c:a', 'aac', '-b:a', '64k', '-ac', '2', '-ar', '44100'] : ['-an'];
-  await ff(['-i', src, '-vf', 'scale=-2:360,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-g', '50', '-r', '25', ...audio, '-movflags', '+faststart', preview]);
+  await ff([...(/^https?:/.test(src) ? RECONNECT : []), '-i', src, '-vf', 'scale=-2:360,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-g', '50', '-r', '25', ...audio, '-movflags', '+faststart', preview]);
   await progress(0.85);
   const thumb = path.join(tmp, 'thumb.jpg');
   await ff(['-ss', sec(Math.min(info.durationMs / 10, 600_000)), '-i', preview, '-frames:v', '1', '-vf', 'scale=480:-2', thumb]);
@@ -221,6 +234,9 @@ export async function renderHighlights(d: MediaJobDeps, job: Job, tmp: string, f
   await progress(0.2);
   const out = path.join(tmp, 'highlights.mp4');
   await ff(composeArgs(plan.plan, { src, hasAudio: !!info.audio, main, stinger, out }));
+  // the picture must run the whole package: a clip cut short by a read that failed is not a package
+  const made = await probe(out);
+  if ((made.video?.durationMs ?? 0) < plan.plan.durationMs - 500) throw new Error('The match video could not be read to the end of the package: make it again');
   await progress(0.95);
   return out;
 }

@@ -86,7 +86,19 @@ describe('highlights: the package', () => {
     expect(end).toMatchObject({ kind: 'end_card', join: 'crossfade', joinMs: 500, outToMs: p.durationMs });
     expect(p.cues.filter((c) => c.fromMs >= end.outFromMs).map((c) => c.templateKey)).toEqual(['builtin:backdrop', 'builtin:ident']);
     expect(p.cues.find((c) => c.id === 'intro')).toMatchObject({ templateKey: 'builtin:highlights_intro', fromMs: 0, toMs: T.introMs });
-    expect(p.cues.find((c) => c.id === 'scorebug')).toMatchObject({ fromMs: T.introMs - 200, toMs: end.outFromMs, variables: { showSponsor: false } });
+    // the scorebug: on over the clips, off for each replay (out behind its transition) and under the full-time board
+    const bugs = p.cues.filter((c) => c.templateKey === 'builtin:scorebug');
+    const replays = p.segments.filter((s) => s.kind === 'replay');
+    expect(bugs[0]).toMatchObject({ id: 'scorebug', fromMs: T.introMs - 200, toMs: replays[0]!.outFromMs - 300, variables: { showSponsor: false } });
+    expect(bugs.map((c) => [c.fromMs, c.toMs])).toEqual([
+      [T.introMs - 200, replays[0]!.outFromMs - 300],
+      [replays[0]!.outToMs + 200, replays[1]!.outFromMs - 300],
+      [replays[1]!.outToMs + 200, ft.outToMs - T.fullTimeBoardMs],
+    ]);
+    const stinger = p.cues.find((c) => c.templateKey === 'builtin:replay')!;
+    // it goes out while the transition covers the picture
+    expect(bugs[0]!.toMs!).toBeGreaterThan(stinger.fromMs);
+    expect(bugs[0]!.toMs!).toBeLessThan(stinger.fromMs + stinger.holdMs!);
   });
 
   it('segments follow one another, overlapping by their join; the picture and its clock at any point', () => {

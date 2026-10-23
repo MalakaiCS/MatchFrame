@@ -9,6 +9,7 @@ import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponent
 import { Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, clockLabel, eventWord, inkOn, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
 import { reviewHeadline, reviewWords, shootoutLine, shootoutStatus } from '@bs/domain';
 import { COLOUR_CLASH_THRESHOLD, colourDistance, type RenderFixture, type RenderStandingRow } from '../data';
+import { fitLabel } from '../fit';
 import { ReplayTransition } from './replay';
 
 export interface Chrome {
@@ -640,6 +641,8 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     const ink = inkOn(plate, th.secondary);
     const words = t(p, String(v.title || 'MATCH HIGHLIGHTS')).toUpperCase().split(/\s+/);
     const lines = words.length > 1 ? [words[0]!, words.slice(1).join(' ')] : words;
+    // both lines at one size: the size the longer fits in the panel (measured a little narrow for the heavier weight)
+    const titlePx = Math.min(...lines.map((l) => fitLabel({ full: l, maxWidth: 430, fontPx: lines.length > 1 ? 92 : 80, minFontPx: 44, measure: p.measure }).fontPx));
     let date = '';
     try {
       date = new Intl.DateTimeFormat('en-AU', { timeZone: m.timezone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(m.scheduledAt));
@@ -660,7 +663,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
       <div data-graphic="highlights_intro" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 34, padding: '64px 44px', boxSizing: 'border-box', background: `linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.3)), ${plate}`, color: ink, fontFamily: th.font, boxShadow: '14px 0 44px rgba(0,0,0,.4)', ...animStyle(p, 'wipe', 0, 520) }}>
         {badgeUrl(p) ? <span style={animStyle(p, 'rise', 160, 380)}><ThemeBadge p={p} height={104} /></span> : <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.85, ...animStyle(p, 'rise', 160, 380) }}>{m.competition.shortName || m.competition.name}</span>}
         <div style={{ display: 'grid', justifyItems: 'center', ...animStyle(p, 'rise', 240, 420) }}>
-          {lines.map((l) => <span key={l} style={{ fontSize: lines.length > 1 ? 92 : 80, fontWeight: 900, lineHeight: 0.95, letterSpacing: 1, textAlign: 'center' }}>{l}</span>)}
+          {lines.map((l) => <span key={l} style={{ fontSize: titlePx, fontWeight: 900, lineHeight: 0.95, letterSpacing: 1, textAlign: 'center', whiteSpace: 'nowrap' }}>{l}</span>)}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 16 }}>
           {crest('home', 0)}

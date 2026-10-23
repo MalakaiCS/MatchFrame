@@ -344,7 +344,22 @@ export function planHighlights<C>(input: HighlightInput<C>): HighlightPlan {
   const firstClip = segments.find((s) => s.kind !== 'end_card');
   const endCard = segments.find((s) => s.kind === 'end_card');
   if (o.intro && firstClip) cues.push({ id: 'intro', templateKey: 'builtin:highlights_intro', layer: 'fullframe', variables: { title: o.title }, fromMs: 0, toMs: T.introMs });
-  if (o.scorebug && firstClip) cues.push({ id: 'scorebug', templateKey: 'builtin:scorebug', layer: 'scoreboard', variables: { showSponsor: false }, fromMs: o.intro ? T.introMs - 200 : 300, toMs: endCard ? endCard.outFromMs : null });
+  if (o.scorebug && firstClip) {
+    // on over the clips; off for each replay (out behind its transition, back once the replay has gone) and when
+    // the full-time board comes in, as a broadcast takes it off for a replay
+    const ft = segments.find((s) => s.kind === 'full_time');
+    const off = [
+      ...segments.filter((s) => s.kind === 'replay').map((s) => [s.outFromMs - (o.stinger ? 300 : 450), s.outToMs + 200] as const),
+      ...(ft && o.fullTime ? [[Math.max(ft.outFromMs, ft.outToMs - T.fullTimeBoardMs), Infinity] as const] : []),
+      ...(endCard ? [[endCard.outFromMs, Infinity] as const] : []),
+    ].sort((a, b) => a[0] - b[0]);
+    let from = o.intro ? T.introMs - 200 : 300;
+    let n = 0;
+    for (const [a, b] of [...off, [Infinity, Infinity] as const]) {
+      if (a - from >= 1_000) cues.push({ id: n++ ? `scorebug-${n}` : 'scorebug', templateKey: 'builtin:scorebug', layer: 'scoreboard', variables: { showSponsor: false }, fromMs: from, toMs: Number.isFinite(a) ? a : null });
+      from = Math.max(from, b);
+    }
+  }
   for (const s of segments) {
     if (s.kind === 'replay') {
       const m = byId.get(s.factIds[0]!)!;
@@ -362,7 +377,8 @@ export function planHighlights<C>(input: HighlightInput<C>): HighlightPlan {
     }
     if (s.kind === 'full_time') cues.push({ id: 'full-time', templateKey: 'builtin:break_score', layer: 'fullframe', variables: { label: 'FULL TIME', showSponsor: false }, fromMs: Math.max(s.outFromMs, s.outToMs - T.fullTimeBoardMs), toMs: endCard ? s.outToMs - 100 : null });
     if (s.kind === 'end_card') {
-      cues.push({ id: 'end-background', templateKey: 'builtin:backdrop', layer: 'background', variables: { motion: true }, fromMs: s.outFromMs, toMs: null });
+      // the background holds still: the graphics are sent as drawn frames, and a moving one would be a new frame every frame
+      cues.push({ id: 'end-background', templateKey: 'builtin:backdrop', layer: 'background', variables: { motion: false }, fromMs: s.outFromMs, toMs: null });
       cues.push({ id: 'end-header', templateKey: 'builtin:ident', layer: 'fullframe', variables: { show: 'score', showCountdown: false, ...(o.endMessage ? { message: o.endMessage } : {}) }, fromMs: s.outFromMs + 300, toMs: null });
     }
   }

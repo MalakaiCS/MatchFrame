@@ -260,7 +260,7 @@ export async function createHighlights(ctx: Ctx, matchId: string, input: z.input
     const title = d.title || `Highlights ${m.externalId ?? matchId.slice(0, 8)}`;
     const [j] = await t
       .insert(exportJobs)
-      .values({ organisationId: ctx.actor.organisationId, kind: 'highlights', sourceType: 'match', sourceId: matchId, jobKey: `highlights:${matchId}:${crypto.randomUUID()}`, params: { videoId: v.id, options, planKey: plan.key, title, durationMs: plan.durationMs }, state: 'UPLOADING', createdBy: ctx.actor.userId })
+      .values({ organisationId: ctx.actor.organisationId, kind: 'highlights', sourceType: 'match', sourceId: matchId, jobKey: `highlights:${matchId}:${crypto.randomUUID()}`, params: { videoId: v.id, options, planKey: plan.key, title, durationMs: plan.durationMs, timeline: plan.segments.map((x) => ({ kind: x.kind, fromMs: x.outFromMs, toMs: x.outToMs })) }, state: 'UPLOADING', createdBy: ctx.actor.userId })
       .returning();
     await audit(t, ctx.actor, 'highlights.create', 'match', matchId, { after: { jobId: j!.id, videoId: v.id, durationMs: plan.durationMs, moments: plan.moments.filter((x) => x.included).length } });
     return { jobId: j!.id, durationMs: plan.durationMs, graphicsUrl: `/api/v1/exports/${j!.id}/graphics` };
@@ -292,6 +292,6 @@ export async function listHighlights(ctx: Ctx, matchId: string) {
   return tx(ctx, async (t) => {
     await matchFor(t, ctx, matchId, 'media.read');
     const rows = await t.select().from(exportJobs).where(and(eq(exportJobs.organisationId, ctx.actor.organisationId), eq(exportJobs.kind, 'highlights'), eq(exportJobs.sourceId, matchId))).orderBy(desc(exportJobs.createdAt)).limit(50);
-    return rows.map((j) => ({ id: j.id, state: j.state, progress: j.progress, error: j.error, title: String((j.params as { title?: string }).title ?? 'Highlights'), durationMs: Number((j.params as { durationMs?: number }).durationMs ?? 0) || null, bytes: j.outputBytes, createdAt: j.createdAt, finishedAt: j.finishedAt, expiresAt: j.expiresAt, downloadUrl: j.state === 'COMPLETED' && j.outputKey ? `/api/v1/exports/${j.id}/download` : null }));
+    return rows.map((j) => ({ id: j.id, state: j.state, progress: j.progress, error: j.error, title: String((j.params as { title?: string }).title ?? 'Highlights'), durationMs: Number((j.params as { durationMs?: number }).durationMs ?? 0) || null, timeline: (j.params as { timeline?: { kind: string; fromMs: number; toMs: number }[] }).timeline ?? [], bytes: j.outputBytes, createdAt: j.createdAt, finishedAt: j.finishedAt, expiresAt: j.expiresAt, downloadUrl: j.state === 'COMPLETED' && j.outputKey ? `/api/v1/exports/${j.id}/download` : null }));
   });
 }

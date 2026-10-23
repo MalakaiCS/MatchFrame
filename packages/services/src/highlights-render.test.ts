@@ -53,10 +53,42 @@ describe('the graphics file from the browser', () => {
   });
 });
 
+const seg = (s: Partial<HighlightSegment>) => ({ id: s.kind!, factIds: [], atFrom: 0, clock: null, ...s }) as HighlightSegment;
+
 describe('composing a package with FFmpeg', () => {
+  it('reads a video over the network with reconnects: a clip waiting its turn is not cut short when storage drops it', () => {
+    const segments = [
+      seg({ kind: 'clip', videoFromMs: 5000, videoToMs: 9000, speed: 1, outFromMs: 0, outToMs: 4000, join: 'none', joinMs: 0 }),
+      seg({ kind: 'full_time', videoFromMs: 12000, videoToMs: 15000, speed: 1, outFromMs: 3700, outToMs: 6700, join: 'crossfade', joinMs: 300 }),
+    ];
+    const inputs = (src: string) => {
+      const a = composeArgs({ segments, durationMs: 6700 }, { src, hasAudio: true, main: 'main.txt', out: 'out.mp4' });
+      return a.flatMap((x, i) => (x === '-i' && a[i + 1] === src ? [a.slice(Math.max(0, i - 10), i)] : []));
+    };
+    const remote = inputs('https://storage.example/match.mp4?X-Amz-Signature=x');
+    expect(remote).toHaveLength(2);
+    for (const before of remote) expect(before).toEqual(expect.arrayContaining(['-reconnect', '1', '-reconnect_on_network_error', '1']));
+    for (const before of inputs('/tmp/match.mp4')) expect(before).not.toContain('-reconnect');
+  });
+
+  it('keeps the picture going when a join falls between two frames of the clip before it', () => {
+    // the clip ends 4.170 s in and the cut starts at 4.130: its last frame (4.16) is inside the cut
+    const segments = [
+      seg({ kind: 'clip', videoFromMs: 2000, videoToMs: 6170, speed: 1, outFromMs: 0, outToMs: 4170, join: 'none', joinMs: 0 }),
+      seg({ kind: 'replay', videoFromMs: 3000, videoToMs: 6000, speed: 0.75, outFromMs: 4130, outToMs: 8130, join: 'cut', joinMs: 40 }),
+      seg({ kind: 'full_time', videoFromMs: 16000, videoToMs: 20000, speed: 1, outFromMs: 7830, outToMs: 11830, join: 'crossfade', joinMs: 300 }),
+      seg({ kind: 'end_card', videoFromMs: 0, videoToMs: 0, speed: 1, outFromMs: 11330, outToMs: 13330, join: 'crossfade', joinMs: 500 }),
+    ];
+    const durationMs = 13330;
+    const main = writeTrack(dir, 'gap', { durationMs, frames: [{ atMs: 0, bytes: 0 }] }, [clear]);
+    const out = path.join(dir, 'gap.mp4');
+    ff(composeArgs({ segments, durationMs }, { src: path.join(dir, 'match.mp4'), hasAudio: true, main, out }));
+    const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-select_streams', 'v', '-of', 'json', out]).toString()) as { streams: { duration: string }[] };
+    expect(Math.abs(Number(info.streams[0]!.duration) - durationMs / 1000)).toBeLessThan(0.1);
+  }, 120_000);
+
   it('clips, a slowed replay cut in, the end board, the graphics over them and the transition at its time', () => {
     // a 4 s clip, a cross-fade into a replay of 2 s of match at 0.5 (4 s), a cut, then a 2 s end board
-    const seg = (s: Partial<HighlightSegment>) => ({ id: s.kind!, factIds: [], atFrom: 0, clock: null, ...s }) as HighlightSegment;
     const segments = [
       seg({ kind: 'clip', videoFromMs: 5000, videoToMs: 9000, speed: 1, outFromMs: 0, outToMs: 4000, join: 'none', joinMs: 0 }),
       seg({ kind: 'replay', videoFromMs: 6000, videoToMs: 8000, speed: 0.5, outFromMs: 3700, outToMs: 7700, join: 'crossfade', joinMs: 300 }),
@@ -67,9 +99,11 @@ describe('composing a package with FFmpeg', () => {
     const stinger = writeTrack(dir, 'stinger', { durationMs: 1000, frames: [{ atMs: 0, bytes: 0 }] }, [blue]);
     const out = path.join(dir, 'out.mp4');
     ff(composeArgs({ segments, durationMs }, { src: path.join(dir, 'match.mp4'), hasAudio: true, main, stinger: { list: stinger, at: [5000] }, out }));
-    const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', out]).toString()) as { format: { duration: string }; streams: { codec_type: string; width?: number; height?: number; r_frame_rate?: string }[] };
+    const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', out]).toString()) as { format: { duration: string }; streams: { codec_type: string; width?: number; height?: number; r_frame_rate?: string; duration?: string }[] };
     expect(Math.abs(Number(info.format.duration) - durationMs / 1000)).toBeLessThan(0.15);
     const v = info.streams.find((s) => s.codec_type === 'video')!;
+    // the picture itself runs the length (the sound alone would hold the file's length up)
+    expect(Math.abs(Number(v.duration) - durationMs / 1000)).toBeLessThan(0.15);
     expect([v.width, v.height, v.r_frame_rate]).toEqual([1920, 1080, '25/1']);
     expect(info.streams.some((s) => s.codec_type === 'audio')).toBe(true);
     // one pixel of the picture at a time: red while the graphic is up, blue under the transition, black on the end board

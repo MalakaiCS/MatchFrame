@@ -28,7 +28,7 @@ export class JobCancelled extends Error {}
 export interface ProbeResult {
   format: string;
   durationMs: number | null;
-  video?: { codec: string; width: number; height: number; fps: number; pixFmt?: string } | null;
+  video?: { codec: string; width: number; height: number; fps: number; pixFmt?: string; durationMs?: number | null } | null;
   audio?: { codec: string; sampleRate: number; channels: number } | null;
 }
 
@@ -63,14 +63,14 @@ function run(bin: string, args: string[], opts: { onSpawn?: (pid: number) => voi
 
 export async function probe(file: string, ffprobe = 'ffprobe'): Promise<ProbeResult> {
   const { stdout } = await run(ffprobe, ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', file]);
-  const j = JSON.parse(stdout) as { format: { format_name: string; duration?: string }; streams: { codec_type: string; codec_name: string; width?: number; height?: number; r_frame_rate?: string; pix_fmt?: string; sample_rate?: string; channels?: number }[] };
+  const j = JSON.parse(stdout) as { format: { format_name: string; duration?: string }; streams: { codec_type: string; codec_name: string; width?: number; height?: number; r_frame_rate?: string; pix_fmt?: string; sample_rate?: string; channels?: number; duration?: string }[] };
   const v = j.streams.find((s) => s.codec_type === 'video');
   const a = j.streams.find((s) => s.codec_type === 'audio');
   const fps = v?.r_frame_rate ? (([n, d]) => (Number(d) ? Number(n) / Number(d) : 0))(v.r_frame_rate.split('/')) : 0;
   return {
     format: j.format.format_name,
     durationMs: j.format.duration ? Math.round(Number(j.format.duration) * 1000) : null,
-    video: v ? { codec: v.codec_name, width: v.width!, height: v.height!, fps: Math.round(fps * 100) / 100, pixFmt: v.pix_fmt } : null,
+    video: v ? { codec: v.codec_name, width: v.width!, height: v.height!, fps: Math.round(fps * 100) / 100, pixFmt: v.pix_fmt, durationMs: v.duration ? Math.round(Number(v.duration) * 1000) : null } : null,
     audio: a ? { codec: a.codec_name, sampleRate: Number(a.sample_rate), channels: a.channels ?? 0 } : null,
   };
 }

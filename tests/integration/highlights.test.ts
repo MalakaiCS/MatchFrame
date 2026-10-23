@@ -147,8 +147,9 @@ describe('a highlights package', () => {
     const media = await library.mediaFor(ctx, 'export', r.jobId);
     const out = path.join(dir, 'out.mp4');
     await storage.download(media.key, out);
-    const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', out]).toString()) as { format: { duration: string }; streams: { codec_type: string; codec_name: string; width?: number; height?: number }[] };
+    const info = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', out]).toString()) as { format: { duration: string }; streams: { codec_type: string; codec_name: string; width?: number; height?: number; duration?: string }[] };
     expect(Math.abs(Number(info.format.duration) * 1000 - durationMs)).toBeLessThan(150);
+    expect(Math.abs(Number(info.streams.find((s) => s.codec_type === 'video')?.duration) * 1000 - durationMs)).toBeLessThan(150);
     expect(info.streams.find((s) => s.codec_type === 'video')).toMatchObject({ codec_name: 'h264', width: 1920, height: 1080 });
     expect(info.streams.find((s) => s.codec_type === 'audio')?.codec_name).toBe('aac');
     const pixel = (t: number) => [...execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-ss', String(t), '-i', out, '-frames:v', '1', '-vf', 'crop=2:2:100:100,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']).subarray(0, 3)];

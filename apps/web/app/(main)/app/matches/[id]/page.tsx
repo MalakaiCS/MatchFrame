@@ -10,6 +10,7 @@ import { isFull, streamingOn, useMe } from '@/lib/session';
 import { useRealtime } from '@/lib/realtime';
 import { phaseTone } from '@/components/match-table';
 import { ObsLinkPanel } from '@/components/match/overlays-panel';
+import { HighlightsPanel } from '@/components/match/highlights-panel';
 import { MatchDayChecklist } from '@/components/match/match-day';
 import { StreamsPanel } from '@/components/match/streams-panel';
 import { MatchMediaPanel } from '@/components/match/media-panel';
@@ -111,6 +112,7 @@ function Inner({ id }: { id: string }) {
           <Tab value="overview">Overview</Tab><Tab value="lineup">Lineup</Tab><Tab value="facts">Event log ({events})</Tab>
           <Tab value="runsheet">Run sheet</Tab><Tab value="activity">Activity</Tab>
           <Tab value="overlays">OBS link</Tab>
+          <Tab value="highlights">Highlights</Tab>
           {streaming ? <><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab></> : null}
         </TabList>
         <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
@@ -148,6 +150,7 @@ function Inner({ id }: { id: string }) {
         <TabPanel value="runsheet"><RunSheet matchId={d.id} canEdit={full || me.data?.role === 'operator'} /></TabPanel>
         <TabPanel value="activity"><ActivityFeed matchId={d.id} tz={tz} /></TabPanel>
         <TabPanel value="overlays"><ObsLinkPanel matchId={d.id} canEdit={full} /></TabPanel>
+        <TabPanel value="highlights"><HighlightsPanel matchId={d.id} canEdit={full || me.data?.role === 'operator'} /></TabPanel>
         {streaming ? <>
           <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel>
           <TabPanel value="media"><MatchMediaPanel matchId={d.id} tz={tz} /></TabPanel>
