@@ -66,7 +66,7 @@ export interface CommandResponse {
   replayed?: boolean;
 }
 
-const factRowToStored = (f: typeof matchFacts.$inferSelect): StoredFact => ({
+export const factRowToStored = (f: typeof matchFacts.$inferSelect): StoredFact => ({
   id: f.id,
   sequence: f.sequence,
   category: f.category as StoredFact['category'],

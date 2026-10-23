@@ -1260,6 +1260,41 @@ export const mediaBlobs = pgTable(
   (t) => [index('media_blobs_org_idx').on(t.organisationId)],
 );
 
+/**
+ * A video of a whole match, for the highlights generator (Match → Highlights): uploaded in parts (S3 multipart
+ * through the API) and kept as uploaded; the media worker reads its length and makes a small copy for the browser.
+ * `sync` holds, per period of play, the video time it kicked off (ms).
+ */
+export const matchVideos = pgTable(
+  'match_videos',
+  {
+    id: pk(),
+    organisationId: org(),
+    matchId: uuid('match_id').notNull(),
+    name: text('name').notNull(),
+    objectKey: text('object_key').notNull(),
+    mime: text('mime').notNull(),
+    bytes: bigint('bytes', { mode: 'number' }).notNull(),
+    uploadId: text('upload_id'),
+    /** the ETag of each part received, in part order */
+    parts: jsonb('parts').$type<(string | null)[]>().notNull().default([]),
+    partSize: integer('part_size').notNull(),
+    state: text('state').notNull(), // UPLOADING | PROCESSING | READY | FAILED
+    error: text('error'),
+    durationMs: integer('duration_ms'),
+    width: integer('width'),
+    height: integer('height'),
+    fps: doublePrecision('fps'),
+    proxyKey: text('proxy_key'),
+    thumbnailKey: text('thumbnail_key'),
+    sync: jsonb('sync').$type<Record<string, number>>().notNull().default({}),
+    createdBy: text('created_by'),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [index('match_videos_match_idx').on(t.organisationId, t.matchId)],
+);
+
 export const highlightRequests = pgTable(
   'highlight_requests',
   {

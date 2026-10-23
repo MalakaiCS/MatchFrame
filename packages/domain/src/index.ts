@@ -19,6 +19,7 @@ export * from './starter-plans';
 export * from './rehearsal';
 export * from './finals';
 export * from './timeline';
+export * from './highlights';
 export * from './standings';
 export * from './lineup';
 export * from './pricing';

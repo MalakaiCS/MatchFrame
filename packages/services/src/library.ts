@@ -57,7 +57,7 @@ async function limits(t: Tx, organisationId: string) {
 }
 
 /** New storage-consuming work is refused at the quota; live matches/recordings are never interrupted. */
-async function assertQuota(t: Tx, organisationId: string, addBytes: number) {
+export async function assertQuota(t: Tx, organisationId: string, addBytes: number) {
   const l = await limits(t, organisationId);
   const used = await storageUsage(t, organisationId);
   if (used + addBytes > l.storageBytes) throw new AppError('STORAGE_QUOTA_REACHED', 409, `Storage quota reached (${(used / 1024 ** 3).toFixed(2)} of ${(l.storageBytes / 1024 ** 3).toFixed(0)} GB). Delete or archive media, or raise the plan limit. Live matches and recordings continue.`);
@@ -419,9 +419,9 @@ export async function listJobs(ctx: Ctx, q: { kind?: string } = {}) {
 export async function cancelJob(ctx: Ctx, jobId: string) {
   assertCan(ctx.actor, 'media.edit');
   return tx(ctx, async (t) => {
-    const [j] = await t.update(exportJobs).set({ cancelRequested: true, updatedAt: new Date() }).where(and(eq(exportJobs.id, jobId), eq(exportJobs.organisationId, ctx.actor.organisationId), inArray(exportJobs.state, ['QUEUED', 'RUNNING']))).returning();
+    const [j] = await t.update(exportJobs).set({ cancelRequested: true, updatedAt: new Date() }).where(and(eq(exportJobs.id, jobId), eq(exportJobs.organisationId, ctx.actor.organisationId), inArray(exportJobs.state, ['UPLOADING', 'QUEUED', 'RUNNING']))).returning();
     if (!j) throw conflict('JOB_NOT_CANCELLABLE', 'Only queued or running jobs can be cancelled');
-    if (j.state === 'QUEUED') await t.update(exportJobs).set({ state: 'CANCELLED', finishedAt: new Date() }).where(eq(exportJobs.id, jobId));
+    if (j.state === 'QUEUED' || j.state === 'UPLOADING') await t.update(exportJobs).set({ state: 'CANCELLED', finishedAt: new Date() }).where(eq(exportJobs.id, jobId));
     await audit(t, ctx.actor, 'export.cancel', 'export_job', jobId);
     return { cancelRequested: true };
   });

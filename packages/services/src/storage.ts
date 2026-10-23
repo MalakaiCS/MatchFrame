@@ -1,6 +1,9 @@
 // Private S3-compatible object storage. All keys are scoped by organisation and opaque IDs.
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
   CreateBucketCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
@@ -9,6 +12,7 @@ import {
   PutBucketPolicyCommand,
   PutObjectCommand,
   S3Client,
+  UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { AppConfig } from '@bs/config';
@@ -30,6 +34,13 @@ export interface Storage {
   delete(key: string): Promise<void>;
   list(prefix: string): Promise<{ key: string; size: number }[]>;
   presignPut(key: string, contentType: string, contentLength: number, ttlSeconds?: number): Promise<string>;
+  /** a short-lived read URL (FFmpeg reads a match video in place, seeking with range requests) */
+  presignGet(key: string, ttlSeconds?: number): Promise<string>;
+  /** large files in parts: start, send each part (its ETag back), complete in order or abort */
+  createMultipart(key: string, contentType: string): Promise<string>;
+  uploadPart(key: string, uploadId: string, partNumber: number, body: Readable | Buffer, contentLength: number): Promise<string>;
+  completeMultipart(key: string, uploadId: string, etags: string[]): Promise<void>;
+  abortMultipart(key: string, uploadId: string): Promise<void>;
 }
 
 export const keys = {
@@ -39,6 +50,10 @@ export const keys = {
   clip: (org: string, clip: string) => `org/${org}/clips/${clip}.mp4`,
   clipThumb: (org: string, clip: string) => `org/${org}/clips/${clip}.jpg`,
   export: (org: string, job: string) => `org/${org}/exports/${job}.mp4`,
+  matchVideo: (org: string, video: string) => `org/${org}/match-videos/${video}/original`,
+  matchVideoProxy: (org: string, video: string) => `org/${org}/match-videos/${video}/proxy.mp4`,
+  matchVideoThumb: (org: string, video: string) => `org/${org}/match-videos/${video}/thumb.jpg`,
+  highlightOverlay: (org: string, job: string) => `org/${org}/exports/${job}-overlay.bin`,
 };
 
 /** Files up to this size can be kept in the database when object storage cannot take them. */
@@ -131,6 +146,23 @@ export function createStorage(cfg: AppConfig, opts: { db?: Db } = {}): Storage {
         expiresIn: ttlSeconds,
         signableHeaders: new Set(['content-type', 'content-length']),
       });
+    },
+    async presignGet(key, ttlSeconds = 3600) {
+      return getSignedUrl(client, new GetObjectCommand({ Bucket, Key: key }), { expiresIn: ttlSeconds });
+    },
+    async createMultipart(key, contentType) {
+      const r = await client.send(new CreateMultipartUploadCommand({ Bucket, Key: key, ContentType: contentType }));
+      return r.UploadId!;
+    },
+    async uploadPart(key, uploadId, partNumber, body, contentLength) {
+      const r = await client.send(new UploadPartCommand({ Bucket, Key: key, UploadId: uploadId, PartNumber: partNumber, Body: body, ContentLength: contentLength }));
+      return r.ETag!;
+    },
+    async completeMultipart(key, uploadId, etags) {
+      await client.send(new CompleteMultipartUploadCommand({ Bucket, Key: key, UploadId: uploadId, MultipartUpload: { Parts: etags.map((ETag, i) => ({ ETag, PartNumber: i + 1 })) } }));
+    },
+    async abortMultipart(key, uploadId) {
+      await client.send(new AbortMultipartUploadCommand({ Bucket, Key: key, UploadId: uploadId }));
     },
   };
   return opts.db ? withDatabaseFallback(s, opts.db) : s;

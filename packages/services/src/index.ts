@@ -48,3 +48,4 @@ export * as contact from './contact';
 export * as staffSvc from './staff';
 export * as transitionsSvc from './transitions';
 export * as finalsSvc from './finals';
+export * as highlightsSvc from './highlights';

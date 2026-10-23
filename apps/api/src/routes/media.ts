@@ -2,7 +2,7 @@
 import type { Readable } from 'node:stream';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AppError, library, usageSvc, type Storage } from '@bs/services';
+import { AppError, highlightsSvc, library, usageSvc, type Storage } from '@bs/services';
 import type { AppBundle } from '../app';
 
 const id = z.object({ id: z.string().uuid() });
@@ -45,6 +45,25 @@ export function registerMediaRoutes(b: AppBundle) {
   app.get('/api/v1/recordings/:id/media', async (req, reply) => streamObject(deps.storage, req, reply, await library.mediaFor(await ctxFor(req), 'recording', P(id, req.params).id)));
 
   app.get('/api/v1/matches/:id/highlights', async (req) => library.listHighlightRequests(await ctxFor(req), P(id, req.params).id));
+
+  // the highlights generator: a video of the match, uploaded in parts, synced to the kick-offs, and packages made from it
+  app.get('/api/v1/matches/:id/videos', async (req) => highlightsSvc.listMatchVideos(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/matches/:id/videos', async (req, reply) => reply.code(201).send(await highlightsSvc.createMatchVideo(await ctxFor(req), P(id, req.params).id, req.body as never)));
+  app.put('/api/v1/match-videos/:id/parts/:part', async (req) => {
+    const prm = P(z.object({ id: z.string().uuid(), part: z.coerce.number().int().min(1).max(10_000) }), req.params);
+    const length = Number(req.headers['content-length']);
+    if (!Number.isInteger(length) || length <= 0) throw new AppError('LENGTH_REQUIRED', 411, 'Send each part with its size (Content-Length)');
+    return highlightsSvc.uploadMatchVideoPart(await ctxFor(req), prm.id, prm.part, req.body as Readable, length);
+  });
+  app.post('/api/v1/match-videos/:id/complete', async (req) => highlightsSvc.completeMatchVideo(await ctxFor(req), P(id, req.params).id));
+  app.put('/api/v1/match-videos/:id/sync', async (req) => highlightsSvc.setMatchVideoSync(await ctxFor(req), P(id, req.params).id, req.body as never));
+  app.delete('/api/v1/match-videos/:id', async (req) => highlightsSvc.deleteMatchVideo(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/match-videos/:id/preview', async (req, reply) => streamObject(deps.storage, req, reply, await highlightsSvc.matchVideoMedia(await ctxFor(req), P(id, req.params).id, 'preview')));
+  app.get('/api/v1/match-videos/:id/thumbnail', async (req, reply) => streamObject(deps.storage, req, reply, await highlightsSvc.matchVideoMedia(await ctxFor(req), P(id, req.params).id, 'thumbnail')));
+  app.get('/api/v1/matches/:id/highlights/source', async (req) => highlightsSvc.highlightsSource(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/matches/:id/highlight-packages', async (req) => highlightsSvc.listHighlights(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/matches/:id/highlight-packages', async (req, reply) => reply.code(201).send(await highlightsSvc.createHighlights(await ctxFor(req), P(id, req.params).id, req.body as never)));
+  app.put('/api/v1/exports/:id/graphics', async (req) => highlightsSvc.receiveHighlightGraphics(await ctxFor(req), P(id, req.params).id, req.body as Readable, Number(req.headers['content-length'])));
   app.get('/api/v1/clips', async (req) => library.listClips(await ctxFor(req), P(z.object({ matchId: z.string().uuid().optional() }), req.query)));
   app.post('/api/v1/clips', async (req, reply) => reply.code(201).send(await library.createManualClip(await ctxFor(req), req.body as never)));
   app.get('/api/v1/clips/:id/media', async (req, reply) => streamObject(deps.storage, req, reply, await library.mediaFor(await ctxFor(req), 'clip', P(id, req.params).id)));

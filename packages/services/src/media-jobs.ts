@@ -6,11 +6,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { assetDerivatives, clips, creatives, exportJobs, highlightRequests, mediaAssets, recordingParts, recordings, recordingSegments, withTenant, type Db, type Tx } from '@bs/db';
+import { assetDerivatives, clips, creatives, exportJobs, highlightRequests, matchVideos, mediaAssets, recordingParts, recordings, recordingSegments, withTenant, type Db, type Tx } from '@bs/db';
 import { ASPECTS, cropFor, type Aspect } from '@bs/domain';
 import { keys, type Storage } from './storage';
 import { enqueueOutbox } from './outbox';
 import { recordUsage } from './usage';
+import { probeMatchVideo, renderHighlights } from './highlights-render';
 
 export interface MediaJobDeps {
   db: Db; // worker role
@@ -104,7 +105,9 @@ export async function processJob(d: MediaJobDeps, jobId: string) {
   if (!job) return 'skipped';
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `bs-job-${job.id.slice(0, 8)}-`));
   const isCancelled = async () => (await d.db.select({ c: exportJobs.cancelRequested }).from(exportJobs).where(eq(exportJobs.id, job.id)))[0]?.c ?? false;
-  const ff = (args: string[]) => run(d.ffmpeg ?? 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { isCancelled, onSpawn: (pid) => void d.db.update(exportJobs).set({ workerPid: pid }).where(eq(exportJobs.id, job.id)) });
+  // a whole match is read for its preview, and a package seeks through it: those get two hours
+  const timeoutMs = job.kind === 'match_video_probe' || job.kind === 'highlights' ? 120 * 60_000 : undefined;
+  const ff = (args: string[]) => run(d.ffmpeg ?? 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { isCancelled, timeoutMs, onSpawn: (pid) => void d.db.update(exportJobs).set({ workerPid: pid }).where(eq(exportJobs.id, job.id)) });
   const progress = (p: number) => d.db.update(exportJobs).set({ progress: p, updatedAt: new Date() }).where(eq(exportJobs.id, job.id));
   try {
     if (d.slowMs) await ff(['-f', 'lavfi', '-i', `anullsrc=d=${d.slowMs / 1000}`, '-f', 'null', '-']);
@@ -113,7 +116,13 @@ export async function processJob(d: MediaJobDeps, jobId: string) {
     else if (job.kind === 'clip_extract') result = await extractClip(d, job, tmp, ff, progress);
     else if (job.kind === 'clip_export') result = await exportClipFile(d, job, tmp, ff, progress);
     else if (job.kind === 'compilation') result = await compile(d, job, tmp, ff, progress);
-    else throw new Error(`unknown job kind ${job.kind}`);
+    else if (job.kind === 'match_video_probe') await probeMatchVideo(d, job, tmp, ff, (f) => probe(f, d.ffprobe), progress);
+    else if (job.kind === 'highlights') {
+      result = await publishExport(d, job, await renderHighlights(d, job, tmp, ff, (f) => probe(f, d.ffprobe), progress));
+      // the graphics were only needed to make the file
+      const overlayKey = (job.params as { overlayKey?: string }).overlayKey;
+      if (overlayKey) await d.storage.delete(overlayKey).catch(() => undefined);
+    } else throw new Error(`unknown job kind ${job.kind}`);
     // publish exactly once for this attempt
     const [done] = await d.db
       .update(exportJobs)
@@ -145,6 +154,7 @@ async function onFailure(d: MediaJobDeps, job: typeof exportJobs.$inferSelect, r
   await withTenant(d.db, { organisationId: job.organisationId }, async (t) => {
     // an image already in use stays ready when its smaller copy cannot be made
     if (job.kind === 'asset_normalise') await t.update(mediaAssets).set({ state: 'FAILED', error: reason.slice(0, 500), updatedAt: new Date() }).where(and(eq(mediaAssets.id, job.sourceId), eq(mediaAssets.state, 'PROCESSING')));
+    if (job.kind === 'match_video_probe') await t.update(matchVideos).set({ state: 'FAILED', error: reason.replace(/^Rejected: /, '').slice(0, 500), updatedAt: new Date() }).where(and(eq(matchVideos.id, job.sourceId), eq(matchVideos.state, 'PROCESSING')));
     if (job.kind === 'clip_extract') {
       await t.update(clips).set({ state: 'FAILED', updatedAt: new Date() }).where(eq(clips.id, job.sourceId));
       await t.update(highlightRequests).set({ state: 'FAILED', reason: reason.slice(0, 300), updatedAt: new Date() }).where(eq(highlightRequests.clipId, job.sourceId));

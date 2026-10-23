@@ -267,6 +267,15 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['clock'], entranceMs: 300, holdMs: 8000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.4, h: 0.14 },
   },
   {
+    // the title panel down the left over the first clip of a match highlights package (Match → Highlights)
+    key: 'builtin:highlights_intro', name: 'Highlights title', category: 'Media', sports: ['football', 'futsal', 'hockey', 'rugby_league', 'afl'], layer: 'fullframe',
+    variables: [
+      { key: 'title', label: 'Title', type: 'text', required: false, maxLength: 30, default: 'MATCH HIGHLIGHTS' },
+      { key: 'line', label: 'Line at the bottom', type: 'text', required: false, maxLength: 60 },
+    ],
+    requiredData: ['teams'], entranceMs: 600, holdMs: null, exitMs: 450, sponsorSlots: [], bounds: { x: 0, y: 0, w: 0.3, h: 1 },
+  },
+  {
     // a video review: "TRY?" while it is checked, then the decision, as the scorer records them (or set here by hand)
     key: 'builtin:review', name: 'Video review', category: 'Events', sports: ['rugby_league'], layer: 'lower',
     variables: [
