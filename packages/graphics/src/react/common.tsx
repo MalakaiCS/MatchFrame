@@ -307,23 +307,28 @@ export function redCards(p: GraphicProps, s: 'home' | 'away'): number {
 }
 
 /**
- * The red card beside a team on the scorebug, with the number on it for two or more; nothing for a team with none.
- * `size` is the card's height. With `reserve`, a team with none keeps the card's space while the other team has one,
- * so a scorebug with a row per team keeps its scores in line.
+ * The red card for a team that has had a player sent off: a small red card standing on the scorebug's top edge above
+ * the team's crest, tucked behind the bug, with the number on it from two (`edge: 'left'`: lying out of the left end
+ * of the team's row, for a scorebug with a row per team). It sits in a box laid over the bug's panel that is a
+ * stacking context (`RED_CARD_BOX`): `x` is the crest's centre from that side of the box, `y` the row's centre.
  */
-export function RedCard({ p, side, size = 26, reserve = false }: { p: GraphicProps; side: 'home' | 'away'; size?: number; reserve?: boolean }) {
+export function RedCardTab({ p, side, size = 24, edge = 'top', from = 'left', x = 0, y = 0 }: { p: GraphicProps; side: 'home' | 'away'; size?: number; edge?: 'top' | 'left'; from?: 'left' | 'right'; x?: number; y?: number }) {
   const n = redCards(p, side);
-  // evaluated on every render, so a card shown during the match pops in on air
+  // evaluated on every render, so a card shown during the match pops up on air
   const pop = changeStyle(p, `red-${side}`, n);
-  const w = Math.round(size * 0.74);
-  if (!n) return reserve && redCards(p, side === 'home' ? 'away' : 'home') ? <span aria-hidden style={{ width: w, flex: 'none' }} /> : null;
+  if (!n) return null;
   const tm = p.data.match.teams[side];
+  const short = Math.round(size * 0.7);
+  const tuck = Math.round(size * 0.26);
+  const [w, h] = edge === 'top' ? [short, size] : [size, short];
+  const place: CSSProperties = edge === 'top' ? { bottom: `calc(100% - ${tuck}px)`, [from]: Math.round(x - w / 2), paddingBottom: tuck } : { right: `calc(100% - ${tuck}px)`, top: Math.round(y - h / 2), paddingRight: tuck };
   return (
-    <span data-red-cards={side} data-count={n} role="img" aria-label={`${tm.shortName || tm.name}: ${n} red card${n > 1 ? 's' : ''}`} style={{ ...pop, display: 'inline-grid', placeItems: 'center', flex: 'none', alignSelf: 'center', width: w, height: size, boxSizing: 'border-box', borderRadius: Math.max(2, Math.round(size * 0.12)), border: `${size >= 22 ? 2 : 1.5}px solid #FFFFFF`, background: 'linear-gradient(155deg, #FF4040 0%, #D0121B 70%)', boxShadow: '0 2px 6px rgba(0,0,0,.45)', color: '#FFFFFF', fontSize: Math.round(size * 0.6), fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', fontFamily: 'inherit', rotate: '6deg' }}>
-      {n > 1 ? n : null}
-    </span>
+    <span data-red-cards={side} data-count={n} role="img" aria-label={`${tm.shortName || tm.name}: ${n} red card${n > 1 ? 's' : ''}`} style={{ ...pop, position: 'absolute', zIndex: -1, visibility: 'visible', ...place, display: 'grid', placeItems: 'center', boxSizing: 'border-box', width: w, height: h, borderRadius: Math.max(2, Math.round(size * 0.1)), background: 'linear-gradient(160deg, #FF2A2A 0%, #D5101A 75%)', boxShadow: '0 1px 4px rgba(0,0,0,.45)', color: '#FFFFFF', fontSize: Math.round(short * 0.72), fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{n > 1 ? n : null}</span>
   );
 }
+
+/** The box a scorebug panel goes in for its red cards: they stand behind the panel and out of its edge. */
+export const RED_CARD_BOX: CSSProperties = { position: 'relative', zIndex: 0, display: 'flex' };
 
 /** "PRESENTED BY" caption used beside moment sponsors (goals, cards, player of the match). */
 export function presentedBy(p: GraphicProps): string {

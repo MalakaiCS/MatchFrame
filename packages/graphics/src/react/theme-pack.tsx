@@ -12,7 +12,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type AnimKind, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCardTab, RED_CARD_BOX } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -332,7 +332,6 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 22 : 25, fontWeight: Math.max(700, k.weight), lineHeight: 1, letterSpacing: 1 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, letterSpacing: 1, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
-          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.hi }} /> : null}
         </div>
       );
@@ -340,7 +339,7 @@ export function packTheme(k: Pack): ThemeComponents {
     return (
       <>
         {k.brandTab ? <div style={{ display: 'grid', placeItems: 'center', minWidth: H, padding: `0 ${pad(c, badgeUrl(p) ? 8 : 0)}px`, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.4)})`, transformOrigin: 'top', ...shape(c, c.k.corner === 'slant' ? 'right' : 'both'), ...animStyle(p, 'grow-y', 0, 320) }}>{brand(p, c, H)}</div> : null}
-        <div style={k.brandTab ? join(c, 4) : undefined}>
+        <div style={{ ...RED_CARD_BOX, ...(k.brandTab ? join(c, 4) : {}) }}>
           <Panel c={c} texture={false} style={{ height: '100%' }} inner={{ display: 'flex', alignItems: 'stretch' }}>
             {cell('home', 0)}
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '7px 0', padding: '0 8px', fontSize: slim ? 26 : 30, ...plate(c), ...animStyle(p, 'drop', 220, 380) }}>
@@ -352,6 +351,9 @@ export function packTheme(k: Pack): ThemeComponents {
             <Rule p={p} c={c} height={3} delayMs={260} />
             <Shine p={p} c={c} delayMs={380} />
           </Panel>
+          {/* above the crest: the padding, the 6 px stripe, a 10 px gap and half the 30 px crest (slim: above the name) */}
+          <RedCardTab p={p} side="home" x={pad(c, 16) + 16 + (slim ? 9 : 15)} size={slim ? 26 : 30} />
+          <RedCardTab p={p} side="away" from="right" x={pad(c, 16) + 16 + (slim ? 9 : 15)} size={slim ? 26 : 30} />
         </div>
         <div style={{ ...join(c, 6), ...animStyle(p, 'drop', 280, 380) }}>
           <Panel c={c} texture={false} style={{ height: '100%' }} inner={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: `0 ${pad(c, 16)}px`, minWidth: 100 }}>
@@ -377,13 +379,13 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 21 : 24, fontWeight: Math.max(700, k.weight), lineHeight: 1 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
-          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.hot }} /> : null}
         </span>
       );
     };
     return (
       <>
+        <div style={RED_CARD_BOX}>
         <Panel c={c} texture={false} radius={H / 2} style={{ height: '100%' }} inner={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 9px' }}>
           {side('home', 0)}
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: slim ? 24 : 28, ...plate(c, { borderRadius: 999 }), ...animStyle(p, 'zoom', 220, 380) }}>
@@ -394,6 +396,10 @@ export function packTheme(k: Pack): ThemeComponents {
           {side('away', 1)}
           <Shine p={p} c={c} delayMs={380} />
         </Panel>
+          {/* above the crests at the two ends of the pill */}
+          <RedCardTab p={p} side="home" x={9 + (H - 18) / 2} size={slim ? 26 : 30} />
+          <RedCardTab p={p} side="away" from="right" x={9 + (H - 18) / 2} size={slim ? 26 : 30} />
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minWidth: 96, padding: '0 16px', marginLeft: 8, borderRadius: H / 2, background: c.hot, color: inkOn(c.hot, c.deep), ...root(c), ...animStyle(p, 'zoom', 280, 380) }}>
           <span style={{ fontSize: slim ? 21 : 25, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
           <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, opacity: 0.85, ...caps(2), ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
@@ -414,7 +420,6 @@ export function packTheme(k: Pack): ThemeComponents {
           <span style={{ width: 10, background: tm.primaryColor }} />
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', minWidth: 132 }}>
             <span style={{ fontSize: slim ? 21 : 25, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
-            <RedCard p={p} side={s} size={slim ? 20 : 24} />
             {det ? <span style={{ fontSize: 12, color: c.muted }}>{det}</span> : null}
             {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.electric, marginLeft: 'auto' }} /> : null}
           </span>
@@ -424,6 +429,7 @@ export function packTheme(k: Pack): ThemeComponents {
     };
     return (
       <>
+        <div style={RED_CARD_BOX}>
         <Panel c={c} texture={false} ends="none" style={{ height: 'auto' }} inner={{ display: 'flex', flexDirection: 'column' }}>
           {row('home', 0)}
           <span style={{ height: 1, background: c.rule }} />
@@ -431,6 +437,10 @@ export function packTheme(k: Pack): ThemeComponents {
           <Rule p={p} c={c} height={3} delayMs={260} />
           <Shine p={p} c={c} delayMs={380} />
         </Panel>
+          {/* a row per team: the card lies out of the left end of the team's row */}
+          <RedCardTab p={p} side="home" edge="left" y={R / 2} size={slim ? 24 : 28} />
+          <RedCardTab p={p} side="away" edge="left" y={R + 1 + R / 2} size={slim ? 24 : 28} />
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: `0 ${pad(c, 14)}px 0 ${pad(c, 12) - (c.k.corner === 'slant' ? SLANT : 0)}px`, minWidth: 104, background: `linear-gradient(180deg, ${mix(c.hot, '#ffffff', 0.12)}, ${mix(c.hot, '#000000', 0.2)})`, color: inkOn(c.hot, c.deep), ...shape(c, 'right'), ...root(c), ...animStyle(p, 'wipe', 220, 380) }}>
           <span style={{ fontSize: slim ? 24 : 30, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
           <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.4, opacity: 0.9, ...caps(2), ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
@@ -453,27 +463,44 @@ export function packTheme(k: Pack): ThemeComponents {
             <span style={{ fontSize: slim ? 23 : 27, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, color: c.muted, lineHeight: 1.25 }}>{det}</span> : null}
           </span>
-          <RedCard p={p} side={s} size={slim ? 22 : 26} />
           {d.possession === s ? <span style={{ alignSelf: 'center', width: 8, height: 8, background: c.electric }} /> : null}
         </span>
       );
     };
+    const scores = (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '0 10px', fontSize: slim ? 28 : 34, ...plate(c, { borderRadius: 0, fontWeight: 900 }), ...animStyle(p, 'wipe-up', 200, 340) }}>
+        {digits(p, 'home', 26)}
+        <span style={{ width: 3, height: '46%', background: alpha(c.ink, 0.25) }} />
+        {digits(p, 'away', 26)}
+      </span>
+    );
+    // the red card above the name: the 12 px stripe, 14 px padding and half the card
+    const cardSize = slim ? 26 : 30;
+    const nameX = 26 + Math.round(cardSize * 0.35);
     return (
       <div style={{ position: 'relative', display: 'flex', alignItems: 'stretch', paddingBottom: 6 }}>
         <span style={{ display: 'grid', placeItems: 'center', width: H, background: mix(c.deep, '#ffffff', 0.12), ...animStyle(p, 'grow-y', 0, 300) }}>{badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark c={c} size={H - 16} />}</span>
+        <div style={RED_CARD_BOX}>
         <Panel c={c} texture={false} radius={0} style={{ height: '100%' }} inner={{ display: 'flex', alignItems: 'stretch' }}>
           {cell('home', 0)}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '0 10px', fontSize: slim ? 28 : 34, ...plate(c, { borderRadius: 0, fontWeight: 900 }), ...animStyle(p, 'wipe-up', 200, 340) }}>
-            {digits(p, 'home', 26)}
-            <span style={{ width: 3, height: '46%', background: alpha(c.ink, 0.25) }} />
-            {digits(p, 'away', 26)}
-          </span>
+          {scores}
           {cell('away', 1)}
           <span style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 16px', minWidth: 98, background: mix(c.deep, '#ffffff', 0.1) }}>
             <span style={{ fontSize: slim ? 22 : 27, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
             <span style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.3, color: c.electric, ...caps(2), ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
           </span>
         </Panel>
+          <RedCardTab p={p} side="home" x={nameX} size={cardSize} />
+          {/* the away team's block is followed by the clock: an unseen copy of the row places its card */}
+          <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, display: 'flex', alignItems: 'stretch', visibility: 'hidden', zIndex: -1 }}>
+            {cell('home', 0)}
+            {scores}
+            <span style={{ position: 'relative', display: 'flex' }}>
+              {cell('away', 1)}
+              <RedCardTab p={p} side="away" from="right" x={nameX} size={cardSize} />
+            </span>
+          </div>
+        </div>
         <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 6, background: `linear-gradient(90deg, ${c.spectrum.map((col, i) => `${col} ${i * 25}% ${(i + 1) * 25}%`).join(', ')})`, transformOrigin: 'left', ...animStyle(p, 'grow-x', 240, 420) }} />
       </div>
     );

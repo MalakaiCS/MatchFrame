@@ -6,7 +6,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCardTab, RED_CARD_BOX } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -158,7 +158,6 @@ function Scorebug(p: GraphicProps) {
           <span style={{ fontSize: slim ? 22 : 26, fontWeight: 700, lineHeight: 1, letterSpacing: 1 }}>{tm.abbreviation}</span>
           {detail || fouls ? <span style={{ fontSize: 12, color: c.onMuted, letterSpacing: 1, lineHeight: 1.25 }}>{[detail, fouls].filter(Boolean).join(' · ')}</span> : null}
         </span>
-        <RedCard p={p} side={s} size={slim ? 22 : 26} />
         {d.possession === s ? <span style={{ width: 8, height: 8, borderRadius: 4, background: c.electric, boxShadow: `0 0 10px ${c.electric}` }} /> : null}
       </div>
     );
@@ -169,12 +168,20 @@ function Scorebug(p: GraphicProps) {
     </span>
   );
   const tab: CSSProperties = { display: 'grid', placeItems: 'center', borderRadius: 8, fontWeight: 800 };
+  const brandTab = (
+    <span style={{ minWidth: H, display: 'grid', placeItems: 'center', padding: badgeUrl(p) ? '0 8px' : 0, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.45)})`, transformOrigin: 'top', ...animStyle(p, 'grow-y', 0, 320) }}>
+      {badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark p={p} size={H - 20} />}
+    </span>
+  );
+  // the red card above the crest: 16 px padding, the 6 px stripe, a 10 px gap, half the 32 px crest (the slim bug has
+  // no crest: above the name)
+  const cardSize = slim ? 26 : 30;
+  const crestX = slim ? 32 + Math.round(cardSize * 0.35) : 48;
   return (
     <div style={{ top: SY, display: 'flex', alignItems: 'stretch', gap: 6, height: H, fontFamily: c.font, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+      <div style={RED_CARD_BOX}>
       <Glass p={p} radius={8} facets={false} inner={{ display: 'flex', alignItems: 'stretch' }}>
-        <span style={{ minWidth: H, display: 'grid', placeItems: 'center', padding: badgeUrl(p) ? '0 8px' : 0, background: `linear-gradient(135deg, ${c.hot}, ${mix(c.hot, c.deep, 0.45)})`, transformOrigin: 'top', ...animStyle(p, 'grow-y', 0, 320) }}>
-          {badgeUrl(p) ? <ThemeBadge p={p} height={H - 18} /> : <Mark p={p} size={H - 20} />}
-        </span>
+        {brandTab}
         {teamCell('home', 0)}
         <span style={{ display: 'flex', alignItems: 'center', gap: 2, margin: '7px 0', padding: '0 6px', fontSize: slim ? 26 : 32, ...plate(c), ...animStyle(p, 'drop', 220, 380) }}>
           {score('home')}
@@ -185,6 +192,16 @@ function Scorebug(p: GraphicProps) {
         <EdgeRule p={p} delayMs={260} height={3} />
         <Shine p={p} delayMs={380} />
       </Glass>
+        {/* the home crest follows the brand tab, as wide as the logo in it: an unseen copy of the two places its card */}
+        <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, display: 'flex', alignItems: 'stretch', visibility: 'hidden', zIndex: -1 }}>
+          {brandTab}
+          <span style={{ position: 'relative', display: 'flex' }}>
+            {teamCell('home', 0)}
+            <RedCardTab p={p} side="home" x={crestX} size={cardSize} />
+          </span>
+        </div>
+        <RedCardTab p={p} side="away" from="right" x={crestX} size={cardSize} />
+      </div>
       <Glass p={p} radius={8} facets={false} style={animStyle(p, 'drop', 280, 380)} inner={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '0 16px', minWidth: 104 }}>
         <span style={{ fontSize: slim ? 23 : 28, fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
         <span style={{ fontSize: 11, letterSpacing: 2, color: c.electric, fontWeight: 700, lineHeight: 1.3, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>

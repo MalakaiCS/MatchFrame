@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCard } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs, RedCardTab, RED_CARD_BOX } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 
 const SX = 96; // 5% title-safe
@@ -34,7 +34,6 @@ function ScorebugStrip(p: GraphicProps) {
         <span style={{ width: 8, alignSelf: 'stretch', background: tm.primaryColor }} />
         <Logo url={tm.logoUrl} label={tm.abbreviation} size={34} color={tm.primaryColor} radius={4} />
         <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: 1 }}>{tm.abbreviation}</span>
-        <RedCard p={p} side={s} size={30} />
         <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'center' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.scoreDetail ? <span style={{ fontSize: 16, opacity: 0.75 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
         {d.fouls ? <span style={{ fontSize: 15, opacity: 0.8 }}>F {d.fouls[s]}{d.bonus?.[s] ? ' ◆' : ''}</span> : null}
@@ -43,6 +42,7 @@ function ScorebugStrip(p: GraphicProps) {
   };
   return (
     <div style={{ top: SY, display: 'flex', alignItems: 'stretch', height: 56, ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
+      <div style={RED_CARD_BOX}>
       <Panel p={p} style={{ display: 'flex', alignItems: 'stretch', ...angled() }}>
         {cell('home', 0)}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px', background: th.primary, color: th.secondary, ...animStyle(p, 'drop', 200, 360) }}>
@@ -52,6 +52,10 @@ function ScorebugStrip(p: GraphicProps) {
         </div>
         {cell('away', 1)}
       </Panel>
+        {/* above each crest: 14 px padding, the 8 px stripe, a 10 px gap, half the 34 px crest */}
+        <RedCardTab p={p} side="home" x={49} size={30} />
+        <RedCardTab p={p} side="away" from="right" x={49} size={30} />
+      </div>
       {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, width: 64, background: '#FF5263', color: '#fff', fontSize: 30, fontWeight: 800, ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
       {d.shootout ? <Panel p={p} style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 14px', fontSize: 20, fontWeight: 700, ...animStyle(p, 'zoom', 300, 360) }}>{t(p, 'PENS')} <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Panel> : null}
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 12px', background: 'rgba(255,255,255,.95)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={34} /></div> : null}
@@ -71,7 +75,6 @@ function ScorebugBox(p: GraphicProps) {
         <span style={{ width: 8, alignSelf: 'stretch', background: t.primaryColor, transformOrigin: 'top', ...animStyle(p, 'grow-y', 60 + i * 70, 300) }} />
         <Logo url={t.logoUrl} label={t.abbreviation} size={32} color={t.primaryColor} radius={4} />
         <span style={{ width: 84, fontSize: 30, fontWeight: 800, letterSpacing: 1 }}>{t.abbreviation}</span>
-        <RedCard p={p} side={s} size={28} reserve />
         {d.possession === s ? <span style={{ color: th.accent, fontSize: 22 }}>●</span> : <span style={{ width: 14 }} />}
         <span style={{ minWidth: 52, textAlign: 'right', fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}><span style={changeStyle(p, `score-${s}`, d.score[s])}>{d.score[s]}</span></span>
         {d.scoreDetail ? <span style={{ fontSize: 15, opacity: 0.75, width: 48 }}>{d.scoreDetail[s].split(' ')[0]}</span> : null}
@@ -81,12 +84,17 @@ function ScorebugBox(p: GraphicProps) {
   };
   return (
     <div style={{ top: SY, display: 'flex', alignItems: 'stretch', ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
-      <Panel p={p} style={{ ...angled(), paddingRight: 24 }}>
-        {row('home', 0)}
-        <div style={{ height: 2, background: 'rgba(255,255,255,.08)' }} />
-        {row('away', 1)}
-      </Panel>
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginLeft: -10, background: th.primary, color: th.secondary, padding: '0 22px 0 30px', ...angled(), ...animStyle(p, 'drop', 220, 380) }}>
+      <div style={RED_CARD_BOX}>
+        <Panel p={p} style={{ ...angled(), paddingRight: 24 }}>
+          {row('home', 0)}
+          <div style={{ height: 2, background: 'rgba(255,255,255,.08)' }} />
+          {row('away', 1)}
+        </Panel>
+        {/* a row per team: the card lies out of the left end of the team's row (46 px rows, a 2 px rule) */}
+        <RedCardTab p={p} side="home" edge="left" y={23} size={30} />
+        <RedCardTab p={p} side="away" edge="left" y={71} size={30} />
+      </div>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', marginLeft: -10, background: th.primary, color: th.secondary, padding: '0 22px 0 30px', ...angled(), ...animStyle(p, 'drop', 220, 380) }}>
         <span style={{ fontSize: 18, fontWeight: 700, opacity: 0.85, ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
         <span style={{ fontSize: 36, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{clockLabel(p)}</span>
         {d.stoppageText ? <span style={{ fontSize: 20, fontWeight: 800, color: '#7a0010', ...stoppage }}>{stoppageLabel(p)}</span> : null}
