@@ -11,6 +11,7 @@ import { basketballAdapter } from './sports/basketball';
 const LAYERS: Record<string, string> = {
   'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
   'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:shootout': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background', 'builtin:backdrop': 'background',
+  'builtin:added_time': 'event', 'builtin:review': 'lower',
 };
 const opts = (sport: Sport) => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
 const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };

@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
 import { sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -39,6 +39,7 @@ function Scorebug(p: GraphicProps) {
       {d.fouls ? <span style={{ padding: '0 14px', borderLeft: '1px solid #d5dbe5', fontSize: 16, color: '#5b6577' }}>FOULS {d.fouls.home}{d.bonus?.home ? '•' : ''}–{d.fouls.away}{d.bonus?.away ? '•' : ''}</span> : null}
       {d.shootout ? <span style={{ padding: '0 14px', borderLeft: '1px solid #d5dbe5', fontSize: 18 }}>(<span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span> p)</span> : null}
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <span style={{ padding: '0 12px', borderLeft: '1px solid #d5dbe5', ...animStyle(p, 'fade', 360, 320) }}><SponsorMark p={p} placement="scorebug_logo" height={34} /></span> : null}
+      <ScorebugTabs p={p} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { assertCan } from './authz';
 import { audit } from './audit';
 import { notFound } from './errors';
 import { tx, type Ctx } from './context';
+import { parsePatch } from './patch';
 
 export const noteInput = z.object({
   kind: z.enum(['note', 'runsheet']).default('runsheet'),
@@ -41,7 +42,7 @@ export async function addNote(ctx: Ctx, matchId: string, input: z.input<typeof n
 }
 
 export async function updateNote(ctx: Ctx, matchId: string, noteId: string, input: Partial<z.input<typeof noteInput>> & { done?: boolean }) {
-  const d = noteInput.partial().extend({ done: z.boolean().optional() }).parse(input);
+  const d = parsePatch(noteInput.partial().extend({ done: z.boolean().optional() }), input);
   return tx(ctx, async (t) => {
     await matchFor(ctx, t, matchId, true);
     const [n] = await t.update(matchNotes).set({ ...d, updatedAt: new Date() }).where(and(eq(matchNotes.id, noteId), eq(matchNotes.matchId, matchId))).returning();

@@ -51,7 +51,7 @@ export function GraphicsShowcase() {
   const byCategory = useMemo(() => ORDER.map((c) => [c, graphics.filter((t) => t.category === c)] as const).filter(([, l]) => l.length), [graphics]);
   const current = graphics.find((t) => t.key === selected) ?? graphics[0]!;
   const theme = DEFAULT_THEMES[look];
-  const data = useMemo(() => sampleData(theme, sport, { shootout: current.key === 'builtin:shootout', format }), [theme, sport, current.key, format]);
+  const data = useMemo(() => sampleData(theme, sport, { shootout: current.key === 'builtin:shootout', review: true, format }), [theme, sport, current.key, format]);
   const state = useMemo(() => frame(current, sport, playAt, true), [current, sport, playAt]);
   const choose = (key: string) => {
     setSelected(key);
@@ -126,7 +126,7 @@ export function GraphicsShowcase() {
 
 /** A settled frame of one graphic (motion off, so it redraws a few times a second rather than every frame). */
 const Thumb = memo(function Thumb({ t, sport, look }: { t: TemplateDef; sport: Sport; look: Look }) {
-  const data = useMemo(() => sampleData({ ...DEFAULT_THEMES[look], motion: 'none' }, sport, { shootout: t.key === 'builtin:shootout' }), [t.key, sport, look]);
+  const data = useMemo(() => sampleData({ ...DEFAULT_THEMES[look], motion: 'none' }, sport, { shootout: t.key === 'builtin:shootout', review: true }), [t.key, sport, look]);
   const state = useMemo(() => frame(t, sport, 0, false), [t, sport]);
   return (
     <Stage background={PITCH}>

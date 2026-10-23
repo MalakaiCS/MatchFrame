@@ -1,12 +1,13 @@
 'use client';
 // Graphics every look shares: league table, fixtures, formation, match summary, head-to-head, match information,
-// shoot-out tracker, live statistic, top scorers, player of the match, timeout and the stinger wipe. Each look
+// shoot-out tracker, live statistic, top scorers, player of the match, timeout, added time, video review and the
+// stinger wipe. Each look
 // supplies its "chrome" (how it frames a full-frame board, a lower strip and a team event) so these read as part
 // of that look without three copies of the content.
 import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
 import { Fitted, Logo, Photo, SponsorMark, clockLabel, eventWord, inkOn, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
-import { shootoutLine, shootoutStatus } from '@bs/domain';
+import { reviewHeadline, reviewWords, shootoutLine, shootoutStatus } from '@bs/domain';
 import { COLOUR_CLASH_THRESHOLD, colourDistance, type RenderFixture, type RenderStandingRow } from '../data';
 import { ReplayTransition } from './replay';
 
@@ -553,6 +554,82 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     );
   };
 
+  // The fourth official's board: the minutes of added time lit on a dark board, in the look's strip.
+  const AddedTime = (p: GraphicProps) => {
+    const th = p.data.theme;
+    const v = p.cue.variables.minutes;
+    const mins = typeof v === 'number' && Number.isFinite(v) ? v : (p.data.match.projection.stoppageMinutes ?? p.display.addedMinutes ?? 0);
+    // the digits glow in the look's accent when it is bright enough to read on the board, else in LED green
+    const led = inkOn(th.accent) === '#FFFFFF' ? '#5BFF8A' : th.accent;
+    return C.strip(
+      p,
+      t(p, 'ADDED TIME'),
+      th.primary,
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <span data-added-minutes={mins} style={{ display: 'inline-grid', placeItems: 'center', minWidth: 140, height: 96, padding: '0 20px', borderRadius: 12, background: '#07090D', border: '3px solid rgba(255,255,255,.16)', boxShadow: 'inset 0 0 22px rgba(0,0,0,.85), 0 6px 18px rgba(0,0,0,.35)', color: led, fontSize: 78, fontWeight: 800, fontVariantNumeric: 'tabular-nums', letterSpacing: 2, textShadow: `0 0 12px ${withAlpha(led, 0.85)}, 0 0 30px ${withAlpha(led, 0.45)}`, ...animStyle(p, 'zoom', 200, 380) }}>
+          +{mins}
+        </span>
+        <span style={{ display: 'grid', gap: 4, ...animStyle(p, 'rise', 300, 320) }}>
+          <span style={{ fontSize: 38, fontWeight: 700 }}>{mins} {t(p, mins === 1 ? 'minute' : 'minutes')}</span>
+          <span style={{ fontSize: 21, color: C.muted(p) }}>{p.display.periodLabel}</span>
+        </span>
+      </div>,
+      'event_partner',
+    );
+  };
+
+  // A video review: the team, what is checked ("TRY?") while the video referee looks at it, then the decision in
+  // green or red ("TRY" / "NO TRY"). It follows the scorer's review unless the operator set what it shows. It sits
+  // above the event strap, which shows the try at the same time when one is awarded.
+  const VideoReview = (p: GraphicProps) => {
+    const th = p.data.theme;
+    const v = p.cue.variables;
+    const live = p.data.match.projection.review;
+    const manual = v.outcome === 'pending' || v.outcome === 'awarded' || v.outcome === 'denied';
+    // following the scorer with no review from them (one left open when the half ended is dropped): nothing to show
+    if (!manual && !live) return null;
+    const r: { subject: string; side: 'home' | 'away'; outcome: 'awarded' | 'denied' | null } =
+      !manual && live ? live : { subject: String(v.subject ?? 'try'), side: v.team === 'away' ? 'away' : 'home', outcome: v.outcome === 'awarded' || v.outcome === 'denied' ? v.outcome : null };
+    const words = reviewWords(r.subject);
+    const headline = t(p, reviewHeadline(r.subject, r.outcome));
+    const tm = team(p, r.side);
+    const verdict = r.outcome === 'awarded' ? '#2FBF71' : r.outcome === 'denied' ? '#E5484D' : null;
+    const plate = colourDistance(th.primary, th.panel) < COLOUR_CLASH_THRESHOLD ? th.secondary : th.primary;
+    const tabRadius = Math.min(th.radius, 14);
+    const dot = (i: number): CSSProperties => ({ width: 9, height: 9, borderRadius: '50%', background: th.accent, display: 'inline-block', animation: p.still || th.motion === 'none' ? undefined : `bs-pulse 1.2s ease-in-out ${i * 0.2}s infinite` });
+    return (
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 290, marginLeft: 'auto', marginRight: 'auto', width: 980, fontFamily: th.font, color: th.text, ...animStyle(p, 'slide-up') }} data-graphic="review" data-review-state={r.outcome ?? 'pending'}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <span style={{ background: plate, color: inkOn(plate, th.secondary), padding: '7px 38px 9px', borderRadius: `${tabRadius}px ${tabRadius}px 0 0`, fontSize: 20, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', ...animStyle(p, 'rise', 80, 320) }}>{t(p, words.title)}</span>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', alignItems: 'stretch', height: 128, background: th.panel, borderRadius: th.radius, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,.4)', ...C.card?.(p) }}>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, paddingLeft: 136, paddingRight: 24, minWidth: 0, ...animStyle(p, 'slide-left', 140, 380) }}>
+              <span style={{ fontSize: 40, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tm.shortName || tm.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 18, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.muted(p) }}>
+                {verdict ? t(p, 'Decision') : <>{t(p, 'Checking')} <span aria-hidden style={{ display: 'inline-flex', gap: 6 }}><span style={dot(0)} /><span style={dot(1)} /><span style={dot(2)} /></span></>}
+              </span>
+            </div>
+            <div data-review-headline style={{ display: 'grid', placeItems: 'center', background: verdict ?? withAlpha(plate, 0.92), color: verdict ? '#FFFFFF' : inkOn(plate, th.secondary), clipPath: 'polygon(9% 0, 100% 0, 100% 100%, 0 100%)', paddingLeft: 30, ...animStyle(p, 'wipe', 220, 360) }}>
+              <span style={{ ...changeStyle(p, 'review', r.outcome ?? 'pending', 'flip'), display: 'inline-flex', alignItems: 'center', gap: 16, fontSize: headline.length <= 6 ? 64 : headline.length <= 9 ? 50 : 40, fontWeight: 900, letterSpacing: 3, whiteSpace: 'nowrap' }}>
+                {verdict ? (
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    {r.outcome === 'awarded' ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />}
+                  </svg>
+                ) : null}
+                {headline}
+              </span>
+            </div>
+          </div>
+          {/* the crest outside the panel, so a look that cuts its panels never clips it */}
+          <span style={{ position: 'absolute', top: '50%', left: -30, transform: 'translateY(-50%)', width: 132, height: 132, borderRadius: '50%', background: tm.primaryColor, border: `4px solid ${th.text}`, boxShadow: '0 6px 18px rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', overflow: 'hidden', ...animStyle(p, 'zoom', 160, 420) }}>
+            <Logo url={tm.logoUrl} label={tm.abbreviation} size={98} color={tm.primaryColor} radius={49} />
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const Stinger = (p: GraphicProps) => {
     const h = team(p, 'home');
     const a = team(p, 'away');
@@ -585,6 +662,8 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     top_scorers: TopScorers,
     player_of_match: PlayerOfMatch,
     timeout: Timeout,
+    added_time: AddedTime,
+    review: VideoReview,
     stinger: Stinger,
     replay: ReplayTransition,
   };

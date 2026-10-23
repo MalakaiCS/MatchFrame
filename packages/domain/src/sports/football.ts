@@ -74,7 +74,7 @@ const EVENTS: EventTypeDef[] = [
   { type: 'foul', label: 'Foul', group: 'stat', requiresSide: true, playerField: 'optional', highlightDefault: false },
   { type: 'stat_adjust', label: 'Adjust team stat', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false, phases: ['play', 'break', 'final'] },
   { type: 'possession_change', label: 'Possession', group: 'stat', requiresSide: true, playerField: 'none', highlightDefault: false },
-  { type: 'stoppage_announced', label: 'Stoppage time', group: 'control', requiresSide: false, playerField: 'none', highlightDefault: false },
+  { type: 'stoppage_announced', label: 'Added time', group: 'control', requiresSide: false, playerField: 'none', highlightDefault: false },
   { type: 'shootout_kick', label: 'Shootout kick', group: 'shootout', requiresSide: true, playerField: 'optional', highlightDefault: true },
 ];
 
@@ -357,6 +357,8 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
       stoppageText,
       score: { ...p.score },
       shootout: p.shootout ? { home: p.shootout.home, away: p.shootout.away } : null,
+      // the fourth official's board, for the rest of the period it was shown in
+      addedMinutes: ph.kind === 'play' && p.phase !== 'shootout' && p.stoppageMinutes ? p.stoppageMinutes : null,
       alerts: p.stoppageMinutes ? [`+${p.stoppageMinutes} min added`] : [],
     };
   },

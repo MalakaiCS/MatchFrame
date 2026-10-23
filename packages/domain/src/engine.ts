@@ -178,11 +178,11 @@ export function applyCommand<C>(
       const c = parsed.data as CommandPayload<'ADD_FACT'>;
       if (terminal) throw new DomainError('MATCH_CLOSED', 'This match is closed to new facts');
       if (c.type === POSSESSION_EVENT && phaseDef?.tags.includes('shootout')) throw new DomainError('PHASE_NOT_ALLOWED', 'Possession is not kept during the shoot-out', 'type');
-      const input: FactInput = { type: c.type, side: c.side ?? null, playerId: c.playerId ?? null, payload: c.payload };
+      const clockMs = c.clockMs ?? (state.clocks.main ? clockDisplayMs(state.clocks.main, Math.min(c.occurredAt, now)) : null);
+      const input: FactInput = { type: c.type, side: c.side ?? null, playerId: c.playerId ?? null, payload: c.payload, clockMs, periodId: c.periodId ?? p.phase };
       const v = adapter.validateFact(cfg, p, input, lineup);
       if (!v.ok) throw new DomainError(v.code, v.message, v.field);
       if (c.occurredAt > now + 5_000) throw new DomainError('OCCURRED_IN_FUTURE', 'Occurrence time is in the future', 'occurredAt');
-      const clockMs = c.clockMs ?? (state.clocks.main ? clockDisplayMs(state.clocks.main, Math.min(c.occurredAt, now)) : null);
       const entry: Omit<StoredFact, 'id'> = {
         sequence: state.sequence + 1,
         category: 'event',
@@ -262,7 +262,7 @@ export function applyCommand<C>(
         // Validate the corrected fact against the projection *without* the original fact.
         const without = replay(adapter, cfg, log.filter((f) => f.id !== target.id && f.sequence < target.sequence));
         const atPhase = { ...without, phase: target.periodId && adapter.phase(cfg, target.periodId) ? target.periodId : without.phase };
-        const v = adapter.validateFact(cfg, atPhase, { type: updated.type, side: updated.side, playerId: updated.playerId, payload: updated.payload }, lineup);
+        const v = adapter.validateFact(cfg, atPhase, { type: updated.type, side: updated.side, playerId: updated.playerId, payload: updated.payload, clockMs: updated.clockMs, periodId: updated.periodId }, lineup);
         if (!v.ok) throw new DomainError(v.code, v.message, v.field);
       }
       const newLog = log.map((f) => (f.id === target.id ? updated : f));

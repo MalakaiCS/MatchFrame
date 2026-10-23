@@ -70,6 +70,7 @@ export const SCORER_SHEETS: Partial<Record<Sport, SheetRow[]>> = {
     ev('penalty_conceded', 'penalties'),
     ev('six_again', 'six_agains'),
     { kind: 'cards', cards: [{ type: 'sin_bin', stat: 'sin_bins' }, { type: 'send_off', stat: 'send_offs' }] },
+    ev('video_review'),
     ev('interchange'),
     ev('penalty_try'),
   ],

@@ -261,6 +261,22 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams', 'player'], entranceMs: 350, holdMs: 8000, exitMs: 300, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.62, w: 0.5, h: 0.26 },
   },
   {
+    // the fourth official's board: the minutes of added time, from the scorer unless given here
+    key: 'builtin:added_time', name: 'Added time', category: 'Events', sports: ['football'], layer: 'event',
+    variables: [{ key: 'minutes', label: 'Minutes (empty: as the scorer entered them)', type: 'number', required: false }],
+    requiredData: ['clock'], entranceMs: 300, holdMs: 8000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.4, h: 0.14 },
+  },
+  {
+    // a video review: "TRY?" while it is checked, then the decision, as the scorer records them (or set here by hand)
+    key: 'builtin:review', name: 'Video review', category: 'Events', sports: ['rugby_league'], layer: 'lower',
+    variables: [
+      { key: 'outcome', label: 'Shows', type: 'select', options: ['auto', 'pending', 'awarded', 'denied'], required: false, default: 'auto' },
+      { key: 'team', label: 'Team (when not from the scorer)', type: 'team', required: false },
+      { key: 'subject', label: 'Checking (when not from the scorer)', type: 'select', options: ['try', 'captains_challenge'], required: false, default: 'try' },
+    ],
+    requiredData: ['teams'], entranceMs: 320, holdMs: null, exitMs: 260, sponsorSlots: [], bounds: { x: 0.24, y: 0.57, w: 0.52, h: 0.17 },
+  },
+  {
     key: 'builtin:timeout', name: 'Timeout', category: 'Events', sports: ['basketball', 'futsal'], layer: 'event',
     variables: [{ key: 'team', label: 'Team', type: 'team', required: true }],
     requiredData: ['teams'], entranceMs: 300, holdMs: 6000, exitMs: 250, sponsorSlots: ['event_partner'], bounds: { x: 0.05, y: 0.72, w: 0.5, h: 0.14 },

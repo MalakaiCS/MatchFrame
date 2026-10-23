@@ -6,7 +6,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -197,6 +197,7 @@ function Scorebug(p: GraphicProps) {
         </Glass>
       ) : null}
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ ...tab, padding: '0 12px', background: 'rgba(255,255,255,.96)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={slim ? 30 : 40} /></div> : null}
+      <ScorebugTabs p={p} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   Timer,
   Trophy,
   Undo2,
+  Video,
   Zap,
 } from 'lucide-react';
 import { cx } from '@bs/ui';
@@ -82,6 +83,7 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   rebound: CircleDot,
   turnover: ArrowLeftRight,
   centre_pass: CircleDot,
+  video_review: Video,
 };
 
 export function EventIcon({ type, className }: { type: string; className?: string }) {

@@ -1,6 +1,6 @@
 'use client';
 import { SportOptions } from '@/components/sport-options';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
 import { del, patch, post } from '@/lib/api';
@@ -8,6 +8,7 @@ import { useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 import { AssetLibrary } from '@/components/asset-library';
 import { ImageField, LogoField } from '@/components/logo-field';
+import { CrestColours, useCrestPalette } from '@/components/crest-colours';
 
 /** a small logo or photo in a table row */
 function Thumb({ id, alt, tall }: { id: string | null; alt: string; tall?: boolean }) {
@@ -49,6 +50,12 @@ function Teams({ full }: { full: boolean }) {
   const blank = { name: '', shortName: '', abbreviation: '', sport: 'football', primaryColor: '#1F6FEB', secondaryColor: '#0B1220', logoAssetId: null as string | null };
   const [form, setForm] = useState(blank);
   const create = useAction((v: typeof form) => post('teams', v), [['teams']], { success: 'Team added' });
+  // a new team's colours follow its crest until someone picks colours by hand
+  const [coloursSet, setColoursSet] = useState(false);
+  const crest = useCrestPalette(form.logoAssetId);
+  useEffect(() => {
+    if (crest && !coloursSet) setForm((f) => ({ ...f, primaryColor: crest.primary, secondaryColor: crest.secondary }));
+  }, [crest, coloursSet]);
   return (
     <>
       <div className="mb-3 flex justify-between">
@@ -64,7 +71,7 @@ function Teams({ full }: { full: boolean }) {
             <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setSel(t.id)}>{full ? 'Logo, colours & roster' : 'Roster'}</Button></td></tr>)}
         </tbody></Table>
       )}
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); create.reset(); }} title="New team" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.name || form.abbreviation.length < 2} onClick={() => create.mutate({ ...form, shortName: form.shortName || form.name.slice(0, 24) }, { onSuccess: () => { setOpen(false); setForm(blank); } })}>Create</Button></>}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); create.reset(); }} title="New team" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.name || form.abbreviation.length < 2} onClick={() => create.mutate({ ...form, shortName: form.shortName || form.name.slice(0, 24) }, { onSuccess: () => { setOpen(false); setForm(blank); setColoursSet(false); } })}>Create</Button></>}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Full name" htmlFor="tn" className="sm:col-span-2" error={create.error?.fieldError('name')}><Input id="tn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Short name" htmlFor="ts" hint="Approved label for tight graphics"><Input id="ts" maxLength={24} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
@@ -72,9 +79,10 @@ function Teams({ full }: { full: boolean }) {
           <Field label="Sport" htmlFor="tsp"><NativeSelect id="tsp" value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}><SportOptions /></NativeSelect></Field>
           <div className="sm:col-span-2"><LogoField label="Team logo" value={form.logoAssetId} onChange={(v) => setForm((f) => ({ ...f, logoAssetId: v }))} /></div>
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Primary" htmlFor="tc1"><input id="tc1" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value.toUpperCase() })} /></Field>
-            <Field label="Secondary" htmlFor="tc2"><input id="tc2" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.secondaryColor} onChange={(e) => setForm({ ...form, secondaryColor: e.target.value.toUpperCase() })} /></Field>
+            <Field label="Primary" htmlFor="tc1"><input id="tc1" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.primaryColor.toLowerCase()} onChange={(e) => { setColoursSet(true); setForm({ ...form, primaryColor: e.target.value.toUpperCase() }); }} /></Field>
+            <Field label="Secondary" htmlFor="tc2"><input id="tc2" type="color" className="h-9 w-full rounded border border-border bg-bg" value={form.secondaryColor.toLowerCase()} onChange={(e) => { setColoursSet(true); setForm({ ...form, secondaryColor: e.target.value.toUpperCase() }); }} /></Field>
           </div>
+          <div className="sm:col-span-2"><CrestColours palette={crest} primary={form.primaryColor} secondary={form.secondaryColor} onPick={(c) => { setColoursSet(true); setForm((f) => ({ ...f, ...c })); }} /></div>
           <div className="sm:col-span-2"><ErrorNotice error={create.error && !create.error.fields ? create.error : null} /></div>
         </div>
       </Dialog>
@@ -95,6 +103,7 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
   const remove = useAction(() => del(`teams/${id}`), [['teams']]);
   const seasons = (comps.data ?? []).filter((c) => c.sport === team.data?.sport && c.currentSeason).map((c) => ({ id: c.currentSeason!.id, label: `${c.name} · ${c.currentSeason!.name}` }));
   const brand = useAction((v: Partial<Pick<Team, 'logoAssetId' | 'primaryColor' | 'secondaryColor'>>) => patch(`teams/${id}`, v), [['team', id], ['teams']], { success: (_r, v) => ('logoAssetId' in v ? (v.logoAssetId ? 'Logo saved. Upcoming matches show it on their graphics.' : 'Logo removed') : 'Colours saved') });
+  const crest = useCrestPalette(team.data?.logoAssetId);
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title={team.data?.name ?? 'Team'} description={hist.data ? `${hist.data.matches} fixture(s) reference this team.` : undefined}
       footer={full ? <>
@@ -106,9 +115,10 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
           <section aria-label="Logo and colours" className="mb-4 grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <LogoField label="Team logo" value={team.data!.logoAssetId} disabled={!full} onChange={(v) => brand.mutateAsync({ logoAssetId: v })} />
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Primary" htmlFor="tb1"><input id="tb1" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.primaryColor} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.primaryColor && brand.mutate({ primaryColor: e.target.value.toUpperCase() })} /></Field>
-              <Field label="Secondary" htmlFor="tb2"><input id="tb2" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.secondaryColor} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.secondaryColor && brand.mutate({ secondaryColor: e.target.value.toUpperCase() })} /></Field>
+              <Field label="Primary" htmlFor="tb1"><input key={team.data!.primaryColor} id="tb1" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.primaryColor.toLowerCase()} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.primaryColor && brand.mutate({ primaryColor: e.target.value.toUpperCase() })} /></Field>
+              <Field label="Secondary" htmlFor="tb2"><input key={team.data!.secondaryColor} id="tb2" type="color" disabled={!full} className="h-9 w-20 rounded border border-border bg-bg" defaultValue={team.data!.secondaryColor.toLowerCase()} onBlur={(e) => e.target.value.toUpperCase() !== team.data!.secondaryColor && brand.mutate({ secondaryColor: e.target.value.toUpperCase() })} /></Field>
             </div>
+            {full ? <div className="sm:col-span-2"><CrestColours palette={crest} primary={team.data!.primaryColor} secondary={team.data!.secondaryColor} disabled={brand.isPending} onPick={(c) => brand.mutate(c)} /></div> : null}
             <div className="sm:col-span-2"><ErrorNotice error={brand.error} /></div>
           </section>
           <h3 className="mb-1 text-sm font-medium">Roster</h3>

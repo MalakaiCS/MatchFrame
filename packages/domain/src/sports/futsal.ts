@@ -376,6 +376,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
     // the send-off countdown runs on playing time; in a break it stands where the period ended
     const nowMatch = per ? futsalMatchMs(c, p.phase, ms) : matchMsAtBreak(c, p.phase);
     const shortHanded: NonNullable<DisplayModel['shortHanded']> = [];
+    const timers: NonNullable<DisplayModel['timers']> = [];
     if (nowMatch != null && p.phase !== 'shootout') {
       const active = (s: Side) => (p.sendOffs ?? []).filter((x) => x.side === s && sendOffActive(c, x, nowMatch));
       const onCourt = (s: Side) => Math.max(MIN_ON_COURT, FUTSAL_ON_COURT - active(s).length);
@@ -383,6 +384,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
         if (!active(s).length) continue;
         const remaining = Math.min(...active(s).map((x) => c.sendOffMinutes * 60_000 - (nowMatch - x.atMs)));
         shortHanded.push({ side: s, players: onCourt(s), remainingText: countdown(remaining) });
+        timers.push({ side: s, kind: 'send_off', count: active(s).length, remainingMs: remaining, remainingText: countdown(remaining) });
         alerts.push(`${name(s)} ${active(s).length > 1 ? 'two players' : 'a player'} short (${onCourt(s)} v ${onCourt(otherSide(s))}): ${countdown(remaining)} of playing time, or until ${name(otherSide(s)).toLowerCase()} score with more players`);
       }
     }
@@ -403,6 +405,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
       bonus: { home: fouls.home >= c.foulLimit, away: fouls.away >= c.foulLimit },
       timeouts: p.timeouts ? { ...p.timeouts } : null,
       shortHanded: shortHanded.length ? shortHanded : null,
+      timers: timers.length ? timers : null,
       alerts,
     };
   },

@@ -1,7 +1,7 @@
 'use client';
-import type { Sport } from '@bs/domain';
+import type { MatchProjection, Sport } from '@bs/domain';
 import { useMemo } from 'react';
-import { getAdapter } from '@bs/domain';
+import { futsalMatchMs, getAdapter, rugbyLeagueMatchMs } from '@bs/domain';
 import { emptyState, type OverlayPublicState, type RenderData, type ThemeConfig } from '@bs/graphics';
 import { Renderer, Stage, THEMES } from '@bs/graphics/react';
 
@@ -52,6 +52,8 @@ export function sampleVariables(templateKey: string, sport: Sport): Record<strin
     case 'top_scorers': return { rows: 5, metric: sport === 'basketball' || sport === 'rugby_league' || sport === 'afl' ? 'points' : 'goals' };
     case 'player_of_match': return { team: 'home', player: samplePlayerId('home', 9), caption: 'PLAYER OF THE MATCH' };
     case 'timeout': return { team: 'away' };
+    case 'added_time': return { minutes: 4 };
+    case 'review': return { outcome: 'auto' };
     case 'stinger': return { text: 'Harbour City v Saltmarsh' };
     default: return {};
   }
@@ -62,12 +64,16 @@ const BASKETBALL_POSITIONS = ['Guard', 'Guard', 'Forward', 'Forward', 'Center', 
 const FUTSAL_POSITIONS = ['Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Defender'];
 
 /** Synthetic preview data (fictional teams) for theme thumbnails and the designer. */
-export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; format?: RenderData['format'] } = {}): RenderData {
+export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; review?: boolean; timers?: boolean; format?: RenderData['format'] } = {}): RenderData {
   const a = getAdapter(sport);
   const cfg = a.defaultConfig;
-  const proj = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
+  const proj: MatchProjection = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
   const clocks = a.initialClocks(cfg);
   clocks.main = { ...clocks.main!, baseMs: sport === 'football' ? 63 * 60_000 + 12_000 : sport === 'rugby_league' ? 52 * 60_000 + 8_000 : sport === 'afl' ? 12 * 60_000 + 31_000 : sport === 'futsal' ? 12 * 60_000 + 31_000 : 4 * 60_000 + 31_000, periodId: proj.phase };
+  // the scorebug's countdown tabs: an away player in the sin bin (rugby league), the away team a player short (futsal)
+  if (opts.timers && sport === 'rugby_league') proj.sinBins = [{ side: 'away', playerId: null, atMs: rugbyLeagueMatchMs(cfg as never, 'p2', clocks.main.baseMs)! - 218_000, endedAtMs: null }];
+  if (opts.timers && sport === 'futsal') proj.sendOffs = [{ side: 'away', playerId: null, atMs: futsalMatchMs(cfg as never, 'p2', clocks.main.baseMs)! - 49_000, endedBy: null, endedAtMs: null }];
+  if (opts.review && sport === 'rugby_league') proj.review = { subject: 'try', side: 'home', outcome: null, sequence: 1 };
   const mk = (n: number, side: 'home' | 'away') => ({ playerId: `00000000-0000-4000-8000-${side === 'home' ? '1' : '2'}${String(n).padStart(11, '0')}`, displayName: ['Mia Torres', 'Léa Ångström', 'Kai Fitzgerald-Montgomery', 'Noah Ito', 'Aroha Te Huia', 'Theo Rossi', 'Isla Walker', 'Mateo Ramírez', 'Zoe Okafor', 'Finn Larsen', 'Ana Silva'][n % 11]!, number: n + 1, starter: n < (sport === 'futsal' ? 5 : 11), photoAssetId: null });
   const lineup = { home: Array.from({ length: 14 }, (_, i) => mk(i, 'home')), away: Array.from({ length: 14 }, (_, i) => mk(i, 'away')) };
   const players: RenderData['players'] = {};

@@ -12,7 +12,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { occasionLine, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type AnimKind, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -484,6 +484,7 @@ export function packTheme(k: Pack): ThemeComponents {
       <div style={{ top: SY, display: 'flex', alignItems: 'stretch', height: H, ...root(c), ...groupShadow(c), ...scorebugPosition(p, SX), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
         {body}
         {extras(p, c, H ?? 78, slim)}
+        <ScorebugTabs p={p} />
       </div>
     );
   }

@@ -89,7 +89,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
     return () => clearTimeout(id);
   }, [loop, run, selected]);
 
-  const data = useMemo(() => (theme ? sampleData(theme, sport, { shootout: selectedKey === 'builtin:shootout', format }) : null), [theme, sport, selectedKey, format]);
+  const data = useMemo(() => (theme ? sampleData(theme, sport, { shootout: selectedKey === 'builtin:shootout', review: selectedKey === 'builtin:review', timers: selectedKey === 'builtin:scorebug', format }) : null), [theme, sport, selectedKey, format]);
   const state = useMemo(() => cueState(selected, sport, run.startedAt, durationMs, run.outAt, withScorebug), [selected, sport, run, durationMs, withScorebug]);
 
   if (themes.isLoading) return <Spinner />;
@@ -178,7 +178,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
 
 /** Static (holding) frame of one graphic; clicking plays it in the large preview. */
 function GraphicThumb({ t, sport, theme, backdrop, active, onSelect }: { t: TemplateDef; sport: Sport; theme: ThemeConfig; backdrop: string; active: boolean; onSelect: () => void }) {
-  const data = useMemo(() => sampleData(theme, sport, { shootout: t.key === 'builtin:shootout' }), [theme, sport, t.key]);
+  const data = useMemo(() => sampleData(theme, sport, { shootout: t.key === 'builtin:shootout', review: true }), [theme, sport, t.key]);
   const state = useMemo(() => cueState(t, sport, Date.now() - 60_000, null, null, false), [t, sport]);
   return (
     <button type="button" onClick={onSelect} aria-pressed={active} className={`group rounded-md border p-2 text-left transition ${active ? 'border-primary ring-2 ring-primary/40' : 'border-border hover:border-primary/60'}`}>

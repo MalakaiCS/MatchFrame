@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
 import type { RenderPlayer, RenderTeam } from '../data';
-import { useAudioPolicy, type GraphicProps } from './stage';
+import { animStyle, changeStyle, useAudioPolicy, type GraphicProps } from './stage';
 
 export function side(p: GraphicProps): 'home' | 'away' {
   return p.cue.variables.team === 'away' ? 'away' : 'home';
@@ -256,6 +256,48 @@ export function scorebugPosition(p: GraphicProps, inset: number): CSSProperties 
   if (pos === 'right') return { position: 'absolute', right: inset };
   if (pos === 'centre') return { position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', width: 'fit-content' };
   return { position: 'absolute', left: inset };
+}
+
+/**
+ * Small tabs just below the scorebug: the added time announced for the period ("ADDED +4") and each team's timed
+ * suspension (a rugby league sin bin, futsal's time a player short after a send-off) with its countdown. Every
+ * look's scorebug places this as its last child, so it sits under the bug whatever the bug's height and side.
+ */
+export function ScorebugTabs({ p }: { p: GraphicProps }) {
+  const d = p.display;
+  const th = p.data.theme;
+  const timers = d.timers ?? [];
+  // evaluated on every render, so a tab appearing (or a new sin bin) flips in on air
+  const pop = changeStyle(p, 'scorebug-tabs', `${d.addedMinutes ?? ''}|${timers.map((x) => `${x.side}:${x.kind}:${x.count}`).join(',')}`, 'flip');
+  if (!d.addedMinutes && !timers.length) return null;
+  const pos = th.scorebug?.position ?? 'left';
+  const radius = Math.min(th.radius, 8);
+  const tab: CSSProperties = { display: 'inline-flex', alignItems: 'stretch', height: 40, background: th.panel, color: th.text, borderRadius: radius, overflow: 'hidden', boxShadow: '0 4px 14px rgba(0,0,0,.35)', fontSize: 19, fontWeight: 700, lineHeight: 1 };
+  const word: CSSProperties = { display: 'flex', alignItems: 'center', padding: '0 12px', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 16 };
+  const pill: CSSProperties = { display: 'flex', alignItems: 'center', padding: '0 12px', background: th.accent, color: inkOn(th.accent), fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 800 };
+  return (
+    <div data-scorebug-tabs style={{ position: 'absolute', top: 'calc(100% + 8px)', ...(pos === 'right' ? { right: 0 } : pos === 'centre' ? { left: '50%', transform: 'translateX(-50%)' } : { left: 0 }), display: 'flex', gap: 6, whiteSpace: 'nowrap', fontFamily: th.font, ...animStyle(p, 'fade', 360, 300) }}>
+      <span style={{ ...pop, display: 'flex', gap: 6 }}>
+        {d.addedMinutes ? (
+          <span data-tab="added" style={tab}>
+            <span style={word}>{t(p, 'ADDED')}</span>
+            <span style={pill}>+{d.addedMinutes}</span>
+          </span>
+        ) : null}
+        {timers.map((x) => {
+          const tm = p.data.match.teams[x.side];
+          return (
+            <span key={`${x.side}-${x.kind}`} data-tab={x.kind} data-side={x.side} style={tab}>
+              <span style={{ width: 7, background: tm.primaryColor }} />
+              <span style={{ ...word, paddingRight: 0, fontSize: 19, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
+              <span style={word}>{x.count > 1 ? `${x.count}× ` : ''}{t(p, x.kind === 'sin_bin' ? 'SIN BIN' : 'SENT OFF')}</span>
+              <span style={pill}>{x.remainingText}</span>
+            </span>
+          );
+        })}
+      </span>
+    </div>
+  );
 }
 
 /** "PRESENTED BY" caption used beside moment sponsors (goals, cards, player of the match). */

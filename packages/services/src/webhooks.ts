@@ -13,6 +13,7 @@ import { invalid, notFound } from './errors';
 import { tx, type Ctx } from './context';
 import { isPrivateAddress } from './streams';
 import type { OutboxRow } from './relay';
+import { parsePatch } from './patch';
 
 /** Public event names, in the words a club's website developer expects. */
 export const WEBHOOK_EVENTS = ['match.started', 'match.score', 'match.event', 'match.phase', 'match.final', 'match.lineup', 'match.rescheduled', 'webhook.test'] as const;
@@ -64,7 +65,7 @@ export async function createWebhook(ctx: Ctx, input: z.input<typeof endpointInpu
 
 export async function updateWebhook(ctx: Ctx, id: string, input: Partial<z.input<typeof endpointInput>>) {
   assertCan(ctx.actor, 'org.manage');
-  const d = endpointInput.partial().parse(input);
+  const d = parsePatch(endpointInput.partial(), input);
   if (d.url) await assertReachableHost(d.url);
   return tx(ctx, async (t) => {
     const [r] = await t.update(webhookEndpoints).set({ ...d, updatedAt: new Date() }).where(and(eq(webhookEndpoints.id, id), eq(webhookEndpoints.organisationId, ctx.actor.organisationId))).returning();

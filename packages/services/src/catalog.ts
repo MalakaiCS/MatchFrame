@@ -24,6 +24,7 @@ import { conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
 import { reloadCompetitionOutputsTx, reloadMatchOutputsTx } from './overlays';
+import { parsePatch } from './patch';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
 const name = z.string().trim().min(1).max(100);
@@ -422,7 +423,7 @@ export async function createTeam(ctx: Ctx, input: z.input<typeof teamInput>, t0?
 }
 
 export async function updateTeam(ctx: Ctx, id: string, input: Partial<z.input<typeof teamInput>> & { status?: 'active' | 'archived' }) {
-  const d = teamInput.partial().extend({ status: z.enum(['active', 'archived']).optional() }).parse(input);
+  const d = parsePatch(teamInput.partial().extend({ status: z.enum(['active', 'archived']).optional() }), input);
   return tx(ctx, async (t) => {
     const [team] = await t.select().from(teams).where(and(eq(teams.id, id), eq(teams.organisationId, ctx.actor.organisationId)));
     if (!team) throw notFound('Team');

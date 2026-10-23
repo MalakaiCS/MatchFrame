@@ -57,13 +57,13 @@ What differs is the rule set (periods, clocks, scoring values), the event button
 
 | Sport | Scoring and events | On the scorebug |
 | --- | --- | --- |
-| Football | goals (with assist and type), penalties, own goals, yellow/second yellow/red, substitutions, shoot-out | score, added time, shoot-out tally |
+| Football | goals (with assist and type), penalties, own goals, yellow/second yellow/red, substitutions, added time, shoot-out | score, running added time and the announced *+N*, shoot-out tally |
 | Basketball | +1/+2/+3 with the scorer named afterwards, foul types, timeouts, possession, rebounds, assists | team fouls and bonus, timeouts remaining, shot clock |
 | Netball | goals and missed shots, intercepts, rebounds, turnovers, penalties, centre pass, rolling substitutions | quarter and score |
-| Rugby league | try, penalty try, conversion, penalty goal, field goal, sin bin, send off, interchange, six again | score and sin-bin markers |
+| Rugby league | try, penalty try, conversion, penalty goal, field goal, sin bin, send off, interchange, six again, video review | score, sin-bin countdowns under the scorebug, the video review graphic |
 | AFL | goal, behind, rushed behind, interchange, marks, tackles, inside 50s, clearances | the "12.7 (79)" score line |
 | Hockey | goals, green/yellow/red cards, substitutions, penalty corners and strokes, shoot-out | quarter and score |
-| Futsal (beta) | goals (with assist and type), penalties and 10 m kicks, accumulated fouls, one timeout per half, yellow/second yellow/red with the two-minute send-off, rolling substitutions, kicks from the penalty mark | count-down clock, accumulated fouls (marked at five), timeouts |
+| Futsal (beta) | goals (with assist and type), penalties and 10 m kicks, accumulated fouls, one timeout per half, yellow/second yellow/red with the two-minute send-off, rolling substitutions, kicks from the penalty mark | count-down clock, accumulated fouls (marked at five), timeouts, the send-off countdown |
 
 **Futsal** follows the Futsal Laws of the Game as Football Australia and its member federations use them. The
 default rules are two 20-minute halves on a stopped clock (counting down; pause it whenever the ball is out of play)
@@ -133,7 +133,8 @@ that are open pick it up straight away; *Remove* goes back to the look's logo.
 
 **Logos and photos everywhere they are used.** Every image field has *Upload*, *Choose from your images* and
 *Remove*: competition logo (Overview), team logo and colours (*Assets → Teams → Logo, colours & roster*, or in the
-*New team* form), player photo (*Assets → Players → Photo & details*), club logo (*Assets → Clubs*), organisation
+*New team* form; the colours the crest uses are offered as swatches, a new team takes its main and second colour
+from its crest until you pick colours by hand, and *Use crest colours* sets both for an existing team), player photo (*Assets → Players → Photo & details*), club logo (*Assets → Clubs*), organisation
 logo (*Settings → Branding*), sponsor creatives (*Sponsors → Add creative*) and the look's logo (*Themes*). Any
 image the browser opens works (PNG, JPEG, WebP, SVG, GIF, AVIF…): it is converted on the device to a PNG (logos,
 keeping transparency) or JPEG photo no larger than 2048 px, and is **ready as soon as it has uploaded**, with no
@@ -150,8 +151,9 @@ an optional closing message such as "Thank you for watching"), animated backgrou
 score event, score update, card, substitution, kick-off and period banners, lower third, player card (with
 headshots from the asset library), match statistics, live statistic comparison, break and final score, match
 summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match
-information strap, shoot-out tracker, timeout, sponsor graphic, stinger wipe, replay transition, holding slate,
-full-frame media and the ticker (which can carry the other live scores of the round). Goal, card and substitution
+information strap, shoot-out tracker, timeout, added time (football), video review (rugby league), sponsor
+graphic, stinger wipe, replay transition, holding slate, full-frame media and the ticker (which can carry the other
+live scores of the round). Goal, card and substitution
 graphics can carry a "presented by" sponsor; those appearances count in the sponsor delivery report.
 
 **Penalty shoot-out tracker.** One bar with both crests at its ends, the names and the shoot-out score in the
@@ -165,6 +167,20 @@ needed are dimmed. It updates live as the scorer records each kick, in every loo
 flows put it on air by themselves when the shoot-out starts. An existing plan that is still an untouched copy of an
 older starter flow gets this step when the worker next starts; an edited plan does not (add a *Penalty Shootout*
 phase step that shows the shoot-out tracker).
+
+**Added time, sin bins and send-offs on the scorebug.** When the football scorer enters added time, the fourth
+official's board (the minutes lit on a dark board, in the look's strip) goes on air for 8 s, and every look's
+scorebug carries a small *ADDED +4* tab under it for the rest of the half. A rugby league sin bin puts a tab under
+the scorebug with the team, *SIN BIN* and the playing time left (*6:22*), counting down with the match clock; two at
+once read *2× SIN BIN* with the one that ends first. Futsal's send-off shows the team's time a player short the same
+way (*SENT OFF 1:11*). The tabs sit under the scorebug on whichever side the look puts it, and go when the time is
+up. The sin bin's length is in the competition's rules (*Sin bin: minutes of playing time off the field*).
+
+**Video review (rugby league).** While the video referee checks a try (or a captain's challenge), a bar comes up in
+the lower middle of the frame: the team's crest and name, *Checking*, and *TRY?* (*CHALLENGE*). When the scorer
+gives the decision it flips to **TRY** in green or **NO TRY** in red (*SUCCESSFUL* / *UNSUCCESSFUL*), and the try
+strap follows when a try is awarded; the starter flow takes the bar off 6 s later. From the control room it can
+also be put up by hand, choosing the team, what is checked and what it shows (*Shows: auto* follows the scorer).
 
 **Replay transition (OBS or vMix stinger).** In every look, a wall of slanted bands in the look's colours, edged
 with a bright stripe, sweeps in, covers the whole frame with REPLAY in the middle, then sweeps on and away (2 s).
@@ -227,6 +243,7 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 | *Players entering (2nd half)* | the board on air animates out, then the background 0.4 s later; the scorebug comes back 7 s later. No line-ups the second time |
 | *2nd Half* | scorebug (already in) and the "Kick-off" banner |
 | *Penalty Shootout* | the shoot-out tracker comes up under the scorebug and stays, updating with every kick, until full time (also in the futsal and hockey starter flows) |
+| *Added time* (under the clock) | the fourth official's board for 8 s; the scorebug keeps *ADDED +N* until the end of the half |
 | *Full Time* | the scorebug stays for 30 s, then the animated background, scorebug out, and the match header with the final score, FULL TIME and "Thank you for watching" |
 
 A line-up board only goes to air for a team whose line-up has been entered (at least one starter). If a side has

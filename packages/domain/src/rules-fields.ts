@@ -47,6 +47,7 @@ const LABELS: Record<string, string> = {
   'clock.finalMinutes': 'Stopped in the final … minutes of each half',
   foulLimit: 'Accumulated fouls in a half before every further one is a 10 m kick',
   sendOffMinutes: 'Send-off: minutes of playing time a player short',
+  sinBinMinutes: 'Sin bin: minutes of playing time off the field',
 };
 // where "period" means a half or a quarter
 const PERIOD_WORD: Partial<Record<Sport, string>> = { football: 'Half length (minutes)', futsal: 'Half length (minutes)', rugby_league: 'Half length (minutes)', netball: 'Quarter length (minutes)', afl: 'Quarter length (minutes)', hockey: 'Quarter length (minutes)' };

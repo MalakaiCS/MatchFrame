@@ -47,7 +47,7 @@ export function stateAt(cues: RehearsalCue[], t: number, base: number): OverlayP
 
 export function RehearsalPreview({ cues, t, sport, themeKey = 'broadcast' }: { cues: RehearsalCue[]; t: number; sport: Sport; themeKey?: ThemeConfig['themeKey'] }) {
   const base = useRef(Date.now()).current;
-  const data = useMemo(() => sampleData(DEFAULT_THEMES[themeKey], sport), [themeKey, sport]);
+  const data = useMemo(() => sampleData(DEFAULT_THEMES[themeKey], sport, { review: true }), [themeKey, sport]);
   const state = useMemo(() => stateAt(cues, t, base), [cues, t, base]);
   return (
     <div className="relative aspect-video overflow-hidden rounded-md border border-border" data-testid="rehearsal-stage">

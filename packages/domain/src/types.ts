@@ -112,6 +112,10 @@ export interface MatchProjection {
   /** possession by match-clock time (football, futsal, hockey, rugby league): see possession.ts */
   possessionTime?: { side: Side | null; sinceMs: number | null; periodId: string | null; ms: { home: number; away: number } };
   stoppageMinutes?: number | null;
+  /** Rugby league: sin bins, timed on playing time from kick-off (ms) until they end (time up, or a send-off) */
+  sinBins?: { side: Side; playerId: string | null; atMs: number | null; endedAtMs: number | null; /** where the player was before (null: as the line-up says) */ onCourtBefore?: boolean | null }[];
+  /** the latest video review: what is checked, for which team, and the decision once given (see review.ts) */
+  review?: { subject: string; side: Side; outcome: 'awarded' | 'denied' | null; sequence: number } | null;
   /** when the current phase began (server ms) */
   phaseStartedAt?: number | null;
   /** when the current break began and the phase that began it ("half_time"), kept through the walk-out steps */
@@ -158,6 +162,10 @@ export interface DisplayModel {
   bonus?: { home: boolean; away: boolean } | null;
   /** a team playing short after a send-off: players on the court and the playing time left */
   shortHanded?: { side: Side; players: number; remainingText: string }[] | null;
+  /** the added time announced for this period (football's fourth-official board), in minutes */
+  addedMinutes?: number | null;
+  /** timed suspensions for the scorebug: rugby league sin bins, futsal's time a player short after a send-off */
+  timers?: { side: Side; kind: 'sin_bin' | 'send_off'; count: number; remainingMs: number; remainingText: string }[] | null;
   alerts: string[];
 }
 

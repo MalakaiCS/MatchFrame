@@ -11,6 +11,7 @@ import type { GamePlan } from './automation';
  * - About to start: the scorebug comes up, its clock at 0:00 until the kick-off starts it.
  * - Kick-off of each half: the kick-off banner (and the scorebug, if it is not already up).
  * - Goals, cards and substitutions put their graphic on air during play.
+ * - Added time: when the scorer enters the minutes, the fourth official's board for 8 s (the scorebug keeps "+N").
  * - Half time: 10 s after the whistle the animated background comes up over everything and the scorebug goes; the
  *   match header (with the countdown to the second half) and the match stats then take turns, 30 s each, until
  *   the players walk back out.
@@ -93,6 +94,13 @@ export const FOOTBALL_STARTER: GamePlan = {
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [{ id: 'card_gfx', action: 'show', templateKey: 'builtin:card', variables: { team: { from: 'event.side' }, player: { from: 'event.playerId' }, cardType: { from: 'event.cardType' }, minute: { from: 'event.minute' } }, offsetMs: 0, durationMs: 6000 }],
+    },
+    {
+      id: 'added_time', name: "Added time: the fourth official's board", kind: 'in_play', priority: 2, promotional: false, cooldownMs: 0,
+      triggers: [{ id: 't_added', type: 'event', eventTypes: ['stoppage_announced'] }],
+      guards: [],
+      repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+      items: [{ id: 'added_gfx', action: 'show', templateKey: 'builtin:added_time', offsetMs: 0, durationMs: 8000 }],
     },
     {
       id: 'sub', name: 'Substitution', kind: 'in_play', priority: 2, promotional: false, cooldownMs: 0,
@@ -221,7 +229,28 @@ export const BASKETBALL_STARTER: GamePlan = {
  * both lineups as the players enter, an "about to start" banner, the period banner at each start, a graphic for
  * every score, card and change, score + stats + sponsor at every interval, and the final board.
  */
-export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents: string[]; cardEvents: string[]; changeEvents: string[]; finalLabel?: string; shootout?: boolean }): GamePlan {
+/**
+ * A video review: the review graphic comes up while it is checked ("TRY?") and turns into the decision when the
+ * scorer gives it ("TRY" / "NO TRY"); 6 s after the decision it animates out.
+ */
+const REVIEW_PLAYLISTS: GamePlan['playlists'] = [
+  {
+    id: 'review', name: 'Video review: the review graphic while it is checked', kind: 'in_play', priority: 1, promotional: false, cooldownMs: 0,
+    triggers: [{ id: 't_review', type: 'event', eventTypes: ['video_review'] }],
+    guards: [],
+    repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+    items: [{ id: 'review_gfx', action: 'show', templateKey: 'builtin:review', offsetMs: 0, durationMs: null }],
+  },
+  {
+    id: 'review_decision', name: 'Review decision: shown for 6 s, then out', kind: 'in_play', priority: 1, promotional: false, cooldownMs: 0,
+    triggers: [{ id: 't_review_decision', type: 'event', eventTypes: ['review_decision'] }],
+    guards: [],
+    repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
+    items: [{ id: 'review_out', action: 'clear_layers', layers: ['lower'], offsetMs: 6000 }],
+  },
+];
+
+export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents: string[]; cardEvents: string[]; changeEvents: string[]; finalLabel?: string; shootout?: boolean; review?: boolean }): GamePlan {
   const playlists: GamePlan['playlists'] = [
     {
       id: 'pre_match', name: 'Pre-match: match ident and sponsor', kind: 'pre', priority: 2, promotional: false, cooldownMs: 0,
@@ -318,11 +347,12 @@ export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents:
     },
   );
   if (o.shootout) playlists.splice(playlists.findIndex((pl) => pl.id === 'full_time'), 0, SHOOTOUT_PLAYLIST);
+  if (o.review) playlists.splice(playlists.findIndex((pl) => pl.id === 'change'), 0, ...REVIEW_PLAYLISTS);
   return { version: 1, sport, defaultScorebug: true, freshnessMs: 10_000, playlists };
 }
 
 export const NETBALL_STARTER = periodStarter('netball', { startWord: 'Centre pass', scoreEvents: ['goal'], cardEvents: [], changeEvents: ['substitution'] });
-export const RUGBY_LEAGUE_STARTER = periodStarter('rugby_league', { startWord: 'Kick-off', scoreEvents: ['try', 'penalty_try', 'penalty_goal', 'field_goal'], cardEvents: ['sin_bin', 'send_off'], changeEvents: ['interchange'] });
+export const RUGBY_LEAGUE_STARTER = periodStarter('rugby_league', { startWord: 'Kick-off', scoreEvents: ['try', 'penalty_try', 'penalty_goal', 'field_goal'], cardEvents: ['sin_bin', 'send_off'], changeEvents: ['interchange'], review: true });
 export const AFL_STARTER = periodStarter('afl', { startWord: 'First bounce', scoreEvents: ['goal'], cardEvents: [], changeEvents: ['interchange'], finalLabel: 'FINAL SIREN' });
 export const HOCKEY_STARTER = periodStarter('hockey', { startWord: 'Push back', scoreEvents: ['goal'], cardEvents: ['green_card', 'yellow_card', 'red_card'], changeEvents: ['substitution'], shootout: true });
 
@@ -331,12 +361,12 @@ export const HOCKEY_STARTER = periodStarter('hockey', { startWord: 'Push back', 
  * exists, line-ups at the walk-out, the scorebug at "About to start", the kick-off banner, the half-time boards
  * 10 s after the whistle, the thank-you at full time), with futsal's own events: goals including penalties and 10 m
  * kicks, cards, and at a timeout the timeout graphic then the match stats (a timeout lasts a minute). Substitutions
- * are rolling and constant in futsal, so they put nothing on air.
+ * are rolling and constant in futsal, so they put nothing on air; the clock stops, so there is no added time.
  */
 export const FUTSAL_STARTER: GamePlan = {
   ...FOOTBALL_STARTER,
   sport: 'futsal',
-  playlists: FOOTBALL_STARTER.playlists.filter((pl) => pl.id !== 'sub').flatMap((pl): GamePlan['playlists'] => {
+  playlists: FOOTBALL_STARTER.playlists.filter((pl) => pl.id !== 'sub' && pl.id !== 'added_time').flatMap((pl): GamePlan['playlists'] => {
     if (pl.id === 'goal') return [{ ...pl, triggers: [{ id: 't_goal', type: 'event', eventTypes: ['goal', 'own_goal', 'penalty_scored', 'ten_metre_scored'] }] }];
     if (pl.id !== 'card') return [pl];
     return [

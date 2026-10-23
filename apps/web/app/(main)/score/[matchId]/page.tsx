@@ -14,10 +14,13 @@ import {
   GOAL_TYPES,
   GOAL_TYPE_LABELS,
   POSSESSION_EVENT,
+  REVIEW_SUBJECT_LABELS,
+  REVIEW_SUBJECTS,
   clockDisplayMs,
   getAdapter,
   onField,
   possessionShare,
+  reviewWords,
   scorerSheet,
   sheetCount,
   shootoutLine,
@@ -88,6 +91,9 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const [quickUndo, setQuickUndo] = useState<{ commandId: string; label: string; at: number } | null>(null);
   const [skipped, setSkipped] = useState<Set<string>>(() => new Set());
   const [lineupBannerClosed, setLineupBannerClosed] = useState(false);
+  const [addedOpen, setAddedOpen] = useState(false);
+  const [addedVal, setAddedVal] = useState('');
+  const [reviewFor, setReviewFor] = useState<Side | null>(null);
   const warned = useRef(0);
 
   const adapter = s.match ? getAdapter(s.match.sport) : null;
@@ -235,8 +241,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
 
   const onEvent = (ev: EventTypeDef) => {
     if (ev.type === 'stoppage_announced') {
-      const v = prompt('Added time (minutes)');
-      if (v && /^\d+$/.test(v)) void sendFact(ev, null, { minutes: Number(v) });
+      setAddedVal('');
+      setAddedOpen(true);
       return;
     }
     if (!ev.requiresSide) {
@@ -314,6 +320,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const recordFor = async (evType: string, side: Side) => {
     const e = defOf(evType);
     if (!e) return;
+    if (e.type === 'video_review') return setReviewFor(side);
     if (e.group === 'score' && e.playerField !== 'none' && playersOf(side).length) {
       const cid = await sendFact(e, side);
       setPlayerFor({ commandId: cid, side, label: e.label, eventType: e.type });
@@ -341,7 +348,31 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const sideLabel = (side: Side, what: string, count: string | number) => `${what}, ${team(side).shortName}: ${count}`;
   const periodWord = phase.kind === 'pre' ? 'Pregame' : phase.label;
   const ending = phase.kind === 'play' && access === 'score' && !!nextPhase;
-  const controlNoSide = events.filter((e) => e.group === 'control' && !e.requiresSide);
+  // the review decision has its own buttons on the sheet while a review is open
+  const controlNoSide = events.filter((e) => e.group === 'control' && !e.requiresSide && e.type !== 'review_decision');
+  // a video review waiting for its decision
+  const openReview = proj.review && proj.review.outcome == null ? proj.review : null;
+  const decideReview = async (outcome: 'awarded' | 'denied') => {
+    const dec = defOf('review_decision');
+    if (!openReview || !dec) return;
+    await sendFact(dec, null, { outcome });
+    // a try awarded by the video referee goes on the score at once; who scored follows, as for any try
+    const tryEv = defOf('try');
+    if (outcome === 'awarded' && openReview.subject === 'try' && tryEv) {
+      const cid = await sendFact(tryEv, openReview.side);
+      if (playersOf(openReview.side).length) setPlayerFor({ commandId: cid, side: openReview.side, label: tryEv.label, eventType: tryEv.type });
+    }
+  };
+  const reviewBanner = openReview ? (
+    <section role="region" aria-label="Video review" className="mx-4 mt-4 rounded-lg border-2 border-[#f5b94a] bg-[#fff8e6] p-3">
+      <p className="scorer-display text-center text-[17px] font-semibold text-[#7a4b00]" data-review-line>{openReview.subject === 'try' ? `Video review · ${team(openReview.side).shortName} try?` : `${REVIEW_SUBJECT_LABELS[openReview.subject as keyof typeof REVIEW_SUBJECT_LABELS] ?? 'Video review'} · ${team(openReview.side).shortName}`}</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button type="button" data-decision="awarded" disabled={!canScore} onClick={() => void decideReview('awarded')} className="scorer-display min-h-14 rounded-lg bg-[#16a34a] text-[18px] font-semibold text-white enabled:active:opacity-90 disabled:opacity-40">{reviewWords(openReview.subject).buttons.awarded}</button>
+        <button type="button" data-decision="denied" disabled={!canScore} onClick={() => void decideReview('denied')} className="scorer-display min-h-14 rounded-lg bg-[#dc2626] text-[18px] font-semibold text-white enabled:active:opacity-90 disabled:opacity-40">{reviewWords(openReview.subject).buttons.denied}</button>
+      </div>
+      {openReview.subject === 'try' ? <p className="mt-2 text-center text-xs text-[#7a4b00]">A try awarded goes on the score at once (4 points); then pick who scored.</p> : null}
+    </section>
+  ) : null;
   const head = (side: Side) => team(side).primaryColor;
 
   // ------------------------------------------------------------------ the sheet's rows during play
@@ -383,7 +414,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           <MirrorRow key={row.type} centre={<CentreBadge home={head('home')} away={head('away')}><EventIcon type={row.type} className="size-5" /></CentreBadge>}>
             {SIDES.map((side) => {
               const n = sheetCount(proj, side, row.type, row.stat);
-              return <HalfCell key={side} side={side} eventType={row.type} team={team(side)} label={label(row.type)} count={n} disabled={!canTap(row.type)} onTap={() => void recordFor(row.type, side)} testLabel={sideLabel(side, label(row.type), n)} />;
+              return <HalfCell key={side} side={side} eventType={row.type} team={team(side)} label={label(row.type)} count={n} disabled={!canTap(row.type) || (row.type === 'video_review' && !!openReview)} onTap={() => void recordFor(row.type, side)} testLabel={sideLabel(side, label(row.type), n)} />;
             }) as [React.ReactNode, React.ReactNode]}
           </MirrorRow>
         );
@@ -542,6 +573,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
                 <span className="scorer-display block truncate text-[26px] font-bold italic leading-none">{team(side).abbreviation}</span>
                 {display.scoreDetail ? <span className="block text-xs text-[var(--sc-head-muted)] tabular">{display.scoreDetail[side]}</span> : null}
                 {display.fouls ? <span className="block text-[11px] text-[var(--sc-head-muted)]">Fouls {display.fouls[side]}{display.bonus?.[side] ? (m.sport === 'futsal' ? ' · next is a 10 m kick' : ' · BONUS') : ''} · TO {display.timeouts?.[side]}</span> : null}
+                {display.timers?.filter((x) => x.side === side && x.kind === 'sin_bin').map((x) => <span key={x.kind} className="mt-0.5 inline-block rounded bg-[#f5b94a]/25 px-1.5 text-[11px] font-semibold text-[#f5d38a] tabular" data-sin-bin={side} aria-label={`${team(side).shortName} sin bin ${x.remainingText}`}>{x.count > 1 ? `${x.count}× ` : ''}Sin bin {x.remainingText}</span>)}
                 {display.shortHanded?.find((x) => x.side === side) ? <span className="mt-0.5 inline-block rounded bg-[#e5534b]/25 px-1.5 text-[11px] font-semibold text-[#ffb4ab] tabular" aria-label={`${team(side).shortName} a player short`}>{display.shortHanded.find((x) => x.side === side)!.players} on court · {display.shortHanded.find((x) => x.side === side)!.remainingText}</span> : null}
                 {m.sport === 'basketball' && display.possession === side ? <span className="block text-[11px] text-primary">◀ possession</span> : null}
               </div>
@@ -578,7 +610,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           <button type="button" aria-label={running ? 'Pause clock' : mainClock.baseMs ? 'Resume clock' : 'Start clock'} className={CLOCK_BTN} disabled={!canScore} onClick={() => clockAction(running ? 'pause' : mainClock.baseMs ? 'resume' : 'start')}>{running ? <Pause className="size-7" /> : <Play className="size-7" />}</button>
           <span className="flex h-14 min-w-[7.5rem] flex-col items-center justify-center rounded-xl bg-[var(--sc-head-raised)] px-3">
             <span data-clock className="scorer-display text-[38px] font-medium leading-none tabular" aria-live="off">{display.clockText}</span>
-            {display.stoppageText ? <span className="scorer-display text-[13px] leading-none text-[#f5b94a] tabular">{display.stoppageText}</span> : null}
+            {display.stoppageText || display.addedMinutes ? <span className="scorer-display text-[13px] leading-none text-[#f5b94a] tabular">{[display.stoppageText, display.addedMinutes ? `of +${display.addedMinutes}` : null].filter(Boolean).join(' ')}</span> : null}
           </span>
           <button type="button" aria-label="Take a minute off the clock" className={CLOCK_BTN} disabled={!canScore} onClick={() => nudgeClock(-60_000)}><Minus className="size-7" /></button>
           <button type="button" aria-label="Add a minute to the clock" className={CLOCK_BTN} disabled={!canScore} onClick={() => nudgeClock(60_000)}><Plus className="size-7" /></button>
@@ -594,7 +626,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         </section>
       ) : null}
       {access === 'score' && controlNoSide.length && phase.kind === 'play' ? (
-        <div className="flex justify-center gap-2 px-3 pb-3">{controlNoSide.map((e) => <Button key={e.type} size="sm" variant="secondary" disabled={!canScore} onClick={() => onEvent(e)}>{e.label}</Button>)}</div>
+        <div className="flex justify-center gap-2 px-3 pb-3">{controlNoSide.map((e) => <Button key={e.type} size="sm" variant="secondary" disabled={!canScore} onClick={() => onEvent(e)}>{e.label}{e.type === 'stoppage_announced' && display.addedMinutes ? ` +${display.addedMinutes}` : ''}</Button>)}</div>
       ) : null}
 
       {/* basketball keeps its court controls */}
@@ -654,7 +686,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
         ) : null}
         {phase.kind === 'pre' || phase.kind === 'break' ? stepsSheet
           : proj.phase === 'shootout' ? shootoutRows
-          : phase.kind === 'play' ? (m.sport === 'basketball' ? <p className="p-5 text-sm text-[var(--sc-muted)]">Score from the court controls above. Events are listed under the events button.</p> : liveRows)
+          : phase.kind === 'play' ? (m.sport === 'basketball' ? <p className="p-5 text-sm text-[var(--sc-muted)]">Score from the court controls above. Events are listed under the events button.</p> : <>{reviewBanner}{liveRows}</>)
           : phase.kind === 'final' ? finalSheet
           : <p className="p-5 text-sm text-[var(--sc-muted)]">This match is {phase.label.toLowerCase()}.</p>}
         <div className="flex justify-between px-4 py-4 text-xs text-[var(--sc-muted)]">
@@ -669,6 +701,24 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           {nextPhase ? <Button size="touch" variant="primary" data-next disabled={!canScore} onClick={() => { setEndOpen(false); void setPhase(nextPhase.id); }}>{nextPhase.label}</Button> : null}
           {offerKnockout ? <Button size="touch" variant="secondary" disabled={!canScore} onClick={() => { setEndOpen(false); void s.enqueue('SET_KNOCKOUT', { on: true, reason: 'level at the end of regulation: the match needs a winner' }, ko!.label); }}>Play {ko!.label.replace(/ when level$/, '').toLowerCase()} instead</Button> : null}
           {otherPhases.map((def) => <Button key={def.id} size="touch" variant={def.kind === 'terminal' ? 'danger' : 'secondary'} disabled={!canScore} onClick={() => { setEndOpen(false); pickPhase(def); }}>{def.label}</Button>)}
+        </div>
+      </Dialog>
+
+      {/* the fourth official's board: the minutes of added time */}
+      <Dialog open={addedOpen} onOpenChange={setAddedOpen} title="Added time" description={`Minutes added to ${phase.label.toLowerCase()}. The board graphic goes on air and the scorebug shows +minutes until the end of the period.`}>
+        <div className="grid grid-cols-5 gap-2" role="group" aria-label="Minutes">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <Button key={n} size="touch" variant={display.addedMinutes === n ? 'primary' : 'secondary'} disabled={!canScore} onClick={() => { const e = defOf('stoppage_announced'); setAddedOpen(false); if (e) void sendFact(e, null, { minutes: n }); }}>+{n}</Button>)}
+        </div>
+        <div className="mt-3 flex items-end gap-2">
+          <Field label="Other (minutes)" htmlFor="added-other"><Input id="added-other" inputMode="numeric" value={addedVal} onChange={(e) => setAddedVal(e.target.value.replace(/\D/g, '').slice(0, 2))} /></Field>
+          <Button variant="primary" disabled={!canScore || !addedVal || Number(addedVal) > 30} onClick={() => { const e = defOf('stoppage_announced'); setAddedOpen(false); if (e) void sendFact(e, null, { minutes: Number(addedVal) }); }}>Show +{addedVal || '…'}</Button>
+        </div>
+      </Dialog>
+
+      {/* a video review: what the video referee checks */}
+      <Dialog open={!!reviewFor} onOpenChange={(o) => !o && setReviewFor(null)} title={`Video review · ${reviewFor ? team(reviewFor).shortName : ''}`} description="The review graphic goes on air while it is checked. Give the decision on the sheet when it comes.">
+        <div className="grid gap-2">
+          {REVIEW_SUBJECTS.map((subject) => <Button key={subject} size="touch" variant={subject === 'try' ? 'primary' : 'secondary'} disabled={!canScore} onClick={() => { const e = defOf('video_review'); const sd = reviewFor; setReviewFor(null); if (e && sd) void sendFact(e, sd, { subject }); }}>{REVIEW_SUBJECT_LABELS[subject]}</Button>)}
         </div>
       </Dialog>
 

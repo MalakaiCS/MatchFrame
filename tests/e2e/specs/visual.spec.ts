@@ -60,6 +60,28 @@ for (const look of ['broadcast', 'premier'] as const) {
   });
 }
 
+/** The named graphics on the look page, one baseline each. */
+async function snapNamed(page: Page, prefix: string, names: string[]) {
+  const stage = page.getByTestId('theme-preview-stage');
+  for (const name of names) {
+    const card = page.locator('button[aria-pressed]').filter({ has: page.locator('span.text-sm.font-medium', { hasText: new RegExp(`^${name}$`) }) }).first();
+    await card.scrollIntoViewIfNeeded();
+    await card.click();
+    await page.waitForTimeout(700);
+    await expect(stage).toHaveScreenshot(`${prefix}-${slug(name)}.png`, { maxDiffPixelRatio: 0.02, animations: 'disabled' });
+  }
+}
+
+// the sin-bin countdown under each look's scorebug, and the video review graphic
+for (const look of LOOKS) {
+  test(`${look} look: rugby league sin bin and video review`, async ({ browser }) => {
+    const { ctx, page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    opened.push(ctx);
+    await openLook(page, look, 'rugby_league');
+    await snapNamed(page, `${look}-rugby_league-officials`, ['Scorebug', 'Video review']);
+  });
+}
+
 for (const sport of OTHER_SPORTS) {
   test(`broadcast look: ${sport} sport-specific graphics`, async ({ browser }) => {
     const { ctx, page } = await login(browser, { viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });

@@ -74,7 +74,7 @@ describe('uploads without object storage', () => {
     const ctx: Ctx = { ...A.ctx, storage };
     const comp = await catalog.createCompetition(ctx, { name: 'Harbour League', sport: 'football', defaultTimezone: 'Australia/Sydney' });
     const season = await catalog.createSeason(ctx, comp.id, { name: '2026' });
-    const home = await catalog.createTeam(ctx, { name: 'Harbour City', shortName: 'Harbour', abbreviation: 'HAR', sport: 'football' });
+    const home = await catalog.createTeam(ctx, { name: 'Harbour City', shortName: 'Harbour', abbreviation: 'HAR', sport: 'football', primaryColor: '#7A1F2B', secondaryColor: '#F4D35E' });
     const away = await catalog.createTeam(ctx, { name: 'Bayside United', shortName: 'Bayside', abbreviation: 'BAY', sport: 'football' });
     const player = await catalog.createPlayer(ctx, { displayName: 'Sam Lee' });
     await catalog.addToRoster(ctx, { playerId: player.id, teamId: home.id, seasonId: season.id, number: 9 });
@@ -97,7 +97,8 @@ describe('uploads without object storage', () => {
 
     const reloads = async () => (await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(outboxEvents).where(and(eq(outboxEvents.aggregateId, out!.id), eq(outboxEvents.topic, 'overlay.state.updated'))))).length;
     const before = await reloads();
-    await catalog.updateTeam(ctx, home.id, { logoAssetId: logo });
+    // a new logo leaves the team's colours as they were (the update's defaults are not filled in)
+    expect(await catalog.updateTeam(ctx, home.id, { logoAssetId: logo })).toMatchObject({ logoAssetId: logo, primaryColor: '#7A1F2B', secondaryColor: '#F4D35E' });
     await catalog.updatePlayer(ctx, player.id, { photoAssetId: photo });
     expect(await reloads()).toBe(before + 2);
     const snap = await snapshot();

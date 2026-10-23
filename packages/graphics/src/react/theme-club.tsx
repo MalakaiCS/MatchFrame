@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, slateMessage, statRows, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 import { lineupPage } from './theme-broadcast';
 
@@ -52,6 +52,7 @@ function Scorebug(p: GraphicProps) {
         {d.shootout ? <span style={{ ...pill(p, 'rgba(11,18,32,.85)'), padding: '4px 16px', fontSize: 18, ...animStyle(p, 'rise', 360, 340) }}>Pens <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></span> : null}
         {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <span style={{ ...pill(p, 'rgba(255,255,255,.95)'), padding: '4px 14px', ...animStyle(p, 'rise', 420, 340) }}><SponsorMark p={p} placement="scorebug_logo" height={24} /></span> : null}
       </div>
+      <ScorebugTabs p={p} />
     </div>
   );
 }
@@ -61,7 +62,8 @@ function Burst(p: GraphicProps, title: string, lines: React.ReactNode, color?: s
   return (
     <div style={{ ...centred, bottom: SY + 70, display: 'flex', alignItems: 'center', gap: 22, ...pill(p, color ?? t.primaryColor), padding: '16px 44px 16px 16px', ...animStyle(p, 'zoom') }} data-graphic={p.t.key}>
       {PHOTO_EVENTS.includes(p.t.key) && player(p)?.photoUrl ? <span style={animStyle(p, 'zoom', 160, 420)}><Photo url={player(p)!.photoUrl} size={120} name={player(p)!.displayName} /></span> : null}
-      <span style={{ width: 120, height: 120, borderRadius: '50%', background: 'rgba(0,0,0,.2)', display: 'grid', placeItems: 'center', ...animStyle(p, 'zoom', 160, 420) }}><Logo url={t.logoUrl} label={t.abbreviation} size={84} color="transparent" radius={42} /></span>
+      {/* the team's crest, for a graphic that is about a team (not match information or added time) */}
+      {p.t.variables.some((v) => v.key === 'team') ? <span style={{ width: 120, height: 120, borderRadius: '50%', background: 'rgba(0,0,0,.2)', display: 'grid', placeItems: 'center', ...animStyle(p, 'zoom', 160, 420) }}><Logo url={t.logoUrl} label={t.abbreviation} size={84} color="transparent" radius={42} /></span> : null}
       <div>
         <div style={{ fontSize: 46, fontWeight: 900, letterSpacing: 2, ...animStyle(p, 'drop', 240, 400) }}>{title}</div>
         <div style={animStyle(p, 'rise', 340, 360)}>{lines}</div>

@@ -14,10 +14,11 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
     '60b90f740e725e21d4197763afb5ddd0', // scorebug at "About to start"
     '6ae9e72701c533093f58f901328b2813', // graphics animate out at the walk-outs (board, then background); half time after 10 s, header and stats 30 s each
     'e40aabd9b1f0b452a9bb61e47dc37302', // the shoot-out tracker during a penalty shoot-out
+    '7a94eda00f2898d86d3a784ed31f60d1', // the fourth official's board when added time is entered
   ],
   basketball: ['2a72efc1183f22c928818f24e5c8a135'],
   netball: ['cf62a84825b609243d794e2884bc75ba'],
-  rugby_league: ['3c33e86754195214e7d6e227630f86ba'],
+  rugby_league: ['3c33e86754195214e7d6e227630f86ba', '6f9b9e93e562e82926df65f711f8befe'], // + the video review graphic and its decision
   afl: ['f9139044bd932f100515c999d6798186'],
   hockey: ['3d6975e875876a18ac1f94fa33dd9439', 'c2cc3d729cb7584110f5759a53537858'], // + the shoot-out tracker during a shoot-out
   futsal: [

@@ -71,7 +71,24 @@ first). A red banner says when the starting line-ups are not filled in, with a l
   guessed). Players **on the field** are listed first, then the bench. Football goals then ask for the **assist**
   and the **type** (header, penalty, free kick…); both can be added later from *Match events* with *Details*.
   Cards and substitutions ask for the player first (*Skip player* if you are unsure); a second yellow for the same
-  player is recorded as a second yellow, so the sending-off follows. *Stoppage time* sits under the clock.
+  player is recorded as a second yellow, so the sending-off follows.
+* **Added time** (football): when the fourth official holds up the board, tap *Added time* under the clock and pick
+  the minutes (+1 to +10, or type another). The board graphic goes on air for 8 s and the scorebug shows
+  *ADDED +4* until the end of the half; the clock box shows the running added time *of +4*. Enter it again to
+  change it.
+* **Sin bin** (rugby league): tap *Sin bin* on the team's side; the countdown starts from the minutes in the rules
+  (10 unless the competition says otherwise) and runs on playing time: it stops with the clock, time after the
+  siren does not count, and what is left carries into the next half. It shows beside the team under the score
+  and on the scorebug. When the time is up the player is back where they were (on the field, or on the bench for a
+  bench player), and an interchange can then take them off; until then they cannot come back through an
+  interchange. A sin-binned player who is then sent off does not come back. Futsal's send-off shows its two
+  minutes the same way.
+* **Video review** (rugby league): tap *Video review* on the side of the team the decision is for, then *Try* or
+  *Captain's challenge*. The review graphic goes on air (*TRY?*) and a yellow box at the top of the sheet waits for
+  the decision: **Try** puts the try on the score at once (pick who scored, as for any try) and the graphic turns
+  green; **No try** turns it red with nothing on the score. A captain's challenge has *Successful* and
+  *Unsuccessful*. The graphic leaves 6 s after the decision. One review at a time: give its decision before the
+  next; one still open when the half ends is dropped.
 * **Ending a period**: the header's *End …* button opens a sheet with the next step first (Half Time, Full Time,
   Before Extra Time, Penalty Shootout) and the other ways on below it.
 * **Level at the end**: when the score is level at the end of regulation and the rules have extra time or

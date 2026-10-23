@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import { occasionLine } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed } from './common';
+import { FullFrameMedia, Fitted, Logo, Photo, SponsorMark, ThemeBadge, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, personOrTeam, player, scorebugPosition, side, slateMessage, statRows, stoppageLabel, t, team, tickerText, tickerSpeed, ScorebugTabs } from './common';
 import { PresentedBy, sharedGraphics, type Chrome } from './shared-graphics';
 
 const SX = 96; // 5% title-safe
@@ -54,6 +54,7 @@ function ScorebugStrip(p: GraphicProps) {
       {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, width: 64, background: '#FF5263', color: '#fff', fontSize: 30, fontWeight: 800, ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
       {d.shootout ? <Panel p={p} style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 14px', fontSize: 20, fontWeight: 700, ...animStyle(p, 'zoom', 300, 360) }}>{t(p, 'PENS')} <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Panel> : null}
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 12px', background: 'rgba(255,255,255,.95)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={34} /></div> : null}
+      <ScorebugTabs p={p} />
     </div>
   );
 }
@@ -91,6 +92,7 @@ function ScorebugBox(p: GraphicProps) {
       {d.shotClockText ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, width: 70, background: '#FF5263', color: '#fff', fontSize: 34, fontWeight: 800, ...animStyle(p, 'zoom', 300, 360) }}>{d.shotClockText}</div> : null}
       {d.shootout ? <Panel p={p} style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 16px', fontSize: 22, fontWeight: 700, ...animStyle(p, 'zoom', 300, 360) }}>PENS <span style={changeStyle(p, 'pens', `${d.shootout.home}-${d.shootout.away}`)}>{d.shootout.home}–{d.shootout.away}</span></Panel> : null}
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ display: 'grid', placeItems: 'center', marginLeft: 8, padding: '0 12px', background: 'rgba(255,255,255,.95)', ...animStyle(p, 'zoom', 340, 380) }}><SponsorMark p={p} placement="scorebug_logo" height={44} /></div> : null}
+      <ScorebugTabs p={p} />
     </div>
   );
 }

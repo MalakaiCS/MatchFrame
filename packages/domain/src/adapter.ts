@@ -31,6 +31,9 @@ export interface FactInput {
   side?: Side | null;
   playerId?: string | null;
   payload: Record<string, unknown>;
+  /** when known: the main clock reading and the period the fact will carry (timed suspensions read playing time) */
+  clockMs?: number | null;
+  periodId?: string;
 }
 
 export interface GraphicCapabilities {
