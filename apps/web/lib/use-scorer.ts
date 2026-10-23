@@ -3,9 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyEvent, clockDisplayMs, getAdapter, type ClockState, type LineupSnapshot, type MatchProjection } from '@bs/domain';
 import { ApiError, api, get, post, uuid } from './api';
 import { serverNow, useConnectionStatus, useRealtime } from './realtime';
-import { cacheMatch, deleteIntent, deviceId as getDeviceId, getCachedMatch, getIntents, putIntent, type Intent } from './scorer-outbox';
+import { cacheMatch, claimIntent, deleteIntent, deviceId as getDeviceId, discardIfQueued, getCachedMatch, getIntents, putIntent, type Intent } from './scorer-outbox';
 import { scorerAccess, type ScorerAccess } from './scorer-access';
 import type { Me } from './session';
+
+/** The undo of an action the server has, queued like any other action. */
+function voidIntent(matchId: string, factId: string, o: { reason: string; label: string }, basedOnVersion: number): Intent {
+  return { commandId: uuid(), matchId, type: 'VOID_FACT', payload: { factId, reason: o.reason }, createdAt: Date.now(), offline: false, basedOnVersion, status: 'queued', error: null, attempts: 0, label: `Undo ${o.label}` };
+}
 
 export interface ScorerMatch {
   id: string;
@@ -58,6 +63,9 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
   const [loadError, setLoadError] = useState<ApiError | null>(null);
   const [netOk, setNetOk] = useState(true);
   const [accepted, setAccepted] = useState<Record<string, string>>({});
+  // the same, read inside the outbox loop; and actions taken back while they were being sent (undone once accepted)
+  const acceptedRef = useRef<Record<string, string>>({});
+  const undoOnAccept = useRef(new Map<string, { reason: string; label: string }>());
   const device = useRef<string>('');
   const stateRef = useRef<ServerState | null>(null);
   const leaseRef = useRef<Lease | null>(null);
@@ -150,15 +158,23 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
         }
         const st = stateRef.current;
         if (!st) break;
-        await putIntent({ ...next, status: 'sending', attempts: next.attempts + 1 });
+        // taken back while the lease was checked: it is not sent
+        if (!(await claimIntent(next.commandId))) continue;
         try {
           const r = await api<{ state: ServerState; event: { eventId: string } }>(`/api/v1/matches/${matchId}/commands`, {
             method: 'POST',
             json: { commandId: next.commandId, expectedStateVersion: st.stateVersion, scorerLeaseVersion: l?.leaseVersion, deviceId: device.current, type: next.type, payload: next.payload, offline: next.offline ? { queuedAt: next.createdAt, reviewed: true } : undefined },
           });
           applyServerState(r.state);
+          acceptedRef.current[next.commandId] = r.event.eventId;
           setAccepted((a) => ({ ...a, [next.commandId]: r.event.eventId }));
           await deleteIntent(next.commandId);
+          // undone while it was on its way: the undo goes now, as the next action
+          const undo = undoOnAccept.current.get(next.commandId);
+          if (undo) {
+            undoOnAccept.current.delete(next.commandId);
+            await putIntent(voidIntent(matchId, r.event.eventId, undo, stateRef.current?.stateVersion ?? 0));
+          }
           setNetOk(true);
           // the match's rules changed (knockout on or off): fetch them again
           if (next.type === 'SET_KNOCKOUT') void loadAll();
@@ -342,6 +358,28 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
     [matchId, netOk, flush, reloadIntents],
   );
 
+  /**
+   * Takes back an action just recorded: dropped if it has not gone yet, undone if the server has it, and undone as
+   * soon as the server confirms it if it is on its way (a tap on undo is never lost to the moment it is sent).
+   */
+  const takeBack = useCallback(
+    async (commandId: string, reason: string, label: string) => {
+      const voidNow = async (factId: string) => {
+        await putIntent(voidIntent(matchId, factId, { reason, label }, stateRef.current?.stateVersion ?? 0));
+        await reloadIntents();
+        void flush();
+      };
+      const done = acceptedRef.current[commandId];
+      if (done) return voidNow(done);
+      if (await discardIfQueued(commandId)) return void (await reloadIntents());
+      undoOnAccept.current.set(commandId, { reason, label });
+      // accepted while the queue was checked
+      const now = acceptedRef.current[commandId];
+      if (now && undoOnAccept.current.delete(commandId)) await voidNow(now);
+    },
+    [matchId, flush, reloadIntents],
+  );
+
   const review = useCallback(
     async (commandId: string, decision: 'apply' | 'discard') => {
       const i = (await getIntents(matchId)).find((x) => x.commandId === commandId);
@@ -400,6 +438,7 @@ export function useScorer(matchId: string, me: Me | null | undefined, opts: { lo
     loadError,
     deviceId: device.current,
     enqueue,
+    takeBack,
     review,
     takeControl,
     release,

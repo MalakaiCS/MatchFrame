@@ -50,6 +50,24 @@ export async function getIntents(matchId: string): Promise<Intent[]> {
 export async function deleteIntent(commandId: string) {
   await (await db()).delete('intents', commandId);
 }
+/** A queued intent marked as sending, in one transaction: null when it is gone or no longer queued (taken back). */
+export async function claimIntent(commandId: string): Promise<Intent | null> {
+  const tx = (await db()).transaction('intents', 'readwrite');
+  const i = (await tx.store.get(commandId)) as Intent | undefined;
+  const claimed = i && i.status === 'queued' && !i.offline ? { ...i, status: 'sending' as const, attempts: i.attempts + 1 } : null;
+  if (claimed) await tx.store.put(claimed);
+  await tx.done;
+  return claimed;
+}
+/** An intent deleted only while it is still queued, in one transaction: false once it is being sent. */
+export async function discardIfQueued(commandId: string): Promise<boolean> {
+  const tx = (await db()).transaction('intents', 'readwrite');
+  const i = (await tx.store.get(commandId)) as Intent | undefined;
+  const queued = !!i && i.status === 'queued';
+  if (queued) await tx.store.delete(commandId);
+  await tx.done;
+  return queued;
+}
 export async function cacheMatch(m: CachedMatch) {
   await (await db()).put('matches', m);
 }

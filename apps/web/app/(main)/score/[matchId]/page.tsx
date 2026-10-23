@@ -292,21 +292,17 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   };
 
   // "Undo" straight after an action: voids the accepted fact, or drops it from the queue if it has not been sent yet
-  const quickUndoReady = !!quickUndo && (!!s.accepted[quickUndo.commandId] || s.intents.some((x) => x.commandId === quickUndo.commandId && x.status === 'queued'));
+  // anything still in the outbox, or accepted, can be taken back (one that was refused has nothing to undo)
+  const quickUndoReady = !!quickUndo && (!!s.accepted[quickUndo.commandId] || s.intents.some((x) => x.commandId === quickUndo.commandId && (x.status === 'queued' || x.status === 'sending')));
   const undoLeftS = quickUndo ? prefs.undoWindowS - (Date.now() - quickUndo.at) / 1000 : 0;
   const quickUndoNow = async () => {
     if (!quickUndo) return;
-    const factId = s.accepted[quickUndo.commandId];
-    if (factId) await s.enqueue('VOID_FACT', { factId, reason: 'Undone by the scorer straight after recording' }, `Undo ${quickUndo.label}`);
-    else {
-      const i = s.intents.find((x) => x.commandId === quickUndo.commandId);
-      if (!i || i.status !== 'queued') return; // mid-send: undo it from the history once it lands
-      await s.review(quickUndo.commandId, 'discard');
-    }
+    // dropped if it has not gone, undone if it has, or undone as soon as it lands if it is on its way
+    await s.takeBack(quickUndo.commandId, 'Undone by the scorer straight after recording', quickUndo.label);
     feedback(prefs, 'tick');
     setQuickUndo(null);
   };
-  /** the header's undo: the action just recorded at once (it waits while that is still sending), an older one with a reason */
+  /** the header's undo: the action just recorded at once (even while it is on its way), an older one with a reason */
   const quickUndoOpen = !!quickUndo && undoLeftS > 0;
   const undoLast = () => {
     if (quickUndoOpen) return void (quickUndoReady && quickUndoNow());

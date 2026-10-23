@@ -72,12 +72,24 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await tap('away', 'corner', 1);
   await page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: 'Undo the last action' }).click();
   await expect.poll(() => cellCount(page, 'away', 'corner')).toBe('0');
+  // undo while the action is still on its way to the server: it is undone as soon as it lands, not lost
+  await page.route('**/commands', async (r) => {
+    await new Promise((x) => setTimeout(x, 1500));
+    await r.continue();
+  });
+  const onItsWay = page.waitForRequest((r) => r.url().endsWith('/commands') && r.method() === 'POST');
+  await sheetCell(page, 'away', 'corner').click();
+  await onItsWay;
+  await page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: 'Undo the last action' }).click();
+  await expect.poll(() => cellCount(page, 'away', 'corner'), { timeout: 15_000 }).toBe('0');
+  await page.unroute('**/commands');
   await expect(page.getByText('All changes saved')).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${EVIDENCE}/scorer-two-sides.png`, fullPage: true });
   const st = await api<{ projection: { stats: Record<'home' | 'away', Record<string, number>> } }>(page, `/api/v1/matches/${id}/state`);
   expect(st.projection.stats.home).toMatchObject({ shots_on_target: 2, fouls: 1, corners: 1, goals: 1 });
   expect(st.projection.stats.away).toMatchObject({ shots_off_target: 1, offsides: 1, yellow_cards: 1 });
+  expect(st.projection.stats.away.corners ?? 0).toBe(0); // both corners undone, the second while it was being sent
   expect(st.projection.stats.away.corners ?? 0).toBe(0); // the undone corner
   await ctx.close();
 });

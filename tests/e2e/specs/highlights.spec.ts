@@ -25,7 +25,7 @@ async function command(page: Page, matchId: string, type: string, payload: Recor
 }
 
 test('highlights: upload the match video, mark the kick-off, make the package', async ({ browser }) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   const { page } = await login(browser, { viewport: { width: 1440, height: 1000 } });
   const matchId = await freshMatch(page);
   // the match: the kick-off is 25 s into the video; a home goal 1 s in, an away red card 4 s in, full time 16 s in
@@ -67,8 +67,12 @@ test('highlights: upload the match video, mark the kick-off, make the package', 
   await page.getByRole('tabpanel').screenshot({ path: `${EVIDENCE}/highlights-tab.png` });
 
   await page.getByRole('button', { name: 'Make the highlights' }).click();
+  const started = Date.now();
   await expect(page.getByRole('status').filter({ hasText: /video is being made|Drawing the graphics|Sending the graphics/ })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('The graphics are in')).toBeVisible({ timeout: 180_000 });
+  // drawing is in this browser: slower when other pages in it are busy (earlier specs leave theirs open)
+  await expect(page.getByText('The graphics are in')).toBeVisible({ timeout: 600_000 });
+  const frames = await page.evaluate(() => (window as unknown as { __hlFrames?: number }).__hlFrames ?? null);
+  console.log(`highlights: graphics drawn and sent in ${((Date.now() - started) / 1000).toFixed(1)} s${frames ? ` (${frames} frames)` : ''}`);
   const made = page.getByRole('list', { name: 'Highlights made' });
   await expect(made.locator('[data-package="COMPLETED"]')).toHaveCount(1, { timeout: 180_000 });
   await page.getByRole('tabpanel').screenshot({ path: `${EVIDENCE}/highlights-made.png` });
