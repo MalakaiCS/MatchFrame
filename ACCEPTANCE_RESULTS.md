@@ -497,6 +497,55 @@ Not claimed: checked in Chromium on this machine, not on the hosted deployment, 
 colours are suggestions from the picture's pixels: a crest drawn mostly in an outline colour, or with a gradient,
 can need the colours picked by hand. A sin bin recorded without a clock reading (an import) does not count down.
 
+## Highlights generator, red cards on the scorebug, match thumbnails (2026-10-23)
+
+Requested: a highlights generator in the style of an attached club highlights video "but with MatchFrame's
+graphics", a red card on the scorebug on the carded team's side (numbered when there is more than one), and video
+thumbnails for every match (live stream, highlights, extended highlights and so on) similar to two attached
+examples but not the same. Same environment, production build through the single-port launcher, graphics-only
+mode.
+
+Found and fixed on the way, each with a test that fails on the old code:
+
+* **Every timed graphic in a package was frozen at the start of its exit.** The frame builder gave each graphic its
+  out time from the start; the renderer reads an out time as "already going out". So no graphic animated in, and
+  the scorebug's exit clip hid its red card. A graphic is now taken out only once its time comes.
+* **The picture stopped before the sound.** FFmpeg's `xfade` ends the whole picture when the part before a join runs
+  out of frames inside the join. A 40 ms cut that started between a clip's last two frames left a 52 s package with
+  29 s of picture. Each part now has 0.2 s of spare frames, which the join drops.
+* **A clip read over the network was cut short.** While FFmpeg made the earlier clips, storage closed the later
+  clips' idle connections, and FFmpeg took the cut-off read as the end of the clip. FFmpeg now reconnects. The
+  worker also checks the made file and fails a package whose picture is shorter than the plan, rather than
+  delivering it.
+* **Replays.** The goal strap in a replay read the score before the goal, and the scorebug stayed up through
+  replays and under the full-time board. A replay now shows the match as it stands after its moment, and the
+  scorebug goes off behind each replay transition and for the full-time board. The replay window moved to 11 s to
+  2 s before the tap (was 12 s to 5 s), so it shows the goal when the scorer taps 2 to 11 s after it.
+* **Title panel.** *HIGHLIGHTS* ran past the panel's edge; it is now fitted to the panel.
+* **The scorer's undo could be lost** (outside this feature, found by the full browser run). Tapped while the action
+  was being sent, the quick undo deleted the action from the outbox, but the server got it anyway (the scorer sheet
+  test failed this way in both attempts of the full run and of a rerun, and once run alone). An action is now claimed for sending, or
+  dropped, in one IndexedDB transaction, and an undo tapped while it is on its way undoes it as soon as the server
+  confirms it. The scorer sheet test now also holds a corner's request in flight, taps undo and checks the server
+  has no corner. On the old build the test failed at its first undo (run alone, the in-flight step not reached); on
+  the new one it passes three times in a row, the in-flight step included.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `highlights.test.ts` (domain: the period anchors and video times; goals and red cards always, chances to the length, in match order; each goal's clip then its slowed replay cut in under the transition with the strap; the red card strap, the full-time clip and board, the end board, the title panel; the scorebug's spans around each replay and the board; joins; short targets; moved and left-out moments; merges; options; moments outside the video; netball not offered), `highlights-frames.test.ts` (the title first, then the scorebug's score and clock for the picture's moment; in a replay the score after the goal, the strap on, the scorebug off and back after; a graphic has no out time until its time; a held scorebug drawn with its red card tab and no clip on its box; the key changes only when the picture can; the end board), `highlights-render.test.ts` (the graphics file read and refused when wrong; reconnect options for a video over the network; a join between two frames keeps the picture going; clips, a slowed replay, the end board, the graphics and the transition composed by FFmpeg and checked pixel by pixel, the picture's own length), `thumbnail.test.ts` (a tag for each kind, the competition, round and date, both crests and names, no score; the score only when asked; names off; own words, the look's wording, the two-line label; long names, no competition logo, a missing crest; teams in one colour told apart), `officials.test.ts` red cards (every look, both scorebug styles, the number from two; a rugby league send-off) | 208 tests, 38 files, all pass |
+| `pnpm test:db`: `highlights.test.ts`: a video uploaded in three parts (out of order, a wrong size refused, completing with a part missing refused) and read by the media worker (length, size, preview, thumbnail, the bytes match); another organisation cannot see or touch it; kick-off marks checked; a package refused when its plan changed; its graphics uploaded once, a second upload refused; the worker's MP4 at 1920×1080 H.264/AAC with the package's length in the file and in the picture, the graphic and the transition at their times; the graphics file deleted after; a package waiting for its graphics cancelled; the video deleted | 82 tests, 12 files, all pass |
+| `tests/e2e/specs/highlights.spec.ts`: a match scored through the API (kick-off, a home goal, an away red card, full time); a minute-long video uploaded in the Highlights tab; the kick-off typed in; the goal and the red card in the moments with one replay; *Make the highlights*; the browser draws the graphics and the worker makes the MP4; downloaded and checked (1920×1080, sound, the length of the package in the file and in the picture, the timeline clip, replay, full time, end board); stills of the title panel, the red card on the scorebug with its strap, the replay transition, the replay with the goal strap at 1–0, the full-time board and the end board (`docs/evidence/e2e/highlights-*.png`) | 1 test, passes alone on the final build (graphics drawn and sent in 88.5 s; 3.0 min in all) and in the final full run |
+| `tests/e2e/specs/thumbnails.spec.ts`: the Thumbnails tab with sample crests and a competition logo served to the page (original shields drawn in the test, no team changed): the five thumbnails with their tags, the competition, both teams, no score (`thumbnails-tab.png`); each kind downloaded as a 1280×720 PNG (`thumbnail-live.png`, `-highlights`, `-extended`, `-full-match`); own words *Grand Final* at 1920×1080 (`thumbnail-own-words.png`); the score shown when asked; the highlights thumbnail in the Premier and Primetime looks (`thumbnail-highlights-premier.png`, `-primetime`) | 2 tests, pass (18 s) |
+| Visual baselines: the highlights title panel in all ten looks (10 new); the rest unchanged | 28 tests: the first run wrote the 10 new baselines (Playwright fails a test at a baseline it writes), the ten football runs then passed in full (7.4 min) |
+| `tests/e2e/specs/scorer-board.spec.ts` with the undo fix: the scorer sheet, now also an undo tapped while a corner's request is held in flight (the server ends with no corner) | 3 runs in a row, all pass (50.6 s) |
+| Full `pnpm test:e2e` on the final build | not clean, so not counted as a pass. 68 tests (34.8 min): 67 pass, 1 fails: the football automation flow (*home line-up off after 8 s*), the sponsor rotation's growth described in the 23 October section above, with 364,668 decisions in this database now (241,000 then); it also fails run alone on this build, so the flow's timings are not re-verified here. The run before it, on the build without the undo fix, had 66 pass and 2 fail: the highlights test (the browser drew 199 of 442 frames in its 3-minute allowance, slowed by the pages earlier specs leave open; the allowance is now 10 minutes, and in the final run drawing and sending took 323.6 s against 88 s alone) and the scorer sheet's undo (the race fixed above). `docs/evidence/e2e/results.json` still records the 22 October run; the flow captures were not replaced |
+
+Not claimed: checked in Chromium on this machine with generated test video, not with a real match recording, on
+the hosted deployment, or uploaded to YouTube. The browser must stay open while it draws a package's graphics.
+Packages are 16:9 only. Highlights are not offered for basketball and netball. Thumbnails are downloaded from
+the browser; there is no thumbnail link for another system to fetch.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
