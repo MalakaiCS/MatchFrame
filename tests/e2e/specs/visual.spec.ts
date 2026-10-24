@@ -22,7 +22,16 @@ async function openLook(page: Page, look: string, sport: string, format = '16:9'
   await page.getByLabel('Format').selectOption(format);
   const loop = page.getByRole('switch').first();
   if ((await loop.getAttribute('aria-checked')) === 'true') await loop.click(); // loop off: graphics stay up
-  await expect(page.getByTestId('theme-preview-stage')).toBeVisible();
+  const stage = page.getByTestId('theme-preview-stage');
+  await expect(stage).toBeVisible();
+  // the baselines are drawn on a 672 px stage: widen the window by whatever the app's sidebar and padding take, so a
+  // change to the app around the stage does not rescale every graphic (9:16 is sized by the window's height)
+  if (format !== '9:16') {
+    const width = Math.round((await stage.boundingBox())!.width);
+    const vp = page.viewportSize()!;
+    if (width !== 672) await page.setViewportSize({ width: vp.width + 672 - width, height: vp.height });
+    await expect.poll(async () => Math.round((await stage.boundingBox())!.width)).toBe(672);
+  }
 }
 
 async function snapAll(page: Page, prefix: string, limit?: number) {
