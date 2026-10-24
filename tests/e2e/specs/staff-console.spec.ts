@@ -1,7 +1,8 @@
 // Site staff console: the e2e account is an Owner through PLATFORM_OWNER_EMAILS. A new account signs up (its
 // verification email read from Mailpit) and creates an organisation; staff find it, suspend it (its member sees the
-// suspended screen) and reactivate it, disable and enable the account (it cannot sign in meanwhile), and add it to
-// the staff team as Support (it then sees the console without the Admin pages).
+// suspended screen) and reactivate it, give it a plan for 7 days (the end shown before saving, then in the console and
+// in the organisation's own plan screen) and end it, disable and enable the account (it cannot sign in meanwhile),
+// and add it to the staff team as Support (it then sees the console without the Admin pages).
 import { expect, test } from '@playwright/test';
 import { api, login } from './helpers';
 
@@ -66,6 +67,24 @@ test('staff console: find an organisation, suspend and reactivate it, disable an
   await pp.reload();
   await expect(pp.getByRole('heading', { name: `${club} is suspended` })).toHaveCount(0);
   expect((await pp.evaluate(async () => (await fetch('/api/v1/competitions')).status))).toBe(200);
+
+  // a plan for 7 days: it cannot be saved without a length, shows when it ends, and ends when asked
+  await page.getByRole('button', { name: 'Set plan' }).click();
+  const pd = page.getByRole('dialog', { name: 'Set the plan' });
+  await pd.getByLabel('Plan').selectOption('club');
+  await pd.getByLabel('Reason').fill('E2E: cup trial');
+  await expect(pd.getByRole('button', { name: 'Set plan' })).toBeDisabled();
+  await pd.getByLabel('For how long').selectOption('7d');
+  await expect(pd.getByRole('status')).toContainText(/Ends .*Then: No plan/);
+  await pd.getByRole('button', { name: 'Set plan' }).click();
+  await expect(page.getByText(/Given by staff.*Ends /)).toBeVisible();
+  await pp.goto('/app/settings?tab=plan');
+  await expect(pp.getByText(/Given to your organisation by MatchFrame until/)).toBeVisible();
+  await page.getByRole('button', { name: 'End now' }).click();
+  const ed = page.getByRole('dialog', { name: 'End the plan given by staff' });
+  await ed.getByLabel('Reason').fill('E2E: trial over');
+  await ed.getByRole('button', { name: 'End plan' }).click();
+  await expect(page.getByText('No plan given by staff.')).toBeVisible();
 
   // disable the account: signed out at once, sign-in refused with the reason; then enable it
   await page.goto('/staff/users');

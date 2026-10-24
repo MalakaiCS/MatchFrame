@@ -746,14 +746,83 @@ countdown, design tokens, responsive and accessibility rules, and verification.
 | `pnpm test` | 217 tests, 39 files, all pass |
 | `pnpm test:db` on a newly created database, including `tests/integration/contact.test.ts` (stored with a reference and emailed with the sender as reply-to; an email that failed kept and sent by the worker's retry; no inbox but staff to read it; field errors, bots ignored, five an hour per connection; deleted after a year; staff see and mark it, logged, and others cannot) and `tests/integration/sign-in.test.ts` (the options the login page is told about; an email code signing a new address up and an existing password account in; text-message codes to a number a signed-in person added and nothing to other numbers; two-step sign-in still asked after an email code; Google redirects to its sign-in page and Apple's form post is accepted; passkey options for anyone and registration only when signed in) | 95 tests, 14 files, all pass |
 | `public-site.spec.ts`, `sign-in.spec.ts`, `staff-console.spec.ts` on the production build: every header and footer link, light/dark remembered, 390 px with reduced motion (seven pages without sideways scroll, mobile menu, preview goal and Reset), FAQ and docs search, pricing, contact stored, emailed to Mailpit with the reference in the subject and marked replied in the staff console; pricing → sign-up with an email code → onboarding → plan reminder → sign back in with a code | 8 tests, pass |
-| Sideways scroll at 360, 390, 768, 1024, 1440 and 1920 px, dark and light, 14 public and sign-in pages and 13 app pages signed in (scratch script) | 324 page loads; 6 too wide (Sponsors at 360 and 390 px, Automation at 1024 px, both themes). Sponsors was already fixed in the source after that build; Automation fixed since. Not yet re-checked on a new build |
+| Sideways scroll at 360, 390, 768, 1024, 1440 and 1920 px, dark and light, 14 public and sign-in pages and 13 app pages signed in (scratch script) | First run: 324 page loads, 6 too wide (Sponsors at 360 and 390 px, Automation at 1024 px, both themes). After the fix and a rebuild: 324 page loads, none too wide |
 | Screens reviewed by eye in both themes at desktop and phone widths: homepage, features, how it works, showcase, sports, pricing, FAQ, docs, contact, sign-in, sign-up, dashboard, matches, settings | checked by eye |
-| Full `pnpm test:e2e` | running at the time of this commit (two failures so far: the automation line-up step, already failing before this change, and the status page reading not-OK once while the API reported OK a minute later); result to follow |
+| Full `pnpm test:e2e` (production build, graphics-only) | 74 tests: 42 passed, 32 failed. 30 were the visual specs: the redesigned sidebar left the look page's stage 624 px wide instead of the baselines' 672 px (the graphics code did not change). One was the status page reading not-OK once while the API reported OK a minute later. One was the automation-flow line-up step, which already failed before this change |
+| After the visual spec kept the stage at 672 px (`visual.spec.ts` widens the window by whatever the app takes): the 30 visual specs against the unchanged baselines, the status-page spec, `public-site.spec.ts` and `sign-in.spec.ts` | 38 tests, all pass (the graphics are pixel-identical to the baselines within the 2% tolerance) |
 
 Not claimed: no real Google, Apple, Microsoft or Facebook account was used (the test stops at the provider's
 redirect and Apple's form post), so the two-step check after a provider sign-in is built but not exercised; text messages were checked with the test sender, not Twilio;
 passkeys were not registered with a real authenticator; Core Web Vitals (LCP, INP, CLS) were not measured; screen
 reader use was checked through the accessibility tree in the specs, not with a screen reader.
+
+## Homepage animation, Terms and Privacy, payments from the Stripe key, plans given by staff with an end (2026-10-24)
+
+Requested: "the animations on the home screen lag and are very bad looking"; Terms & Conditions and a Privacy Policy
+("generic ones … written so it matches the program"); "I've added my Stripe API key so you can activate payments
+now"; "anytime a staff member changes a subscription, there needs to be an expiry date. 1 day, 7 days, 30 days, 60
+days, 90 days, 1 month, 12 months, Permanent and so on"; two photos for the football and basketball cards.
+
+* **Homepage preview**:
+  * **Cheaper to draw.** The stadium is a JPEG rendered once from the SVG, whose noise filters were slow to paint.
+    The blurred glow, the "Sample" label's blur and the blurs under every sticky bar are gone (header, app bar,
+    staff bar, scorer bars, dialog backdrops). The clock stops while the preview is out of view.
+  * **Smoother to watch.** The view eases in on the scorebug while a goal plays there, and back out. The loop ends
+    with the graphics taking their exit animations instead of snapping back.
+  * **No jump on load.** It fades in over a still of the same first frame, once the fonts and stadium image are
+    ready. The hero is top-aligned, so the font arriving no longer moves it.
+* **Terms and Conditions** (`/terms`) and **Privacy Policy** (`/privacy`), from `apps/web/content/legal.ts`:
+  * They describe MatchFrame as it works: accounts and organisations, Stripe subscriptions, cancelling at period
+    end, staff-given plans with an end date, broadcast and player rights, junior players, public pages, live
+    production, the data stored, cookies and device storage, the providers involved, and retention.
+  * They are linked from the footer, sign-up (an agreement line), every sign-in page, contact, pricing and
+    Settings → Plan. The FAQ on cancelling now points to them.
+* **Payments with only `STRIPE_SECRET_KEY`**:
+  * **Prices** are found in the Stripe account by lookup key, or created there from the catalogue in the account's
+    currency (`STRIPE_CURRENCY` optional). A changed catalogue price gets a new Stripe price.
+  * **Checkout and portal.** Checkout is confirmed when the owner returns. The customer portal is set up if the
+    account has none.
+  * **Keeping plans in step.** Webhooks are optional. The worker re-reads every subscription every 15 minutes:
+    renewals, cancellations at period end, failed payments (the plan is kept while Stripe retries) and deleted
+    subscriptions.
+  * **Pricing page** names the Stripe account's currency.
+  * **Two existing bugs fixed on the way.** The webhook wrote outside the organisation's tenant context (row-level
+    security refused it), and checkout read the billing account the same way, so returning customers were never
+    reused.
+* **Plans given by staff always end**:
+  * **Lengths:** 1, 7, 14, 30, 60 or 90 days; 1, 3, 6 or 12 months (calendar months); a chosen date within five
+    years; or Permanent, chosen on purpose. The API refuses a change without one.
+  * **How it applies.** The plan applies instead of the paid or owner-chosen one. The dialog shows the end, in the
+    organisation's time zone, before saving. *End now* ends it early, and a new paid subscription ends it too.
+  * **Ending.** The worker ends it within a minute of the time and logs it as the system in the staff log and the
+    organisation's activity.
+  * **Where it shows.** The organisation page, the staff list, and the owner's Settings → Plan (migration `0020`,
+    with a `staff_read` policy on billing accounts).
+* **Sport photos.** The sports page shows a supplied photo with the real scorebug over it (`overlay-<sport>.png`,
+  captured see-through) once `photo-football.jpg` and `photo-basketball.jpg` are in `apps/web/public/site/`. The
+  public showcase uses sport-like sample scores (basketball 78–74). The app's look pages and the baselines keep 2–1.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` (adds `plan-grants.test.ts`: every length, calendar months ending on a shorter month's last day, a chosen date in the future and within five years; `billing.test.ts`: key-only payments, cents and zero-decimal currencies, which plan applies) | 224 tests, 40 files, all pass |
+| `pnpm test:db` on a newly created database, adding `tests/integration/billing.test.ts`. Over HTTP: a change without a length refused; a past date refused; 7 days, 1 month, a date and Permanent each saved with the right end; shown in the console, the list and the owner's plan screen; logged with the length; *End now*; the owner's own plan underneath and back after; the worker ending it on time as the system. Against a fake Stripe: a price created from the catalogue in the account currency once, reused when it matches, replaced when it does not; Checkout with the organisation's email and return address; someone else's session refused; confirmation applying the plan, period and renewal date and ending a staff plan; webhooks once per event in the tenant context; the worker's sync applying a renewal and a deleted subscription; nothing online without a key | 104 tests, 15 files, all pass |
+| Paint and raster cost while the sample plays (headless Chromium without a GPU, CDP trace, 1440×900) | 1×: raster 44 → 29 ms per second (including the new camera move); 2× (retina): while scrolling 32 → 21–27 ms per second. Removing the blurs alone halved raster while playing (35 → 17 ms per second at 2×) |
+| Hero recorded at 10 frames a second from page load (scratch recordings) | before: the preview moved about 16 px as the web font arrived, the still was framed differently, and a bare pitch flashed once; after: no movement, no flash, the goal readable while zoomed; checked by eye |
+| `public-site.spec.ts`, `sign-in.spec.ts`, `features.spec.ts`, `staff-console.spec.ts` (now giving a plan for 7 days: refused without a length, the end shown before saving, shown in the console and the owner's plan screen, then *End now*) | first run 13 of 14 (the staff spec found an organisation without a plan reading as "self-hosted", the column's old default; fixed); after the fix all pass |
+| Sideways scroll at 360–1920 px, dark and light: home, terms, privacy, sports, pricing, sign-up, sign-in, Settings → Plan, staff console | 108 page loads, none too wide |
+
+Not claimed:
+
+* **Stripe.** No call reached Stripe from here: this environment's network policy blocks `api.stripe.com`, and the
+  key is not in this session. Payments were tested against a fake Stripe that answers like the API. The first
+  real checkout, the portal and the webhook still need a run with the key in a deployment, or test keys here once
+  the host is allowed.
+* **Photos.** The two photos were attached to the conversation, not to the repository, so they are not in this
+  change yet.
+* **Legal.** The legal text has not been reviewed by a lawyer, and it names no legal entity, address or governing
+  law.
+* **Performance.** It was measured without a GPU, not on a visitor's machine.
 
 ## A51 and measured capacity
 

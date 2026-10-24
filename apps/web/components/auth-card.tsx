@@ -34,10 +34,10 @@ export function AuthCard({ title, subtitle, children, footer, wide = false }: { 
             {footer ? <div className="mt-8 text-center text-sm text-muted">{footer}</div> : null}
           </div>
         </div>
-        <p className="text-center text-xs text-muted">Need a hand? <Link href="/contact" className="font-medium text-primary hover:underline">Contact us</Link> · <Link href="/docs" className="font-medium text-primary hover:underline">Documentation</Link></p>
+        <p className="text-center text-xs text-muted">Need a hand? <Link href="/contact" className="font-medium text-primary hover:underline">Contact us</Link> · <Link href="/docs" className="font-medium text-primary hover:underline">Documentation</Link> · <Link href="/terms" className="font-medium text-primary hover:underline">Terms</Link> · <Link href="/privacy" className="font-medium text-primary hover:underline">Privacy</Link></p>
       </main>
       <aside aria-hidden className="relative hidden overflow-hidden bg-[#05080d] lg:block">
-        <div className="absolute inset-0 bg-[url('/site/scene-pitch.svg')] bg-cover bg-center opacity-80" />
+        <div className="absolute inset-0 bg-[url('/site/scene-pitch.jpg')] bg-cover bg-center opacity-80" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,13,0.2),rgba(5,8,13,0.85))]" />
         {own ? (
           <div className="absolute inset-x-12 bottom-14 text-white">

@@ -2,8 +2,10 @@
 //  - stills of the real renderer in the Derby look, from the public showcase (fictional teams), and close-ups of the
 //    scorebug and the goal inside it, and the homepage hero's first frame;
 //  - the app with a fresh fixture between the account's own (fictional) teams: the match page, the control room
-//    and the scorer on a phone, after kick-off and one goal. Every OBS link on screen is masked before capture.
+//    and the scorer on a phone, after kick-off and one goal. Every OBS link on screen is masked before capture;
+//  - see-through scorebugs (PNG with transparency, 16:9 like the photos they sit on) for the sport photos.
 // Usage, with the stack running:  BASE_URL=http://localhost:3000 CAPTURE_EMAIL=… CAPTURE_PASSWORD=… pnpm capture:site
+// (ONLY=stills, ONLY=app or ONLY=overlays for one part; overlays and stills need no account)
 // Use an account whose teams and players are fictional, never a customer's.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -165,8 +167,42 @@ async function app(browser) {
   await ctx.close();
 }
 
+/** The Derby scorebug for football and for basketball alone on a transparent 16:9 frame, 1600 px wide. */
+async function overlays(browser) {
+  const probe = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  await probe.goto(`${BASE}/showcase`);
+  await probe.waitForSelector('[data-layer]');
+  const w = (await probe.locator('.aspect-video').first().boundingBox()).width;
+  await probe.close();
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1200 }, deviceScaleFactor: 1600 / w });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/showcase`);
+  await p.waitForSelector('[data-layer]');
+  await p.addStyleTag({ content: HIDE_CHIPS });
+  for (const sport of ['football', 'basketball']) {
+    await p.getByRole('combobox', { name: 'Sport' }).selectOption(sport);
+    await p.getByRole('combobox', { name: 'Look' }).selectOption('derby');
+    await p.getByRole('tab', { name: /^Scorebug/ }).click();
+    await p.locator('#graphic-list').getByText('Scorebug', { exact: true }).click();
+    await p.waitForTimeout(2200);
+    // clear every background from the stage up to the page, so only the graphic is left
+    await p.evaluate(() => {
+      for (let el = document.querySelector('[data-format]'); el; el = el.parentElement) {
+        for (const [k, v] of [['background', 'transparent'], ['border-color', 'transparent'], ['box-shadow', 'none'], ['outline', 'none']]) el.style.setProperty(k, v, 'important');
+      }
+    });
+    await p.locator('.aspect-video').first().screenshot({ path: path.join(OUT, `overlay-${sport}.png`), omitBackground: true });
+    console.log('overlay', sport);
+    await p.reload();
+    await p.waitForSelector('[data-layer]');
+    await p.addStyleTag({ content: HIDE_CHIPS });
+  }
+  await ctx.close();
+}
+
 const browser = await chromium.launch();
 try {
+  if (only.includes('overlays')) await overlays(browser);
   if (only.includes('stills')) await stills(browser);
   if (only.includes('app')) await app(browser);
 } finally {

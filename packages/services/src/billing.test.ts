@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import crypto from 'node:crypto';
 import { monthsFreeYearly, PRICE_PLANS } from '@bs/domain';
 import type { AppConfig } from '@bs/config';
-import { billingConfigured, stripePrice, verifyStripeSignature, PLANS } from './billing';
+import { activeGrant, billingConfigured, effectivePlan, lookupKey, minorUnits, stripePrice, verifyStripeSignature, PLANS } from './billing';
 
 describe('billing', () => {
   it('verifies a Stripe signature and rejects replays and tampering', () => {
@@ -23,13 +23,28 @@ describe('billing', () => {
     expect(PLANS.club.popular).toBe(true);
     expect(PLANS.free.name).toBe('No plan yet');
   });
-  it('maps each plan and billing period to its Stripe price, and needs at least one to take payments', () => {
+  it('takes payments with only a secret key; a price can still be pinned per plan and period', () => {
     const cfg = { STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh', STRIPE_PRICE_STARTER_YEARLY: 'price_sy', STRIPE_PRICE_CLUB: 'price_legacy_club' } as unknown as AppConfig;
     expect(stripePrice(cfg, 'starter', 'yearly')).toBe('price_sy');
     expect(stripePrice(cfg, 'starter', 'monthly')).toBeUndefined();
     expect(stripePrice(cfg, 'club', 'monthly')).toBe('price_legacy_club');
     expect(stripePrice({ ...cfg, STRIPE_PRICE_CLUB_MONTHLY: 'price_cm' } as AppConfig, 'club', 'monthly')).toBe('price_cm');
     expect(billingConfigured(cfg)).toBe(true);
-    expect(billingConfigured({ STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh' } as unknown as AppConfig)).toBe(false);
+    expect(billingConfigured({ STRIPE_SECRET_KEY: 'sk' } as unknown as AppConfig)).toBe(true);
+    expect(billingConfigured({ STRIPE_WEBHOOK_SECRET: 'wh' } as unknown as AppConfig)).toBe(false);
+    expect(lookupKey('club', 'yearly')).toBe('matchframe_club_yearly');
+  });
+  it('counts amounts in cents, except in currencies without them', () => {
+    expect(minorUnits(79, 'aud')).toBe(7900);
+    expect(minorUnits(1990, 'usd')).toBe(199000);
+    expect(minorUnits(29, 'jpy')).toBe(29);
+  });
+  it('a plan given by staff applies until it ends, then the paid or chosen plan does', () => {
+    const now = Date.parse('2026-10-24T00:00:00Z');
+    const acct = { plan: 'starter', grantPlan: 'studio', grantEndsAt: new Date(now + 1000) } as Parameters<typeof effectivePlan>[0];
+    expect(effectivePlan(acct, now)).toBe('studio');
+    expect(effectivePlan(acct, now + 1000)).toBe('starter');
+    expect(activeGrant({ grantPlan: 'club', grantEndsAt: null }, now)).toBe('club'); // permanent
+    expect(effectivePlan(undefined, now)).toBe('free');
   });
 });

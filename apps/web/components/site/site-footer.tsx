@@ -3,8 +3,6 @@ import { ThemeChoices } from '@/components/theme-toggle';
 import { BRAND, MatchFrameLogo } from './brand';
 import { FOOTER } from './nav';
 
-// No privacy policy or terms of service links yet: none have been approved (docs/public-site.md lists them as owner
-// decisions). Add them to FOOTER's Account group once the pages exist.
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-panel/50">

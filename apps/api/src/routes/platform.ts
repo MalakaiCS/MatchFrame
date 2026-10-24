@@ -24,6 +24,8 @@ export function registerPlatformRoutes(b: AppBundle) {
 
   // ---------------------------------------------------------------- public contact form (stored; emailed to CONTACT_EMAIL when set)
   app.get('/api/v1/public/contact', async () => contact.contactStatus({ db: deps.db, config: deps.config, mailer: deps.mailer }));
+  // the pricing page: whether online payment is on and the currency Stripe charges in
+  app.get('/api/v1/public/billing', async () => billing.publicBilling(deps.config));
   app.post('/api/v1/public/contact', async (req) => contact.submitContact({ db: deps.db, config: deps.config, mailer: deps.mailer }, req.body, { ip: req.ip }));
 
   // ---------------------------------------------------------------- outbound webhooks
@@ -67,6 +69,8 @@ export function registerPlatformRoutes(b: AppBundle) {
   app.get('/api/v1/billing', async (req) => billing.getBilling(await ctxFor(req)));
   app.post('/api/v1/billing/checkout', async (req) => billing.createCheckout(await ctxFor(req), req.body as never));
   app.post('/api/v1/billing/portal', async (req) => billing.createPortal(await ctxFor(req)));
+  // back from Stripe Checkout: confirm the payment and move onto the plan without waiting for a webhook
+  app.post('/api/v1/billing/confirm', async (req) => billing.confirmCheckout(await ctxFor(req), P(z.object({ session: z.string().max(255) }), req.body).session));
   app.post('/api/v1/billing/plan', async (req) => billing.setPlanManually(await ctxFor(req), P(z.object({ plan: z.enum(billing.PLAN_KEYS) }), req.body).plan));
   app.post('/api/v1/webhooks/stripe', { config: { rawBody: true } }, async (req, reply) => {
     const secret = deps.config.STRIPE_WEBHOOK_SECRET;
@@ -74,7 +78,7 @@ export function registerPlatformRoutes(b: AppBundle) {
     const raw = (req as typeof req & { rawBody?: string }).rawBody ?? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
     if (!billing.verifyStripeSignature(raw, req.headers['stripe-signature'] as string | undefined, secret)) return reply.code(400).send({ error: 'bad signature' });
     const event = JSON.parse(raw) as { id: string; type: string; data: { object: Record<string, unknown> } };
-    return billing.handleStripeEvent(deps.db, event);
+    return billing.handleStripeEvent(deps.db, event, deps.config);
   });
 
   // ---------------------------------------------------------------- web push

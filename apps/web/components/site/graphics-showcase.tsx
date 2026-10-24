@@ -60,7 +60,7 @@ export function GraphicsShowcase() {
   const activeCategory = byCategory.some(([c]) => c === category) ? category : byCategory[0]![0];
   const shown = byCategory.find(([c]) => c === activeCategory)![1];
   const theme = DEFAULT_THEMES[look];
-  const data = useMemo(() => sampleData(theme, sport, { shootout: current.key === 'builtin:shootout', review: true, format, now: playAt }), [theme, sport, current.key, format, playAt]);
+  const data = useMemo(() => sampleData(theme, sport, { shootout: current.key === 'builtin:shootout', review: true, format, now: playAt, realScore: true }), [theme, sport, current.key, format, playAt]);
   const state = useMemo(() => frame(current, sport, playAt, true), [current, sport, playAt]);
   const choose = (key: string) => {
     setSelected(key);
@@ -156,7 +156,7 @@ export function GraphicsShowcase() {
 /** A settled frame of one graphic: motion off, drawn at one fixed moment shared with its sample data. */
 const Thumb = memo(function Thumb({ t, sport, look }: { t: TemplateDef; sport: Sport; look: Look }) {
   const at = useMemo(() => Date.now(), []);
-  const data = useMemo(() => sampleData({ ...DEFAULT_THEMES[look], motion: 'none' }, sport, { shootout: t.key === 'builtin:shootout', review: true, now: at }), [t.key, sport, look, at]);
+  const data = useMemo(() => sampleData({ ...DEFAULT_THEMES[look], motion: 'none' }, sport, { shootout: t.key === 'builtin:shootout', review: true, now: at, realScore: true }), [t.key, sport, look, at]);
   const state = useMemo(() => frame(t, sport, at - 60_000, false), [t, sport, at]);
   return (
     <Stage background={sceneFor(sport)}>

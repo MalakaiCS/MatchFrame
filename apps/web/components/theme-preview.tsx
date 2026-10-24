@@ -64,12 +64,15 @@ const BASKETBALL_POSITIONS = ['Guard', 'Guard', 'Forward', 'Forward', 'Center', 
 const FUTSAL_POSITIONS = ['Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Defender'];
 
 /** Synthetic preview data (fictional teams) for theme thumbnails and the designer. */
-export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; review?: boolean; timers?: boolean; format?: RenderData['format']; now?: number } = {}): RenderData {
+/** A score that looks like the sport's (the public showcase); everywhere else the samples stay at 2–1. */
+const REAL_SCORE: Partial<Record<Sport, { home: number; away: number }>> = { basketball: { home: 78, away: 74 }, netball: { home: 41, away: 38 }, rugby_league: { home: 18, away: 12 } };
+
+export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; review?: boolean; timers?: boolean; format?: RenderData['format']; now?: number; realScore?: boolean } = {}): RenderData {
   // kick-off is 15 minutes after the sample's own "now": a still frame drawn at a fixed time passes the same time
   const now = opts.now ?? Date.now();
   const a = getAdapter(sport);
   const cfg = a.defaultConfig;
-  const proj: MatchProjection = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
+  const proj: MatchProjection = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: (opts.realScore && REAL_SCORE[sport]) || { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
   const clocks = a.initialClocks(cfg);
   clocks.main = { ...clocks.main!, baseMs: sport === 'football' ? 63 * 60_000 + 12_000 : sport === 'rugby_league' ? 52 * 60_000 + 8_000 : sport === 'afl' ? 12 * 60_000 + 31_000 : sport === 'futsal' ? 12 * 60_000 + 31_000 : 4 * 60_000 + 31_000, periodId: proj.phase };
   // the scorebug's countdown tabs: an away player in the sin bin (rugby league), the away team a player short (futsal)

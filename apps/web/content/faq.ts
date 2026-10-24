@@ -341,8 +341,11 @@ export const FAQS: Faq[] = [
     id: 'cancel-change',
     category: 'accounts-pricing',
     q: 'Can I cancel or change plans?',
-    a: ['The plan screen under Settings shows your plan and lets the organisation owner choose another. Terms for changing plans and cancelling (when a change takes effect, and what happens to a paid period) have not been published yet; [contact us](/contact) if you need to change or cancel.'],
-    basis: 'Plan screen; no cancellation terms supplied.',
+    a: [
+      'Yes. The organisation owner changes or cancels the plan under Settings → Plan → **Manage billing**, which opens the Stripe billing portal. A cancelled plan stays until the end of the period already paid for and is not renewed; payments for a period that has started are not refunded unless the law requires it.',
+      'The details are in the [Terms and Conditions](/terms#plans). If online payment is not set up on your installation, the owner chooses the plan on the same screen.',
+    ],
+    basis: 'Terms and Conditions (24 October 2026), plan screen and Stripe customer portal (cancel at period end).',
   },
   {
     id: 'storage-time',

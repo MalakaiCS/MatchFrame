@@ -1643,7 +1643,20 @@ export const billingAccounts = pgTable('billing_accounts', {
   plan: text('plan').notNull().default('free'),
   status: text('status').notNull().default('none'), // none | trialing | active | past_due | cancelled
   currentPeriodEnd: ts('current_period_end'),
+  /** monthly | yearly, for a Stripe subscription */
+  interval: text('interval'),
+  /** the subscription ends at currentPeriodEnd instead of renewing */
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
   lastEventId: text('last_event_id'),
+  /**
+   * A plan given by site staff: it takes precedence over `plan` (the paid or owner-chosen one) until grantEndsAt
+   * (null = permanent), when the worker removes it and the organisation goes back to `plan`.
+   */
+  grantPlan: text('grant_plan'),
+  grantEndsAt: ts('grant_ends_at'),
+  grantedBy: text('granted_by'),
+  grantedAt: ts('granted_at'),
+  grantReason: text('grant_reason'),
   updatedAt: updated(),
 });
 

@@ -38,9 +38,10 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
   `GOOGLE_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` (+`MICROSOFT_TENANT_ID`) and
   `FACEBOOK_CLIENT_ID/SECRET` add "Continue with …" buttons; `SMS_PROVIDER=twilio` with `TWILIO_*` adds text-message
   sign-in codes (`mail` sends them to Mailpit in development and is refused in production);
-  `VAPID_PUBLIC_KEY/PRIVATE_KEY` (+`VAPID_SUBJECT`) enable web push for reminders; `STRIPE_SECRET_KEY`,
-  `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` enable card billing (without them the owner
-  sets the plan by hand; with them only site Admins can, in the staff console); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
+  `VAPID_PUBLIC_KEY/PRIVATE_KEY` (+`VAPID_SUBJECT`) enable web push for reminders; `STRIPE_SECRET_KEY` alone
+  turns on card payments (prices found or created in Stripe by lookup key; optional `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_CURRENCY`, `STRIPE_PRICE_*`; without a key the owner sets the plan by hand, with one plans come from
+  subscriptions or from site Admins in the staff console); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
   `METRICS_TOKEN` protects `/metrics`; `ERROR_REPORT_URL` receives a JSON report for every unhandled API error.
 * **White-label** — an organisation's `customDomain` (Settings → Branding, owners) resolves a host name to that
   organisation: point the host at the installation and let the reverse proxy accept it; sign-in and public pages
@@ -64,19 +65,29 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
   gets every table's grants (and each migration's deliberate REVOKEs) in its first `pnpm db:migrate`. Before
   24 October 2026 they were set afterwards, so a database created empty and migrated in one go lacked the grants on
   tables added after `0001`; databases migrated step by step (every deployment so far) were not affected.
+* **Payments** — with `STRIPE_SECRET_KEY` set, owners buy Starter, Club or Studio (monthly or yearly) through
+  Stripe Checkout from Settings → Plan; the plan applies when they come back (the session is read from Stripe), and
+  renewals, cancellations at period end, failed payments (the plan is kept while Stripe retries) and deleted
+  subscriptions arrive through the webhook, or within 15 minutes through the worker's sync. *Manage billing* opens
+  the Stripe customer portal. The pricing page shows the currency of the Stripe account once payments are on.
 * **Site staff** — the people who run the installation, across every organisation (not an organisation's own
   members). `PLATFORM_OWNER_EMAILS` (comma-separated) makes those verified accounts Owners; they add the rest in
   the staff console at `/staff` → *Staff team*. Four roles, each with everything below it:
   *Support* looks up organisations and accounts (members, usage, recent activity) and resends verification emails;
   *Moderator* also takes down public content (a match's public page, media share links; *Public links* finds the
   organisation behind a reported link); *Admin* also suspends and reactivates organisations, disables and enables
-  accounts, signs accounts out everywhere, sets plans by hand, manages Moderators and Support and reads the
+  accounts, signs accounts out everywhere, sets plans, manages Moderators and Support and reads the
   *Staff log*; *Owner* also manages Admins and other Owners. Nobody changes their own role, Admins cannot act on
   Owners or other Admins, Owners from the configuration are changed there, and there is always one Owner.
   Every action needs a reason where it changes something, and is written to the append-only staff log
   (`platform_audit_logs`) and to the organisation's own activity. Staff read other organisations through
-  read-only row-level security policies (`staff_read` on organisations, memberships and plans); changes run in
-  the organisation's tenant context. A suspended organisation's members see a suspended screen
+  read-only row-level security policies (`staff_read` on organisations, memberships, plans and billing
+  accounts); changes run in the organisation's tenant context. **A plan set by staff always ends**: 1, 7, 14, 30, 60
+  or 90 days, 1, 3, 6 or 12 months, a chosen date (within five years) or Permanent, chosen on purpose. It applies
+  instead of the plan the organisation pays for (or its owner chose) until then; the worker ends it within a minute
+  of the time (logged as the system in both logs) and the organisation goes back to its own plan. *End now* ends it
+  early, setting the plan again replaces it, and an owner who starts a paid subscription ends it too. The console
+  shows the end on the organisation page and in the list; owners see it under Settings → Plan. A suspended organisation's members see a suspended screen
   (`ORGANISATION_SUSPENDED`); its graphics outputs, public match pages, share links, API keys and invitations stop
   resolving; nothing is deleted and reactivating restores everything (open outputs keep their last picture until
   reloaded). A disabled account is signed out everywhere and its sign-ins are refused (`ACCOUNT_DISABLED`).

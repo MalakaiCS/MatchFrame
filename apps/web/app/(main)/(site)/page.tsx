@@ -63,7 +63,8 @@ export default function Home() {
       {/* 1. hero */}
       <div className="relative overflow-hidden border-b border-border">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_70%_at_75%_10%,color-mix(in_oklab,var(--color-primary)_16%,transparent),transparent_70%),radial-gradient(40%_60%_at_0%_100%,color-mix(in_oklab,#2b5cff_14%,transparent),transparent_70%)]" />
-        <Container className="relative grid grid-cols-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-14 lg:py-20">
+        {/* top-aligned: the preview must not move when the headline's web font arrives and the text column changes height */}
+        <Container className="relative grid grid-cols-1 items-start gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-14 lg:py-20">
           <div>
             <Eyebrow>Every game. Broadcast ready.</Eyebrow>
             <H1 className="mt-4 max-w-xl">Professional sports graphics. Built for your matchday.</H1>

@@ -39,6 +39,7 @@ export function registerStaffRoutes(b: AppBundle) {
     return r;
   });
   app.put('/api/v1/staff/organisations/:id/plan', async (req) => staffSvc.setOrganisationPlan(await staffFor(req), P(id, req.params).id, body(req.body) as never));
+  app.post('/api/v1/staff/organisations/:id/plan/end', async (req) => staffSvc.endOrganisationPlan(await staffFor(req), P(id, req.params).id, body(req.body) as never));
   app.post('/api/v1/staff/organisations/:id/match-pages/:matchId/take-down', async (req) => {
     const p = P(z.object({ id: z.string().uuid(), matchId: z.string().uuid() }), req.params);
     return staffSvc.takeDownMatchPage(await staffFor(req), p.id, p.matchId, body(req.body) as never);

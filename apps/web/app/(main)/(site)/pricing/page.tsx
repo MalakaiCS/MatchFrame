@@ -1,5 +1,5 @@
-import { OPTIONAL_SERVICES, PRICE_TERMS } from '@bs/domain';
-import { PlanComparison, PricingPlans } from '@/components/site/pricing-plans';
+import { OPTIONAL_SERVICES } from '@bs/domain';
+import { PlanComparison, PriceTermsNote, PricingPlans } from '@/components/site/pricing-plans';
 import { ArrowLink, Badge, ButtonLink, Container, Eyebrow, H2, Rich, Section } from '@/components/site/ui';
 import { FAQS } from '@/content/faq';
 import { siteMetadata } from '@/lib/site-meta';
@@ -18,7 +18,6 @@ const PRICING_FAQ = ['cost', 'free-trial', 'cancel-change', 'several-matches'];
 
 export default function PricingPage() {
   const faqs = PRICING_FAQ.map((id) => FAQS.find((f) => f.id === id)).filter((f): f is (typeof FAQS)[number] => !!f);
-  const terms = [PRICE_TERMS.currency ? `Prices are in ${PRICE_TERMS.currency}.` : 'Prices are shown in dollars as published.', PRICE_TERMS.tax ?? 'Checkout shows the currency, any tax and the exact total before you pay.'].join(' ');
   return (
     <>
       <div className="border-b border-border">
@@ -29,7 +28,7 @@ export default function PricingPage() {
           <div className="mt-8">
             <PricingPlans />
           </div>
-          <p className="mt-5 text-sm text-muted">{terms} Yearly plans are charged once a year, at ten times the monthly price.</p>
+          <PriceTermsNote />
         </Container>
       </div>
 

@@ -145,7 +145,7 @@ function QuickJump({ m, open, onOpenChange }: { m: Me; open: boolean; onOpenChan
   return (
     <DialogP.Root open={open} onOpenChange={onOpenChange}>
       <DialogP.Portal>
-        <DialogP.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px]" />
+        <DialogP.Overlay className="fixed inset-0 z-50 bg-black/55" />
         <DialogP.Content className="fixed left-1/2 top-[12vh] z-50 w-[calc(100vw-32px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-panel shadow-pop" aria-describedby={undefined}>
           <DialogP.Title className="sr-only">Jump to a page or search matches</DialogP.Title>
           <div className="flex items-center gap-3 border-b border-border px-4">
@@ -369,7 +369,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </DialogP.Root>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-bg/85 px-3 backdrop-blur-md sm:px-5">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-bg/95 px-3 sm:px-5">
           <button type="button" onClick={() => setDrawer(true)} className="grid size-10 place-items-center rounded-lg text-text hover:bg-elevated lg:hidden" aria-label="Open menu"><Menu className="size-5" /></button>
           <Link href="/app" className="mr-1 lg:hidden" aria-label="Home"><MatchFrameMark size={24} /></Link>
           <DM.Root>

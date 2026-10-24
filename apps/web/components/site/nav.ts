@@ -47,7 +47,7 @@ export const FOOTER: NavGroup[] = [
   { label: 'Product', links: [{ label: 'Live demo', href: '/showcase' }, { label: 'Features', href: '/features' }, { label: 'How it works', href: '/how-it-works' }, { label: 'Pricing', href: '/pricing' }] },
   { label: 'Sports', links: [{ label: 'Football', href: '/sports/football' }, { label: 'Basketball', href: '/sports/basketball' }, { label: 'Futsal', href: '/sports/futsal' }, { label: 'All sports', href: '/sports' }] },
   { label: 'Help', links: [{ label: 'Documentation', href: '/docs' }, { label: 'First match guide', href: '/docs/getting-started/first-match' }, { label: 'Matchday troubleshooting', href: '/docs#troubleshooting' }, { label: 'FAQ', href: '/faq' }, { label: 'System status', href: '/status' }] },
-  { label: 'Account', links: [{ label: 'Contact us', href: '/contact' }, { label: 'Log in', href: '/login' }, { label: 'Create an account', href: '/register' }] },
+  { label: 'Account', links: [{ label: 'Contact us', href: '/contact' }, { label: 'Log in', href: '/login' }, { label: 'Create an account', href: '/register' }, { label: 'Terms and Conditions', href: '/terms' }, { label: 'Privacy Policy', href: '/privacy' }] },
 ];
 
 export const isGroup = (x: NavGroup | NavLink): x is NavGroup => 'links' in x;

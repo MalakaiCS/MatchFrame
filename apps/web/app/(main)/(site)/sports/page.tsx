@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import Link from 'next/link';
 import { SHOTS, type Shot } from '@/components/site/shots';
 import { ArrowLink, Badge, ButtonLink, H2, H3, PageIntro, Section, SectionHeading } from '@/components/site/ui';
@@ -11,6 +13,21 @@ export const metadata = siteMetadata({
 });
 
 const STILL: Record<string, Shot> = { football: SHOTS.lineup, basketball: SHOTS.basketball };
+
+/**
+ * Match photos supplied by the owner (16:9, apps/web/public/site/photo-<sport>.jpg) with the sport's real scorebug
+ * over them (overlay-<sport>.png, from `ONLY=overlays pnpm capture:site`). Checked when the page is built: until a
+ * photo is added, the card shows the renderer still instead.
+ */
+const PHOTO_ALT: Record<string, string> = {
+  football: 'Two players contest the ball under stadium lights, with a MatchFrame scorebug in the corner',
+  basketball: 'A player goes up for a lay-up in a full arena, with a MatchFrame basketball scorebug in the corner',
+};
+const SPORT_PHOTOS = Object.fromEntries(
+  Object.entries(PHOTO_ALT)
+    .filter(([key]) => existsSync(path.join(process.cwd(), 'public', 'site', `photo-${key}.jpg`)))
+    .map(([key, alt]) => [key, { src: `/site/photo-${key}.jpg`, overlay: `/site/overlay-${key}.png`, alt }]),
+) as Record<string, { src: string; overlay: string; alt: string } | undefined>;
 
 export default function SportsPage() {
   const main = SPORTS.filter((s) => s.status === 'tested');
@@ -34,7 +51,15 @@ export default function SportsPage() {
             const still = STILL[s.key];
             return (
               <article key={s.key} aria-labelledby={`sport-${s.key}`} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-panel shadow-card">
-                {still ? <img src={still.src} alt={still.alt} width={still.w} height={still.h} loading="lazy" decoding="async" className="block h-auto w-full border-b border-border bg-[#0b1220]" /> : null}
+                {SPORT_PHOTOS[s.key] ? (
+                  // a match photo with the sport's real scorebug over it, as it looks on a broadcast
+                  <div className="relative aspect-video border-b border-border bg-[#0b1220]">
+                    <img src={SPORT_PHOTOS[s.key]!.src} alt={SPORT_PHOTOS[s.key]!.alt} width={1600} height={900} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+                    <img src={SPORT_PHOTOS[s.key]!.overlay} alt="" width={1600} height={900} loading="lazy" decoding="async" className="absolute inset-0 size-full" />
+                  </div>
+                ) : still ? (
+                  <img src={still.src} alt={still.alt} width={still.w} height={still.h} loading="lazy" decoding="async" className="block h-auto w-full border-b border-border bg-[#0b1220]" />
+                ) : null}
                 <div className="flex flex-1 flex-col p-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <H3 className="!text-2xl"><span id={`sport-${s.key}`}>{s.name}</span></H3>

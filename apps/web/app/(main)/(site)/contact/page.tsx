@@ -38,7 +38,7 @@ export default function ContactPage() {
           </div>
           <div className="rounded-2xl border border-border p-5">
             <h2 className="flex items-center gap-2 font-semibold text-text"><ShieldCheck className="size-5 text-primary" aria-hidden /> What happens to your message</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">It is stored in MatchFrame so the team can read it and reply to you, and emailed to the team's inbox when one is set up. It is deleted automatically 12 months after it arrives. We do not add you to a mailing list.</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted">It is stored in MatchFrame so the team can read it and reply to you, and emailed to the team's inbox when one is set up. It is deleted automatically 12 months after it arrives. We do not add you to a mailing list. More in the <Link href="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.</p>
             <p className="mt-3 flex items-center gap-2 text-sm text-muted"><Clock className="size-4" aria-hidden /> We reply by email; no response time is promised.</p>
           </div>
         </aside>

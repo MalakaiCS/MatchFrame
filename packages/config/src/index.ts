@@ -135,8 +135,12 @@ export const configSchema = z.object({
   PASSKEY_RP_ID: z.string().optional(),
   /** Stripe billing: secret key, webhook signing secret and the price IDs of the paid plans */
   STRIPE_SECRET_KEY: z.string().optional(),
+  /** optional: changes reach plans as they happen (without it, on return from checkout and from the worker's sync) */
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  // one Stripe price per plan and billing period (STRIPE_PRICE_CLUB is the older name for Club monthly)
+  /** three-letter currency for the prices created in Stripe; unset = the Stripe account's default currency */
+  STRIPE_CURRENCY: z.string().regex(/^[A-Za-z]{3}$/, 'a three-letter currency code, for example aud').optional(),
+  // optional: a Stripe price pinned per plan and billing period, instead of the ones found or created by lookup key
+  // (STRIPE_PRICE_CLUB is the older name for Club monthly)
   STRIPE_PRICE_STARTER_MONTHLY: z.string().optional(),
   STRIPE_PRICE_STARTER_YEARLY: z.string().optional(),
   STRIPE_PRICE_CLUB_MONTHLY: z.string().optional(),

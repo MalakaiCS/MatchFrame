@@ -6,7 +6,7 @@ import { Button, EmptyState, ErrorNotice, Input, NativeSelect, PageHeader, Spinn
 import { orgStatusPill } from '@/components/staff/pills';
 import { fmtDate, useGet } from '@/lib/hooks';
 
-interface OrgRow { id: string; name: string; slug: string; status: string; plan: string | null; members: number; owners: string | null; createdAt: string }
+interface OrgRow { id: string; name: string; slug: string; status: string; plan: string | null; staffPlan: string | null; planEndsAt: string | null; members: number; owners: string | null; createdAt: string }
 
 export default function StaffOrganisationsPage() {
   const [search, setSearch] = useState('');
@@ -43,7 +43,10 @@ export default function StaffOrganisationsPage() {
                   <td><Link className="font-medium text-primary hover:underline" href={`/staff/organisations/${o.id}`}>{o.name}</Link><div className="text-xs text-muted">{o.slug}</div></td>
                   <td className="max-w-64 truncate text-muted">{o.owners ?? '—'}</td>
                   <td>{o.members}</td>
-                  <td>{o.plan ?? 'free'}</td>
+                  <td>
+                    {o.plan ?? 'free'}
+                    {o.staffPlan ? <span className="block text-xs text-muted">{o.planEndsAt ? `staff plan until ${new Date(o.planEndsAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'staff plan, permanent'}</span> : null}
+                  </td>
                   <td>{orgStatusPill(o.status)}</td>
                   <td className="text-muted">{fmtDate(o.createdAt, 'UTC', { dateStyle: 'medium' })}</td>
                 </tr>

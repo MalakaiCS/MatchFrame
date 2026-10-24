@@ -136,6 +136,9 @@ function Register() {
           {withPassword ? 'Use an email code instead (no password)' : 'Set a password instead'}
         </button>
       </form>
+      <p className="mt-6 text-center text-xs leading-relaxed text-muted">
+        By creating an account{providers.length ? ' (with your email or another account)' : ''} you agree to the <Link href="/terms" className="font-medium text-primary hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+      </p>
     </AuthCard>
   );
 }

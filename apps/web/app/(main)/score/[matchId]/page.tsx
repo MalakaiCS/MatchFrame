@@ -395,7 +395,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   };
   const liveRows = sheet ? (
     <div aria-label="Teams" role="region" className="pb-4">
-      <div aria-hidden className="sticky top-0 z-10 grid grid-cols-2 gap-2 border-b border-border bg-bg/95 px-3 py-2 backdrop-blur">
+      <div aria-hidden className="sticky top-0 z-10 grid grid-cols-2 gap-2 border-b border-border bg-bg/95 px-3 py-2">
         {SIDES.map((side) => <span key={side} className="rounded-lg bg-panel px-2.5 py-1.5">{teamTag(side)}</span>)}
       </div>
       {sheet.map((sec) => {
@@ -692,7 +692,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
       </main>
 
       {/* the dock: undo, the events, the line-ups, the details and the end of the period */}
-      <nav aria-label="Match controls" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-panel/95 px-2 pt-2 backdrop-blur" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      <nav aria-label="Match controls" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-panel/95 px-2 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         <div className="mx-auto flex max-w-xl items-center gap-1">
           {access !== 'view' ? <button type="button" aria-label="Undo the last action" className={DOCK_BTN} disabled={!canStats || (quickUndoOpen ? !quickUndoReady : !(access === 'score' && lastFact))} onClick={undoLast}><Undo2 className="size-5" aria-hidden />Undo</button> : null}
           <button type="button" aria-label="Match events" className={DOCK_BTN} onClick={() => setEventsOpen(true)}><List className="size-5" aria-hidden />Events</button>

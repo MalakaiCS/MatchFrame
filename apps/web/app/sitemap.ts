@@ -4,7 +4,7 @@ import { DOCS } from '@/content/docs';
 import { publicBase } from '@/lib/site-meta';
 
 // every indexable public page; sign-in, sign-up and the status page (never indexed) are left out
-const PAGES = ['/', '/features', '/how-it-works', '/showcase', '/sports', '/sports/football', '/sports/basketball', '/sports/futsal', '/pricing', '/faq', '/docs', '/contact'];
+const PAGES = ['/', '/features', '/how-it-works', '/showcase', '/sports', '/sports/football', '/sports/basketball', '/sports/futsal', '/pricing', '/faq', '/docs', '/contact', '/terms', '/privacy'];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = publicBase();

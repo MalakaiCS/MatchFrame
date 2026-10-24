@@ -5,6 +5,7 @@
 import { and, count, desc, eq, gt, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import {
   auditLogs,
+  billingAccounts,
   competitions,
   entitlements,
   matches,
@@ -23,11 +24,11 @@ import {
   type Db,
   type Tx,
 } from '@bs/db';
-import { canActOnAccount, canManageStaff, isStaffRole, staffCan, STAFF_LABELS, STAFF_ROLES, type StaffAction, type StaffRole } from '@bs/domain';
+import { canActOnAccount, canManageStaff, isStaffRole, PLAN_GRANT_DURATIONS, PLAN_GRANT_KEYS, planGrantEnd, PlanGrantError, staffCan, STAFF_LABELS, STAFF_ROLES, type StaffAction, type StaffRole } from '@bs/domain';
 import * as contact from './contact';
 import { z } from 'zod';
 import { safeSnapshot } from './audit';
-import { applyManualPlan, PLAN_KEYS, type PlanKey } from './billing';
+import { activeGrant, endPlanGrant, grantPlan, PLAN_KEYS, PLANS, type PlanKey } from './billing';
 import type { Deps } from './context';
 import { AppError, conflict, invalid, notFound } from './errors';
 import { enqueueOutbox } from './outbox';
@@ -114,11 +115,14 @@ export async function listOrganisations(ctx: StaffCtx, q: { search?: string; sta
         suspendedAt: organisations.suspendedAt,
         createdAt: organisations.createdAt,
         plan: entitlements.plan,
+        planEndsAt: billingAccounts.grantEndsAt,
+        staffPlan: billingAccounts.grantPlan,
         members: sql<number>`(select count(*)::int from memberships m where m.organisation_id = ${organisations.id} and m.status = 'active')`,
         owners: sql<string | null>`(select string_agg(u.email, ', ' order by u.email) from memberships m join users u on u.id = m.user_id where m.organisation_id = ${organisations.id} and m.role = 'owner' and m.status = 'active')`,
       })
       .from(organisations)
       .leftJoin(entitlements, eq(entitlements.organisationId, organisations.id))
+      .leftJoin(billingAccounts, eq(billingAccounts.organisationId, organisations.id))
       .where(where)
       .orderBy(organisations.name)
       .limit(PAGE)
@@ -141,6 +145,20 @@ export async function getOrganisation(ctx: StaffCtx, organisationId: string) {
       .where(org)
       .orderBy(memberships.role, users.name);
     const [ent] = await t.select({ plan: entitlements.plan, limits: entitlements.limits, features: entitlements.features }).from(entitlements).where(eq(entitlements.organisationId, organisationId));
+    const [acct] = await t.select().from(billingAccounts).where(eq(billingAccounts.organisationId, organisationId));
+    const [giver] = acct?.grantedBy ? await t.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, acct.grantedBy)) : [];
+    const granted = activeGrant(acct, Date.now());
+    // what the organisation pays for (or its owner chose), and a plan given by staff on top, with when it ends
+    const billing = {
+      // an organisation that never had a plan has the column default ('self-hosted') in its entitlements
+      basePlan: acct?.plan ?? (ent?.plan && ent.plan in PLANS ? ent.plan : 'free'),
+      provider: acct?.provider ?? null,
+      status: acct?.status ?? 'none',
+      interval: acct?.interval ?? null,
+      currentPeriodEnd: acct?.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: acct?.cancelAtPeriodEnd ?? false,
+      staffPlan: granted && acct ? { plan: granted, endsAt: acct.grantEndsAt, since: acct.grantedAt, reason: acct.grantReason, by: giver ?? null } : null,
+    };
     const n = async (q: Promise<{ n: number }[]>) => (await q)[0]?.n ?? 0;
     const counts = {
       competitions: await n(t.select({ n: count() }).from(competitions).where(eq(competitions.organisationId, organisationId))),
@@ -171,7 +189,7 @@ export async function getOrganisation(ctx: StaffCtx, organisationId: string) {
       .where(eq(auditLogs.organisationId, organisationId))
       .orderBy(desc(auditLogs.createdAt))
       .limit(30);
-    return { members, entitlements: ent ?? null, counts, publicPages, shareLinks: links, activity };
+    return { members, entitlements: ent ?? null, billing, counts, publicPages, shareLinks: links, activity };
   });
   // looking at an organisation is recorded too (at most once every 30 minutes per staff member)
   const [recent] = await ctx.db
@@ -216,17 +234,52 @@ export async function reactivateOrganisation(ctx: StaffCtx, organisationId: stri
   });
 }
 
-export async function setOrganisationPlan(ctx: StaffCtx, organisationId: string, input: { plan: string; reason: string }) {
+export const planChangeInput = z.object({
+  plan: z.enum(PLAN_KEYS),
+  reason,
+  /** every change has an end: a number of days or months, a date, or Permanent chosen on purpose */
+  duration: z.enum(PLAN_GRANT_KEYS, { message: 'Choose how long the plan lasts' }),
+  until: z.string().datetime({ offset: true }).optional(),
+});
+
+/**
+ * Give an organisation a plan until a chosen end (or permanently). It applies instead of the plan the organisation
+ * pays for or chose, until the worker ends it; the end can be changed by setting the plan again, or ended now.
+ */
+export async function setOrganisationPlan(ctx: StaffCtx, organisationId: string, input: z.input<typeof planChangeInput>) {
   need(ctx, 'organisation.plan');
-  const d = z.object({ plan: z.enum(PLAN_KEYS), reason }).parse(input);
+  const d = planChangeInput.parse(input);
+  const now = Date.now();
+  let endsAt: Date | null;
+  try {
+    endsAt = planGrantEnd(d.duration, new Date(now), d.until);
+  } catch (e) {
+    if (e instanceof PlanGrantError) throw invalid(e.message, [{ field: d.duration === 'date' ? 'until' : 'duration', message: e.message }]);
+    throw e;
+  }
+  const length = PLAN_GRANT_DURATIONS.find((x) => x.key === d.duration)!.label;
   return inOrg(ctx, organisationId, async (t) => {
     const [o] = await t.select().from(organisations).where(eq(organisations.id, organisationId));
     if (!o || o.status === 'deleted') throw notFound('Organisation');
-    const [cur] = await t.select({ plan: entitlements.plan }).from(entitlements).where(eq(entitlements.organisationId, organisationId));
-    await applyManualPlan(t, organisationId, d.plan as PlanKey, ctx.staff.userId);
-    await orgAudit(t, ctx, organisationId, 'staff.billing.plan', 'organisation', organisationId, { after: { plan: d.plan }, reason: d.reason });
-    await log(t, ctx, 'organisation.plan', 'organisation', organisationId, { organisationId, reason: d.reason, detail: { before: cur?.plan ?? null, after: d.plan } });
-    return { plan: d.plan };
+    const r = await grantPlan(t, organisationId, { plan: d.plan as PlanKey, endsAt, by: ctx.staff.userId, reason: d.reason, now });
+    const detail = { before: r.before.plan, after: d.plan, duration: length, endsAt: endsAt?.toISOString() ?? null, afterEnd: r.basePlan };
+    await orgAudit(t, ctx, organisationId, 'staff.billing.plan', 'organisation', organisationId, { after: detail, reason: d.reason });
+    await log(t, ctx, 'organisation.plan', 'organisation', organisationId, { organisationId, reason: d.reason, detail });
+    return { plan: d.plan, endsAt, afterEnd: r.basePlan };
+  });
+}
+
+/** End a plan given by staff now; the organisation goes back to the plan it pays for or chose. */
+export async function endOrganisationPlan(ctx: StaffCtx, organisationId: string, input: { reason: string }) {
+  need(ctx, 'organisation.plan');
+  const why = reason.parse(input.reason);
+  return inOrg(ctx, organisationId, async (t) => {
+    const [o] = await t.select().from(organisations).where(eq(organisations.id, organisationId));
+    if (!o || o.status === 'deleted') throw notFound('Organisation');
+    const r = await endPlanGrant(t, organisationId, ctx.staff.userId, Date.now());
+    await orgAudit(t, ctx, organisationId, 'staff.billing.plan_end', 'organisation', organisationId, { after: { ended: r.ended, plan: r.plan }, reason: why });
+    await log(t, ctx, 'organisation.plan.end', 'organisation', organisationId, { organisationId, reason: why, detail: { ended: r.ended, now: r.plan } });
+    return { plan: r.plan, ended: r.ended };
   });
 }
 

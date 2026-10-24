@@ -5,7 +5,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Check, Minus } from 'lucide-react';
-import { PLAN_COMPARISON, PRICE_PLANS, monthsFreeYearly, type BillingInterval, type PricePlan } from '@bs/domain';
+import { PLAN_COMPARISON, PRICE_PLANS, PRICE_TERMS, monthsFreeYearly, type BillingInterval, type PricePlan } from '@bs/domain';
+import { get } from '@/lib/api';
 
 const money = (n: number, cents = false) => `$${n.toLocaleString('en-AU', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : undefined)}`;
 const signupHref = (p: PricePlan, interval: BillingInterval) => (p.selfServe ? `/register?plan=${p.key}&billing=${interval}` : '/contact?topic=sales&plan=league');
@@ -77,6 +78,24 @@ export function PricingPlans() {
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * The currency and tax line under the plans: the currency Stripe actually charges in once online payment is on
+ * (read from the payment account, never guessed), otherwise the published wording.
+ */
+export function PriceTermsNote() {
+  const [currency, setCurrency] = useState<string | null>(PRICE_TERMS.currency);
+  useEffect(() => {
+    if (PRICE_TERMS.currency) return;
+    void get<{ online: boolean; currency: string | null }>('public/billing').then((r) => r.currency && setCurrency(r.currency)).catch(() => undefined);
+  }, []);
+  return (
+    <p className="mt-5 text-sm text-muted">
+      {currency ? `Prices are in ${currency}.` : 'Prices are shown in dollars as published.'} {PRICE_TERMS.tax ?? 'Checkout shows the currency, any tax and the exact total before you pay.'} Yearly plans are charged once a year, at ten times the monthly price. Subscriptions renew until cancelled; see the{' '}
+      <Link href="/terms#plans" className="font-medium text-primary hover:underline">Terms and Conditions</Link>.
+    </p>
   );
 }
 

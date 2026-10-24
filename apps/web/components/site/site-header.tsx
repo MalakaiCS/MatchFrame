@@ -106,7 +106,7 @@ export function SiteHeader() {
   const active = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur-md supports-[backdrop-filter]:bg-bg/75">
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/95">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-on-primary">
         Skip to content
       </a>

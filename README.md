@@ -86,6 +86,7 @@ tests/              integration, e2e, media scripts and fixtures
   ingress ≈105 %). Two concurrent sessions: see A51 in `ACCEPTANCE_RESULTS.md`. Capacity is enforced by
   `MAX_CONCURRENT_PROGRAMMES` (outputs) — set it from your own measurement.
 * RTMP ingest is unencrypted (labelled as such); SRT, programme WebRTC and platform OAuth for destinations are P1.
-* Billing (Stripe), Google/Microsoft sign-in and web push are built and config-gated; they have not been
-  exercised against live provider accounts from this repository. 1080p presets are marked unmeasured.
+* Payments (Stripe, on with only the secret key), Google/Apple/Microsoft/Facebook sign-in, text-message codes and
+  web push are built and config-gated; they have been tested against fake providers, not against live provider
+  accounts from this repository. 1080p presets are marked unmeasured.
 * The fake media provider is only for automated tests and explicitly labelled demo mode.

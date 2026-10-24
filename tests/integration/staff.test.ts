@@ -146,8 +146,8 @@ describe('site staff', () => {
     expect((await s.ada.c.req('POST', `/api/v1/staff/organisations/${orgId}/reactivate`, {})).json).toEqual({ status: 'active' });
     expect((await s.alice.c.req('GET', '/api/v1/competitions')).status).toBe(200);
 
-    // and gives it a plan by hand
-    expect((await s.ada.c.req('PUT', `/api/v1/staff/organisations/${orgId}/plan`, { plan: 'club', reason: 'Sponsored club' })).json).toEqual({ plan: 'club' });
+    // and gives it a plan by hand, until a set time (tests/integration/billing.test.ts covers the durations)
+    expect((await s.ada.c.req('PUT', `/api/v1/staff/organisations/${orgId}/plan`, { plan: 'club', reason: 'Sponsored club', duration: '90d' })).json).toMatchObject({ plan: 'club', afterEnd: 'free' });
     expect((await s.ada.c.req('GET', `/api/v1/staff/organisations/${orgId}`)).json).toMatchObject({ entitlements: { plan: 'club' } });
   });
 

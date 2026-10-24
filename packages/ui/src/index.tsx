@@ -187,7 +187,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <DialogP.Root open={open} onOpenChange={onOpenChange}>
       <DialogP.Portal>
-        <DialogP.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
+        <DialogP.Overlay className="fixed inset-0 z-40 bg-black/60" />
         <DialogP.Content className={cx('fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl border border-border bg-panel p-5 shadow-pop sm:p-6', size === 'xl' ? 'max-w-6xl' : wide || size === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
