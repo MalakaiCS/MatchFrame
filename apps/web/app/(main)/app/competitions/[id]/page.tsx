@@ -84,9 +84,9 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
               <h2 className="font-medium">Rules</h2>
               {full ? <Button size="sm" onClick={() => setRulesOpen(true)}>Edit rules and timing</Button> : null}
             </div>
-            {/* the timeline draws the timing (the first rule); the rest fits on one line */}
+            {/* the timeline draws the periods and breaks; the rules themselves read as one line under it */}
             {hasTimeline ? <MatchTimeline sport={comp.sport as Sport} config={comp.rulesConfig} className="mb-2" /> : null}
-            <p className="text-sm text-muted">{(hasTimeline ? comp.rulesDescription.slice(1) : comp.rulesDescription).join(' · ')}</p>
+            <p className="text-sm text-muted">{comp.rulesDescription.join(' · ')}</p>
             <p className="mt-2 text-xs text-muted">Changes apply to upcoming matches; a match under way keeps its rules.{comp.finals ? ` Finals: ${comp.finals.own ? 'their own rules' : comp.finals.knockoutLabel ? `these rules with ${comp.finals.knockoutLabel.toLowerCase()}` : 'these rules'} (Finals tab).` : ''}</p>
           </Card>
           <div className="lg:col-span-2"><StandingsRulesCard competitionId={id} sport={comp.sport} rules={comp.standingsRules as never} canEdit={full} /></div>
