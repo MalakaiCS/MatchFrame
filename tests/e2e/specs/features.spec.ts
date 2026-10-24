@@ -120,6 +120,7 @@ test('live page, competition tables, round creation and the status page', async 
   await expect(page.getByText(/Round|Unrounded|No fixtures in this season yet|E2E/).first()).toBeVisible();
   await page.getByRole('tab', { name: 'Players' }).click();
   await expect(page.getByLabel('Sort players by')).toBeVisible();
+  await page.getByRole('tab', { name: /^Fixtures and results/ }).click();
   await page.getByRole('group', { name: 'Show fixtures' }).getByRole('button', { name: 'All matches' }).click();
   await expect(page.locator('th', { hasText: 'Kick-off' })).toBeVisible();
   await page.getByRole('button', { name: 'Create a round' }).click();
