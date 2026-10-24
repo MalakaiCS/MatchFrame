@@ -1,4 +1,4 @@
-// Field hockey: four count-down quarters, one-point goals (field, penalty corner, penalty stroke), green,
+// Field hockey: four count-down quarters (or two halves, as some competitions play), one-point goals (field, penalty corner, penalty stroke), green,
 // yellow and red cards, rolling substitutions and an optional shoot-out when level.
 import { z } from 'zod';
 import { clockDisplayMs, clockExpired, createClock, formatClock } from '../clock';
@@ -10,7 +10,9 @@ import { shootoutStatus } from '../shootout';
 import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const hockeyConfigSchema = z.object({
-  periodMinutes: z.number().int().min(5).max(20),
+  // rules saved before halves were possible are quarters
+  format: z.enum(['quarters', 'halves']).default('quarters'),
+  periodMinutes: z.number().int().min(5).max(40),
   quarterBreakMinutes: z.number().int().min(1).max(10),
   halfTimeMinutes: z.number().int().min(2).max(20),
   shootout: z.object({ enabled: z.boolean() }),
@@ -18,11 +20,12 @@ export const hockeyConfigSchema = z.object({
 });
 export type HockeyConfig = z.infer<typeof hockeyConfigSchema>;
 
-const STANDARD: HockeyConfig = { periodMinutes: 15, quarterBreakMinutes: 2, halfTimeMinutes: 10, shootout: { enabled: false }, label: 'Standard 4×15' };
+const STANDARD: HockeyConfig = { format: 'quarters', periodMinutes: 15, quarterBreakMinutes: 2, halfTimeMinutes: 10, shootout: { enabled: false }, label: 'Standard 4×15' };
 
+const halves = (c: HockeyConfig) => c.format === 'halves';
 const spec = (c: HockeyConfig): PeriodSpec => ({
-  count: 4,
-  period: (n) => ({ label: `${ordinal(n)} Quarter`, short: `Q${n}` }),
+  count: halves(c) ? 2 : 4,
+  period: (n) => (halves(c) ? { label: `${ordinal(n)} Half`, short: `H${n}` } : { label: `${ordinal(n)} Quarter`, short: `Q${n}` }),
   interval: (n, half) => (half ? { label: 'Half Time', short: 'HT' } : n === 1 ? { label: 'Quarter Time', short: 'QT' } : { label: 'Three-Quarter Time', short: '3QT' }),
   extra: null,
   shootout: c.shootout.enabled ? { label: 'Shoot-out', short: 'SO' } : null,
@@ -67,9 +70,10 @@ export const hockeyAdapter: SportAdapter<HockeyConfig> = {
     { id: 'standard', label: STANDARD.label, config: STANDARD },
     { id: 'finals', label: 'Finals 4×15 with shoot-out', config: { ...STANDARD, shootout: { enabled: true }, label: 'Finals 4×15 with shoot-out' } },
     { id: 'junior', label: 'Junior 4×10', config: { ...STANDARD, periodMinutes: 10, halfTimeMinutes: 5, label: 'Junior 4×10' } },
+    { id: 'halves', label: 'Halves 2×30', config: { ...STANDARD, format: 'halves', periodMinutes: 30, halfTimeMinutes: 10, label: 'Halves 2×30' } },
   ],
   describeRules: (c) => [
-    `4×${c.periodMinutes}-minute quarters (count-down clock), ${c.quarterBreakMinutes}-minute quarter breaks, ${c.halfTimeMinutes}-minute half time`,
+    halves(c) ? `2×${c.periodMinutes}-minute halves (count-down clock), ${c.halfTimeMinutes}-minute half time` : `4×${c.periodMinutes}-minute quarters (count-down clock), ${c.quarterBreakMinutes}-minute quarter breaks, ${c.halfTimeMinutes}-minute half time`,
     'Green card: 2-minute suspension; yellow: 5 or 10 minutes; red: sent off',
     c.shootout.enabled ? 'Shoot-out when level (kept separately from the match score)' : 'Draws stand',
     'Rolling substitutions',
@@ -199,7 +203,7 @@ export const hockeyAdapter: SportAdapter<HockeyConfig> = {
     const main = clocks.main!;
     const ms = clockDisplayMs(main, now);
     const alerts: string[] = [];
-    if (ph.kind === 'play' && p.phase !== 'shootout' && clockExpired(main, now)) alerts.push('Quarter clock at 0:00 — end the quarter when the umpires confirm');
+    if (ph.kind === 'play' && p.phase !== 'shootout' && clockExpired(main, now)) alerts.push(`${halves(c) ? 'Half' : 'Quarter'} clock at 0:00 — end the ${halves(c) ? 'half' : 'quarter'} when the umpires confirm`);
     return {
       periodLabel: ph.label,
       periodShort: ph.short,

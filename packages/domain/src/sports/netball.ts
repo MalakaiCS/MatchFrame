@@ -1,4 +1,4 @@
-// Netball: four count-down quarters, one-point goals (two for a super shot when the competition uses it),
+// Netball: four count-down quarters (or two halves, as some junior and social competitions play), one-point goals (two for a super shot when the competition uses it),
 // rolling substitutions, and the broadcast statistics (attempts, intercepts, rebounds, turnovers, penalties).
 import { z } from 'zod';
 import { clockDisplayMs, clockExpired, createClock, formatClock } from '../clock';
@@ -6,23 +6,26 @@ import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import { err, ok, type DisplayModel, type EventTypeDef, type PhaseDef, type Result, type Side } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
-import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
+import { clocksForPeriodPhase, extraBreaksText, extraPeriodsSchema, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const netballConfigSchema = z.object({
-  periodMinutes: z.number().int().min(5).max(20),
+  // rules saved before halves were possible are quarters
+  format: z.enum(['quarters', 'halves']).default('quarters'),
+  periodMinutes: z.number().int().min(5).max(30),
   quarterBreakMinutes: z.number().int().min(1).max(10),
   halfTimeMinutes: z.number().int().min(1).max(20),
   superShot: z.boolean(),
-  extraTime: z.object({ enabled: z.boolean(), periodMinutes: z.number().int().min(3).max(10) }),
+  extraTime: extraPeriodsSchema({ min: 3, max: 10 }, { before: 4, between: 1 }),
   label: z.string().max(80),
 });
 export type NetballConfig = z.infer<typeof netballConfigSchema>;
 
-const STANDARD: NetballConfig = { periodMinutes: 15, quarterBreakMinutes: 4, halfTimeMinutes: 12, superShot: false, extraTime: { enabled: false, periodMinutes: 7 }, label: 'Standard 4×15' };
+const STANDARD: NetballConfig = { format: 'quarters', periodMinutes: 15, quarterBreakMinutes: 4, halfTimeMinutes: 12, superShot: false, extraTime: { enabled: false, periodMinutes: 7, breakMinutes: 4, intervalMinutes: 1 }, label: 'Standard 4×15' };
 
+const halves = (c: NetballConfig) => c.format === 'halves';
 const spec = (c: NetballConfig): PeriodSpec => ({
-  count: 4,
-  period: (n) => ({ label: `${ordinal(n)} Quarter`, short: `Q${n}` }),
+  count: halves(c) ? 2 : 4,
+  period: (n) => (halves(c) ? { label: `${ordinal(n)} Half`, short: `H${n}` } : { label: `${ordinal(n)} Quarter`, short: `Q${n}` }),
   interval: (n, half) => (half ? { label: 'Half Time', short: 'HT' } : n === 1 ? { label: 'Quarter Time', short: 'QT' } : { label: 'Three-Quarter Time', short: '3QT' }),
   extra: c.extraTime.enabled ? { count: 2, period: (k) => ({ label: `Extra Time ${k}`, short: `ET${k}` }), beforeLabel: 'Before Extra Time' } : null,
   shootout: null,
@@ -65,13 +68,14 @@ export const netballAdapter: SportAdapter<NetballConfig> = {
   defaultConfig: STANDARD,
   presets: [
     { id: 'standard', label: STANDARD.label, config: STANDARD },
-    { id: 'super-shot', label: 'League 4×15 with super shot', config: { ...STANDARD, superShot: true, extraTime: { enabled: true, periodMinutes: 7 }, label: 'League 4×15 with super shot' } },
+    { id: 'super-shot', label: 'League 4×15 with super shot', config: { ...STANDARD, superShot: true, extraTime: { enabled: true, periodMinutes: 7, breakMinutes: 4, intervalMinutes: 1 }, label: 'League 4×15 with super shot' } },
     { id: 'junior', label: 'Junior 4×10', config: { ...STANDARD, periodMinutes: 10, quarterBreakMinutes: 3, halfTimeMinutes: 5, label: 'Junior 4×10' } },
+    { id: 'halves', label: 'Halves 2×20', config: { ...STANDARD, format: 'halves', periodMinutes: 20, halfTimeMinutes: 5, label: 'Halves 2×20' } },
   ],
   describeRules: (c) => [
-    `4×${c.periodMinutes}-minute quarters (count-down clock), ${c.quarterBreakMinutes}-minute quarter breaks, ${c.halfTimeMinutes}-minute half time`,
+    halves(c) ? `2×${c.periodMinutes}-minute halves (count-down clock), ${c.halfTimeMinutes}-minute half time` : `4×${c.periodMinutes}-minute quarters (count-down clock), ${c.quarterBreakMinutes}-minute quarter breaks, ${c.halfTimeMinutes}-minute half time`,
     c.superShot ? 'Super shot worth two goals from the outer circle' : 'All goals worth one',
-    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level` : 'Draws stand',
+    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level${extraBreaksText(c.extraTime, 4, 1)}` : 'Draws stand',
     'Rolling substitutions at breaks and stoppages',
   ],
   phases: phasesFor,
@@ -179,7 +183,7 @@ export const netballAdapter: SportAdapter<NetballConfig> = {
     const main = clocks.main!;
     const ms = clockDisplayMs(main, now);
     const alerts: string[] = [];
-    if (ph.kind === 'play' && clockExpired(main, now)) alerts.push('Quarter clock at 0:00 — end the quarter when the umpires confirm');
+    if (ph.kind === 'play' && clockExpired(main, now)) alerts.push(`${halves(c) ? 'Half' : 'Quarter'} clock at 0:00 — end the ${halves(c) ? 'half' : 'quarter'} when the umpires confirm`);
     return {
       periodLabel: ph.label,
       periodShort: ph.short,

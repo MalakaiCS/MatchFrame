@@ -18,6 +18,7 @@ import {
   POSSESSION_EVENT,
   REVIEW_SUBJECT_LABELS,
   REVIEW_SUBJECTS,
+  breakCountdown,
   clockDisplayMs,
   getAdapter,
   onField,
@@ -32,6 +33,7 @@ import {
   type EventTypeDef,
   type LineupPlayer,
   type PhaseDef,
+  type Sport,
 } from '@bs/domain';
 import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, Spinner, StatusPill, Switch, cx } from '@bs/ui';
 import { get } from '@/lib/api';
@@ -344,6 +346,8 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
     void s.enqueue('CLOCK_ACTION', { clockId: 'main', action: 'set', ms: Math.max(0, clockNow + deltaMs), reason: `Adjusted by ${deltaMs > 0 ? '+' : '−'}1 minute on the scorer` }, `Clock ${deltaMs > 0 ? '+' : '−'}1 min`);
   };
   const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+  // in a break: how long until the next period is due, from the break length in the competition's rules
+  const breakLeft = phase.kind === 'break' ? breakCountdown(m.sport as Sport, cfg as Record<string, unknown>, proj, s.serverNow()) : null;
   const ev = (type: string) => events.find((e) => e.type === type)!;
   const label = (type: string) => defOf(type)?.label ?? type.replace(/_/g, ' ');
   const sideLabel = (side: Side, what: string, count: string | number) => `${what}, ${team(side).shortName}: ${count}`;
@@ -467,7 +471,11 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           </ul>
         </section>
       ) : (
-        <p className={cx(CARD, 'px-4 py-3 text-[15px]')}><span className={cx(KICKER, 'block')}>{phase.label}</span>{team('home').shortName} {display.score.home} – {display.score.away} {team('away').shortName}{display.shootout ? ` · pens ${display.shootout.home}–${display.shootout.away}` : ''}</p>
+        <div className={cx(CARD, 'px-4 py-3 text-[15px]')}>
+          <span className={cx(KICKER, 'block')}>{phase.label}</span>
+          {team('home').shortName} {display.score.home} – {display.score.away} {team('away').shortName}{display.shootout ? ` · pens ${display.shootout.home}–${display.shootout.away}` : ''}
+          {breakLeft ? <p className="mt-1.5 text-sm text-muted" role="timer" aria-live="off">{breakLeft.next} due in <strong className="tabular-nums text-text">{mmss(breakLeft.msLeft)}</strong> ({breakLeft.minutes}-minute break in the rules)</p> : null}
+        </div>
       )}
       {access === 'score' ? (
         <section role="region" aria-label="Match phase" className={cx(CARD, 'p-4')}>

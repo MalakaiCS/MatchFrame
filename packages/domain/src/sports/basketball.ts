@@ -8,7 +8,11 @@ import { onField, substitutionProblem } from '../lineup';
 export const basketballConfigSchema = z.object({
   format: z.enum(['quarters', 'halves']),
   periodMinutes: z.number().int().min(1).max(30),
+  // breaks (rules saved before these existed get the usual lengths)
+  quarterBreakMinutes: z.number().int().min(0).max(10).default(2),
+  halfTimeMinutes: z.number().int().min(0).max(30).default(15),
   overtimeMinutes: z.number().int().min(1).max(10),
+  overtimeBreakMinutes: z.number().int().min(0).max(10).default(2),
   maxOvertimes: z.number().int().min(0).max(9),
   shotClock: z.object({
     enabled: z.boolean(),
@@ -29,7 +33,10 @@ export type BasketballConfig = z.infer<typeof basketballConfigSchema>;
 const COMMUNITY: BasketballConfig = {
   format: 'quarters',
   periodMinutes: 10,
+  quarterBreakMinutes: 2,
+  halfTimeMinutes: 15,
   overtimeMinutes: 5,
+  overtimeBreakMinutes: 2,
   maxOvertimes: 9,
   shotClock: { enabled: true, fullSeconds: 24, resetSeconds: 14 },
   timeouts: { firstHalf: 2, secondHalf: 3, overtime: 1 },
@@ -156,11 +163,12 @@ export const basketballAdapter: SportAdapter<BasketballConfig> = {
   defaultConfig: COMMUNITY,
   presets: [
     { id: 'community-4x10', label: COMMUNITY.label, config: COMMUNITY },
-    { id: 'halves-2x20', label: 'College-style 2×20', config: { ...COMMUNITY, format: 'halves', periodMinutes: 20, timeouts: { firstHalf: 2, secondHalf: 3, overtime: 1 }, teamFoulLimit: 6, label: 'College-style 2×20' } },
-    { id: 'junior-4x8', label: 'Junior 4×8, no shot clock', config: { ...COMMUNITY, periodMinutes: 8, overtimeMinutes: 3, shotClock: { enabled: false, fullSeconds: 30, resetSeconds: 14 }, label: 'Junior 4×8, no shot clock' } },
+    { id: 'halves-2x20', label: 'College-style 2×20', config: { ...COMMUNITY, format: 'halves', periodMinutes: 20, halfTimeMinutes: 15, timeouts: { firstHalf: 2, secondHalf: 3, overtime: 1 }, teamFoulLimit: 6, label: 'College-style 2×20' } },
+    { id: 'junior-4x8', label: 'Junior 4×8, no shot clock', config: { ...COMMUNITY, periodMinutes: 8, halfTimeMinutes: 5, overtimeMinutes: 3, shotClock: { enabled: false, fullSeconds: 30, resetSeconds: 14 }, label: 'Junior 4×8, no shot clock' } },
   ],
   describeRules: (c) => [
-    `${regPeriods(c)}×${c.periodMinutes}-minute ${c.format}, ${c.overtimeMinutes}-minute overtime (max ${c.maxOvertimes})`,
+    `${regPeriods(c)}×${c.periodMinutes}-minute ${c.format}, ${c.format === 'quarters' ? `${c.quarterBreakMinutes ?? 2}-minute breaks between quarters, ` : ''}${c.halfTimeMinutes ?? 15}-minute half time`,
+    `${c.overtimeMinutes}-minute overtime (max ${c.maxOvertimes}), ${c.overtimeBreakMinutes ?? 2}-minute break before each`,
     c.shotClock.enabled ? `Shot clock ${c.shotClock.fullSeconds}s (reset ${c.shotClock.resetSeconds}s)` : 'No shot clock',
     `Timeouts: ${c.timeouts.firstHalf} first half, ${c.timeouts.secondHalf} second half, ${c.timeouts.overtime} per overtime`,
     `Team bonus after ${c.teamFoulLimit} fouls per period; player limit ${c.playerFoulLimit} fouls`,

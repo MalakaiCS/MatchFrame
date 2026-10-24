@@ -66,7 +66,7 @@ describe('netball', () => {
 
 describe('rugby league', () => {
   it('scores tries, conversions and field goals, caps interchange and offers golden point when level', () => {
-    const cfg = { ...(rugbyLeagueAdapter.defaultConfig as RugbyLeagueConfig), interchangeLimit: 1, goldenPoint: { enabled: true, periodMinutes: 5 } };
+    const cfg = { ...(rugbyLeagueAdapter.defaultConfig as RugbyLeagueConfig), interchangeLimit: 1, goldenPoint: { ...(rugbyLeagueAdapter.defaultConfig as RugbyLeagueConfig).goldenPoint, enabled: true, periodMinutes: 5 } };
     const h = harness(rugbyLeagueAdapter, cfg);
     let t = 1_000_000;
     h.phase('p1', (t += 1000));

@@ -62,7 +62,7 @@ export default function ScoreList() {
     // live now, every match today whatever its state, and everything still to come
     live: filtered.filter((m) => m.status === 'live' || day(m.scheduledAt) === today || (!FINISHED.includes(m.status) && day(m.scheduledAt) > today)),
     // kick-off was on an earlier day and nobody started it, or it was put off
-    not_started: filtered.filter((m) => m.status === 'postponed' || (m.status === 'scheduled' && day(m.scheduledAt) < today)),
+    not_started: filtered.filter((m) => m.status === 'postponed' || (m.status === 'scheduled' && day(m.scheduledAt) < today)).sort((a, b) => +new Date(b.scheduledAt) - +new Date(a.scheduledAt)),
     completed: filtered.filter((m) => FINISHED.includes(m.status)).sort((a, b) => +new Date(b.scheduledAt) - +new Date(a.scheduledAt)),
   };
   const shown = byTab[tab];

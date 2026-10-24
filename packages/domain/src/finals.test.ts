@@ -71,7 +71,7 @@ describe('knockout rules (a level score is decided)', () => {
       expect(a.knockout!.isOn(ko), sport).toBe(true);
       expect(a.configSchema.safeParse(ko).success, sport).toBe(true);
     }
-    const shootoutOnly: FootballConfig = { ...footballAdapter.defaultConfig, extraTime: { enabled: false, periodMinutes: 15 }, shootout: { enabled: true } };
+    const shootoutOnly: FootballConfig = { ...footballAdapter.defaultConfig, extraTime: { ...footballAdapter.defaultConfig.extraTime, enabled: false }, shootout: { enabled: true } };
     expect(footballAdapter.knockout!.set(shootoutOnly, true)).toBe(shootoutOnly);
   });
 

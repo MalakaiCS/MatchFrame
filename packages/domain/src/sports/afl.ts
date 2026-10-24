@@ -6,18 +6,18 @@ import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import { err, ok, type DisplayModel, type EventTypeDef, type PhaseDef, type Result, type Side } from '../types';
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
-import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
+import { clocksForPeriodPhase, extraBreaksText, extraPeriodsSchema, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const aflConfigSchema = z.object({
   periodMinutes: z.number().int().min(5).max(30),
   quarterBreakMinutes: z.number().int().min(1).max(10),
   halfTimeMinutes: z.number().int().min(5).max(30),
-  extraTime: z.object({ enabled: z.boolean(), periodMinutes: z.number().int().min(2).max(10) }),
+  extraTime: extraPeriodsSchema({ min: 2, max: 10 }, { before: 5, between: 1 }),
   label: z.string().max(80),
 });
 export type AflConfig = z.infer<typeof aflConfigSchema>;
 
-const STANDARD: AflConfig = { periodMinutes: 20, quarterBreakMinutes: 6, halfTimeMinutes: 20, extraTime: { enabled: false, periodMinutes: 3 }, label: 'Standard 4×20 plus time-on' };
+const STANDARD: AflConfig = { periodMinutes: 20, quarterBreakMinutes: 6, halfTimeMinutes: 20, extraTime: { enabled: false, periodMinutes: 3, breakMinutes: 5, intervalMinutes: 1 }, label: 'Standard 4×20 plus time-on' };
 
 const spec = (c: AflConfig): PeriodSpec => ({
   count: 4,
@@ -65,13 +65,13 @@ export const aflAdapter: SportAdapter<AflConfig> = {
   defaultConfig: STANDARD,
   presets: [
     { id: 'standard', label: STANDARD.label, config: STANDARD },
-    { id: 'finals', label: 'Finals 4×20 with extra time', config: { ...STANDARD, extraTime: { enabled: true, periodMinutes: 3 }, label: 'Finals 4×20 with extra time' } },
+    { id: 'finals', label: 'Finals 4×20 with extra time', config: { ...STANDARD, extraTime: { enabled: true, periodMinutes: 3, breakMinutes: 5, intervalMinutes: 1 }, label: 'Finals 4×20 with extra time' } },
     { id: 'junior', label: 'Junior 4×15', config: { ...STANDARD, periodMinutes: 15, quarterBreakMinutes: 5, halfTimeMinutes: 10, label: 'Junior 4×15' } },
   ],
   describeRules: (c) => [
     `4×${c.periodMinutes}-minute quarters plus time-on (count-up clock), ${c.quarterBreakMinutes}-minute quarter breaks, ${c.halfTimeMinutes}-minute half time`,
     'Goal 6, behind 1; the score line reads goals.behinds (total)',
-    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level` : 'Draws stand',
+    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level${extraBreaksText(c.extraTime, 5, 1)}` : 'Draws stand',
     'Rolling interchange',
   ],
   phases: phasesFor,

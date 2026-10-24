@@ -10,8 +10,9 @@ import { isFull, useMe } from '@/lib/session';
 import { MatchTable, type MatchRow } from '@/components/match-table';
 import { FINALS_ROUND_NAMES } from '@bs/domain';
 
-interface Filters { from: string; to: string; sport: string; competitionId: string; status: string; view: 'table' | 'cards'; sort: 'scheduledAt' | '-scheduledAt' }
-const DEFAULTS: Filters = { from: '', to: '', sport: '', competitionId: '', status: '', view: 'table', sort: 'scheduledAt' };
+/** `sortChosen`: the person picked the order themselves (only then is a saved order used; otherwise newest first). */
+interface Filters { from: string; to: string; sport: string; competitionId: string; status: string; view: 'table' | 'cards'; sort: 'scheduledAt' | '-scheduledAt'; sortChosen?: boolean }
+const DEFAULTS: Filters = { from: '', to: '', sport: '', competitionId: '', status: '', view: 'table', sort: '-scheduledAt' };
 interface Comp { id: string; name: string; sport: string; seasons?: { id: string; name: string }[] }
 
 function MatchesInner() {
@@ -28,7 +29,11 @@ function MatchesInner() {
   // per-user persisted filters
   useEffect(() => {
     get<{ prefs: { matchFilters?: Partial<Filters> } }>('me/preferences')
-      .then((r) => setF((cur) => ({ ...cur, ...(r.prefs.matchFilters ?? {}), competitionId: qs.get('competitionId') ?? r.prefs.matchFilters?.competitionId ?? '' })))
+      .then((r) => {
+        // filters saved before newest-first was the default carry the old order without anyone choosing it
+        const { sort, sortChosen, ...saved } = r.prefs.matchFilters ?? {};
+        setF((cur) => ({ ...cur, ...saved, ...(sortChosen && sort ? { sort, sortChosen } : {}), competitionId: qs.get('competitionId') ?? saved.competitionId ?? '' }));
+      })
       .finally(() => setLoaded(true));
   }, [qs]);
   useEffect(() => {
@@ -60,7 +65,7 @@ function MatchesInner() {
         <Field label="Sport" htmlFor="fs"><NativeSelect id="fs" value={f.sport} onChange={(e) => set({ sport: e.target.value })}><option value="">All</option><SportOptions /></NativeSelect></Field>
         <Field label="Competition" htmlFor="fc"><NativeSelect id="fc" value={f.competitionId} onChange={(e) => set({ competitionId: e.target.value })}><option value="">All</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
         <Field label="Status" htmlFor="fst"><NativeSelect id="fst" value={f.status} onChange={(e) => set({ status: e.target.value })}><option value="">Active</option>{['scheduled', 'live', 'completed', 'postponed', 'cancelled', 'abandoned', 'archived'].map((s) => <option key={s}>{s}</option>)}</NativeSelect></Field>
-        <Field label="Order" htmlFor="fo"><NativeSelect id="fo" value={f.sort} onChange={(e) => set({ sort: e.target.value as Filters['sort'] })}><option value="scheduledAt">Earliest first</option><option value="-scheduledAt">Latest first</option></NativeSelect></Field>
+        <Field label="Order" htmlFor="fo"><NativeSelect id="fo" value={f.sort} onChange={(e) => set({ sort: e.target.value as Filters['sort'], sortChosen: true })}><option value="-scheduledAt">Newest first</option><option value="scheduledAt">Oldest first</option></NativeSelect></Field>
         <div className="ml-auto flex gap-1" role="group" aria-label="View">
           <Button size="sm" variant={f.view === 'table' ? 'primary' : 'secondary'} onClick={() => set({ view: 'table' })} aria-pressed={f.view === 'table'}><List className="size-4" /> Table</Button>
           <Button size="sm" variant={f.view === 'cards' ? 'primary' : 'secondary'} onClick={() => set({ view: 'cards' })} aria-pressed={f.view === 'cards'}><LayoutGrid className="size-4" /> Cards</Button>

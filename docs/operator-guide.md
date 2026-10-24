@@ -8,6 +8,10 @@ Settings, Help and guides and (for site staff) the Staff console at the bottom. 
 *Collapse* folds the sidebar to icons; on a phone the menu button opens the same list. **Ctrl K** (⌘ K on a Mac),
 or the *Jump to or search* box, goes to any page, or searches matches by team or competition.
 
+**Matches** lists the newest kick-off first (the competition's *Fixtures* tab and the scorer's *Not played* and
+*Results* tabs too); *Order → Oldest first* turns it round and is remembered for you. Lists of what is coming up
+(the dashboard, control rooms, producer board, the scorer's *Now & next*) keep the next match at the top.
+
 The sun/moon button in the top bar switches between light and dark; the account menu (your initial) has
 *Appearance* (Light, Dark or System, which follows the device), *Account and sign-in*, Help and Sign out. The choice
 is kept on each device. The scorer's *Sunlight* mode is separate and stays as it was.
@@ -21,10 +25,16 @@ code.
 
 ## Before the match
 
-0. **Rules** — a competition's rules come from a preset chosen when it is created. *Competition → Overview →
-   Rules → Edit rules* changes any setting of the sport's rules (half or quarter length, breaks, timeouts, extra
-   time, shoot-out; for futsal also the clock, the foul limit and the send-off time), shows the rules it makes, and
-   refuses settings the sport does not allow. *Keep as one of your presets* saves them, under the name at the top,
+0. **Rules** — a competition's rules start from a preset chosen when it is created, and its **match timing** can be
+   changed right there in *New competition*: halves or quarters (basketball, netball, hockey), the length of each,
+   the half-time interval and the breaks between quarters, with a picture of the match underneath (each period and
+   break to scale, minutes of play and the total with breaks). *Extra time and the other rules* opens the rest:
+   extra time or overtime with the breaks before and between its periods, golden point, shoot-outs, timeouts and so
+   on. Changed rules are named from their timing ("Own rules 2×18, 5-minute half time") until you type a name.
+   Later, *Competition → Overview → Rules → Edit rules and timing* changes any setting the same way, grouped as
+   *Match timing*, *When the scores are level* and *Other rules*, shows the rules it makes, and refuses settings
+   the sport does not allow. The break lengths drive the countdown to the restart ("2ND HALF IN 4:12") on the
+   graphics and on the scorer's phone during every break. *Keep as one of your presets* saves them, under the name at the top,
    for other competitions: they are listed under *Your presets* when a competition is created and in *Apply
    preset*, and can be deleted from the same form. *Also use for upcoming matches nobody has started scoring*
    (on by default) gives the new rules to fixtures that have nothing recorded yet, not even a phase step, and

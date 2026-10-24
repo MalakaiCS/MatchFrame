@@ -13,7 +13,7 @@ import { err, ok, otherSide, type DisplayModel, type EventTypeDef, type MatchPro
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
 import { shootoutStatus } from '../shootout';
-import { clocksForPeriodPhase, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
+import { clocksForPeriodPhase, extraBreaksText, extraPeriodsSchema, ordinal, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const futsalConfigSchema = z.object({
   periodMinutes: z.number().int().min(5).max(30),
@@ -29,7 +29,7 @@ export const futsalConfigSchema = z.object({
   foulLimit: z.number().int().min(3).max(10),
   /** playing time a sent-off player's team plays short, unless the other team scores first (the Laws: 2) */
   sendOffMinutes: z.number().int().min(1).max(5),
-  extraTime: z.object({ enabled: z.boolean(), periodMinutes: z.number().int().min(3).max(10) }),
+  extraTime: extraPeriodsSchema({ min: 3, max: 10 }, { before: 5, between: 1 }),
   shootout: z.object({ enabled: z.boolean(), kicks: z.number().int().min(3).max(5) }),
   label: z.string().max(80),
 });
@@ -42,7 +42,7 @@ const STANDARD: FutsalConfig = {
   timeouts: { perPeriod: 1, seconds: 60 },
   foulLimit: 5,
   sendOffMinutes: 2,
-  extraTime: { enabled: false, periodMinutes: 5 },
+  extraTime: { enabled: false, periodMinutes: 5, breakMinutes: 5, intervalMinutes: 1 },
   shootout: { enabled: false, kicks: 5 },
   label: 'Futsal Laws: 2×20 stopped clock',
 };
@@ -166,7 +166,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
     {
       id: 'knockout',
       label: 'Knockout: 2×20 stopped clock, extra time 2×5 and kicks from the penalty mark',
-      config: { ...STANDARD, extraTime: { enabled: true, periodMinutes: 5 }, shootout: { enabled: true, kicks: 5 }, label: 'Knockout: 2×20 stopped clock, extra time 2×5 and kicks from the penalty mark' },
+      config: { ...STANDARD, extraTime: { enabled: true, periodMinutes: 5, breakMinutes: 5, intervalMinutes: 1 }, shootout: { enabled: true, kicks: 5 }, label: 'Knockout: 2×20 stopped clock, extra time 2×5 and kicks from the penalty mark' },
     },
     {
       id: 'community',
@@ -185,7 +185,7 @@ export const futsalAdapter: SportAdapter<FutsalConfig> = {
     `Accumulated fouls (those penalised with a direct free kick or a penalty) count per half and reset at half time${c.extraTime.enabled ? '; second-half fouls carry into extra time' : ''}. From the ${ordinal(c.foulLimit + 1)} foul in a half, each one is a direct free kick from the 10 m mark without a wall. Record a foul and any card for it separately`,
     `A sent-off player's team plays a player short for ${c.sendOffMinutes} minutes of playing time, or until the other team scores while having more players; at level numbers a goal changes nothing`,
     'Rolling substitutions; 5 players on the court including the goalkeeper',
-    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level` : 'No extra time',
+    c.extraTime.enabled ? `Extra time: 2×${c.extraTime.periodMinutes} minutes when level${extraBreaksText(c.extraTime, 5, 1)}` : 'No extra time',
     c.shootout.enabled ? `Kicks from the penalty mark when level: ${c.shootout.kicks} each, then one each until there is a winner (kept separately from the match score)` : 'Draws stand',
   ],
   phases: phasesFor,

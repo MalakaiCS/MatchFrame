@@ -1,8 +1,29 @@
 // Shared phase model for period-based sports (quarters or halves): the pre-match walk-out, the periods and
 // their breaks, the second-half walk-out, optional extra time and shootout, then full time. Football and
 // basketball keep their own hand-written models; netball, rugby league, AFL and hockey build on this.
+import { z } from 'zod';
 import { applyClockAction, type ClockDirection, type ClockState } from '../clock';
 import type { MatchProjection, PhaseDef } from '../types';
+
+/**
+ * Extra time (or golden point) when level: on or off, its period length, and the breaks around it, the one before
+ * it starts and the one between its two periods. Rules saved before the breaks existed get the sport's usual ones.
+ */
+export const extraPeriodsSchema = (period: { min: number; max: number }, breaks: { before: number; between: number }) =>
+  z.object({
+    enabled: z.boolean(),
+    periodMinutes: z.number().int().min(period.min).max(period.max),
+    breakMinutes: z.number().int().min(0).max(20).default(breaks.before),
+    intervalMinutes: z.number().int().min(0).max(10).default(breaks.between),
+  });
+
+/** " (5-minute break before, 1-minute break between)" for a rule description (nothing when both are zero). */
+export function extraBreaksText(e: { breakMinutes?: number; intervalMinutes?: number }, before: number, between: number) {
+  const b = e.breakMinutes ?? before;
+  const i = e.intervalMinutes ?? between;
+  if (!b && !i) return '';
+  return ` (${[b ? `${b}-minute break before` : '', i ? `${i}-minute break between` : ''].filter(Boolean).join(', ')})`;
+}
 
 export interface PeriodSpec {
   /** regulation periods: 2 (halves) or 4 (quarters) */

@@ -824,6 +824,58 @@ Not claimed:
   law.
 * **Performance.** It was measured without a GPU, not on a visitor's machine.
 
+## Competition timing rules, and matches newest first (2026-10-24)
+
+Requested:
+
+* "if the comp has a specific rule set. for example futsal its 2 x 18 minute halves but it could be a wide variety
+  so setting a custom ruleset for timing. Time of halves, break between halves and so on"
+* "make it by default that all the matches start with newest date first and not oldest"
+
+A rules editor already existed (*Edit rules* on the competition). This change fills the timing gaps and puts
+timing where a competition is created.
+
+* **New competition**:
+  * Choosing a preset shows its *Match timing* ready to change: halves or quarters where the sport has both, the
+    period length, the half-time break and the breaks between quarters, plus the clock settings where the sport
+    has them.
+  * Underneath, a timeline draws each period and break to scale with the minutes of play and the total
+    ("36 minutes of play, about 41 with the breaks" for futsal 2×18 with a 5-minute half time).
+  * *Extra time and the other rules* opens everything else.
+  * Changed rules name themselves from their timing ("Own rules 2×18, 5-minute half time") until a name is typed,
+    can be kept as one of the organisation's presets, and are refused if the sport does not allow them.
+* **Edit rules and timing** on the competition: the same settings grouped as *Match timing* (with the timeline),
+  *When the scores are level* and *Other rules*. The competition page shows the timeline above the rules.
+* **New timing settings** (rules saved before them load with the usual values):
+  * Basketball: break between quarters (2), half-time break (15) and the break before each overtime (2).
+  * Breaks before and between the extra-time periods: football and futsal 5 and 1, netball 4 and 1, AFL 5 and 1,
+    rugby league golden point 5 and 0.
+  * Netball and hockey can play two halves instead of four quarters (phases, clock, labels, alerts and the rule
+    description follow; quarter breaks are hidden).
+  * New presets: hockey "Halves 2×30" and netball "Halves 2×20".
+* **Restart countdown** for every break with a length: half time, quarter breaks, before and between extra-time
+  periods, before overtime.
+  * One calculation in the domain (`breakCountdown`) drives "2ND HALF IN 4:12" on the graphics and, new,
+    "2nd Half due in 4:12 (10-minute break in the rules)" on the scorer's phone during a break.
+* **Matches newest first**:
+  * Applies to the Matches page, a competition's *Fixtures* tab and the scorer's *Not played* tab (its *Results*
+    tab already was).
+  * A saved order is used only if the person chose it. The page had saved the old default for everyone who opened
+    it, so that saved value is ignored.
+  * Lists of what is coming next keep the soonest first.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` (adds `break-time.test.ts`: half-time and quarter breaks, extra time before and between, golden point with no break at the change of ends, old rules without lengths giving no countdown; `rules-fields.test.ts`: groups, quarter breaks shown only for quarters, extra-time breaks only with extra time, old saved rules loading with defaults, the timeline for futsal, basketball and football, halves for hockey and netball) | 232 tests, 41 files, all pass |
+| `pnpm test:db` (the finals descriptions now name the extra-time breaks) | 104 tests, 15 files, all pass |
+| `rules-presets.spec.ts`: the futsal 2×18 editor test as before, and a hockey competition created with two 35-minute halves and a 10-minute half time (quarter break hidden, "70 minutes of play, about 80 with the breaks", the name filled in, a 50-minute half refused, saved rules and description, the timeline on the competition page, the editor's three groups, a match whose clock starts at 35:00 and whose half time shows "2nd Half due in 10:00" on the scorer); `futsal`, `finals`, `scorer-board` and the competition specs in `features`; the sport-specific visual baselines | 15 tests, all pass |
+| `matches-order.spec.ts` (an old saved order ignored, newest first requested and shown, a chosen order kept after a reload) with `rules-presets.spec.ts` on the rebuilt app | 3 tests, all pass |
+
+Not claimed: football still always plays two halves (its phases are wired into the starter automation, highlights
+and rehearsal; quarters for football would be a separate change); the full browser suite was not rerun for this
+change.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { getAdapter } from '@bs/domain';
+import { breakCountdown, getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
 import { occasionLine, type RenderPlayer, type RenderTeam } from '../data';
 import { animStyle, changeStyle, useAudioPolicy, type GraphicProps } from './stage';
@@ -359,31 +359,15 @@ const mmss = (ms: number) => {
   return `${m}:${String(s).padStart(2, '0')}`;
 };
 
-/** Break length in minutes from the rules: half time uses the half-time interval, other breaks the period break. */
-function breakMinutes(cfg: Record<string, unknown>, breakPhase: string, tags: string[]): number | null {
-  const n = (v: unknown) => (typeof v === 'number' && v > 0 ? v : null);
-  if (breakPhase === 'half_time' || tags.includes('half_time')) return n(cfg.halfTimeMinutes);
-  if (tags.includes('extra_time_interval')) return null; // no configured length: no countdown rather than a wrong one
-  return n(cfg.quarterBreakMinutes) ?? n(cfg.breakMinutes);
-}
-
 /**
- * Countdown to the restart during a break ("2nd Half in 8:42"): from when the break began, its configured length,
- * and the next playing period. Null when the length is unknown or the time has passed.
+ * Countdown to the restart during a break ("2nd Half in 8:42"): from when the break began, its length in the rules
+ * (half time, quarter breaks, extra-time and overtime breaks) and the next playing period. Null when the length is
+ * unknown or the time has passed.
  */
 export function restartCountdown(p: GraphicProps): { label: string; text: string } | null {
   const m = p.data.match;
-  const proj = m.projection;
-  if (proj.breakStartedAt == null) return null;
-  const adapter = getAdapter(m.sport);
-  const cfg = m.rulesConfig as never;
-  const bp = adapter.phase(cfg, proj.breakPhase ?? proj.phase);
-  const mins = breakMinutes(m.rulesConfig, proj.breakPhase ?? proj.phase, bp?.tags ?? []);
-  if (!mins) return null;
-  const left = proj.breakStartedAt + mins * 60_000 - p.now;
-  if (!(left > 0)) return null;
-  const next = adapter.allowedTransitions(cfg, proj).map((id) => adapter.phase(cfg, id)).find((x) => x?.kind === 'play');
-  return { label: t(p, `${(next?.label ?? 'Restart').toUpperCase()} IN`), text: mmss(left) };
+  const left = breakCountdown(m.sport, m.rulesConfig, m.projection, p.now);
+  return left ? { label: t(p, `${left.next.toUpperCase()} IN`), text: mmss(left.msLeft) } : null;
 }
 
 export interface IdentInfo {

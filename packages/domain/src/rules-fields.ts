@@ -1,5 +1,7 @@
 // The editable settings of a sport's rules, read from its config schema, so one form edits every sport's rules
 // (period lengths, breaks, timeouts, extra time…) and saves them as a competition's rules or a preset of its own.
+// Each setting belongs to a group (the match's timing, what happens when the scores are level, everything else),
+// and regulationTimeline lays the match's periods and breaks out in order for a picture of the timing.
 import { z } from 'zod';
 import { getAdapter } from './engine';
 import type { Sport } from './types';
@@ -14,14 +16,31 @@ export interface RulesField {
   options?: { value: string; label: string }[];
   /** shown only when this boolean setting is on (e.g. the extra-time length when extra time is on) */
   dependsOn?: string;
+  /** shown only when another setting has this value (the quarter break when the sport plays quarters) */
+  visibleWhen?: { path: string; equals: string };
+  group: RulesGroup;
+  /** the value used when saved rules do not have this setting yet */
+  defaultValue?: unknown;
 }
+
+export type RulesGroup = 'name' | 'timing' | 'level' | 'other';
+export const RULES_GROUP_LABELS: Record<Exclude<RulesGroup, 'name'>, string> = { timing: 'Match timing', level: 'When the scores are level', other: 'Other rules' };
+
+const TIMING = /^(format|periodMinutes|quarterBreakMinutes|halfTimeMinutes|clock\..+)$/;
+const LEVEL = /^(extraTime|goldenPoint|shootout)\.|^(overtimeMinutes|overtimeBreakMinutes|maxOvertimes)$/;
+const groupOf = (path: string): RulesGroup => (path === 'label' ? 'name' : TIMING.test(path) ? 'timing' : LEVEL.test(path) ? 'level' : 'other');
 
 const LABELS: Record<string, string> = {
   label: 'Name of these rules',
   periodMinutes: 'Period length (minutes)',
   halfTimeMinutes: 'Half-time break (minutes)',
-  quarterBreakMinutes: 'Quarter-time break (minutes)',
-  format: 'Format',
+  quarterBreakMinutes: 'Break between quarters (minutes)',
+  format: 'Halves or quarters',
+  overtimeBreakMinutes: 'Break before each overtime (minutes)',
+  'extraTime.breakMinutes': 'Break before extra time (minutes)',
+  'extraTime.intervalMinutes': 'Break between the extra-time halves (minutes)',
+  'goldenPoint.breakMinutes': 'Break before golden point (minutes)',
+  'goldenPoint.intervalMinutes': 'Break when ends change in golden point (minutes)',
   overtimeMinutes: 'Overtime length (minutes)',
   maxOvertimes: 'Most overtimes',
   'extraTime.enabled': 'Extra time when level',
@@ -62,6 +81,8 @@ const OPTION_LABELS: Record<string, string> = {
 };
 
 const unwrap = (s: z.ZodType): z.ZodType => (s instanceof z.ZodOptional || s instanceof z.ZodDefault || s instanceof z.ZodNullable ? unwrap(s.unwrap() as z.ZodType) : s);
+/** The default a setting has in the schema (for rules saved before the setting existed). */
+const defaultOf = (s: z.ZodType): unknown => (s instanceof z.ZodDefault ? (s as unknown as { parse: (v: unknown) => unknown }).parse(undefined) : s instanceof z.ZodOptional || s instanceof z.ZodNullable ? defaultOf(s.unwrap() as z.ZodType) : undefined);
 
 /** The settings a sport's rules have, in the order its schema lists them. */
 export function rulesFields(sport: Sport): RulesField[] {
@@ -71,16 +92,24 @@ export function rulesFields(sport: Sport): RulesField[] {
     if (!(s instanceof z.ZodObject)) return;
     const shape = s.shape as Record<string, z.ZodType>;
     const enabled = 'enabled' in shape ? `${prefix}enabled` : undefined;
+    const hasFormat = !prefix && 'format' in shape;
     for (const [key, raw] of Object.entries(shape)) {
       const path = `${prefix}${key}`;
       const f = unwrap(raw);
-      const label = (key === 'periodMinutes' && !prefix ? PERIOD_WORD[sport] : undefined) ?? LABELS[path] ?? LABELS[key] ?? key;
-      const dependsOn = enabled && path !== enabled ? enabled : undefined;
+      const label = (key === 'periodMinutes' && !prefix ? (hasFormat ? 'Period length (minutes)' : PERIOD_WORD[sport]) : undefined) ?? LABELS[path] ?? LABELS[key] ?? key;
+      const common = {
+        path,
+        label,
+        group: groupOf(path),
+        ...(enabled && path !== enabled ? { dependsOn: enabled } : {}),
+        ...(hasFormat && key === 'quarterBreakMinutes' ? { visibleWhen: { path: 'format', equals: 'quarters' } } : {}),
+        ...(defaultOf(raw) !== undefined ? { defaultValue: defaultOf(raw) } : {}),
+      };
       if (f instanceof z.ZodObject) walk(f, `${path}.`);
-      else if (f instanceof z.ZodNumber) out.push({ path, label, kind: 'number', min: f.minValue ?? undefined, max: f.maxValue ?? undefined, dependsOn });
-      else if (f instanceof z.ZodBoolean) out.push({ path, label, kind: 'boolean', dependsOn });
-      else if (f instanceof z.ZodEnum) out.push({ path, label, kind: 'select', options: (f.options as string[]).map((v) => ({ value: v, label: OPTION_LABELS[v] ?? v })), dependsOn });
-      else if (f instanceof z.ZodString) out.push({ path, label, kind: 'text', max: f.maxLength ?? undefined });
+      else if (f instanceof z.ZodNumber) out.push({ ...common, kind: 'number', min: f.minValue ?? undefined, max: f.maxValue ?? undefined });
+      else if (f instanceof z.ZodBoolean) out.push({ ...common, kind: 'boolean' });
+      else if (f instanceof z.ZodEnum) out.push({ ...common, kind: 'select', options: (f.options as string[]).map((v) => ({ value: v, label: OPTION_LABELS[v] ?? v })) });
+      else if (f instanceof z.ZodString) out.push({ ...common, kind: 'text', max: f.maxLength ?? undefined });
     }
   };
   walk(getAdapter(sport).configSchema as z.ZodType, '');
@@ -100,4 +129,44 @@ export function setRulesValue(config: Record<string, unknown>, path: string, val
   for (const k of keys.slice(0, -1)) o = (o[k] ??= {}) as Record<string, unknown>;
   o[keys[keys.length - 1]!] = value;
   return next;
+}
+
+/** Is a setting shown, given the other settings (extra-time lengths only with extra time, quarter breaks only with quarters)? */
+export function rulesFieldVisible(f: RulesField, config: Record<string, unknown>): boolean {
+  if (f.dependsOn && !getRulesValue(config, f.dependsOn)) return false;
+  if (f.visibleWhen && (getRulesValue(config, f.visibleWhen.path) ?? 'quarters') !== f.visibleWhen.equals) return false;
+  return true;
+}
+
+export interface TimelineStep {
+  kind: 'play' | 'break';
+  /** "1st Half", "Half Time", "Quarter Time"… */
+  label: string;
+  minutes: number;
+}
+
+/**
+ * The match as its rules lay it out: each regulation period and the break after it, in order, with their lengths
+ * ("1st Half 18 · Half Time 5 · 2nd Half 18"), and the totals. Extra time, overtime and shoot-outs only happen when
+ * the scores are level and are left out. Null when the rules are not valid.
+ */
+export function regulationTimeline(sport: Sport, config: Record<string, unknown>): { steps: TimelineStep[]; playMinutes: number; totalMinutes: number } | null {
+  const adapter = getAdapter(sport);
+  const parsed = adapter.configSchema.safeParse(config);
+  if (!parsed.success) return null;
+  const c = parsed.data as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  const phases = adapter.phases(parsed.data as never);
+  const extra = (tags: string[]) => tags.some((t) => t === 'extra_time' || t === 'overtime' || t === 'shootout' || t === 'extra_time_interval');
+  const playIdx = phases.map((p, i) => (p.kind === 'play' && !extra(p.tags) ? i : -1)).filter((i) => i >= 0);
+  if (!playIdx.length) return null;
+  const steps: TimelineStep[] = [];
+  for (let i = playIdx[0]!; i <= playIdx[playIdx.length - 1]!; i++) {
+    const p = phases[i]!;
+    if (p.kind === 'play') steps.push({ kind: 'play', label: p.label, minutes: num(c.periodMinutes) });
+    else if (p.kind === 'break' && !p.tags.includes('players_entering') && !p.tags.includes('about_to_start'))
+      steps.push({ kind: 'break', label: p.label, minutes: num(p.tags.includes('half_time') ? c.halfTimeMinutes : c.quarterBreakMinutes) });
+  }
+  const playMinutes = steps.filter((s) => s.kind === 'play').reduce((a, s) => a + s.minutes, 0);
+  return { steps, playMinutes, totalMinutes: steps.reduce((a, s) => a + s.minutes, 0) };
 }

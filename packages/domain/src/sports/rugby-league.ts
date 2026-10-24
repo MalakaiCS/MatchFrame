@@ -8,12 +8,12 @@ import { err, ok, type DisplayModel, type EventTypeDef, type MatchProjection, ty
 import { adjustStat, basePre, bump, cloneProjection, playerInLineup, sideSchema } from './common';
 import { onField, substitutionProblem } from '../lineup';
 import { REVIEW_SUBJECTS } from '../review';
-import { clocksForPeriodPhase, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
+import { clocksForPeriodPhase, extraBreaksText, extraPeriodsSchema, periodClockText, periodOf, periodPhases, periodTransitions, type PeriodSpec } from './periods';
 
 export const rugbyLeagueConfigSchema = z.object({
   periodMinutes: z.number().int().min(10).max(45),
   halfTimeMinutes: z.number().int().min(5).max(20),
-  goldenPoint: z.object({ enabled: z.boolean(), periodMinutes: z.number().int().min(3).max(10) }),
+  goldenPoint: extraPeriodsSchema({ min: 3, max: 10 }, { before: 5, between: 0 }),
   interchangeLimit: z.number().int().min(0).max(20),
   /** minutes of playing time a sin-binned player is off (rules stored before this setting read as 10) */
   sinBinMinutes: z.number().int().min(2).max(20).default(10),
@@ -21,7 +21,7 @@ export const rugbyLeagueConfigSchema = z.object({
 });
 export type RugbyLeagueConfig = z.infer<typeof rugbyLeagueConfigSchema>;
 
-const STANDARD: RugbyLeagueConfig = { periodMinutes: 40, halfTimeMinutes: 10, goldenPoint: { enabled: false, periodMinutes: 5 }, interchangeLimit: 8, sinBinMinutes: 10, label: 'Standard 2×40, 8 interchanges' };
+const STANDARD: RugbyLeagueConfig = { periodMinutes: 40, halfTimeMinutes: 10, goldenPoint: { enabled: false, periodMinutes: 5, breakMinutes: 5, intervalMinutes: 0 }, interchangeLimit: 8, sinBinMinutes: 10, label: 'Standard 2×40, 8 interchanges' };
 
 const spec = (c: RugbyLeagueConfig): PeriodSpec => ({
   count: 2,
@@ -127,7 +127,7 @@ export const rugbyLeagueAdapter: SportAdapter<RugbyLeagueConfig> = {
   defaultConfig: STANDARD,
   presets: [
     { id: 'standard', label: STANDARD.label, config: STANDARD },
-    { id: 'golden-point', label: 'Finals 2×40 with golden point', config: { ...STANDARD, goldenPoint: { enabled: true, periodMinutes: 5 }, label: 'Finals 2×40 with golden point' } },
+    { id: 'golden-point', label: 'Finals 2×40 with golden point', config: { ...STANDARD, goldenPoint: { enabled: true, periodMinutes: 5, breakMinutes: 5, intervalMinutes: 0 }, label: 'Finals 2×40 with golden point' } },
     { id: 'junior', label: 'Junior 2×25, unlimited interchange', config: { ...STANDARD, periodMinutes: 25, halfTimeMinutes: 5, interchangeLimit: 0, label: 'Junior 2×25, unlimited interchange' } },
   ],
   describeRules: (c) => [
@@ -135,7 +135,7 @@ export const rugbyLeagueAdapter: SportAdapter<RugbyLeagueConfig> = {
     'Try 4, conversion 2, penalty goal 2, field goal 1 (2 from beyond 40 m)',
     `Sin bin: ${c.sinBinMinutes ?? 10} minutes of playing time`,
     c.interchangeLimit ? `${c.interchangeLimit} interchanges per team` : 'Unlimited interchange',
-    c.goldenPoint.enabled ? `Golden point: 2×${c.goldenPoint.periodMinutes} minutes when level` : 'Draws stand',
+    c.goldenPoint.enabled ? `Golden point: 2×${c.goldenPoint.periodMinutes} minutes when level${extraBreaksText(c.goldenPoint, 5, 0)}` : 'Draws stand',
   ],
   phases: phasesFor,
   phase: (c, id) => phasesFor(c).find((p) => p.id === id),

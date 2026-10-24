@@ -46,7 +46,7 @@ describe('finals series', () => {
     expect(f).toMatchObject({ format: null, next: { kind: 'start' }, regularLeft: 0 });
     expect(f.ladder.map((r) => r.team.name)).toEqual(names);
     // finals rules: the competition's rules with a level score decided
-    expect(f.rules.description).toEqual(expect.arrayContaining(['Extra time: 2×15 minutes when level', 'Penalty shootout when level (shootout score kept separately)']));
+    expect(f.rules.description).toEqual(expect.arrayContaining(['Extra time: 2×15 minutes when level (5-minute break before, 1-minute break between)', 'Penalty shootout when level (shootout score kept separately)']));
     await expect(finalsSvc.getFinals(B.ctx, season.id)).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(finalsSvc.createFinalsRound(B.ctx, season.id, { format: 'top4', timezone: 'Australia/Sydney', matches: [{ kickoffLocal: '2026-09-05 15:00' }, { kickoffLocal: '2026-09-06 15:00' }] })).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(finalsSvc.createFinalsRound(ctx, season.id, { format: 'top8', timezone: 'Australia/Sydney', matches: [{ kickoffLocal: '2026-09-05 15:00' }] })).rejects.toMatchObject({ code: 'VALIDATION_FAILED', message: expect.stringMatching(/needs 8 teams/) });
@@ -101,7 +101,7 @@ describe('finals series', () => {
     await expect(catalog.updateCompetition(ctx, comp.id, { finalsRulesConfig: { ...own, periodMinutes: 500 } })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(await catalog.updateCompetition(ctx, comp.id, { finalsRulesConfig: own, applyToUpcoming: true })).toMatchObject({ matchesUpdated: 1 });
     expect((await matchesSvc.getMatch(ctx, gf.created[0]!.id)).rulesConfig).toMatchObject({ extraTime: { enabled: true, periodMinutes: 10 } });
-    expect((await catalog.getCompetition(ctx, comp.id)).finals).toMatchObject({ own: true, rulesDescription: expect.arrayContaining(['Extra time: 2×10 minutes when level']) });
+    expect((await catalog.getCompetition(ctx, comp.id)).finals).toMatchObject({ own: true, rulesDescription: expect.arrayContaining(['Extra time: 2×10 minutes when level (5-minute break before, 1-minute break between)']) });
     // the regular season is untouched by finals rules
     const later = await matchesSvc.createMatch(ctx, { competitionId: comp.id, seasonId: season.id, homeTeamId: ts[0]!.id, awayTeamId: ts[4]!.id, kickoffLocal: '2026-09-20 15:00', timezone: 'Australia/Sydney' });
     expect((await matchesSvc.getMatch(ctx, later.id)).rules.knockout).toEqual({ label: 'Extra time and penalties when level', on: false });

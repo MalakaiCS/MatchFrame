@@ -25,6 +25,7 @@ export * from './lineup';
 export * from './pricing';
 export * from './plan-grants';
 export * from './rules-fields';
+export * from './break-time';
 export * from './staff';
 export * from './possession';
 export * from './scorer-board';

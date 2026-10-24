@@ -12,6 +12,7 @@ import { SeasonPlayers, SeasonResults, SeasonStandings } from '@/components/comp
 import { BulkRoundDialog, RolloverDialog, StandingsRulesCard } from '@/components/competition/season-tools';
 import { DemoButton } from '@/components/demo-button';
 import { RulesEditor, usePresetOptions } from '@/components/competition/rules-editor';
+import { MatchTimeline } from '@/components/competition/rules-timing';
 import { LogoField } from '@/components/logo-field';
 import { FinalsPanel } from '@/components/competition/finals';
 import type { Sport } from '@bs/domain';
@@ -30,7 +31,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
   const me = useMe();
   const full = isFull(me.data?.role);
   const c = useGet<Competition>(['competition', id], `competitions/${id}`);
-  const fixtures = useGet<{ items: MatchRow[]; total: number }>(['matches', 'competition', id], `matches?competitionId=${id}&pageSize=100`);
+  const fixtures = useGet<{ items: MatchRow[]; total: number }>(['matches', 'competition', id], `matches?competitionId=${id}&pageSize=100&sort=-scheduledAt`);
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [season, setSeason] = useState({ name: '', startsOn: '', endsOn: '' });
   const [rollover, setRollover] = useState<Competition['seasons'][number] | null>(null);
@@ -81,6 +82,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Rules</h2>
+            <MatchTimeline sport={comp.sport as Sport} config={comp.rulesConfig} className="mb-3" />
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">{comp.rulesDescription.map((r) => <li key={r}>{r}</li>)}</ul>
             <p className="mt-3 text-xs text-muted">Rules version {comp.rulesVersion}. Running and completed matches keep the rules they started with; upcoming matches nobody has started scoring take changed rules.{comp.finals ? ` Finals: ${comp.finals.own ? 'their own rules' : comp.finals.knockoutLabel ? `these rules with ${comp.finals.knockoutLabel.toLowerCase()}` : 'these rules'} (Finals tab).` : ''}</p>
             {full ? (
@@ -92,7 +94,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
                     <optgroup label="Built-in">{comp.presets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</optgroup>
                   </NativeSelect>
                 </Field>
-                <Button onClick={() => setRulesOpen(true)}>Edit rules</Button>
+                <Button onClick={() => setRulesOpen(true)}>Edit rules and timing</Button>
               </div>
             ) : null}
             <ErrorNotice error={setPreset.error} />

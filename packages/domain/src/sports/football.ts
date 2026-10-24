@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { extraBreaksText, extraPeriodsSchema } from './periods';
 import { applyClockAction, clockDisplayMs, createClock, formatClock, type ClockState } from '../clock';
 import type { FactInput, LogEntry, SportAdapter } from '../adapter';
 import {
@@ -20,7 +21,7 @@ import { shootoutStatus } from '../shootout';
 export const footballConfigSchema = z.object({
   periodMinutes: z.number().int().min(5).max(60),
   halfTimeMinutes: z.number().int().min(0).max(30),
-  extraTime: z.object({ enabled: z.boolean(), periodMinutes: z.number().int().min(3).max(20) }),
+  extraTime: extraPeriodsSchema({ min: 3, max: 20 }, { before: 5, between: 1 }),
   shootout: z.object({ enabled: z.boolean() }),
   label: z.string().max(80),
 });
@@ -29,7 +30,7 @@ export type FootballConfig = z.infer<typeof footballConfigSchema>;
 const STANDARD: FootballConfig = {
   periodMinutes: 45,
   halfTimeMinutes: 15,
-  extraTime: { enabled: true, periodMinutes: 15 },
+  extraTime: { enabled: true, periodMinutes: 15, breakMinutes: 5, intervalMinutes: 1 },
   shootout: { enabled: true },
   label: 'Standard 2×45 with extra time and penalties',
 };
@@ -163,12 +164,12 @@ export const footballAdapter: SportAdapter<FootballConfig> = {
   defaultConfig: STANDARD,
   presets: [
     { id: 'standard', label: STANDARD.label, config: STANDARD },
-    { id: 'league', label: 'League 2×45 (no extra time)', config: { ...STANDARD, extraTime: { enabled: false, periodMinutes: 15 }, shootout: { enabled: false }, label: 'League 2×45 (no extra time)' } },
-    { id: 'junior-u12', label: 'Junior 2×25', config: { periodMinutes: 25, halfTimeMinutes: 10, extraTime: { enabled: false, periodMinutes: 5 }, shootout: { enabled: false }, label: 'Junior 2×25' } },
+    { id: 'league', label: 'League 2×45 (no extra time)', config: { ...STANDARD, extraTime: { enabled: false, periodMinutes: 15, breakMinutes: 5, intervalMinutes: 1 }, shootout: { enabled: false }, label: 'League 2×45 (no extra time)' } },
+    { id: 'junior-u12', label: 'Junior 2×25', config: { periodMinutes: 25, halfTimeMinutes: 10, extraTime: { enabled: false, periodMinutes: 5, breakMinutes: 5, intervalMinutes: 1 }, shootout: { enabled: false }, label: 'Junior 2×25' } },
   ],
   describeRules: (cfg) => [
     `${cfg.periodMinutes}-minute halves, ${cfg.halfTimeMinutes}-minute interval`,
-    cfg.extraTime.enabled ? `Extra time: 2×${cfg.extraTime.periodMinutes} minutes when level` : 'No extra time',
+    cfg.extraTime.enabled ? `Extra time: 2×${cfg.extraTime.periodMinutes} minutes when level${extraBreaksText(cfg.extraTime, 5, 1)}` : 'No extra time',
     cfg.shootout.enabled ? 'Penalty shootout when level (shootout score kept separately)' : 'No shootout',
     'Running clock counts up; stoppage time shown after the nominal period length',
   ],
