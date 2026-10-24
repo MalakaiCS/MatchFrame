@@ -1,0 +1,150 @@
+{
+  "file": "infra/media-spike/out/spike-1792408575096//programme.mp4",
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "sample_rate": "44100",
+        "channels": 2,
+        "r_frame_rate": "0/0"
+      },
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "30/1"
+      }
+    ],
+    "format": {
+      "duration": "41.099320"
+    }
+  },
+  "videoFlashes": 42,
+  "audioBeeps": 42,
+  "pairs": 42,
+  "avSkewMs": {
+    "mean": 91.3,
+    "median": 78.7,
+    "min": -393.0,
+    "max": 438.7,
+    "stdev": 137.9
+  },
+  "driftMs": -37.8,
+  "firstVideoOnsets": [
+    0.001,
+    0.368,
+    1.368,
+    2.401,
+    3.368
+  ],
+  "firstAudioOnsets": [
+    0.38,
+    1.38,
+    2.32,
+    3.12,
+    3.975
+  ]
+}
+{
+  "file": "infra/media-spike/out/sink/live/spike-1792408575096/2026-10-19_11-16-21-940614.mp4",
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "30/1"
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "sample_rate": "44100",
+        "channels": 2,
+        "r_frame_rate": "0/0"
+      }
+    ],
+    "format": {
+      "duration": "41.095939"
+    }
+  },
+  "videoFlashes": 42,
+  "audioBeeps": 42,
+  "pairs": 42,
+  "avSkewMs": {
+    "mean": 91.7,
+    "median": 79.0,
+    "min": -392.0,
+    "max": 439.0,
+    "stdev": 137.8
+  },
+  "driftMs": -38.1,
+  "firstVideoOnsets": [
+    0.001,
+    0.367,
+    1.367,
+    2.401,
+    3.367
+  ],
+  "firstAudioOnsets": [
+    0.38,
+    1.38,
+    2.32,
+    3.12,
+    3.975
+  ]
+}
+{
+  "file": "infra/media-spike/out/spike-1792408575096//clip_from_hls.mp4",
+  "probe": {
+    "programs": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1280,
+        "height": 720,
+        "r_frame_rate": "30/1"
+      },
+      {
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "sample_rate": "44100",
+        "channels": 2,
+        "r_frame_rate": "0/0"
+      }
+    ],
+    "format": {
+      "duration": "8.008005"
+    }
+  },
+  "videoFlashes": 8,
+  "audioBeeps": 8,
+  "pairs": 8,
+  "avSkewMs": {
+    "mean": 115.4,
+    "median": 100.0,
+    "min": 100.0,
+    "max": 175.0,
+    "stdev": 25.1
+  },
+  "driftMs": -45.0,
+  "firstVideoOnsets": [
+    0.4,
+    1.4,
+    2.367,
+    3.4,
+    4.4
+  ],
+  "firstAudioOnsets": [
+    0.575,
+    1.515,
+    2.5,
+    3.5,
+    4.5
+  ]
+}

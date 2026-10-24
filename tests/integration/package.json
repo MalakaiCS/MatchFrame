@@ -1,0 +1,17 @@
+{
+  "name": "@bs/integration-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@bs/config": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "@bs/services": "workspace:*",
+    "@bs/media": "workspace:*",
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.1",
+    "@bs/api": "workspace:*",
+    "better-auth": "1.7.7",
+    "fastify": "5.12.5"
+  }
+}

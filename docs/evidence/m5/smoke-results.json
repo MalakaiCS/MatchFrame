@@ -1,0 +1,139 @@
+{
+  "secondsToLive": 9,
+  "destinations": [
+    [
+      "CLEAN",
+      [
+        "active"
+      ]
+    ],
+    [
+      "PROGRAMME",
+      [
+        "active"
+      ]
+    ]
+  ],
+  "liveObservedAt": 1792443307565,
+  "slateWindowMs": 8143,
+  "hls": {
+    "playlist": 200,
+    "segment": 200,
+    "segmentBytes": 849008,
+    "anonymousSegment": 401,
+    "anonymousPlaylist": 401
+  },
+  "sourceLostAt": 1792443331443,
+  "sourceLoss": {
+    "statesObserved": [
+      "LIVE",
+      "DEGRADED:INPUT_LOST"
+    ],
+    "recoveredAfterSeconds": 14,
+    "sameSession": true,
+    "outputStates": [
+      [
+        "CLEAN",
+        "LIVE",
+        [
+          "RECORDING"
+        ]
+      ],
+      [
+        "PROGRAMME",
+        "LIVE",
+        [
+          "RECORDING"
+        ]
+      ]
+    ]
+  },
+  "receiverParts": {
+    "programme": 1,
+    "clean": 1
+  },
+  "analysisWindowSeconds": 23,
+  "programme": {
+    "probe": [
+      "video:h264:1280x720",
+      "audio:aac"
+    ],
+    "lumaPerSecond": [
+      124,
+      124,
+      122,
+      124,
+      124,
+      124,
+      122,
+      124,
+      124,
+      124,
+      122,
+      124,
+      124,
+      124,
+      122,
+      124,
+      124,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39
+    ],
+    "maxVolumeDb": -5
+  },
+  "clean": {
+    "probe": [
+      "video:h264:1280x720",
+      "audio:aac"
+    ],
+    "lumaPerSecond": [
+      124,
+      124,
+      123,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      123,
+      124,
+      124,
+      124,
+      123,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      124,
+      123
+    ],
+    "maxVolumeDb": -5
+  },
+  "programmeDarkSeconds": 6,
+  "cleanDarkSeconds": 0,
+  "final": {
+    "session": "STOPPED",
+    "recordings": [
+      [
+        "CLEAN",
+        [
+          "READY"
+        ]
+      ],
+      [
+        "PROGRAMME",
+        [
+          "READY"
+        ]
+      ]
+    ]
+  }
+}

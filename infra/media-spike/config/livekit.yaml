@@ -1,0 +1,22 @@
+# Media spike / local profile. Dev keys only — generated values replace these via scripts/gen-env.
+port: 7880
+bind_addresses: ["0.0.0.0"]
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50200
+  use_external_ip: false
+  node_ip: 172.17.0.1
+redis:
+  address: 127.0.0.1:6379
+keys:
+  devkey: devsecret_devsecret_devsecret_devsecret
+logging:
+  level: info
+webhook:
+  api_key: devkey
+  urls:
+    - http://127.0.0.1:4100/webhook
+ingress:
+  rtmp_base_url: rtmp://127.0.0.1:1935/live
+  whip_base_url: http://127.0.0.1:8085/w

@@ -1,0 +1,251 @@
+import type { Sport } from './types';
+import { describe, expect, it } from 'vitest';
+import { clockCrossings, decidePriority, matchTriggers, phaseStepCancellations, planRun, resolveVariables, validateGamePlan, type ActiveRun, type GamePlan, type TriggerInput } from './automation';
+import { applyCommand, replay } from './engine';
+import { FOOTBALL_STARTER, BASKETBALL_STARTER } from './starter-plans';
+import { selectCreative, type SelectionInput } from './sponsors';
+import { simulateRehearsal, syntheticTimeline } from './rehearsal';
+import { footballAdapter } from './sports/football';
+import { basketballAdapter } from './sports/basketball';
+
+const LAYERS: Record<string, string> = {
+  'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
+  'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:shootout': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background', 'builtin:backdrop': 'background',
+  'builtin:added_time': 'event', 'builtin:review': 'lower',
+};
+const opts = (sport: Sport) => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
+const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };
+
+describe('game plan validation', () => {
+  it('accepts both starter plans', () => {
+    expect(validateGamePlan(FOOTBALL_STARTER, opts('football'))).toMatchObject({ ok: true });
+    expect(validateGamePlan(BASKETBALL_STARTER, opts('basketball'))).toMatchObject({ ok: true });
+  });
+  it('rejects unknown templates, overlaps, infinite loops and unknown events', () => {
+    const bad: GamePlan = structuredClone(FOOTBALL_STARTER);
+    const by = (id: string) => bad.playlists.find((p) => p.id === id)!;
+    by('goal').items.push({ id: 'x', action: 'show', templateKey: 'builtin:nope', offsetMs: 0, durationMs: 1000 });
+    by('card').items.push({ id: 'y', action: 'show', templateKey: 'builtin:goal', offsetMs: 1000, durationMs: 1000 }); // overlaps card on event layer
+    bad.playlists.push({ id: 'spin', name: 'spin', kind: 'in_play', priority: 4, promotional: false, cooldownMs: 0, triggers: [{ id: 'tt', type: 'event', eventTypes: ['dunk'] }], guards: [], repeat: { mode: 'loop', gapMs: 0, maxIterations: 5 }, items: [{ id: 'w', action: 'scorebug_show', offsetMs: 0 }] });
+    const r = validateGamePlan(bad, opts('football'));
+    expect(r.ok).toBe(false);
+    const msgs = r.issues.map((i) => i.message).join(' | ');
+    expect(msgs).toMatch(/unknown template/i);
+    expect(msgs).toMatch(/Overlaps/);
+    expect(msgs).toMatch(/would spin/);
+    expect(msgs).toMatch(/Unknown football event "dunk"/);
+  });
+});
+
+describe('triggers', () => {
+  const ev = (over: Partial<Extract<TriggerInput, { kind: 'event' }>> = {}): TriggerInput => ({ kind: 'event', eventType: 'goal', side: 'home', factId: 'f1', factRevision: 1, playerId: null, payload: {}, clockMs: 61_000, phaseId: 'first_half', phaseKind: 'play', occurredAt: 1000, at: 1000, historical: false, counters: {}, prevCounters: {}, ...over });
+
+  it('a goal starts the goal playlist with variables resolved from the event', () => {
+    const { matches } = matchTriggers(FOOTBALL_STARTER, ev({ playerId: '00000000-0000-4000-8000-000000000001' }), guard);
+    expect(matches.map((m) => m.playlist.id)).toEqual(['goal']);
+    const cues = planRun(matches[0]!.playlist, matches[0]!, 1000, { freshnessMs: 10_000, templateLayers: LAYERS, liveTrigger: true });
+    expect(cues[0]!.variables).toEqual({ team: 'home', player: '00000000-0000-4000-8000-000000000001', minute: '2', eventType: 'goal' });
+    expect(cues[0]!.deadlineAt).toBe(11_000); // occurrence + freshness, not queue time
+    expect(cues[1]).toMatchObject({ dueAt: 8500, layer: 'sponsor' });
+  });
+
+  it('a playlist that starts after a delay waits once; its repeats follow on without the wait', () => {
+    const pl = FOOTBALL_STARTER.playlists.find((p) => p.id === 'half_time_boards')!;
+    const m = { playlist: pl, trigger: pl.triggers[0]!, iteration: 'phase:half_time:1', occurredAt: 0, context: {} };
+    const opts = { freshnessMs: 10_000, templateLayers: LAYERS, liveTrigger: false };
+    expect(planRun(pl, m, 1000, opts).map((c) => c.dueAt)).toEqual([11_600, 42_200]);
+    expect(planRun(pl, m, 1000, { ...opts, loop: 1 }).map((c) => c.dueAt)).toEqual([1000, 31_600]);
+  });
+
+  it('historical (late offline) facts never start a live celebration (A16)', () => {
+    const r = matchTriggers(FOOTBALL_STARTER, ev({ historical: true }), guard);
+    expect(r.matches).toHaveLength(0);
+    expect(r.skipped[0]!.reason).toMatch(/historical/);
+  });
+
+  it('milestones fire once per qualifying crossing', () => {
+    const m1 = matchTriggers(BASKETBALL_STARTER, ev({ eventType: 'score', prevCounters: { points: 18 }, counters: { points: 21 } }), guard);
+    expect(m1.matches.map((m) => [m.playlist.id, m.iteration])).toEqual([['milestone', 'milestone:points:20']]);
+    expect(resolveVariables(m1.matches[0]!.playlist.items[0]!.variables, m1.matches[0]!.context)).toMatchObject({ subtitle: '20 points' });
+    expect(matchTriggers(BASKETBALL_STARTER, ev({ eventType: 'score', prevCounters: { points: 21 }, counters: { points: 23 } }), guard).matches).toHaveLength(0);
+    // routine baskets do not trigger a full-screen graphic
+    expect(matchTriggers(BASKETBALL_STARTER, ev({ eventType: 'score', prevCounters: { points: 2 }, counters: { points: 4 } }), guard).matches).toHaveLength(0);
+  });
+
+  it('guards skip with reasons', () => {
+    const p: GamePlan = structuredClone(FOOTBALL_STARTER);
+    p.playlists.find((x) => x.id === 'goal')!.guards = [{ type: 'min_data', require: ['player'] }, { type: 'freshness', maxAgeMs: 5000 }];
+    expect(matchTriggers(p, ev(), guard).skipped[0]!.reason).toMatch(/no player/);
+    expect(matchTriggers(p, ev({ playerId: 'p', occurredAt: 0 }), { ...guard, now: 9000 }).skipped[0]!.reason).toMatch(/stale/);
+  });
+});
+
+describe('match clock thresholds (A25)', () => {
+  const plan: GamePlan = { ...FOOTBALL_STARTER, playlists: [{ id: 'promo', name: 'promo', kind: 'in_play', priority: 4, promotional: true, cooldownMs: 0, triggers: [{ id: 'c20', type: 'match_clock', atMs: 20 * 60_000, periodIds: ['first_half'] }, { id: 'every5', type: 'match_clock', atMs: 5 * 60_000, repeatEveryMs: 5 * 60_000, untilMs: 40 * 60_000, periodIds: [] }], guards: [], repeat: { mode: 'once', gapMs: 0, maxIterations: 1 }, items: [{ id: 's', action: 'sponsor', placement: 'detached_logo', offsetMs: 0, durationMs: 5000 }] }] };
+  it('fires once when crossed during normal running', () => {
+    const r = clockCrossings(plan, 'first_half', 19 * 60_000 + 59_500, 20 * 60_000 + 200);
+    expect(r).toEqual([expect.objectContaining({ triggerId: 'c20', thresholdMs: 1_200_000, outcome: 'fire' }), expect.objectContaining({ triggerId: 'every5', thresholdMs: 1_200_000, outcome: 'fire' })]);
+  });
+  it('does not fire while paused or when corrected backwards', () => {
+    expect(clockCrossings(plan, 'first_half', 1_200_100, 1_200_100)).toEqual([]);
+    expect(clockCrossings(plan, 'first_half', 1_250_000, 1_100_000)).toEqual([]);
+  });
+  it('a forward correction across thresholds records skips instead of firing', () => {
+    const r = clockCrossings(plan, 'first_half', 4 * 60_000, 16 * 60_000);
+    expect(r.map((x) => [x.triggerId, x.thresholdMs / 60_000, x.outcome])).toEqual([['every5', 5, 'skip'], ['every5', 10, 'skip'], ['every5', 15, 'skip']]);
+  });
+  it('respects period scope', () => {
+    expect(clockCrossings(plan, 'second_half', 19 * 60_000 + 59_500, 20 * 60_000 + 200).map((x) => x.triggerId)).toEqual(['every5']);
+  });
+});
+
+describe('priority and preemption (A24)', () => {
+  const active = [{ runId: 'r1', playlistId: 'half_time_loop', priority: 3, layers: ['fullframe', 'sponsor'], state: 'running' as const, createdAt: 0, promotional: true }];
+  it('higher priority preempts conflicting lower runs', () => {
+    expect(decidePriority({ priority: 1, layers: ['fullframe'], promotional: false }, active)).toEqual({ action: 'start', preempt: [{ runId: 'r1', reason: 'preempted by priority 1' }] });
+  });
+  it('non-conflicting layers run together', () => {
+    expect(decidePriority({ priority: 4, layers: ['ticker'], promotional: true }, active)).toEqual({ action: 'start', preempt: [] });
+  });
+  it('equal priority keeps trigger order; lower promotional is skipped', () => {
+    expect(decidePriority({ priority: 3, layers: ['sponsor'], promotional: false }, active).action).toBe('queue');
+    expect(decidePriority({ priority: 4, layers: ['sponsor'], promotional: true }, active).action).toBe('skip');
+  });
+});
+
+describe('sponsor selection (A30)', () => {
+  const base: SelectionInput = {
+    placement: 'detached_logo', now: 1_000_000, scope: { competitionId: 'c', matchId: 'm', teamIds: ['t1', 't2'] },
+    campaigns: [
+      { id: 'A', brandId: 'b1', brandName: 'Alpha', brandCategory: 'drinks', creativeSetId: 'sa', startsAt: 0, endsAt: 2_000_000, priority: 2, weight: 3, totalCap: null, perMatchCap: null, minSpacingSeconds: 0, excludedCategories: [], eventSponsorship: [], status: 'active' },
+      { id: 'B', brandId: 'b2', brandName: 'Beta', brandCategory: 'banking', creativeSetId: 'sb', startsAt: 0, endsAt: 2_000_000, priority: 2, weight: 1, totalCap: null, perMatchCap: 2, minSpacingSeconds: 0, excludedCategories: [], eventSponsorship: [], status: 'active' },
+      { id: 'X', brandId: 'b3', brandName: 'Expired', brandCategory: null, creativeSetId: 'sx', startsAt: 0, endsAt: 500_000, priority: 1, weight: 1, totalCap: null, perMatchCap: null, minSpacingSeconds: 0, excludedCategories: [], eventSponsorship: [], status: 'active' },
+    ],
+    allocations: [{ campaignId: 'A', scopeType: 'competition', scopeId: 'c', placement: 'detached_logo' }, { campaignId: 'B', scopeType: 'competition', scopeId: 'c', placement: 'detached_logo' }, { campaignId: 'X', scopeType: 'competition', scopeId: 'c', placement: 'detached_logo' }],
+    creatives: [
+      { id: 'ca', creativeSetId: 'sa', kind: 'image', width: 600, height: 200, durationMs: null, approvalStatus: 'approved', expiresAt: null, assetReady: true },
+      { id: 'cb', creativeSetId: 'sb', kind: 'image', width: 600, height: 200, durationMs: null, approvalStatus: 'approved', expiresAt: null, assetReady: true },
+      { id: 'cx', creativeSetId: 'sx', kind: 'image', width: 600, height: 200, durationMs: null, approvalStatus: 'approved', expiresAt: null, assetReady: true },
+    ],
+    totalShown: {}, matchShown: {}, lastShownAt: {},
+  };
+  it('skips expired campaigns with a reason and rotates by weight deterministically', () => {
+    const seen: string[] = [];
+    const shown: Record<string, number> = {};
+    for (let k = 0; k < 8; k++) {
+      const r = selectCreative({ ...base, matchShown: shown });
+      seen.push(r.campaignId!);
+      shown[r.campaignId!] = (shown[r.campaignId!] ?? 0) + 1;
+      expect(r.considered.find((c) => c.campaignId === 'X')!.reason).toBe('campaign expired');
+    }
+    expect(seen.filter((x) => x === 'A')).toHaveLength(6); // 3:1 weight, B capped at 2 per match
+    expect(seen.filter((x) => x === 'B')).toHaveLength(2);
+    expect(selectCreative({ ...base, matchShown: shown }).campaignId).toBe('A');
+  });
+  it('rejects incompatible creatives and falls back to empty', () => {
+    const r = selectCreative({ ...base, placement: 'full_frame_image' });
+    expect(r.outcome).toBe('empty');
+    const r2 = selectCreative({ ...base, placement: 'full_frame_image', allocations: base.allocations.map((a) => ({ ...a, placement: 'full_frame_image' as const })) });
+    expect(r2.outcome).toBe('empty');
+    expect(r2.considered.every((c) => !c.eligible)).toBe(true);
+    expect(r2.considered.map((c) => c.reason)).toContain('no approved creative fits this placement');
+  });
+  it('match allocation overrides competition default; category exclusion applies', () => {
+    const r = selectCreative({ ...base, allocations: [...base.allocations, { campaignId: 'B', scopeType: 'match', scopeId: 'm', placement: 'detached_logo' }] });
+    expect(r).toMatchObject({ campaignId: 'B', precedence: 'match' });
+    expect(selectCreative({ ...base, excludedCategories: ['drinks'] }).campaignId).toBe('B');
+  });
+});
+
+describe('rehearsal (A29: pure, explained)', () => {
+  it('replays a synthetic match and explains every decision', () => {
+    const r = simulateRehearsal(FOOTBALL_STARTER, footballAdapter.defaultConfig, syntheticTimeline('football'), { templateLayers: LAYERS });
+    const fired = r.decisions.filter((d) => d.outcome === 'fired').map((d) => d.playlistId);
+    expect(fired).toEqual(expect.arrayContaining(['pre_match', 'players_entering', 'kickoff', 'goal', 'card', 'half_time', 'half_time_boards', 'second_half_entering', 'full_time']));
+    // the first walk-out shows the line-ups once; the second only clears and brings the scorebug back
+    expect(fired.filter((id) => id === 'players_entering')).toHaveLength(1);
+    expect(fired.filter((id) => id === 'second_half_entering')).toHaveLength(1);
+    expect(fired.filter((id) => id === 'kickoff')).toHaveLength(2);
+    // "About to start" does not cut the line-ups short; the half-time loop ends when the players come back out
+    expect(r.decisions.some((d) => d.playlistId === 'players_entering' && d.outcome === 'cancelled')).toBe(false);
+    const lineups = r.cues.filter((c) => c.playlistId === 'players_entering' && c.templateKey === 'builtin:lineup');
+    expect(lineups.map((c) => [c.action, c.variables.team, c.durationMs])).toEqual([['show', 'home', 8000], ['show', 'away', 8000]]);
+    const enter = r.cues.find((c) => c.playlistId === 'players_entering' && c.action === 'clear_layers')!;
+    expect(lineups[0]!.t - enter.t).toBe(15_000);
+    expect(r.decisions.find((d) => d.playlistId === 'half_time_boards' && d.outcome === 'cancelled')?.reason).toMatch(/second_half_entering/);
+    // half time: the half-time banner (the kick-off banner, headed by the break) until 10 s after the whistle, then
+    // the background comes up and the scorebug goes; then the header and the stats take turns, 30 s each, with no
+    // 10 s wait between passes
+    const ht = r.cues.filter((c) => c.playlistId === 'half_time');
+    const htAt = ht[0]!.t - 400;
+    expect(ht.map((c) => [c.action, c.templateKey ?? null, c.t - htAt])).toEqual([['show', 'builtin:period_banner', 400], ['show', 'builtin:backdrop', 10_000], ['scorebug_hide', null, 10_600]]);
+    expect(ht[0]).toMatchObject({ durationMs: 9400, variables: { heading: 'Half Time' } });
+    const boards = r.cues.filter((c) => c.playlistId === 'half_time_boards' && c.action.startsWith('show'));
+    expect(boards.map((c) => [c.templateKey, c.t - htAt, c.durationMs]).slice(0, 4)).toEqual([
+      ['builtin:ident', 10_600, 30_000],
+      ['builtin:stats', 41_200, 30_000],
+      ['builtin:ident', 71_800, 30_000],
+      ['builtin:stats', 102_400, 30_000],
+    ]);
+    expect(boards[0]!.variables).toMatchObject({ showCountdown: true });
+    const back = r.cues.filter((c) => c.playlistId === 'second_half_entering');
+    // the board goes first, the background 0.4 s later (each with its exit animation), the scorebug 7 s after the walk-out
+    expect(back.map((c) => [c.action, c.layers ?? null, c.t - back[0]!.t])).toEqual([['clear_layers', ['fullframe', 'lower'], 0], ['clear_layers', ['background'], 400], ['scorebug_show', null, 7000]]);
+    // full time: 30 s later the background, then the final score on the header with the thank-you
+    const ft = r.cues.filter((c) => c.playlistId === 'full_time');
+    const ftPhase = r.cues.find((c) => c.playlistId === 'full_time')!.t - 30_000;
+    expect(ft.map((c) => [c.action, c.templateKey ?? null, c.t - ftPhase])).toEqual([['show', 'builtin:backdrop', 30_000], ['scorebug_hide', null, 30_600], ['show', 'builtin:ident', 30_600]]);
+    expect(ft[2]!.variables).toMatchObject({ showCountdown: false, message: 'Thank you for watching' });
+    expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'queued')).toBeTruthy(); // equal priority: waits for the goal sequence
+    expect(r.decisions.find((d) => d.playlistId === 'card' && d.outcome === 'fired')).toBeTruthy();
+    expect(r.decisions.some((d) => d.outcome === 'skipped' && /historical|freshness/.test(d.reason))).toBe(true); // the late goal
+    expect(r.cues.length).toBeGreaterThan(10);
+  });
+});
+
+describe('phase steps and break timing', () => {
+  const run = (playlistId: string): ActiveRun => ({ runId: `r_${playlistId}`, playlistId, priority: 2, layers: ['fullframe'], state: 'running', createdAt: 0, promotional: false, kind: 'pre' });
+  it('a phase playlist stops when the scorer moves on, unless it is set to keep going', () => {
+    const plan = structuredClone(FOOTBALL_STARTER);
+    const step = { phaseId: 'about_to_start', phaseTags: [] as string[] };
+    expect(phaseStepCancellations(plan, [run('players_entering')], step)).toEqual([]);
+    plan.playlists.find((p) => p.id === 'players_entering')!.continueOnPhaseStep = false;
+    expect(phaseStepCancellations(plan, [run('players_entering')], step)).toEqual([{ runId: 'r_players_entering', reason: 'phase moved on to about_to_start' }]);
+    // event playlists are never phase-step bound
+    expect(phaseStepCancellations(plan, [run('goal')], step)).toEqual([]);
+  });
+
+  it('the football starter shows the background and header from the moment the match exists, and again at Pre-match', () => {
+    const at = (phaseId: string, tags: string[]) => matchTriggers(FOOTBALL_STARTER, { kind: 'phase', phaseId, phaseTags: tags, phaseKind: 'pre', at: 0, occurredAt: 0, seq: 0 }, guard).matches.map((m) => m.playlist.id);
+    expect(at('scheduled', [])).toEqual(['pre_match']);
+    expect(at('pre_match', ['pre_match'])).toEqual(['pre_match']);
+    expect(at('players_entering', ['players_entering'])).toEqual(['players_entering']);
+    const pre = FOOTBALL_STARTER.playlists.find((p) => p.id === 'pre_match')!;
+    expect(pre.items.map((i) => [i.templateKey, i.durationMs])).toEqual([['builtin:backdrop', null], ['builtin:ident', null]]);
+    // "About to start" brings the scorebug up before kick-off (its clock starts with the first half)
+    expect(at('about_to_start', ['about_to_start'])).toEqual(['about_to_start']);
+    expect(FOOTBALL_STARTER.playlists.find((p) => p.id === 'about_to_start')!.items.map((i) => i.action)).toEqual(['scorebug_show']);
+  });
+
+  it('records when each phase and the current break began, through live commands and a rebuild from the log', () => {
+    const cfg = footballAdapter.defaultConfig;
+    let state: Parameters<typeof applyCommand>[2] = { projection: footballAdapter.initialProjection(cfg), clocks: footballAdapter.initialClocks(cfg), sequence: 0 };
+    const log: Parameters<typeof applyCommand>[3] = [];
+    const step = (to: string, at: number) => {
+      const r = applyCommand(footballAdapter, cfg, state, log, 'SET_PHASE', { to }, at, null);
+      if (r.kind !== 'append') throw new Error('expected append');
+      log.push({ ...r.entry, id: `f${r.entry.sequence}` });
+      state = r.state;
+      return r.state.projection;
+    };
+    for (const [to, at] of [['pre_match', 500], ['players_entering', 1000], ['about_to_start', 2000], ['first_half', 3000]] as const) step(to, at);
+    expect(state.projection).toMatchObject({ phaseStartedAt: 3000, breakStartedAt: null, breakPhase: null });
+    expect(step('half_time', 50_000)).toMatchObject({ phaseStartedAt: 50_000, breakStartedAt: 50_000, breakPhase: 'half_time' });
+    // the second-half walk-out is still the same break: the restart countdown keeps counting from half time
+    expect(step('second_half_entering', 900_000)).toMatchObject({ phaseStartedAt: 900_000, breakStartedAt: 50_000, breakPhase: 'half_time' });
+    expect(step('second_half_ready', 950_000)).toMatchObject({ breakStartedAt: 50_000, breakPhase: 'half_time' });
+    expect(step('second_half', 960_000)).toMatchObject({ phaseStartedAt: 960_000, breakStartedAt: null, breakPhase: null });
+    const rebuilt = replay(footballAdapter, cfg, log.slice(0, 5).map((f) => ({ ...f })));
+    expect(rebuilt).toMatchObject({ phase: 'half_time', breakStartedAt: 50_000, breakPhase: 'half_time' });
+  });
+});

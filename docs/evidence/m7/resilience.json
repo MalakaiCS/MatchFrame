@@ -1,0 +1,43 @@
+{
+  "results": {
+    "a49": {
+      "factAcceptedWhileRedisDown": true,
+      "factId": "a8d82cc8-bede-4c81-9244-570b1139f6bf",
+      "outboxPendingDuringOutage": 5,
+      "displayedBefore": 299,
+      "duringRevision": 301,
+      "duringDisplayed": 300,
+      "goalGraphicOnOutputDuringOutage": 0,
+      "recoveredDisplayed": 303,
+      "goalRuns": 1,
+      "dead": 0
+    },
+    "a50": {
+      "egressBefore": [
+        "EG_HCDtXK9MbbKS"
+      ],
+      "egressWhileControlPlaneDown": [
+        "EG_HCDtXK9MbbKS"
+      ],
+      "egressAfter": [
+        "EG_HCDtXK9MbbKS"
+      ],
+      "sessionStateAfter": "LIVE",
+      "outputStateAfter": "LIVE",
+      "sameSession": true,
+      "stateVersionKept": true,
+      "clockRunningKept": true,
+      "scoreKept": true
+    }
+  },
+  "checks": {
+    "a49FactDurable": true,
+    "a49NoFalseDisplayed": true,
+    "a49Recovered": true,
+    "a49AutomationOnce": true,
+    "a50EgressSurvived": true,
+    "a50NoDuplicateEgress": true,
+    "a50Reconciled": true,
+    "a50MatchStateKept": true
+  }
+}

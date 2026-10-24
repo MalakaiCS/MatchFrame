@@ -1,0 +1,32 @@
+{
+  "name": "@bs/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "start": "node dist/main.js",
+    "build": "node ../../scripts/bundle.mjs src/main.ts dist/main.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bs/config": "workspace:*",
+    "@bs/contracts": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "@bs/graphics": "workspace:*",
+    "@bs/media": "workspace:*",
+    "@bs/services": "workspace:*",
+    "@fastify/cookie": "11.1.2",
+    "@fastify/rate-limit": "11.2.0",
+    "@socket.io/redis-adapter": "8.3.0",
+    "better-auth": "1.7.7",
+    "drizzle-orm": "0.45.3",
+    "fastify": "5.12.5",
+    "ioredis": "5.11.1",
+    "socket.io": "4.8.4",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

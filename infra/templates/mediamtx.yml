@@ -1,0 +1,29 @@
+# Local authenticated RTMP receiver (test destination only).
+logLevel: info
+rtsp: no
+webrtc: no
+srt: no
+rtmp: yes
+rtmpAddress: :1936
+hls: yes
+hlsAddress: :8888
+api: yes
+apiAddress: :9997
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: api
+      - action: read
+      - action: playback
+  - user: publisher
+    pass: ${RTMP_SINK_PASSWORD}
+    permissions:
+      - action: publish
+paths:
+  all_others:
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4

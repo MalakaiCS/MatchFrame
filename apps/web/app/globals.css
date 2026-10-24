@@ -1,0 +1,82 @@
+@import 'tailwindcss';
+@import '@bs/ui/tokens.css';
+@source '../../../packages/ui/src';
+@source './';
+@source '../../../packages/graphics/src';
+
+/* dark: and light: follow the page's chosen theme (data-theme on <html>), not only the device setting */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+
+/* MatchFrame brand: the wordmark's geometric face for headings, and the logo's cyan and blue (the logo keeps its own
+   colours in both themes; text and controls use the theme tokens from @bs/ui). */
+@theme {
+  --font-brand: 'Outfit Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-brand-cyan: #00d2ff;
+  --color-brand-blue: #2b5cff;
+  --color-brand-navy: #0a1020;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Sunlight mode: the scorer's high-contrast palette for a phone used outdoors. Switched on from the match screen. */
+html.sunlight {
+  color-scheme: light;
+  --color-on-primary: #ffffff;
+  --color-border-strong: #000000;
+  --color-bg: #ffffff;
+  --color-panel: #ffffff;
+  --color-elevated: #ececec;
+  --color-border: #000000;
+  --color-primary: #0041a8;
+  --color-primary-strong: #002f7a;
+  --color-text: #000000;
+  --color-muted: #2b2b2b;
+  --color-live: #b1001c;
+  --color-warning: #6b4a00;
+  --color-healthy: #0b6b3a;
+  --color-cyan: #005a66;
+}
+html.sunlight body {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Operating systems that ask for more contrast get stronger borders and secondary text. */
+@media (prefers-contrast: more) {
+  :root:not(.sunlight):not([data-theme='light']) {
+    --color-border: #8aa0c0;
+    --color-muted: #c9d3e3;
+  }
+  :root[data-theme='light']:not(.sunlight) {
+    --color-border: #6b7c95;
+    --color-muted: #2f3b4f;
+  }
+}
+
+/* Switching theme: no transition flash on the colours (the class is removed on the next frame). */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}

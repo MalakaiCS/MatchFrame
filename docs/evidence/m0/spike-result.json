@@ -1,0 +1,69 @@
+{
+  "room": "spike-1792408575096",
+  "api": "StartEgress (source=template)",
+  "live": true,
+  "egress": {
+    "id": "EG_HwK2n3SGJEWA",
+    "status": "EGRESS_COMPLETE",
+    "error": "",
+    "files": [
+      {
+        "filename": "/out/spike-1792408575096/programme.mp4",
+        "startedAt": "1792408579951455120",
+        "endedAt": "1792408620261464750",
+        "size": "16495326",
+        "location": "/out/spike-1792408575096/programme.mp4",
+        "duration": "40310009630"
+      }
+    ],
+    "segments": [
+      {
+        "playlistName": "/out/spike-1792408575096/hls/index.m3u8",
+        "duration": "40310009630",
+        "size": "17346572",
+        "playlistLocation": "/out/spike-1792408575096/hls/index.m3u8",
+        "segmentCount": "21",
+        "startedAt": "1792408579951455120",
+        "endedAt": "1792408620261464750",
+        "livePlaylistName": "/out/spike-1792408575096/hls/live.m3u8",
+        "livePlaylistLocation": "/out/spike-1792408575096/hls/live.m3u8"
+      }
+    ],
+    "streams": [
+      {
+        "url": "rtmp://127.0.0.1:1936/live/{spi...ass}",
+        "startedAt": "1792408579951984041",
+        "endedAt": "1792408620261464750",
+        "duration": "40309480709",
+        "status": "FINISHED",
+        "error": "",
+        "lastRetryAt": "0",
+        "retries": 0
+      }
+    ]
+  },
+  "cpuSamples": [
+    "bs-media-spike-egress-1 126.66% 422.3MiB / 15.72GiB\nbs-media-spike-ingress-1 83.34% 110.8MiB / 15.72GiB\nbs-media-spike-livekit-1 5.91% 55.7MiB / 15.72GiB\nbs-media-spike-redis-1 0.58% 4.707MiB / 15.72GiB\nbs-media-spike-sink-1 2.40% 22.33MiB / 15.72GiB\n",
+    "bs-media-spike-egress-1 108.27% 420.8MiB / 15.72GiB\nbs-media-spike-ingress-1 83.26% 115MiB / 15.72GiB\nbs-media-spike-livekit-1 5.40% 56.29MiB / 15.72GiB\nbs-media-spike-redis-1 0.53% 4.723MiB / 15.72GiB\nbs-media-spike-sink-1 2.31% 24.71MiB / 15.72GiB\n",
+    "bs-media-spike-egress-1 105.53% 411.1MiB / 15.72GiB\nbs-media-spike-ingress-1 78.96% 117.7MiB / 15.72GiB\nbs-media-spike-livekit-1 5.15% 57.79MiB / 15.72GiB\nbs-media-spike-redis-1 0.58% 4.723MiB / 15.72GiB\nbs-media-spike-sink-1 2.24% 23.52MiB / 15.72GiB\n"
+  ],
+  "webhookCount": 16,
+  "webhookEvents": [
+    "room_started",
+    "ingress_started",
+    "participant_joined",
+    "track_published",
+    "track_published",
+    "egress_started",
+    "participant_joined",
+    "egress_updated",
+    "participant_left",
+    "egress_updated",
+    "egress_ended",
+    "track_unpublished",
+    "track_unpublished",
+    "participant_left",
+    "participant_left",
+    "room_finished"
+  ]
+}

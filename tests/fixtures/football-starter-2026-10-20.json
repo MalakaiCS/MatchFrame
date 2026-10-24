@@ -1,0 +1,482 @@
+{
+ "version": 1,
+ "sport": "football",
+ "defaultScorebug": true,
+ "freshnessMs": 10000,
+ "playlists": [
+  {
+   "id": "pre_match",
+   "name": "Pre-match: animated background and match header",
+   "kind": "pre",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_pre",
+     "type": "phase",
+     "phaseTags": [
+      "pre_match"
+     ],
+     "phaseIds": []
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "pre_backdrop",
+     "action": "show",
+     "templateKey": "builtin:backdrop",
+     "offsetMs": 0,
+     "durationMs": null
+    },
+    {
+     "id": "pre_header",
+     "action": "show",
+     "templateKey": "builtin:ident",
+     "variables": {
+      "showCountdown": true
+     },
+     "offsetMs": 600,
+     "durationMs": null
+    }
+   ]
+  },
+  {
+   "id": "players_entering",
+   "name": "Players entering: clear, then both line-ups once",
+   "kind": "pre",
+   "continueOnPhaseStep": true,
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_enter",
+     "type": "phase",
+     "phaseTags": [],
+     "phaseIds": [
+      "players_entering"
+     ]
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "enter_clear",
+     "action": "clear_layers",
+     "layers": [
+      "background",
+      "fullframe",
+      "lower"
+     ],
+     "offsetMs": 0
+    },
+    {
+     "id": "lineup_home",
+     "action": "show",
+     "templateKey": "builtin:lineup",
+     "variables": {
+      "team": "home"
+     },
+     "offsetMs": 15000,
+     "durationMs": 8000
+    },
+    {
+     "id": "lineup_away",
+     "action": "show",
+     "templateKey": "builtin:lineup",
+     "variables": {
+      "team": "away"
+     },
+     "offsetMs": 23600,
+     "durationMs": 8000
+    }
+   ]
+  },
+  {
+   "id": "kickoff",
+   "name": "Kick-off: scorebug and kick-off banner",
+   "kind": "in_play",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_period",
+     "type": "phase",
+     "phaseTags": [
+      "period_start"
+     ],
+     "phaseIds": []
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "clear_ff",
+     "action": "clear_layers",
+     "layers": [
+      "background",
+      "fullframe",
+      "lower"
+     ],
+     "offsetMs": 0
+    },
+    {
+     "id": "bug",
+     "action": "scorebug_show",
+     "offsetMs": 300
+    },
+    {
+     "id": "ko_banner",
+     "action": "show",
+     "templateKey": "builtin:period_banner",
+     "variables": {
+      "heading": "KICK-OFF"
+     },
+     "offsetMs": 700,
+     "durationMs": 5000
+    }
+   ]
+  },
+  {
+   "id": "goal",
+   "name": "Goal: scorer graphic, then partner",
+   "kind": "in_play",
+   "priority": 1,
+   "triggers": [
+    {
+     "id": "t_goal",
+     "type": "event",
+     "eventTypes": [
+      "goal",
+      "own_goal",
+      "penalty_scored"
+     ]
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "goal_gfx",
+     "action": "show",
+     "templateKey": "builtin:goal",
+     "variables": {
+      "team": {
+       "from": "event.side"
+      },
+      "player": {
+       "from": "event.playerId"
+      },
+      "minute": {
+       "from": "event.minute"
+      },
+      "eventType": {
+       "from": "event.type"
+      }
+     },
+     "offsetMs": 0,
+     "durationMs": 7000
+    },
+    {
+     "id": "goal_partner",
+     "action": "sponsor",
+     "offsetMs": 7500,
+     "durationMs": 5000,
+     "placement": "detached_logo"
+    }
+   ]
+  },
+  {
+   "id": "card",
+   "name": "Yellow and red cards",
+   "kind": "in_play",
+   "priority": 1,
+   "triggers": [
+    {
+     "id": "t_card",
+     "type": "event",
+     "eventTypes": [
+      "yellow_card",
+      "second_yellow",
+      "red_card"
+     ]
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "card_gfx",
+     "action": "show",
+     "templateKey": "builtin:card",
+     "variables": {
+      "team": {
+       "from": "event.side"
+      },
+      "player": {
+       "from": "event.playerId"
+      },
+      "cardType": {
+       "from": "event.cardType"
+      },
+      "minute": {
+       "from": "event.minute"
+      }
+     },
+     "offsetMs": 0,
+     "durationMs": 6000
+    }
+   ]
+  },
+  {
+   "id": "sub",
+   "name": "Substitution",
+   "kind": "in_play",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_sub",
+     "type": "event",
+     "eventTypes": [
+      "substitution"
+     ]
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "sub_gfx",
+     "action": "show",
+     "templateKey": "builtin:substitution",
+     "variables": {
+      "team": {
+       "from": "event.side"
+      },
+      "playerOut": {
+       "from": "event.playerOutId"
+      },
+      "playerIn": {
+       "from": "event.playerInId"
+      },
+      "minute": {
+       "from": "event.minute"
+      }
+     },
+     "offsetMs": 0,
+     "durationMs": 7000
+    }
+   ]
+  },
+  {
+   "id": "half_time",
+   "name": "Half time: animated background over everything",
+   "kind": "break",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_ht",
+     "type": "phase",
+     "phaseTags": [
+      "half_time",
+      "extra_time_interval"
+     ],
+     "phaseIds": []
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "ht_backdrop",
+     "action": "show",
+     "templateKey": "builtin:backdrop",
+     "offsetMs": 0,
+     "durationMs": null
+    },
+    {
+     "id": "ht_bug_off",
+     "action": "scorebug_hide",
+     "offsetMs": 600
+    }
+   ]
+  },
+  {
+   "id": "half_time_boards",
+   "name": "Half time: match stats, then match header with countdown (45 s each)",
+   "kind": "break",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_ht_boards",
+     "type": "phase",
+     "phaseTags": [
+      "half_time",
+      "extra_time_interval"
+     ],
+     "phaseIds": []
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "loop",
+    "gapMs": 600,
+    "maxIterations": 40
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "ht_stats",
+     "action": "show",
+     "templateKey": "builtin:stats",
+     "offsetMs": 600,
+     "durationMs": 45000
+    },
+    {
+     "id": "ht_header",
+     "action": "show",
+     "templateKey": "builtin:ident",
+     "variables": {
+      "showCountdown": true
+     },
+     "offsetMs": 46200,
+     "durationMs": 45000
+    }
+   ]
+  },
+  {
+   "id": "second_half_entering",
+   "name": "Players entering (2nd half): clear, scorebug back 7 s later",
+   "kind": "break",
+   "continueOnPhaseStep": true,
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_enter2",
+     "type": "phase",
+     "phaseTags": [],
+     "phaseIds": [
+      "second_half_entering"
+     ]
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "enter2_clear",
+     "action": "clear_layers",
+     "layers": [
+      "background",
+      "fullframe",
+      "lower"
+     ],
+     "offsetMs": 0
+    },
+    {
+     "id": "enter2_bug",
+     "action": "scorebug_show",
+     "offsetMs": 7000
+    }
+   ]
+  },
+  {
+   "id": "full_time",
+   "name": "Full time: after 30 s, final score on the match header with a thank-you",
+   "kind": "post",
+   "priority": 2,
+   "triggers": [
+    {
+     "id": "t_ft",
+     "type": "phase",
+     "phaseTags": [
+      "full_time"
+     ],
+     "phaseIds": []
+    }
+   ],
+   "guards": [],
+   "repeat": {
+    "mode": "once",
+    "gapMs": 0,
+    "maxIterations": 1
+   },
+   "cooldownMs": 0,
+   "promotional": false,
+   "items": [
+    {
+     "id": "ft_backdrop",
+     "action": "show",
+     "templateKey": "builtin:backdrop",
+     "offsetMs": 30000,
+     "durationMs": null
+    },
+    {
+     "id": "ft_bug_off",
+     "action": "scorebug_hide",
+     "offsetMs": 30600
+    },
+    {
+     "id": "ft_header",
+     "action": "show",
+     "templateKey": "builtin:ident",
+     "variables": {
+      "showCountdown": false,
+      "message": "Thank you for watching"
+     },
+     "offsetMs": 30600,
+     "durationMs": null
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,152 @@
+# Broadcast Studio local/self-hosted profile.
+# Host networking (Linux) keeps LiveKit RTC/ICE addressing predictable. Every non-public service binds to
+# 127.0.0.1; only RTMP ingest, LiveKit signalling/RTC and the reverse proxy should be exposed publicly.
+# Configs under .data/config are rendered from .env by `pnpm setup`.
+# LiveKit server/ingress/egress are in the "streaming" profile; graphics-only installs (STREAMING_ENABLED=false) omit it.
+name: broadcast-studio
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *restart
+    image: postgres:16.10-alpine@sha256:029660641a0cfc575b14f336ba448fb8a75fd595d42e1fa316b9fb4378742297
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1", "-c", "port=${POSTGRES_PORT:-5432}", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-bs_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?run pnpm setup}
+      POSTGRES_DB: ${POSTGRES_DB:-broadcast_studio}
+    volumes: ["../.data/postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_ADMIN_USER:-bs_owner}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    <<: *restart
+    image: redis:7.4.6-alpine@sha256:3b73847e72874be07e6657b129a94761662b79bc0f679273757d4218573b2a98
+    network_mode: host
+    command: ["redis-server", "--bind", "127.0.0.1", "--port", "${REDIS_PORT:-6379}", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?run pnpm setup}"]
+    volumes: ["../.data/redis:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -p ${REDIS_PORT:-6379} -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  minio:
+    <<: *restart
+    # Community-maintained MinIO build (upstream stopped publishing Docker Hub images in 2025).
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    network_mode: host
+    command: ["server", "/data", "--address", "127.0.0.1:${S3_PORT:-9000}", "--console-address", "127.0.0.1:${S3_CONSOLE_PORT:-9001}"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?run pnpm setup}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?run pnpm setup}
+    volumes: ["../.data/minio:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${S3_PORT:-9000}/minio/health/ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    <<: *restart
+    image: axllent/mailpit:v1.27.10@sha256:b1f1be18af530d939a11ee8820b379e0c88eeec204d904bfad68862adced3a5a
+    network_mode: host
+    environment:
+      MP_SMTP_BIND_ADDR: 127.0.0.1:${SMTP_PORT:-1025}
+      MP_UI_BIND_ADDR: 127.0.0.1:${MAILPIT_UI_PORT:-8025}
+
+  livekit:
+    profiles: ["streaming"]
+    <<: *restart
+    image: livekit/livekit-server:v1.13.8@sha256:ad961c9b4b064298cc08d618d772671f7c783e036001388079fa813929cc357e
+    network_mode: host
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes: ["../.data/config/livekit.yaml:/etc/livekit.yaml:ro"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  ingress:
+    profiles: ["streaming"]
+    <<: *restart
+    image: livekit/ingress:v1.5.0@sha256:2e1d3fcf10bfaebddaea74dc8b965410cda6377ed154451361b86ab3a9ee9f99
+    network_mode: host
+    environment:
+      INGRESS_CONFIG_FILE: /etc/ingress.yaml
+    volumes: ["../.data/config/ingress.yaml:/etc/ingress.yaml:ro"]
+    depends_on: [livekit]
+
+  egress:
+    profiles: ["streaming"]
+    <<: *restart
+    image: livekit/egress:v1.14.1@sha256:bf2b648b947349c3e9ff7aa8c718f00378d5c06af7624652a3653318e00333ce
+    network_mode: host
+    cap_add: [SYS_ADMIN] # required by Chrome's sandbox inside egress (LiveKit self-hosting docs)
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ../.data/config/egress.yaml:/etc/egress.yaml:ro
+      - ../.data/egress-tmp:/home/egress/tmp
+    deploy:
+      resources:
+        limits: { cpus: "${EGRESS_CPU_LIMIT:-3.5}", memory: 4g }
+    depends_on: [livekit]
+
+  # --- media-test profile: authenticated local RTMP receiver (test destination, not a public platform) ---
+  rtmp-sink:
+    profiles: ["media-test"]
+    image: bluenviron/mediamtx:1.21.2@sha256:c7540465f868a02652118bea5a0daab12a29ac0f6cb8485abd535939ecddf886
+    network_mode: host
+    volumes:
+      - ../.data/config/mediamtx.yml:/mediamtx.yml:ro
+      - ../.data/rtmp-sink:/recordings
+
+  # --- app profile: run the application itself in containers (pnpm dev runs these on the host instead) ---
+  api:
+    profiles: ["app"]
+    <<: *restart
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args: { PUBLIC_REALTIME_URL: "${PUBLIC_REALTIME_URL:-}", PUBLIC_LIVEKIT_URL: "${PUBLIC_LIVEKIT_URL:-}", PUBLIC_RTMP_URL: "${PUBLIC_RTMP_URL:-}" }
+    image: broadcast-studio-app:local
+    network_mode: host
+    env_file: ../.env
+    command: ["node", "apps/api/dist/main.js"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  worker:
+    profiles: ["app"]
+    <<: *restart
+    image: broadcast-studio-app:local
+    network_mode: host
+    env_file: ../.env
+    command: ["node", "apps/worker/dist/main.js"]
+    depends_on: [api]
+  media-worker:
+    profiles: ["app"]
+    <<: *restart
+    image: broadcast-studio-app:local
+    network_mode: host
+    env_file: ../.env
+    command: ["node", "apps/media-worker/dist/main.js"]
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 3g }
+    depends_on: [api]
+  web:
+    profiles: ["app"]
+    <<: *restart
+    image: broadcast-studio-app:local
+    network_mode: host
+    env_file: ../.env
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "-H", "127.0.0.1", "-p", "${WEB_PORT:-3000}"]
+    depends_on: [api]

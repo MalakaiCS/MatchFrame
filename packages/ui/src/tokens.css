@@ -1,0 +1,47 @@
+/* MatchFrame design tokens. Dark (deep navy, cyan accent) is the default; the light set below takes over when the
+   page's <html> carries data-theme="light" (set before first paint from the visitor's choice or their system).
+   Every text pair here meets WCAG AA (4.5:1) against the surfaces it sits on; borders used to mark a control meet 3:1. */
+@theme {
+  --color-bg: #0b1220;
+  --color-panel: #111c2e;
+  --color-elevated: #172338;
+  --color-border: #263650;
+  --color-border-strong: #4a6283;
+  --color-primary: #00c8f0;
+  --color-primary-strong: #33d6f5;
+  --color-on-primary: #06121f;
+  --color-text: #f5f8fc;
+  --color-muted: #b7c3d4;
+  --color-live: #ff5263;
+  --color-warning: #ffce66;
+  --color-healthy: #55d99d;
+  --color-cyan: #45d6e8;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 14px;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset;
+  --shadow-pop: 0 18px 48px -12px rgb(0 0 0 / 0.55);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-bg: #f4f7fb;
+  --color-panel: #ffffff;
+  --color-elevated: #eaf0f7;
+  --color-border: #d3dce8;
+  --color-border-strong: #8193ad;
+  --color-primary: #006fa8;
+  --color-primary-strong: #005783;
+  --color-on-primary: #ffffff;
+  --color-text: #0b1220;
+  --color-muted: #4a5870;
+  --color-live: #c8102e;
+  --color-warning: #8a5a00;
+  --color-healthy: #0a7a43;
+  --color-cyan: #007c8f;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 1px rgb(15 23 42 / 0.03);
+  --shadow-pop: 0 18px 48px -12px rgb(15 23 42 / 0.25);
+}
