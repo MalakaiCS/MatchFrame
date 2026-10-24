@@ -876,6 +876,82 @@ Not claimed: football still always plays two halves (its phases are wired into t
 and rehearsal; quarters for football would be a separate change); the full browser suite was not rerun for this
 change.
 
+## A simpler app: fewer places, one word per thing (2026-10-24)
+
+Requested: "Looking at the app UI, what could we change to make it better and more simple", then "make all changes
+now" for the recommendations given (21 screens reviewed on desktop and phone).
+
+* **Navigation**:
+  * *Live* replaces *Control rooms* and *Producer board*: one card per live match and today's fixtures, with a
+    *Desk* button per output, *Scorer* and *Commentator*. It shows only what needs acting on (no scorer on a live
+    match, OBS not showing an output, manual mode, cues waiting). Matches still live but quiet for hours are under
+    *Needs closing*, and desk layouts are at the bottom. `/app/board` and `/app/control-rooms` redirect to `/app/live`.
+  * One word per thing: *Looks* (was Themes), *Desk* (was control room, in the app, the public site and the guides),
+    *Library* (was Assets, with *Files* for images, video and audio), *Videos* (was Media). The sponsor button says
+    *New sponsor*, and creatives are *artwork*.
+  * The sidebar has 10 items (11 with streaming on), down from 14. With streaming off, *Videos* shows only highlights
+    and other exports and their share links, since recordings and clips cannot exist there.
+  * On phones the organisation switcher moved into the menu, so the top bar no longer cuts the name off.
+* **Home**:
+  * *New match* appears once (the sidebar; the header button only shows below the sidebar's width).
+  * Quick actions are gone, and *Start a demo match* moved to the set-up card.
+  * *Usage this month* moved to Settings → Plan & billing.
+  * Stale live matches are one line ("N matches are still marked live… Close them") that opens Live's *Needs
+    closing*. The count comes from the API total, not the first page.
+* **Matches**:
+  * The table has five columns. A row click opens the match.
+  * *Status* says how ready a match is ("3 of 5 ready · Needs line-ups, OBS"), who is scoring a live one, or the
+    result.
+  * The readiness comes from the API (`ready` on each list row: line-ups, a look, automation, an assigned scorer,
+    OBS connected; tenant-scoped queries with an explicit `organisation_id`).
+  * Quick ranges (*All*, *Upcoming*, *Today*, *This week*, *Past*, *Dates…*) replace the date boxes.
+  * A click on *Kick-off* changes the order. *Upcoming* lists the soonest first unless an order was chosen.
+* **Match page**:
+  * Five tabs: *Overview*, *Line-ups*, *Timeline* (event log and activity), *Graphics* (OBS link, more outputs, run
+    sheet) and *Media* (highlights and thumbnails), plus *Stream* when streaming is on. Old `?tab=` links still land
+    on the right tab.
+  * In the checklist, a look, a plan or a scorer applies as soon as it is chosen (no Apply buttons).
+  * *Copy OBS link* appears once, and the checklist folds to one line when all five are done.
+* **Competitions**:
+  * The list is searchable and shows 25 at a time. Archived competitions appear on request, and each row has its
+    next match (`nextMatchAt` from the API).
+  * The competition page merges *Fixtures* with *Results & fixtures* (*By round* or *All matches*).
+  * The rules card is the timeline, one line and *Edit rules and timing*.
+  * Every logo and photo picker is one button (*Change logo*) with a menu: upload, choose from your images (a
+    picture grid), or remove.
+* **Library**: teams and players are searchable and shown 25 at a time, and clicking a row opens it. An *active*
+  badge appears only when a team is not active.
+* **Looks**: built-in and own looks as larger cards on a pitch photo. Tabs are *Built-in looks*, *Your looks* and
+  *Custom graphics*.
+* **Desk**:
+  * The header has one status pill (the most important of offline, OBS not connected, catching up, showing the
+    latest) and a *More* menu (export, keyboard shortcuts).
+  * Graphics are listed by name, or shown as tiles. Inputs appear only when a graphic needs them.
+  * The event log is one line until there are events. Preview is large and On air smaller.
+* **Automation**:
+  * *What this plan does* is one plain line per playlist.
+  * Priority, repeats, delays, conditions and approval are under *Fine-tune*.
+  * JSON is for owners and admins only.
+  * The plan list is searchable and grouped by sport. *Reset to the starter flow* is a secondary button.
+* **Settings and Reports**:
+  * Settings uses a grouped side list (Organisation, Connections, Security), with a searchable time zone under
+    *General*.
+  * Reports name matches ("Home v Away", kick-off date) and outputs instead of IDs, and sponsor artwork as "Brand ·
+    artwork".
+  * *Skipped or empty* moved into the explanation.
+* **Scorer**:
+  * *Start 1st Half* works at any time; steps not marked are skipped (the domain already allowed the jump; the same
+    queued `SET_PHASE` is sent).
+  * Team abbreviations show on phones.
+  * *+ Match* moved into the header so it never covers a card, and the tabs stay on one line.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` | 232 tests, 41 files, all pass |
+| `pnpm test:db` (adds to `tenant-scoring.test.ts`: the `ready` summary on list rows and `nextMatchAt` on the competitions list; `automation.test.ts` checks the report's match and output names) | 104 tests, 15 files, all pass |
+| Browser suite on the rebuilt app (specs updated for the new names, tabs, More menu, Fine-tune, Live, quick ranges and the Kick-off sort) | Running when this was written; not claimed yet |
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

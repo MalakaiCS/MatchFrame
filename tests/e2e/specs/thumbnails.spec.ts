@@ -49,7 +49,7 @@ test('thumbnails: one for each kind of video, downloaded at YouTube size and ful
   const matchId = await freshMatch(page);
   await sampleCrests(page);
   await page.goto(`/app/matches/${matchId}`);
-  await page.getByRole('tab', { name: 'Thumbnails' }).click();
+  await page.getByRole('tab', { name: 'Media' }).click();
   const list = page.getByRole('list', { name: 'Thumbnails' });
   for (const [kind, label] of [['live', 'LIVE STREAM'], ['highlights', 'HIGHLIGHTS'], ['extended', 'HIGHLIGHTS'], ['full_match', 'FULL MATCH'], ['custom', 'MATCH REPLAY']]) {
     await expect(list.locator(`[data-thumbnail="${kind}"] [data-thumbnail-label]`)).toContainText(label!);
@@ -63,7 +63,7 @@ test('thumbnails: one for each kind of video, downloaded at YouTube size and ful
   await expect(live.locator('img')).toHaveCount(3); // the competition's logo and both crests
   // the sticky app header would sit over the top of the capture
   await page.addStyleTag({ content: 'header, nav[aria-label="Main (compact)"] { visibility: hidden !important; }' });
-  await page.getByRole('tabpanel').screenshot({ path: `${EVIDENCE}/thumbnails-tab.png` });
+  await page.locator('section', { has: list }).screenshot({ path: `${EVIDENCE}/thumbnails-tab.png` });
 
   // each kind as a PNG at YouTube's size (kept as evidence), and one at full HD
   const dir = path.resolve(EVIDENCE);
@@ -73,7 +73,7 @@ test('thumbnails: one for each kind of video, downloaded at YouTube size and ful
   }
   await page.getByLabel('Your own words').fill('Grand Final');
   await expect(list.locator('[data-thumbnail="custom"] [data-thumbnail-label]')).toContainText('GRAND FINAL');
-  await page.getByLabel('Size').selectOption('1920');
+  await page.getByLabel('Thumbnail size').selectOption('1920');
   const hd = await download(page, list.getByRole('button', { name: 'Download the own words thumbnail' }), path.join(dir, 'thumbnail-own-words.png'));
   expect(pngSize(hd)).toEqual([1920, 1080]);
 
@@ -90,7 +90,7 @@ test('thumbnails follow the look: the same match in two other looks', async ({ b
     await page.unroute('**/render-data');
     await sampleCrests(page, look);
     await page.goto(`/app/matches/${matchId}`);
-    await page.getByRole('tab', { name: 'Thumbnails' }).click();
+    await page.getByRole('tab', { name: 'Media' }).click();
     const list = page.getByRole('list', { name: 'Thumbnails' });
     await expect(list.locator('[data-thumbnail="highlights"] img')).toHaveCount(3);
     const png = await download(page, list.getByRole('button', { name: 'Download the highlights thumbnail' }), path.resolve(EVIDENCE, `thumbnail-highlights-${look}.png`));

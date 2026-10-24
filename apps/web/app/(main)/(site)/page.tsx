@@ -42,7 +42,7 @@ const TOOLS = [
 
 const AUDIENCES = [
   { icon: Users, title: 'Clubs and volunteers', body: 'One scorer and one person at the streaming computer can run a broadcast that looks the part.', href: '/docs/getting-started/first-match', link: 'Set up your first match' },
-  { icon: Trophy, title: 'Competitions', body: 'Set a look and an automation plan once; every fixture gets its own scorer link, output and control room.', href: '/features#automation', link: 'Competition-wide setup' },
+  { icon: Trophy, title: 'Competitions', body: 'Set a look and an automation plan once; every fixture gets its own scorer link, output and desk.', href: '/features#automation', link: 'Competition-wide setup' },
   { icon: Clapperboard, title: 'Production crews', body: 'Preview before air, keyboard shortcuts, Stream Deck buttons, and a producer board for every live match.', href: '/how-it-works', link: 'How a matchday runs' },
 ];
 
@@ -151,8 +151,8 @@ export default function Home() {
       <Section labelledBy="tools-heading">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <div>
-            <SectionHeading eyebrow="Matchday tools" title="The scorer’s phone and the control room, connected" id="tools-heading">
-              <p>Every tap on the phone reaches the control room and the graphics within a second. Automation handles the routine; people stay in charge.</p>
+            <SectionHeading eyebrow="Matchday tools" title="The scorer’s phone and the desk, connected" id="tools-heading">
+              <p>Every tap on the phone reaches the desk and the graphics within a second. Automation handles the routine; people stay in charge.</p>
             </SectionHeading>
             <ul className="mt-8 space-y-4">
               {TOOLS.map(([t, b]) => (

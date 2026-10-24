@@ -182,11 +182,12 @@ function sampleState(): OverlayPublicState {
   return s;
 }
 
+/** A look's scorebug and goal strap over a pitch, as a card picture. */
 export function ThemeThumb({ theme, state }: { theme: ThemeConfig; state?: OverlayPublicState }) {
   const data = useMemo(() => sampleData(theme), [theme]);
   const st = useMemo(() => state ?? sampleState(), [state]);
   return (
-    <div className="relative aspect-video overflow-hidden rounded-md bg-gradient-to-br from-[#2b3a4f] to-[#121a26]">
+    <div className="relative aspect-video overflow-hidden rounded-md bg-[#1d4f2a] bg-[url('/site/scene-pitch.jpg')] bg-cover bg-center">
       <Stage><Renderer state={st} data={data} themes={THEMES} serverNow={() => Date.now()} /></Stage>
     </div>
   );

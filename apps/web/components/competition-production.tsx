@@ -34,7 +34,7 @@ export function CompetitionProduction({ competition: c, canEdit }: Props) {
         <h2 className="mb-3 font-medium">Default automation</h2>
         <Field label="Plan for new fixtures" htmlFor="gp">
           <NativeSelect id="gp" disabled={!canEdit} value={c.gamePlanVersionId ?? ''} onChange={(e) => save.mutate({ gamePlanVersionId: e.target.value || null })}>
-            <option value="">Off (everything from the control room)</option>
+            <option value="">Off (everything from the desk)</option>
             {plans.data?.filter((p) => p.sport === c.sport).flatMap((p) => p.versions.map((v) => <option key={v.id} value={v.id}>{p.name} · v{v.version}</option>))}
           </NativeSelect>
         </Field>

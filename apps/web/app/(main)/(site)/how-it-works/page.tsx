@@ -102,7 +102,7 @@ export default function HowItWorksPage() {
       {/* 2. run */}
       <Section labelledBy="run-heading">
         <SectionHeading eyebrow="Step 2" title="Run the broadcast" id="run-heading">
-          <p>Who does what during the match. Automation only acts while the output is in Auto, and anyone at the control room can take over.</p>
+          <p>Who does what during the match. Automation only acts while the output is in Auto, and anyone at the desk can take over.</p>
         </SectionHeading>
         <div className="mt-10 grid grid-cols-1 items-end gap-6 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <figure>
@@ -111,7 +111,7 @@ export default function HowItWorksPage() {
           </figure>
           <figure>
             <ShotFrame shot={SHOTS.control} chrome sizes="(min-width: 1024px) 40vw, 100vw" />
-            <figcaption className="mt-3 text-center text-sm text-muted">The control room on the operator’s laptop</figcaption>
+            <figcaption className="mt-3 text-center text-sm text-muted">The desk on the operator’s laptop</figcaption>
           </figure>
           <figure>
             <div className="overflow-hidden rounded-2xl border border-border bg-[#0b1220] shadow-pop">
@@ -171,7 +171,7 @@ export default function HowItWorksPage() {
               <H3 className="!text-lg">Graphic exports</H3>
               <Badge tone="available">Available</Badge>
             </div>
-            <p className="mt-3 text-[15px] leading-relaxed text-muted">Export any graphic from the control room as a transparent PNG, or a short WebM of its animation, for social posts. Sponsor and on-air reports export as CSV. These are graphics only, not footage of the match.</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-muted">Export any graphic from the desk as a transparent PNG, or a short WebM of its animation, for social posts. Sponsor and on-air reports export as CSV. These are graphics only, not footage of the match.</p>
           </div>
           <div className="rounded-2xl border border-border bg-panel p-6 shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-2">

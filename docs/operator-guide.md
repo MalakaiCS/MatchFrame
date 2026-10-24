@@ -2,15 +2,27 @@
 
 ## Getting around
 
-The sidebar has four groups: **Home**, **Matches** and **Competitions**; **On air** (Control rooms, Producer board,
-Streams); **Graphics** (Themes, Automation, Assets); and **Sponsors & media** (Sponsors, Reports, Media), with
-Settings, Help and guides and (for site staff) the Staff console at the bottom. **New match** is always at the top.
-*Collapse* folds the sidebar to icons; on a phone the menu button opens the same list. **Ctrl K** (⌘ K on a Mac),
-or the *Jump to or search* box, goes to any page, or searches matches by team or competition.
+The sidebar has **Home**, **Live**, **Matches** and **Competitions** at the top; **Graphics** (Looks, Automation,
+Library); **Sponsors** (Sponsors, Reports); and, when streaming is on, **Video** (Streams, Videos). Settings, Help and
+guides and (for site staff) the Staff console are at the bottom, and **New match** is always at the top. *Collapse*
+folds the sidebar to icons; on a phone the menu button opens the same list, with your organisations at its top.
+**Ctrl K** (⌘ K on a Mac), or the *Jump to or search* box, goes to any page, or searches matches by team or
+competition.
 
-**Matches** lists the newest kick-off first (the competition's *Fixtures* tab and the scorer's *Not played* and
-*Results* tabs too); *Order → Oldest first* turns it round and is remembered for you. Lists of what is coming up
-(the dashboard, control rooms, producer board, the scorer's *Now & next*) keep the next match at the top.
+The same few words are used everywhere: a **look** is the style of the graphics; the **desk** is the screen where an
+operator sends graphics to air for one output; the **Library** holds teams, players, venues, clubs and files; and
+**Videos** holds highlights packages and other exports (plus recordings and clips when streaming is on).
+
+**Matches** lists the newest kick-off first (the competition's *Fixtures and results → All matches* and the scorer's
+*Not played* and *Results* tabs too); a click on the *Kick-off* heading turns it round and is remembered for you.
+*All*, *Upcoming*, *Today*, *This week* and *Past* pick the dates in one click (*Dates…* for your own); *Upcoming*
+lists the soonest first unless you chose an order. Each row's *Status* says how ready a match is (*3 of 5 ready ·
+Needs line-ups, OBS*, from the match-day checklist), who is scoring a live match, or the result, and a click anywhere
+on a row opens the match. Lists of what is coming up (Home, Live, the scorer's *Now & next*) keep the next match at
+the top.
+
+**Home** shows the next match (scorer, desk and OBS link), what is live now and what is coming up. Matches still
+marked live with nothing recorded for hours are one line (*Close them*) that opens Live's *Needs closing* list.
 
 The sun/moon button in the top bar switches between light and dark; the account menu (your initial) has
 *Appearance* (Light, Dark or System, which follows the device), *Account and sign-in*, Help and Sign out. The choice
@@ -50,16 +62,20 @@ code.
    stored in UTC) and the lineup snapshot. Lineups lock at kickoff; later roster changes never rewrite them.
    *Create a round* on the competition's Fixtures tab makes a whole round at once and can copy another match's
    look, automation and output format.
-2. **Match day checklist** — at the top of the match page: lineups entered, a look chosen, automation set, a
-   scorer assigned, OBS connected. Each line has its action in place; *Copy OBS link* and *Send scorer link*
-   (with a QR code) sit beside it. The dashboard shows the next match with the same three buttons.
-3. **Line-ups** — the Lineup tab (or the scorer's phone) sets starters, bench, captain and formation from the
+2. **Match day checklist** — at the top of the match page: line-ups entered, a look chosen, automation set, a
+   scorer assigned, OBS connected. Each line has its action in place, and a choice (a look, a plan, a scorer)
+   applies as soon as it is picked; *Copy OBS link* is on the OBS line and *Send scorer link* (with a QR code) at
+   the top. Once all five are done the checklist folds to one line (*Ready to go*). The match page's tabs are
+   *Overview*, *Line-ups*, *Timeline* (the event log and the activity), *Graphics* (the OBS link, more outputs and
+   the run sheet) and *Media* (highlights and thumbnails; recordings too when streaming is on). Home shows the
+   next match with its scorer, desk and OBS link buttons.
+3. **Line-ups** — the Line-ups tab (or the scorer's phone) sets starters, bench, captain and formation from the
    season roster. *Use last line-up* and *Use team default* fill a side in one tap; *Save as team default* keeps a
    side for next time. The usual number of starters for the sport is shown as a hint, never enforced.
 4. **Match information** — officials, attendance and weather on the Overview tab feed the match information
    strap, the officials graphic and the public match centre.
-5. **OBS link** — every match has one graphics output from the moment it is created. Match → *OBS link* →
-   *Copy link*, then in OBS add a Browser Source (1920×1080, or 1080×1920 for a vertical output; transparent, no
+5. **OBS link** — every match has one graphics output from the moment it is created. *Copy OBS link* in the
+   match-day checklist, or Match → *Graphics* → *Copy link*, then in OBS add a Browser Source (1920×1080, or 1080×1920 for a vertical output; transparent, no
    custom CSS). The status turns green once OBS is showing the page. *Download OBS scene collection* gives OBS a
    ready-made scene per output. *Advanced → create a new link* if the link leaks; the old one stops at once.
    A second output (a clean feed, a vertical social stream, a venue screen) is under *More outputs*.
@@ -68,9 +84,11 @@ code.
 7. **Automation** — choose a published plan on the match (checklist) or as the competition default. Plans are
    edited in plain language under Automation (when it runs, which steps, how long). Each playlist can carry
    **conditions** (*Only when… the score gap is at least 3*, a statistic threshold, the match minute, quiet time
-   since the last graphic) and **Ask the producer before sending**, which parks its cues in the control room
-   until someone presses *Send now*. *Rehearse* plays the draft through the real graphics against a made-up
-   match, with nothing sent to any output. Starter plans exist for all six sports.
+   since the last graphic) and **Ask the producer before sending**, which parks its cues on the desk until someone
+   presses *Send now*. A plan opens with *What this plan does*, one plain line per playlist; priority, repeats,
+   delays, conditions and approval sit under each playlist's *Fine-tune*, and the JSON view is for owners and
+   admins. *Rehearse* plays the draft through the real graphics against a made-up match, with nothing sent to any
+   output. Starter plans exist for all six sports; *Reset to the starter flow* puts a plan back to it.
 8. **Streaming (optional)** — Streams → *New input*; give the encoder the RTMP URL and key (reveal is audited;
    the transport is labelled unencrypted). On the match *Streams* tab add a **Programme** output (with graphics)
    and optionally a **Clean** output (no graphics), pick the input and preset, add up to three destinations
@@ -122,7 +140,7 @@ records.
 
 ## Looks
 
-Themes → a look is one of eleven styles (broadcast, premier, liga, major, southern, continental, primetime, meister, derby, club, minimal) with the organisation's colours, logo and
+Looks → a look is one of eleven styles (broadcast, premier, liga, major, southern, continental, primetime, meister, derby, club, minimal) with the organisation's colours, logo and
 team colours, previewed on real graphics. **Premier** is the top-flight football broadcast look, in the style of a
 motion graphics pack: deep purple glass panels cut with angular facets, hot magenta kickers, electric teal accents, a
 cyan-to-magenta rule, scores on white plates, crests on a glow of the team's colour and a geometric typeface (Outfit);
@@ -160,7 +178,7 @@ looks.
   different look on the OBS link tab keeps it.
 
 Choosing a built-in look the first time saves it as a look of your organisation's, named after it ("Liga"), so it
-can be given your logo, colours and wording under *Themes*; choosing it again uses that same look.
+can be given your logo, colours and wording under *Looks → Your looks*; choosing it again uses that same look.
 
 **Competition logo.** *Competition → Overview → Logo*: upload the tournament's logo (PNG with a transparent
 background works best, JPEG and WebP too) or choose one of your images. It shows beside the competition's name in
@@ -169,10 +187,11 @@ full-screen graphics (line-ups, stats, tables) and on the holding slate, in plac
 that are open pick it up straight away; *Remove* goes back to the look's logo.
 
 **Logos and photos everywhere they are used.** Every image field has *Upload*, *Choose from your images* and
-*Remove*: competition logo (Overview), team logo and colours (*Assets → Teams → Logo, colours & roster*, or in the
+*Remove* (each picture has one button, *Change logo* or *Add a logo*, whose menu uploads, picks from your images or
+removes): competition logo (Overview), team logo and colours (*Library → Teams*, click the team, or in the
 *New team* form; the colours the crest uses are offered as swatches, a new team takes its main and second colour
-from its crest until you pick colours by hand, and *Use crest colours* sets both for an existing team), player photo (*Assets → Players → Photo & details*), club logo (*Assets → Clubs*), organisation
-logo (*Settings → Branding*), sponsor creatives (*Sponsors → Add creative*) and the look's logo (*Themes*). Any
+from its crest until you pick colours by hand, and *Use crest colours* sets both for an existing team), player photo (*Library → Players*, click the player), club logo (*Library → Clubs*), organisation
+logo (*Settings → Branding*), sponsor artwork (*Sponsors → Add artwork*) and the look's logo (*Looks*). Any
 image the browser opens works (PNG, JPEG, WebP, SVG, GIF, AVIF…): it is converted on the device to a PNG (logos,
 keeping transparency) or JPEG photo no larger than 2048 px, and is **ready as soon as it has uploaded**, with no
 wait for the media worker. A new team logo or player photo reaches the graphics of the team's upcoming and live
@@ -221,14 +240,14 @@ for the rest of the match, in every look and in highlights packages.
 **Video review (rugby league).** While the video referee checks a try (or a captain's challenge), a bar comes up in
 the lower middle of the frame: the team's crest and name, *Checking*, and *TRY?* (*CHALLENGE*). When the scorer
 gives the decision it flips to **TRY** in green or **NO TRY** in red (*SUCCESSFUL* / *UNSUCCESSFUL*), and the try
-strap follows when a try is awarded; the starter flow takes the bar off 6 s later. From the control room it can
+strap follows when a try is awarded; the starter flow takes the bar off 6 s later. From the desk it can
 also be put up by hand, choosing the team, what is checked and what it shows (*Shows: auto* follows the scorer).
 
 **Replay transition (OBS or vMix stinger).** In every look, a wall of slanted bands in the look's colours, edged
 with a bright stripe, sweeps in, covers the whole frame with REPLAY in the middle, then sweeps on and away (2 s).
 The bands move as one, so the picture never shows through between them on the way in or out. It comes in two
 versions:
-* *Plain*: the look only. *Themes → a look → Replay transition (WebM)* (opened from one of your own looks, it
+* *Plain*: the look only. *Looks → a look → Replay transition (WebM)* (opened from one of your own looks, it
   carries your colours and logo).
 * *This match*: home's colours, crest and name on the left, away's on the right. *Match → OBS link → Replay
   transition → Export replay transition*, in that output's look; the same dialog also offers the plain version.
@@ -242,7 +261,7 @@ crests come back after leaving needs exporting again. In OBS: *Scene Transitions
 to 1440 ms). In vMix: set a Stinger transition to the file with its transition point (delay) at 1000 ms. The replay
 transition is also one of the look's graphics, so it can be put on air on the output's transition layer.
 
-## In the control room
+## On the desk
 
 * **Preview vs To Air** — selecting a graphic and editing its fields changes only the preview. *To air* (F8)
   sends it; *Out* (F9) takes it out; the buttons stay pinned at the bottom of the form. *Sent from this desk*
@@ -255,16 +274,19 @@ transition is also one of the look's graphics, so it can be put on air on the ou
 * **Who else is here** — the header lists the other desks on this output. Selecting a graphic tells them which
   layer you are preparing; if someone else is preparing the same layer, *To air* waits and says who.
 * **Run sheet** — the bottom tabs carry the match's run sheet (timed lines such as *KO-10 opening ident*),
-  ticked off live by anyone on the match; the same sheet is on the match page and in the commentator view.
-* **Export** — renders the preview or what is on air as a transparent PNG, or a short WebM clip of the animation,
+  ticked off live by anyone on the match; the same sheet is on the match page (*Graphics*) and in the commentator view.
+* **The header** — the output, Auto/Manual, one status (the most important of *Offline*, *OBS not connected*,
+  *OBS catching up* or *OBS showing the latest*; hover for both details), *Copy OBS link*, *More* (export, keyboard
+  shortcuts) and *Hold to clear*. Graphics are listed by name (*List*), or as pictures (*Tiles*).
+* **Export** (*More → Export a graphic*) — renders the preview or what is on air as a transparent PNG, or a short WebM clip of the animation,
   at the output's native size, for the club's social accounts. Made in the browser; nothing is uploaded.
 * **Emergency clear** — press and hold: every layer and the scorebug go out and automation is inhibited until
   you press *Resume*.
 * **Priorities** — a goal (priority 1) interrupts a sponsor loop (priority 3); equal priorities queue in order;
   promotional items that lose priority are skipped and the reason appears in the automation history.
-* **Programme monitor** — for cloud outputs the control room shows the *actual* programme from HLS with its
+* **Programme monitor** — for cloud outputs the desk shows the *actual* programme from HLS with its
   latency label; the local preview is labelled Preview and is not proof of what went out.
-* **Stream Deck and hotkeys** — the OBS link tab lists one web request per button (scorebug on/off, clear,
+* **Stream Deck and hotkeys** — the match's Graphics tab lists one web request per button (scorebug on/off, clear,
   take any graphic, run a playlist, resume). Send them with an API key that has the overlay.operate scope.
 
 ### What the football starter plan does on its own
@@ -321,22 +343,24 @@ out; the scorebug's score, period and added-time indicators animate when they ch
 *Auto* mode. The other sports' starter plans keep their earlier shape with their own words (centre pass, first
 bounce, push back, final siren); the animated background and match header can be added to them in the editor.
 
-## Producer board and companion views
+## Live and companion views
 
-* **Producer board** (menu) — every live match and today's fixtures on one screen: score and phase, whether a
-  scorer is connected, each output's OBS state and mode, what is on air, cues waiting for approval, and buttons
-  into the control room, the match page and the scorer.
+* **Live** (menu) — every live match and today's fixtures on one screen, one card each: score and phase, the
+  **Desk** button for each output, *Scorer* and *Commentator*, and only what needs acting on (no scorer on a live
+  match, OBS not showing an output, manual mode, cues waiting for approval). Matches still marked live but quiet
+  for hours are under *Needs closing*; *Desk layouts* (favourite graphics shown first on the desk) are at the
+  bottom. The old Control rooms and Producer board addresses open Live.
 * **Commentator view** (match page → *Commentator view*) — a read-only, large-type page for the commentary
   position: line-ups with what each player has done, key events, statistics, head-to-head, form, the table
   around both teams, officials and the run sheet. Text size and full screen are one tap away.
 * **Match centre for fans** (match page → Overview) — a public link with the live score, events, line-ups,
   statistics and the table, plus a JSON feed for club websites. Create, rotate or switch it off at any time.
-* **Activity** (match page tab) — one timeline in plain words: scoring, desk commands, graphics on and off air,
+* **Activity** (match page → *Timeline*, under the event log) — one timeline in plain words: scoring, desk commands, graphics on and off air,
   set-up changes, with who did what.
 
 ## Season data
 
-Competition → *Table*, *Results & fixtures* and *Players* show the league table (points for a win, draw, loss
+Competition → *Table*, *Fixtures and results* (*By round*, or *All matches* as a list) and *Players* show the league table (points for a win, draw, loss
 and bye and the tiebreakers are set under *Table rules*; only regular-season matches count), every round with
 scores (the finals after the regular season, shoot-outs shown as pens), and player totals across the season.
 
@@ -361,14 +385,14 @@ source. Neither shows audience numbers. Export CSV for partners (formula-safe).
 
 ## After the match
 
-Media → highlights are created automatically for goals/key events from the recorded programme once the
+Videos → highlights are created automatically for goals/key events from the recorded programme once the
 post-roll has been recorded (usually within ~30 s). *Edit* to trim, choose 16:9 / 9:16 / 1:1 with a crop
 position and add intro/outro creatives, then download from Exports. *Share* creates an expiring link (revocable).
 A corrected event marks its clip **stale** — review it before publishing.
 
 ### Highlights package from a video of the match
 
-Match → **Highlights** makes a highlights video (1920×1080 MP4) from a recording of the whole match and the
+Match → *Media* → **Highlights** makes a highlights video (1920×1080 MP4) from a recording of the whole match and the
 scorer's log, with this match's graphics. Football, futsal, hockey, rugby league and AFL; basketball and netball
 score too often to pick moments from the log.
 
@@ -404,7 +428,7 @@ ground and kick-off time come from the match: change them there and the title fo
 
 ### Thumbnails
 
-Match → **Thumbnails** has a thumbnail for each kind of video of the match — *Live stream*, *Highlights*,
+Match → *Media* → **Thumbnails** has a thumbnail for each kind of video of the match — *Live stream*, *Highlights*,
 *Extended highlights*, *Full match* and one with your own words (*MATCH REPLAY*, *GRAND FINAL*) — in this match's
 look: the competition's logo, round, date and name across the top with the kind of video on a tag, and both teams
 below on their colours with their crests and names. Download one as a PNG, or *Download all*; 1280×720 is
@@ -417,7 +441,7 @@ and wording you set, so upload crests and the competition's logo first. A made h
 
 *Start a demo match* (dashboard quick actions, or a competition page) creates a match between two of your teams
 that scores itself through the real scoring path at the speed you choose. It is labelled *Demo* everywhere and
-left out of tables and reports. Open the scorer, the control room and the OBS link to watch everything move.
+left out of tables and reports. Open the scorer, the desk and the OBS link to watch everything move.
 
 ## Common problems
 

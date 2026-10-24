@@ -44,7 +44,7 @@ test('run sheet, activity, match information and the public match centre with it
   await page.getByRole('checkbox', { name: /Opening ident and line-ups/ }).click();
   await expect(page.getByRole('checkbox', { name: /Opening ident and line-ups/ })).toHaveAttribute('aria-checked', 'true');
 
-  await page.getByRole('tab', { name: 'Activity' }).click();
+  await page.getByRole('tab', { name: /^Timeline/ }).click();
   await expect(page.getByRole('list', { name: 'Activity' })).toBeVisible();
 
   await page.getByRole('tab', { name: 'Overview' }).click();
@@ -84,13 +84,14 @@ test('run sheet, activity, match information and the public match centre with it
   await expect(page.getByRole('heading', { name: 'Key events' })).toBeVisible();
 });
 
-test('control room: export dialog, run sheet tab and presence without a second operator', async ({ browser }) => {
+test('desk: export dialog (More menu), run sheet tab and presence without a second operator', async ({ browser }) => {
   const { page } = await login(browser);
   const matchId = await freshMatch(page);
   const ov = await api<{ id: string }>(page, `/api/v1/matches/${matchId}/overlays`, { name: 'E2E features' });
   await page.goto(`/app/matches/${matchId}/control/${ov.id}`);
   await page.waitForSelector('[data-template="builtin:scorebug"]', { timeout: 30_000 });
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Export a graphic' }).click();
   await expect(page.getByRole('dialog', { name: 'Export for social' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download PNG' })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -101,11 +102,12 @@ test('control room: export dialog, run sheet tab and presence without a second o
   expect(await page.getByText(/Also here/).count()).toBe(0);
 });
 
-test('producer board, competition tables, round creation and the status page', async ({ browser }) => {
+test('live page, competition tables, round creation and the status page', async ({ browser }) => {
   const { page } = await login(browser);
   await freshMatch(page);
-  await page.goto('/app/board');
-  await expect(page.getByRole('heading', { name: 'Producer board' })).toBeVisible();
+  await page.goto('/app/board'); // the old address lands on Live
+  await expect(page).toHaveURL(/\/app\/live$/);
+  await expect(page.getByRole('heading', { name: 'Live', exact: true })).toBeVisible();
   await expect(page.getByText(/\d+ live$/)).toBeVisible();
 
   const comps = await api<{ id: string; sport: string; currentSeason: { id: string } | null }[]>(page, '/api/v1/competitions');
@@ -114,11 +116,12 @@ test('producer board, competition tables, round creation and the status page', a
   await expect(page.getByRole('heading', { name: 'Seasons' })).toBeVisible(); // hydrated and loaded before the tabs are used
   await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await expect(page.locator('th', { hasText: /^Pts$/ })).toBeVisible(); // the table lays out with CSS, so header cells carry no columnheader role
-  await page.getByRole('tab', { name: 'Results & fixtures' }).click();
+  await page.getByRole('tab', { name: /^Fixtures and results/ }).click();
   await expect(page.getByText(/Round|Unrounded|No fixtures in this season yet|E2E/).first()).toBeVisible();
   await page.getByRole('tab', { name: 'Players' }).click();
   await expect(page.getByLabel('Sort players by')).toBeVisible();
-  await page.getByRole('tab', { name: /^Fixtures/ }).click();
+  await page.getByRole('group', { name: 'Show fixtures' }).getByRole('button', { name: 'All matches' }).click();
+  await expect(page.locator('th', { hasText: 'Kick-off' })).toBeVisible();
   await page.getByRole('button', { name: 'Create a round' }).click();
   await expect(page.getByRole('dialog', { name: 'Create a round' })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -134,7 +137,10 @@ test('producer board, competition tables, round creation and the status page', a
 test('automation editor: conditions and approval per playlist', async ({ browser }) => {
   const { page } = await login(browser);
   await page.goto('/app/automation');
-  await expect(page.getByText('Only when').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Fine-tune', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  // conditions, approval and keep-going sit under each playlist's Fine-tune
+  for (const d of await page.locator('details', { has: page.getByText('Fine-tune', { exact: true }) }).all()) await d.evaluate((el) => ((el as HTMLDetailsElement).open = true));
+  await expect(page.getByText('Only when').first()).toBeVisible();
   await page.getByRole('button', { name: 'Add condition' }).first().click();
   await expect(page.getByRole('dialog', { name: 'Only run when…' })).toBeVisible();
   await expect(page.getByText('Reads as: the score gap is at least 3.')).toBeVisible();
@@ -155,7 +161,7 @@ test('automation editor: conditions and approval per playlist', async ({ browser
   await expect(keepGoing).toBeChecked({ checked: !was });
   await keepGoing.setChecked(was);
   page.once('dialog', (d) => void d.dismiss()); // dismissing leaves the draft untouched
-  await page.getByRole('button', { name: 'Use the latest starter flow' }).click();
+  await page.getByRole('button', { name: 'Reset to the starter flow' }).click();
   await expect(keepGoing).toBeChecked({ checked: was });
 });
 

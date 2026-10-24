@@ -160,7 +160,8 @@ test('team colours from the crest: filled in for a new team, offered for an exis
   const name = `Crest Netball ${tag}`;
   const team = await api<{ id: string }>(page, '/api/v1/teams', { name, shortName: 'Crest', abbreviation: 'CRN', sport: 'netball', primaryColor: '#1F6FEB', secondaryColor: '#0B1220' });
   await page.reload();
-  await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'Logo, colours & roster' }).click();
+  await page.getByLabel('Search teams').fill(name);
+  await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: new RegExp(name) }).click();
   const td = page.getByRole('dialog', { name });
   await td.getByLabel('Upload team logo').setInputFiles({ name: 'crest.svg', mimeType: 'image/svg+xml', buffer: svg });
   const group = td.getByRole('group', { name: 'Colours from the crest' });

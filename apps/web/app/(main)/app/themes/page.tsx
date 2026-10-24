@@ -31,19 +31,19 @@ export default function ThemesPage() {
   return (
     <>
       <Keyframes />
-      <PageHeader title="Themes" subtitle="Original theme library, competition graphics profiles and custom templates." />
+      <PageHeader title="Looks" subtitle="The style of every graphic. Start from a built-in look, then make it yours with your colours and logo." />
       <Tabs defaultValue="library">
-        <TabList className="mb-4"><Tab value="library">Theme library</Tab><Tab value="profiles">Profiles</Tab><Tab value="templates">Custom templates</Tab></TabList>
+        <TabList className="mb-4"><Tab value="library">Built-in looks</Tab><Tab value="profiles">Your looks{profiles.data?.length ? ` (${profiles.data.length})` : ''}</Tab><Tab value="templates">Custom graphics</Tab></TabList>
         <TabPanel value="library">
           {themes.isLoading ? <Spinner /> : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
               {themes.data?.map((t) => (
                 <Link key={t.id} href={`/app/themes/${t.key}`} className="block rounded-lg transition hover:ring-2 hover:ring-primary/50">
                   <Card className="h-full p-3">
                     <ThemeThumb theme={(t.versions[0]?.config as ThemeConfig) ?? DEFAULT_THEMES.broadcast} />
                     <h2 className="mt-2 font-medium">{t.name}</h2>
                     <p className="text-sm text-muted">{t.description}</p>
-                    <p className="mt-1 text-xs text-muted">v{t.versions[0]?.version} · football & basketball · {BUILTIN_TEMPLATES.length} graphics</p>
+                    <p className="mt-1 text-xs text-muted">{BUILTIN_TEMPLATES.length} graphics for every sport</p>
                     <p className="mt-2 text-sm text-primary">View graphics and animations →</p>
                   </Card>
                 </Link>
@@ -54,18 +54,18 @@ export default function ThemesPage() {
         <TabPanel value="profiles">
           {full ? <div className="mb-3 flex justify-end"><Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New look</Button></div> : null}
           <ErrorNotice error={profiles.error} />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {profiles.data && !profiles.data.length ? <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No looks of your own yet. Choose a built-in look on a competition or match and it appears here, ready for your colours and logo.</p> : null}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             {profiles.data?.map((p) => {
               const base = DEFAULT_THEMES[(p.draft.themeKey as ThemeConfig['themeKey']) ?? 'broadcast'];
               return (
                 <Card key={p.id} className="p-3">
                   <ThemeThumb theme={{ ...base, ...p.draft.config }} />
-                  <div className="mt-2 flex items-center justify-between"><h2 className="font-medium">{p.name}</h2><StatusPill tone="primary">v{p.currentVersion}</StatusPill></div>
-                  <p className="text-xs text-muted">{p.draft.themeKey} · {comps.data?.find((c) => c.id === p.competitionId)?.name ?? 'no competition'}</p>
-                  <Table className="mt-2"><tbody>{p.versions.slice(0, 3).map((v) => <tr key={v.id}><td>v{v.version}</td><td className="text-right text-xs text-muted">{fmtDate(v.publishedAt, tz)}</td></tr>)}</tbody></Table>
+                  <div className="mt-2 flex items-center justify-between gap-2"><h2 className="font-medium">{p.name}</h2><span className="text-xs text-muted" title={p.versions[0] ? `Published ${fmtDate(p.versions[0].publishedAt, tz)}` : undefined}>v{p.currentVersion}</span></div>
+                  <p className="text-xs text-muted">Based on {LOOKS.find((l) => l.key === p.draft.themeKey)?.name ?? p.draft.themeKey}{p.competitionId ? ` · ${comps.data?.find((c) => c.id === p.competitionId)?.name ?? 'a competition'}` : ''}</p>
                   <div className="mt-2 flex gap-2">
                     <Button asChild size="sm"><Link href={`/app/themes/${p.draft.themeKey}?profile=${p.id}`}>Preview graphics</Link></Button>
-                    {full ? <Button size="sm" onClick={() => setEdit(p)}>Edit draft</Button> : null}
+                    {full ? <Button size="sm" onClick={() => setEdit(p)}>Colours and logo</Button> : null}
                   </div>
                 </Card>
               );
@@ -73,10 +73,10 @@ export default function ThemesPage() {
           </div>
         </TabPanel>
         <TabPanel value="templates">
-          {full ? <div className="mb-3 flex justify-end"><Button variant="primary" loading={newTemplate.isPending} onClick={() => newTemplate.mutate(undefined, { onSuccess: (t) => location.assign(`/app/themes/templates/${t.id}`) })}><Plus className="size-4" /> New template</Button></div> : null}
-          <Table><thead><tr><th>Template</th><th>Category</th><th>Published</th><th /></tr></thead><tbody>
+          {full ? <div className="mb-3 flex justify-end"><Button variant="primary" loading={newTemplate.isPending} onClick={() => newTemplate.mutate(undefined, { onSuccess: (t) => location.assign(`/app/themes/templates/${t.id}`) })}><Plus className="size-4" /> New graphic</Button></div> : null}
+          <Table><thead><tr><th>Graphic</th><th>Category</th><th>Published</th><th /></tr></thead><tbody>
             {templates.data?.map((t) => <tr key={t.id}><td>{t.name}</td><td>{t.category}</td><td>{t.currentVersion ? `v${t.currentVersion}` : <StatusPill tone="warning">draft only</StatusPill>}</td><td className="text-right"><Button asChild size="sm"><Link href={`/app/themes/templates/${t.id}`}>Open designer</Link></Button></td></tr>)}
-            {!templates.data?.length ? <tr><td colSpan={4} className="text-center text-muted">No custom templates. Build one with typed data bindings; no code required.</td></tr> : null}
+            {!templates.data?.length ? <tr><td colSpan={4} className="text-center text-muted">No custom graphics yet. Design one from text, shapes and match data; no code needed.</td></tr> : null}
           </tbody></Table>
         </TabPanel>
       </Tabs>
@@ -84,7 +84,7 @@ export default function ThemesPage() {
         footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" disabled={!form.name} loading={create.isPending} onClick={() => create.mutate(undefined, { onSuccess: () => setOpen(false) })}>Create & publish</Button></>}>
         <div className="grid gap-3">
           <Field label="Name" htmlFor="pn"><Input id="pn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-          <Field label="Theme" htmlFor="pt"><NativeSelect id="pt" value={form.themeKey} onChange={(e) => setForm({ ...form, themeKey: e.target.value })}>{LOOKS.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}</NativeSelect></Field>
+          <Field label="Start from" htmlFor="pt"><NativeSelect id="pt" value={form.themeKey} onChange={(e) => setForm({ ...form, themeKey: e.target.value })}>{LOOKS.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}</NativeSelect></Field>
           <Field label="Default for competition" htmlFor="pc"><NativeSelect id="pc" value={form.competitionId} onChange={(e) => setForm({ ...form, competitionId: e.target.value })}><option value="">None</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
           <ErrorNotice error={create.error} />
         </div>

@@ -1,7 +1,10 @@
 'use client';
-import { Suspense, useState } from 'react';
+// Settings: a grouped list of sections at the left on wide screens (a section picker on phones), the chosen section
+// at the right. Sections keep their ?tab= names (org, members, plan, …) so links and bookmarks still land.
+import { Fragment, Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Tab, TabList, TabPanel, Table, Tabs } from '@bs/ui';
+import * as TabsP from '@radix-ui/react-tabs';
+import { Button, Card, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Switch, Table, cx } from '@bs/ui';
 import { del, patch, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { isAdmin, useMe, type Role } from '@/lib/session';
@@ -23,52 +26,109 @@ export default function SettingsPage() {
   );
 }
 
+interface Section { value: string; label: string }
+
 function SettingsInner() {
   const me = useMe();
   const admin = isAdmin(me.data?.role);
   const owner = me.data?.role === 'owner';
   const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';
   const qs = useSearchParams();
-  const initial = qs.get('billing') || qs.get('plan') ? 'plan' : (qs.get('tab') ?? 'org');
+  const wanted = qs.get('billing') || qs.get('plan') ? 'plan' : (qs.get('tab') ?? 'org');
+  const groups = useMemo(() => [
+    { label: 'Organisation', items: [{ value: 'org', label: 'General' }, { value: 'members', label: 'Members' }, { value: 'plan', label: 'Plan & billing' }, { value: 'branding', label: 'Branding' }] },
+    { label: 'Connections', items: [...(admin ? [{ value: 'integrations', label: 'Integrations' }] : []), { value: 'notifications', label: 'Notifications' }, ...(admin ? [{ value: 'keys', label: 'API keys' }] : [])] },
+    { label: 'Security', items: [{ value: 'security', label: 'Security' }, ...(owner ? [{ value: 'backups', label: 'Backups' }] : []), { value: 'audit', label: 'Audit log' }] },
+  ] satisfies { label: string; items: Section[] }[], [admin, owner]);
+  const known = (v: string) => groups.some((g) => g.items.some((i) => i.value === v));
+  const [tab, setTab] = useState(wanted);
+  // the account menu links here with ?tab=security while the page may already be open
+  useEffect(() => setTab(wanted), [wanted]);
+  const current = known(tab) ? tab : 'org';
+  const choose = (v: string) => {
+    setTab(v);
+    window.history.replaceState(null, '', `/app/settings?tab=${v}`);
+  };
   return (
     <>
-      <PageHeader title="Settings" subtitle="Organisation, members, plan, branding, integrations, notifications, security and audit." />
-      <Tabs defaultValue={initial}>
-        <TabList className="mb-4 flex-wrap">
-          <Tab value="org">Organisation</Tab><Tab value="members">Members</Tab><Tab value="plan">Plan & billing</Tab><Tab value="branding">Branding</Tab>
-          {admin ? <Tab value="integrations">Integrations</Tab> : null}<Tab value="notifications">Notifications</Tab><Tab value="security">Security</Tab>
-          {owner ? <Tab value="backups">Backups</Tab> : null}{admin ? <Tab value="keys">API keys</Tab> : null}<Tab value="audit">Audit log</Tab>
-        </TabList>
-        <TabPanel value="org"><OrgSettings admin={admin} /></TabPanel>
-        <TabPanel value="members"><Members admin={admin} owner={owner} selfId={me.data?.user.id} /></TabPanel>
-        <TabPanel value="plan" className="grid gap-6"><BillingPanel owner={owner} tz={tz} /><Entitlements owner={owner} /></TabPanel>
-        <TabPanel value="branding"><BrandingPanel owner={owner} admin={admin} /></TabPanel>
-        {admin ? <TabPanel value="integrations"><WebhooksPanel tz={tz} canEdit={admin} /></TabPanel> : null}
-        <TabPanel value="notifications"><NotificationsPanel tz={tz} /></TabPanel>
-        <TabPanel value="security"><SecurityPanel owner={owner} tz={tz} /></TabPanel>
-        {owner ? <TabPanel value="backups"><BackupsPanel tz={tz} /></TabPanel> : null}
-        {admin ? <TabPanel value="keys"><ApiKeys /></TabPanel> : null}
-        <TabPanel value="audit"><Audit tz={tz} /></TabPanel>
-      </Tabs>
+      <PageHeader title="Settings" subtitle="Your organisation, the people in it, your plan, connections and security." />
+      <TabsP.Root value={current} onValueChange={choose} orientation="vertical" className="grid grid-cols-1 gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <Field label="Section" htmlFor="settings-section" className="lg:hidden">
+          <NativeSelect id="settings-section" value={current} onChange={(e) => choose(e.target.value)}>
+            {groups.map((g) => <optgroup key={g.label} label={g.label}>{g.items.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}</optgroup>)}
+          </NativeSelect>
+        </Field>
+        <nav aria-label="Settings sections" className="hidden lg:sticky lg:top-20 lg:block lg:self-start">
+          {groups.map((g, gi) => (
+            <Fragment key={g.label}>
+              <p id={`settings-group-${gi}`} className={cx('mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted/80', gi && 'mt-5')}>{g.label}</p>
+              <TabsP.List aria-labelledby={`settings-group-${gi}`} className="flex flex-col gap-0.5">
+                {g.items.map((i) => (
+                  <TabsP.Trigger key={i.value} value={i.value} className="flex min-h-9 w-full items-center rounded-lg px-3 text-left text-sm font-medium text-muted hover:bg-elevated hover:text-text data-[state=active]:bg-primary/10 data-[state=active]:text-text data-[state=active]:ring-1 data-[state=active]:ring-inset data-[state=active]:ring-primary/30">
+                    {i.label}
+                  </TabsP.Trigger>
+                ))}
+              </TabsP.List>
+            </Fragment>
+          ))}
+        </nav>
+        <div className="min-w-0">
+          <TabsP.Content value="org"><OrgSettings admin={admin} /></TabsP.Content>
+          <TabsP.Content value="members"><Members admin={admin} owner={owner} selfId={me.data?.user.id} /></TabsP.Content>
+          <TabsP.Content value="plan" className="grid gap-6"><BillingPanel owner={owner} tz={tz} /><Entitlements owner={owner} /></TabsP.Content>
+          <TabsP.Content value="branding"><BrandingPanel owner={owner} admin={admin} /></TabsP.Content>
+          {admin ? <TabsP.Content value="integrations"><WebhooksPanel tz={tz} canEdit={admin} /></TabsP.Content> : null}
+          <TabsP.Content value="notifications"><NotificationsPanel tz={tz} /></TabsP.Content>
+          <TabsP.Content value="security"><SecurityPanel owner={owner} tz={tz} /></TabsP.Content>
+          {owner ? <TabsP.Content value="backups"><BackupsPanel tz={tz} /></TabsP.Content> : null}
+          {admin ? <TabsP.Content value="keys"><ApiKeys /></TabsP.Content> : null}
+          <TabsP.Content value="audit"><Audit tz={tz} /></TabsP.Content>
+        </div>
+      </TabsP.Root>
     </>
   );
 }
+
+/** Every IANA time zone the browser knows, for the searchable time zone field. */
+const ZONES = (() => {
+  try {
+    const z = Intl.supportedValuesOf('timeZone');
+    return z.includes('UTC') ? z : ['UTC', ...z];
+  } catch {
+    return ['UTC'];
+  }
+})();
 
 function OrgSettings({ admin }: { admin: boolean }) {
   const org = useGet<Org>(['org'], 'organisations/current');
   const [f, setF] = useState<{ name?: string; timezone?: string }>({});
   const save = useAction(() => patch('organisations/current', f), [['org'], ['me']], { success: 'Saved' });
   if (org.isLoading) return <Spinner />;
+  const zone = f.timezone ?? org.data?.timezone ?? '';
+  const zoneOk = ZONES.includes(zone);
+  const nowThere = zoneOk ? new Intl.DateTimeFormat('en-AU', { timeZone: zone, weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date()) : null;
   return (
-    <Card className="max-w-lg p-4">
-      <div className="grid gap-3">
+    <Card className="max-w-3xl p-5">
+      <h2 className="font-medium">Organisation</h2>
+      <p className="mb-4 text-sm text-muted">The name shown to your team and on public pages, and the time zone kick-off times are entered and shown in.</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Name" htmlFor="on"><Input id="on" disabled={!admin} defaultValue={org.data?.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Timezone (IANA)" htmlFor="ot" error={save.error?.fieldError('timezone')}><Input id="ot" disabled={!admin} defaultValue={org.data?.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} /></Field>
-        <p className="text-xs text-muted">Slug {org.data?.slug} · locale {org.data?.locale}. All instants are stored in UTC.</p>
-        {admin ? <Button variant="primary" loading={save.isPending} disabled={!Object.keys(f).length} onClick={() => save.mutate(undefined)}>Save</Button> : null}
-        {save.done ? <p className="text-sm text-healthy">Saved.</p> : null}
-        <ErrorNotice error={save.error && !save.error.fields ? save.error : null} />
+        <Field label="Time zone" htmlFor="ot" hint={zoneOk ? `It is ${nowThere} there now.` : 'Pick one from the list: start typing a city, for example Brisbane or London.'} error={save.error?.fieldError('timezone')}>
+          <Input id="ot" list="org-zones" autoComplete="off" disabled={!admin} defaultValue={org.data?.timezone} onChange={(e) => setF({ ...f, timezone: e.target.value })} />
+        </Field>
+        <datalist id="org-zones">{ZONES.map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}</datalist>
       </div>
+      {admin ? (
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+          {save.done ? <p className="text-sm text-healthy">Saved.</p> : null}
+          <Button variant="primary" loading={save.isPending} disabled={!Object.keys(f).length || !zoneOk} onClick={() => save.mutate(undefined)}>Save changes</Button>
+        </div>
+      ) : null}
+      <ErrorNotice error={save.error && !save.error.fields ? save.error : null} />
+      <details className="mt-4 text-xs text-muted">
+        <summary className="cursor-pointer">Details</summary>
+        <p className="mt-2">Web address name: <span className="font-mono">{org.data?.slug}</span> · Language and number format: {org.data?.locale}</p>
+      </details>
     </Card>
   );
 }
@@ -133,25 +193,39 @@ function Members({ admin, owner, selfId }: { admin: boolean; owner: boolean; sel
   );
 }
 
+const USAGE_NAMES: Record<string, string> = { media_jobs: 'Media processing', storage: 'Storage', programme: 'Cloud production', recording: 'Recording', egress: 'Streaming out' };
+const usageName = (m: string) => USAGE_NAMES[m] ?? m.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+/** Usage in words people read: minutes rather than job seconds, MB or GB rather than bytes. */
+function usageAmount(total: number, unit: string) {
+  if (unit === 'bytes') return total >= 1e9 ? `${(total / 1e9).toFixed(1)} GB` : `${Math.max(0.1, total / 1e6).toFixed(1)} MB`;
+  if (/seconds$/.test(unit)) return `${(total / 60).toFixed(total < 600 ? 1 : 0)} min`;
+  return `${total.toFixed(1)} ${unit.replace(/_/g, ' ')}`;
+}
+const limitName = (k: string) => k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
+
 function Entitlements({ owner }: { owner: boolean }) {
   const org = useGet<Org>(['org'], 'organisations/current');
-  const usage = useGet<{ module: string; unit: string; quantity: number; definition: string }[]>(['usage-summary'], 'reports/usage/summary');
+  const [monthStart] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1).toISOString(); });
+  const usage = useGet<{ totals: { module: string; unit: string; total: number }[] }>(['usage-month'], `usage/ledger?from=${encodeURIComponent(monthStart)}`);
   const save = useAction((features: Record<string, boolean>) => put('organisations/current/entitlements', { features }), [['org']], { success: 'Features saved' });
   if (org.isLoading) return <Spinner />;
   const e = org.data?.entitlements;
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card className="p-4">
-        <h2 className="mb-1 font-medium">Features on this plan</h2>
-        <p className="mb-3 text-xs text-muted">Installation ceilings (capacity, destinations) cannot be raised here.</p>
-        <div className="grid gap-2">{Object.entries(e?.features ?? {}).map(([k, v]) => <Switch key={k} label={k} checked={v} disabled={!owner} onCheckedChange={(nv) => save.mutate({ ...(e?.features ?? {}), [k]: nv })} />)}</div>
-        <ErrorNotice error={save.error} />
+        <h2 className="mb-2 font-medium">Usage this month</h2>
+        <ErrorNotice error={usage.error} />
+        {usage.data?.totals.length ? <ul className="text-sm">{usage.data.totals.map((u) => <li key={u.module + u.unit} className="flex justify-between gap-3 py-0.5"><span className="text-muted">{usageName(u.module)}</span><span className="tabular">{usageAmount(u.total, u.unit)}</span></li>)}</ul> : usage.isLoading ? <Spinner /> : <p className="text-sm text-muted">No measured usage yet.</p>}
       </Card>
       <Card className="p-4">
         <h2 className="mb-2 font-medium">Limits</h2>
-        <Table><tbody>{Object.entries(e?.limits ?? {}).map(([k, v]) => <tr key={k}><td className="text-muted">{k}</td><td className="text-right tabular">{v}</td></tr>)}</tbody></Table>
-        <h2 className="mb-2 mt-4 font-medium">Measured usage (this month)</h2>
-        {usage.data?.length ? <Table><tbody>{usage.data.map((u) => <tr key={u.module + u.unit}><td>{u.module}<span className="block text-xs text-muted">{u.definition}</span></td><td className="text-right tabular">{u.quantity.toFixed(2)} {u.unit}</td></tr>)}</tbody></Table> : <p className="text-sm text-muted">No measured usage yet.</p>}
+        {Object.keys(e?.limits ?? {}).length ? <ul className="text-sm">{Object.entries(e?.limits ?? {}).map(([k, v]) => <li key={k} className="flex justify-between gap-3 py-0.5"><span className="text-muted">{limitName(k)}</span><span className="tabular">{v}</span></li>)}</ul> : <p className="text-sm text-muted">No limits on this plan.</p>}
+      </Card>
+      <Card className="p-4">
+        <h2 className="mb-1 font-medium">Features on this plan</h2>
+        <p className="mb-3 text-xs text-muted">Installation ceilings (capacity, destinations) cannot be raised here.</p>
+        <div className="grid gap-2">{Object.entries(e?.features ?? {}).map(([k, v]) => <Switch key={k} label={limitName(k)} checked={v} disabled={!owner} onCheckedChange={(nv) => save.mutate({ ...(e?.features ?? {}), [k]: nv })} />)}</div>
+        <ErrorNotice error={save.error} />
       </Card>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
-// Match-day checklist: the five things that make a match broadcast-ready, each with its action in place, plus
-// the two links people hand around on the day (OBS link, scorer link).
+// Match-day checklist: the five things that make a match broadcast-ready, each with its action in place (a choice
+// applies as soon as it is made), and the scorer link to hand around. Folds to one line once all five are done.
 import { useEffect, useState } from 'react';
 import { Copy, QrCode, Smartphone } from 'lucide-react';
 import { toDataURL } from 'qrcode';
@@ -21,8 +21,7 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
   const members = useGet<Member[]>(['members'], 'members', { enabled: canEdit });
   const copy = useCopy();
   const [scorerLink, setScorerLink] = useState(false);
-  const [plan, setPlan] = useState('');
-  const [member, setMember] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   const primary = overlays.data?.[0];
   const setLookAction = useAction((v: { choice: LookChoice; name: string }) => put<{ outputs: number }>(`matches/${d.id}/look`, v.choice), [['overlays', d.id], ['theme-profiles']], { success: (_r, v) => `${v.name} applied to this match` });
@@ -30,10 +29,10 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
   const starterAction = useAction(() => post(`overlays/${primary!.id}/starter-plan`), [['overlays', d.id], ['game-plans']], { success: 'Automation on: the pre-match graphics are going to air' });
   const assign = useAction((membershipId: string) => post(`matches/${d.id}/scorers`, { membershipId }), [['match', d.id]], { success: 'Scorer assigned. The match is now on their list.' });
   const copyObs = async () => {
-    if (!primary) return onGoTo('overlays');
+    if (!primary) return onGoTo('graphics');
     const u = await get<{ production: string | null }>(`overlays/${primary.id}/urls`).catch(() => null);
     if (u?.production) await copy(u.production, 'OBS link');
-    else onGoTo('overlays');
+    else onGoTo('graphics');
   };
 
   const starters = (side: 'home' | 'away') => d.lineup[side].filter((p) => p.starter).length;
@@ -63,20 +62,36 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
   const doneCount = rows.filter((r) => r.done).length;
   const allDone = doneCount === rows.length;
 
+  // everything done: one line, the list one click away
+  if (allDone && !expanded) {
+    return (
+      <Card className="mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+        <h2 className="font-medium">Match day</h2>
+        <StatusPill tone="healthy">Ready to go</StatusPill>
+        <span className="text-sm text-muted">Line-ups, look, automation, scorer and OBS are all set.</span>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setScorerLink(true)}><Smartphone className="size-4" /> Send scorer link</Button>
+          <Button size="sm" variant="ghost" aria-expanded={false} onClick={() => setExpanded(true)}>Show the checklist</Button>
+        </div>
+        <ScorerLinkDialog matchId={d.id} open={scorerLink} onClose={() => setScorerLink(false)} assigned={d.scorers.map((s) => s.name)} />
+      </Card>
+    );
+  }
+
   return (
     <Card className="mb-4 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-medium">Match day</h2>
         <StatusPill tone={allDone ? 'healthy' : 'primary'}>{allDone ? 'Ready to go' : `${doneCount} of ${rows.length} ready`}</StatusPill>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button>
           <Button size="sm" onClick={() => setScorerLink(true)}><Smartphone className="size-4" /> Send scorer link</Button>
+          {allDone ? <Button size="sm" variant="ghost" aria-expanded onClick={() => setExpanded(false)}>Hide</Button> : null}
         </div>
       </div>
       <ul className="mt-2 divide-y divide-border">
-        <CheckRow done={lineupsDone} label={lineupsDone ? `Lineups entered (${starters('home')} v ${starters('away')} starters)` : 'Enter the lineups'}
-          detail={lineupsDone ? undefined : 'Team lineups and the goal, card and substitution graphics need player names.'}
-          action={<Button size="sm" variant={lineupsDone ? 'ghost' : 'secondary'} onClick={() => onGoTo('lineup')}>{lineupsDone ? 'Edit' : 'Lineup'}</Button>} />
+        <CheckRow done={lineupsDone} label={lineupsDone ? `Line-ups entered (${starters('home')} v ${starters('away')} starters)` : 'Enter the line-ups'}
+          detail={lineupsDone ? undefined : 'Team line-ups and the goal, card and substitution graphics need player names.'}
+          action={<Button size="sm" variant={lineupsDone ? 'ghost' : 'secondary'} onClick={() => onGoTo('lineup')}>{lineupsDone ? 'Edit' : 'Line-ups'}</Button>} />
         <CheckRow done={!!primary?.theme} label={primary?.theme ? `Look: ${primary.theme.profile} v${primary.theme.version}` : 'Choose a graphics look'}
           detail={primary?.theme
             ? (primary.theme.id === d.competition.themeProfileId ? 'The tournament’s look. Choose another for this match only.' : 'This match’s own look.')
@@ -85,32 +100,30 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
             <LookPicker profiles={profiles.data} current={primary.theme?.id} follow={{ name: tournamentLook }} loading={setLookAction.isPending} onApply={(choice, name) => setLookAction.mutate({ choice, name })} />
           ) : null} />
         <CheckRow done={!!primary?.gamePlanVersionId} label={primary?.gamePlanVersionId ? `Automation: ${planName(primary.gamePlanVersionId) ?? 'on'}` : 'Set up automation'}
-          detail={newer ? `Version ${newer.version} of this plan is published; this match still runs the older one.` : primary?.gamePlanVersionId ? 'Graphics follow the scorer automatically.' : publishedPlans.length ? 'Lineups, kick-off, goals and the half-time board run from the scorer’s taps.' : 'Without a plan the OBS link stays empty until you take graphics by hand. The starter flow puts the background and match header up now and follows the scorer from there.'}
+          detail={newer ? `Version ${newer.version} of this plan is published; this match still runs the older one.` : primary?.gamePlanVersionId ? 'Graphics follow the scorer automatically.' : publishedPlans.length ? 'Line-ups, kick-off, goals and the half-time board run from the scorer’s taps.' : 'Without a plan the OBS link stays empty until you take graphics by hand. The starter flow puts the background and match header up now and follows the scorer from there.'}
           action={canEdit && primary ? (
             <>
               {!primary.gamePlanVersionId ? <Button size="sm" variant="primary" loading={starterAction.isPending} onClick={() => starterAction.mutate(undefined)}>{publishedPlans.length ? 'Use the latest plan' : 'Use the starter flow'}</Button> : null}
               {newer ? <Button size="sm" variant="primary" loading={setPlanAction.isPending} onClick={() => setPlanAction.mutate(newer.id)}>Use v{newer.version}</Button> : null}
-              <NativeSelect aria-label="Automation plan" className="w-auto" value={plan} onChange={(e) => setPlan(e.target.value)}>
-                <option value="">{primary.gamePlanVersionId ? 'Change plan…' : 'Choose…'}</option>
-                {publishedPlans.map((p) => <option key={p.id} value={p.versions[0]!.id}>{p.name} (v{p.versions[0]!.version})</option>)}
-              </NativeSelect>
-              <Button size="sm" disabled={!plan} loading={setPlanAction.isPending} onClick={() => setPlanAction.mutate(plan, { onSuccess: () => setPlan('') })}>Apply</Button>
+              {publishedPlans.length ? (
+                <NativeSelect aria-label="Automation plan" className="w-auto" value="" disabled={setPlanAction.isPending} onChange={(e) => e.target.value && setPlanAction.mutate(e.target.value)}>
+                  <option value="">{setPlanAction.isPending ? 'Applying…' : primary.gamePlanVersionId ? 'Change plan…' : 'Choose…'}</option>
+                  {publishedPlans.map((p) => <option key={p.id} value={p.versions[0]!.id} disabled={p.versions[0]!.id === primary.gamePlanVersionId}>{p.name} (v{p.versions[0]!.version})</option>)}
+                </NativeSelect>
+              ) : null}
             </>
           ) : null} />
         <CheckRow done={d.scorers.length > 0} label={d.scorers.length ? `Scorer: ${d.scorers.map((s) => s.name).join(', ')}` : 'Assign a scorer'}
           detail={d.scorers.length ? 'They open the scorer link on their phone and the match is on their list.' : 'The scorer records goals, cards and the clock from a phone.'}
           action={canEdit ? (
-            <>
-              <NativeSelect aria-label="Scorer" className="w-auto" value={member} onChange={(e) => setMember(e.target.value)}>
-                <option value="">{d.scorers.length ? 'Add another…' : 'Choose…'}</option>
-                {members.data?.filter((x) => x.status === 'active').map((x) => <option key={x.id} value={x.id}>{x.name} ({x.role})</option>)}
-              </NativeSelect>
-              <Button size="sm" disabled={!member} loading={assign.isPending} onClick={() => assign.mutate(member, { onSuccess: () => setMember('') })}>Assign</Button>
-            </>
+            <NativeSelect aria-label="Scorer" className="w-auto" value="" disabled={assign.isPending} onChange={(e) => e.target.value && assign.mutate(e.target.value)}>
+              <option value="">{assign.isPending ? 'Assigning…' : d.scorers.length ? 'Add another…' : 'Choose…'}</option>
+              {members.data?.filter((x) => x.status === 'active' && !d.scorers.some((s) => s.membershipId === x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} ({x.role})</option>)}
+            </NativeSelect>
           ) : null} />
         <CheckRow done={!!obs?.connected} label={obs?.connected ? obs.text : 'Add the OBS link to OBS'}
           detail={obs?.connected ? undefined : 'Paste the link into OBS as a Browser Source at 1920×1080. This turns green once OBS is showing it.'}
-          action={<><Button size="sm" variant={obs?.connected ? 'ghost' : 'secondary'} onClick={() => void copyObs()}><Copy className="size-4" /> Copy link</Button><Button size="sm" variant="ghost" onClick={() => onGoTo('overlays')}>Show me how</Button></>} />
+          action={<><Button size="sm" variant={obs?.connected ? 'ghost' : 'secondary'} onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button><Button size="sm" variant="ghost" onClick={() => onGoTo('graphics')}>Show me how</Button></>} />
       </ul>
       <ErrorNotice error={setLookAction.error ?? setPlanAction.error ?? starterAction.error ?? assign.error} />
       <ScorerLinkDialog matchId={d.id} open={scorerLink} onClose={() => setScorerLink(false)} assigned={d.scorers.map((s) => s.name)} />

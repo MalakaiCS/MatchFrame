@@ -38,7 +38,9 @@ export interface MatchDetail {
 }
 interface Fact { id: string; sequence: number; category: string; type: string; side: string | null; playerId: string | null; periodId: string; clockMs: number | null; occurredAt: string; acceptedAt: string; source: string; actorName: string | null; voided: boolean; revision: number; historical: boolean; payload: Record<string, unknown>; corrections: { kind: string; reason: string; createdAt: string }[] }
 
-const TABS = ['overview', 'lineup', 'facts', 'runsheet', 'activity', 'overlays', 'streams', 'media'];
+const TABS = ['overview', 'lineup', 'timeline', 'graphics', 'media', 'streams'];
+/** links from before the tabs were merged: event log + activity → Timeline; OBS link + run sheet → Graphics; highlights + thumbnails → Media */
+const OLD_TABS: Record<string, string> = { facts: 'timeline', activity: 'timeline', overlays: 'graphics', runsheet: 'graphics', highlights: 'media', thumbnails: 'media' };
 
 /** The match's rules; before scoring starts, its stage (regular season or finals) and knockout can change here. */
 function MatchRules({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
@@ -73,7 +75,8 @@ function MatchRules({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
 function Inner({ id }: { id: string }) {
   const me = useMe();
   const qc = useQueryClient();
-  const wanted = useSearchParams().get('tab') ?? 'overview';
+  const asked = useSearchParams().get('tab') ?? 'overview';
+  const wanted = OLD_TABS[asked] ?? asked;
   const [tab, setTab] = useState(TABS.includes(wanted) ? wanted : 'overview');
   const m = useGet<MatchDetail>(['match', id], `matches/${id}`);
   const facts = useGet<Fact[]>(['facts', id], `matches/${id}/facts`);
@@ -107,15 +110,15 @@ function Inner({ id }: { id: string }) {
         {d.isDemo ? <StatusPill tone="warning">Demo match</StatusPill> : null}
         <span className="text-sm text-muted">{scoringNow ? `Scoring now: ${scoringNow}${d.lease?.takenOverFrom ? ' (took over)' : ''}` : 'No scorer connected'}</span>
       </Card>
-      {full ? <MatchDayChecklist d={d} canEdit={full} onGoTo={setTab} /> : null}
+      {full ? <MatchDayChecklist d={d} canEdit={full} onGoTo={(t) => setTab(OLD_TABS[t] ?? t)} /> : null}
       <Tabs value={tab} onValueChange={setTab}>
         <TabList className="mb-4">
-          <Tab value="overview">Overview</Tab><Tab value="lineup">Lineup</Tab><Tab value="facts">Event log ({events})</Tab>
-          <Tab value="runsheet">Run sheet</Tab><Tab value="activity">Activity</Tab>
-          <Tab value="overlays">OBS link</Tab>
-          <Tab value="highlights">Highlights</Tab>
-          <Tab value="thumbnails">Thumbnails</Tab>
-          {streaming ? <><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab></> : null}
+          <Tab value="overview">Overview</Tab>
+          <Tab value="lineup">Line-ups</Tab>
+          <Tab value="timeline">Timeline{events ? ` (${events})` : ''}</Tab>
+          <Tab value="graphics">Graphics</Tab>
+          <Tab value="media">Media</Tab>
+          {streaming ? <Tab value="streams">Stream</Tab> : null}
         </TabList>
         <TabPanel value="overview" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-4">
@@ -132,32 +135,56 @@ function Inner({ id }: { id: string }) {
           </div>
         </TabPanel>
         <TabPanel value="lineup"><LineupEditor matchId={d.id} canEdit={full} canSaveDefault={full} /></TabPanel>
-        <TabPanel value="facts">
-          <ErrorNotice error={facts.error} />
-          <Table><thead><tr><th>#</th><th>Time</th><th>Event</th><th>Team</th><th>Player</th><th>Recorded by</th><th>Status</th></tr></thead><tbody>
-            {facts.data?.slice().reverse().map((f) => (
-              <tr key={f.id} className={f.voided ? 'opacity-60' : ''}>
-                <td className="tabular">{f.sequence}</td>
-                <td className="tabular whitespace-nowrap">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : '—'} <span className="text-xs text-muted">{fmtDate(f.occurredAt, tz, { timeStyle: 'medium' })}</span></td>
-                <td>{f.category === 'phase' ? `→ ${d.rules.phases.find((p) => p.id === f.payload.to)?.label ?? String(f.payload.to)}` : f.category === 'adjustment' ? `Score set ${JSON.stringify(f.payload.to)}` : f.type.replace(/_/g, ' ')}{f.historical ? <StatusPill className="ml-1" tone="neutral">late</StatusPill> : null}</td>
-                <td>{f.side ? d.teams[f.side as 'home'].abbreviation : ''}</td>
-                <td>{playerName(f.playerId) ?? (f.playerId ? 'Unknown' : '—')}</td>
-                <td className="text-xs text-muted">{f.source}{f.actorName ? ` · ${f.actorName}` : ''}</td>
-                <td>{f.voided ? <StatusPill tone="warning">undone</StatusPill> : f.revision > 1 ? <StatusPill tone="primary">corrected</StatusPill> : null}{f.corrections.map((c, i) => <span key={i} className="block text-xs text-muted">{c.kind}: {c.reason}</span>)}</td>
-              </tr>
-            ))}
-            {facts.data && !facts.data.length ? <tr><td colSpan={7} className="text-center text-muted">Nothing recorded yet. Goals, cards and phase changes from the scorer appear here.</td></tr> : null}
-          </tbody></Table>
+        <TabPanel value="timeline" className="grid gap-6">
+          <section aria-labelledby="t-events">
+            <h2 id="t-events" className="mb-2 font-medium">Event log</h2>
+            <ErrorNotice error={facts.error} />
+            <Table><thead><tr><th>#</th><th>Time</th><th>Event</th><th>Team</th><th>Player</th><th>Recorded by</th><th>Status</th></tr></thead><tbody>
+              {facts.data?.slice().reverse().map((f) => (
+                <tr key={f.id} className={f.voided ? 'opacity-60' : ''}>
+                  <td className="tabular">{f.sequence}</td>
+                  <td className="tabular whitespace-nowrap">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : '—'} <span className="text-xs text-muted">{fmtDate(f.occurredAt, tz, { timeStyle: 'medium' })}</span></td>
+                  <td>{f.category === 'phase' ? `→ ${d.rules.phases.find((p) => p.id === f.payload.to)?.label ?? String(f.payload.to)}` : f.category === 'adjustment' ? `Score set ${JSON.stringify(f.payload.to)}` : f.type.replace(/_/g, ' ')}{f.historical ? <StatusPill className="ml-1" tone="neutral">late</StatusPill> : null}</td>
+                  <td>{f.side ? d.teams[f.side as 'home'].abbreviation : ''}</td>
+                  <td>{playerName(f.playerId) ?? (f.playerId ? 'Unknown' : '—')}</td>
+                  <td className="text-xs text-muted">{f.source}{f.actorName ? ` · ${f.actorName}` : ''}</td>
+                  <td>{f.voided ? <StatusPill tone="warning">undone</StatusPill> : f.revision > 1 ? <StatusPill tone="primary">corrected</StatusPill> : null}{f.corrections.map((c, i) => <span key={i} className="block text-xs text-muted">{c.kind}: {c.reason}</span>)}</td>
+                </tr>
+              ))}
+              {facts.data && !facts.data.length ? <tr><td colSpan={7} className="text-center text-muted">Nothing recorded yet. Goals, cards and phase changes from the scorer appear here.</td></tr> : null}
+            </tbody></Table>
+          </section>
+          <section aria-labelledby="t-activity">
+            <h2 id="t-activity" className="mb-1 font-medium">Activity</h2>
+            <p className="mb-2 text-xs text-muted">Everything that happened on this match: scoring, the desk, graphics on and off air, and changes to the set-up.</p>
+            <ActivityFeed matchId={d.id} tz={tz} />
+          </section>
         </TabPanel>
-        <TabPanel value="runsheet"><RunSheet matchId={d.id} canEdit={full || me.data?.role === 'operator'} /></TabPanel>
-        <TabPanel value="activity"><ActivityFeed matchId={d.id} tz={tz} /></TabPanel>
-        <TabPanel value="overlays"><ObsLinkPanel matchId={d.id} canEdit={full} /></TabPanel>
-        <TabPanel value="highlights"><HighlightsPanel matchId={d.id} canEdit={full || me.data?.role === 'operator'} /></TabPanel>
-        <TabPanel value="thumbnails"><ThumbnailsPanel matchId={d.id} /></TabPanel>
-        {streaming ? <>
-          <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel>
-          <TabPanel value="media"><MatchMediaPanel matchId={d.id} tz={tz} /></TabPanel>
-        </> : null}
+        <TabPanel value="graphics" className="grid gap-6">
+          <ObsLinkPanel matchId={d.id} canEdit={full} />
+          <section aria-labelledby="g-runsheet">
+            <h2 id="g-runsheet" className="mb-1 font-medium">Run sheet and notes</h2>
+            <p className="mb-2 text-xs text-muted">Timed lines the production team ticks off, and notes. Every desk on this match sees them too.</p>
+            <RunSheet matchId={d.id} canEdit={full || me.data?.role === 'operator'} />
+          </section>
+        </TabPanel>
+        <TabPanel value="media" className="grid gap-6">
+          <section aria-labelledby="m-highlights">
+            <h2 id="m-highlights" className="mb-2 font-medium">Highlights</h2>
+            <HighlightsPanel matchId={d.id} canEdit={full || me.data?.role === 'operator'} />
+          </section>
+          <section aria-labelledby="m-thumbnails">
+            <h2 id="m-thumbnails" className="mb-2 font-medium">Thumbnails</h2>
+            <ThumbnailsPanel matchId={d.id} />
+          </section>
+          {streaming ? (
+            <section aria-labelledby="m-recordings">
+              <h2 id="m-recordings" className="mb-2 font-medium">Recordings and clips</h2>
+              <MatchMediaPanel matchId={d.id} tz={tz} />
+            </section>
+          ) : null}
+        </TabPanel>
+        {streaming ? <TabPanel value="streams"><StreamsPanel matchId={d.id} canEdit={full} tz={tz} /></TabPanel> : null}
       </Tabs>
     </>
   );

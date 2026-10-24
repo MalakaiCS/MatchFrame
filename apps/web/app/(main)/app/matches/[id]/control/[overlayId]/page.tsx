@@ -1,8 +1,11 @@
 'use client';
+// The desk: one graphics output of one match. The header keeps what matters on air (output, Auto/Manual, one
+// status, the OBS link, Hold to clear) with the rest under More; the graphics list in the middle; the preview
+// (your draft) large on the right with its controls under it, and what OBS is showing smaller below.
 import Link from 'next/link';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CircleHelp, Copy, Download, Radio, Search, Users } from 'lucide-react';
+import { Copy, Radio, Search, Users } from 'lucide-react';
 import { findTemplate, reduceOverlay, type Cue, type Layer, type OverlayPublicState, type TemplateDef } from '@bs/graphics';
 import { Keyframes, Renderer, Stage, THEMES, customDefsFrom, renderCustomScene } from '@bs/graphics/react';
 import { getAdapter } from '@bs/domain';
@@ -11,7 +14,8 @@ import { get } from '@/lib/api';
 import { useCopy, useGet } from '@/lib/hooks';
 import { layerLabel } from '@/lib/labels';
 import { useConnectionStatus } from '@/lib/realtime';
-import { Catalogue, defaultVariables } from '@/components/control/catalogue';
+import { Catalogue, CatalogueViewToggle, defaultVariables, useCatalogueView } from '@/components/control/catalogue';
+import { DeskMenu, DeskStatus } from '@/components/control/desk-status';
 import { VariableForm } from '@/components/control/variable-form';
 import { EmergencyClear } from '@/components/control/emergency';
 import { useControl, type PendingCommand } from '@/components/control/use-control';
@@ -45,7 +49,7 @@ function keyName(e: KeyboardEvent) {
 
 interface Fact { id: string; sequence: number; category: string; type: string; side: 'home' | 'away' | null; playerId: string | null; clockMs: number | null; voided: boolean; payload: Record<string, unknown> }
 
-export default function ControlRoom({ params }: { params: Promise<{ id: string; overlayId: string }> }) {
+export default function Desk({ params }: { params: Promise<{ id: string; overlayId: string }> }) {
   const { id: matchId, overlayId } = use(params);
   const router = useRouter();
   const c = useControl(overlayId);
@@ -66,6 +70,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
   const [err, setErr] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [help, setHelp] = useState(false);
+  const [view, setView] = useCatalogueView();
   const copy = useCopy();
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -175,15 +180,13 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
           <button key={m} disabled={!canOp} onClick={() => run(() => c.send({ type: 'SET_MODE', mode: m }, `Mode ${m}`))} aria-pressed={state.mode === m} className={cx('h-9 px-3 text-sm capitalize', state.mode === m ? (m === 'auto' ? 'bg-primary text-bg' : 'bg-warning text-bg') : 'text-muted hover:text-text')}>{m}</button>
         ))}
       </div>
-      {conn === 'connected' ? <StatusPill tone="healthy">Connected</StatusPill> : <StatusPill tone="offline">Connection lost</StatusPill>}
-      {prodRenderers.length ? (behind ? <StatusPill tone="warning">OBS catching up</StatusPill> : <StatusPill tone="healthy">OBS showing the latest</StatusPill>) : <StatusPill tone="offline">OBS not connected</StatusPill>}
+      <DeskStatus conn={conn} obsConnected={prodRenderers.length > 0} behind={behind} />
       {d.overlay.kind === 'programme' ? <StatusPill tone="live"><Radio className="size-3" /> Cloud programme</StatusPill> : null}
       {state.inhibited ? <StatusPill tone="live">OUTPUT CLEARED</StatusPill> : null}
       {presence.others.length ? <StatusPill tone="neutral"><Users className="size-3" /> Also here: {presence.others.map((u) => u.name).join(', ')}</StatusPill> : null}
       <div className="ml-auto flex items-center gap-2">
         <Button size="sm" variant="ghost" onClick={async () => { const u = await get<{ production: string }>(`overlays/${overlayId}/urls`); await copy(u.production, 'OBS link'); }}><Copy className="size-4" /> Copy OBS link</Button>
-        <Button size="sm" variant="ghost" onClick={() => setExporting(true)}><Download className="size-4" /> Export</Button>
-        <Button size="sm" variant="ghost" aria-label="Keyboard shortcuts" onClick={() => setHelp(true)}><CircleHelp className="size-4" /></Button>
+        <DeskMenu onExport={() => setExporting(true)} onShortcuts={() => setHelp(true)} />
         {state.inhibited ? <Button size="sm" variant="primary" disabled={!canOp} onClick={() => run(() => c.send({ type: 'RESUME' }, 'Resume output'))}>Resume output</Button> : null}
         <EmergencyClear disabled={!canOp} onClear={clear} />
       </div>
@@ -201,53 +204,88 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
     </div>
   );
 
+  const events = (facts.data ?? []).filter((f) => f.category === 'event');
+  const eventLog = !events.length ? (
+    <div className="rounded-[var(--radius-card)] border border-border bg-panel px-3 py-2 text-xs text-muted"><span className="font-medium text-text">Event log</span> · No events yet. Goals, cards and substitutions from the scorer appear here.</div>
+  ) : (
+    <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
+      <div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-medium text-muted">Event log</h3></div>
+      {events.length > 6 ? <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)} placeholder="Search events" aria-label="Search events" className="mb-2 h-8 w-full rounded border border-border bg-bg px-2 text-xs" /> : null}
+      <ul className="max-h-[50vh] space-y-1 overflow-y-auto text-xs">
+        {events.filter((f) => !logSearch || f.type.includes(logSearch.toLowerCase())).slice().reverse().map((f) => {
+          const pl = f.playerId ? data.players[f.playerId] : null;
+          const tmpl = ['goal', 'own_goal', 'penalty_scored'].includes(f.type) ? 'builtin:goal' : ['yellow_card', 'second_yellow', 'red_card'].includes(f.type) ? 'builtin:card' : f.type === 'substitution' ? 'builtin:substitution' : f.type === 'score' ? 'builtin:score' : null;
+          return (
+            <li key={f.id} className={cx('flex items-center gap-2 rounded px-1 py-1', f.voided && 'line-through opacity-50')}>
+              <span className="w-8 text-muted tabular">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : ''}</span>
+              <span className="flex-1">{f.type.replace(/_/g, ' ')} {f.side ? data.match.teams[f.side].abbreviation : ''} {pl ? `· ${pl.shortName ?? pl.displayName}` : ''}</span>
+              {tmpl && !f.voided && f.side ? (
+                <button className="text-primary hover:underline" onClick={() => {
+                  select(tmpl);
+                  const v: Record<string, unknown> = { team: f.side, minute: f.clockMs != null ? String(Math.floor(f.clockMs / 60000) + 1) : undefined };
+                  if (f.playerId) v.player = f.playerId;
+                  if (tmpl === 'builtin:goal') v.eventType = f.type;
+                  if (tmpl === 'builtin:card') v.cardType = f.type === 'yellow_card' ? 'yellow' : f.type === 'red_card' ? 'red' : 'second_yellow';
+                  if (tmpl === 'builtin:substitution') { v.playerOut = f.payload.playerOutId; v.playerIn = f.payload.playerInId; }
+                  if (tmpl === 'builtin:score') v.points = f.payload.points;
+                  setVars((cur) => ({ ...cur, ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined)) }));
+                }}>Load</button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  const comingNext = (
+    <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
+      <h3 className="mb-1 text-xs font-medium text-muted">What happens next</h3>
+      <ComingNext data={data} gamePlanVersionId={d.overlay.gamePlanVersionId} mode={state.mode} />
+    </div>
+  );
+
   const left = (
     <div className="flex flex-col gap-3">
       {scoreStrip}
-      <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
-        <div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-medium text-muted">Event log</h3></div>
-        <input value={logSearch} onChange={(e) => setLogSearch(e.target.value)} placeholder="Search events" aria-label="Search events" className="mb-2 h-8 w-full rounded border border-border bg-bg px-2 text-xs" />
-        <ul className="max-h-[50vh] space-y-1 overflow-y-auto text-xs">
-          {(facts.data ?? []).filter((f) => f.category === 'event' && (!logSearch || f.type.includes(logSearch.toLowerCase()))).slice().reverse().map((f) => {
-            const pl = f.playerId ? data.players[f.playerId] : null;
-            const tmpl = ['goal', 'own_goal', 'penalty_scored'].includes(f.type) ? 'builtin:goal' : ['yellow_card', 'second_yellow', 'red_card'].includes(f.type) ? 'builtin:card' : f.type === 'substitution' ? 'builtin:substitution' : f.type === 'score' ? 'builtin:score' : null;
-            return (
-              <li key={f.id} className={cx('flex items-center gap-2 rounded px-1 py-1', f.voided && 'line-through opacity-50')}>
-                <span className="w-8 text-muted tabular">{f.clockMs != null ? `${Math.floor(f.clockMs / 60000)}'` : ''}</span>
-                <span className="flex-1">{f.type.replace(/_/g, ' ')} {f.side ? data.match.teams[f.side].abbreviation : ''} {pl ? `· ${pl.shortName ?? pl.displayName}` : ''}</span>
-                {tmpl && !f.voided && f.side ? (
-                  <button className="text-primary hover:underline" onClick={() => {
-                    select(tmpl);
-                    const v: Record<string, unknown> = { team: f.side, minute: f.clockMs != null ? String(Math.floor(f.clockMs / 60000) + 1) : undefined };
-                    if (f.playerId) v.player = f.playerId;
-                    if (tmpl === 'builtin:goal') v.eventType = f.type;
-                    if (tmpl === 'builtin:card') v.cardType = f.type === 'yellow_card' ? 'yellow' : f.type === 'red_card' ? 'red' : 'second_yellow';
-                    if (tmpl === 'builtin:substitution') { v.playerOut = f.payload.playerOutId; v.playerIn = f.payload.playerInId; }
-                    if (tmpl === 'builtin:score') v.points = f.payload.points;
-                    setVars((cur) => ({ ...cur, ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined)) }));
-                  }}>Load</button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      {comingNext}
+      {eventLog}
     </div>
   );
 
   const middle = (
     <div className="flex min-w-0 flex-col gap-2">
-      <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted" /><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search graphics (${keys.search})`} aria-label="Search graphics" className="h-9 w-full rounded-md border border-border bg-panel pl-8 pr-3 text-sm" /></div>
-      <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pr-1"><Catalogue data={data} onAir={onAirByTemplate} selected={selected} onSelect={select} search={search} custom={custom} serverNow={c.serverNow} sport={data.match.sport} /></div>
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted" /><input ref={searchRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search graphics (${keys.search})`} aria-label="Search graphics" className="h-9 w-full rounded-md border border-border bg-panel pl-8 pr-3 text-sm" /></div>
+        <CatalogueViewToggle view={view} onChange={setView} />
+      </div>
+      <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pr-1"><Catalogue data={data} onAir={onAirByTemplate} selected={selected} onSelect={select} search={search} custom={custom} serverNow={c.serverNow} sport={data.match.sport} view={view} /></div>
     </div>
   );
 
-  const monitor = (label: string, st: OverlayPublicState, tone: 'preview' | 'programme') => (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs"><span className={cx('font-semibold uppercase tracking-wide', tone === 'programme' ? 'text-live' : 'text-healthy')}>{label}</span>{tone === 'programme' ? <span className="text-muted">{behind ? 'OBS is catching up' : 'what OBS is showing'}</span> : <span className="text-muted">Your draft — not on air yet</span>}</div>
-      <div className={cx(data.format === '9:16' ? 'relative mx-auto aspect-[9/16] max-h-[60vh]' : 'relative aspect-video', 'overflow-hidden rounded-md border-2 bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]', tone === 'programme' ? 'border-live' : 'border-healthy')}>
+  const monitor = (label: string, st: OverlayPublicState, tone: 'preview' | 'programme', small = false) => (
+    <div className="min-w-0">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 text-xs"><span className={cx('font-semibold uppercase tracking-wide', tone === 'programme' ? 'text-live' : 'text-healthy')}>{label}</span>{tone === 'programme' ? <span className="text-muted">{behind ? 'OBS is catching up' : 'what OBS is showing'}</span> : <span className="text-muted">Your draft — not on air yet</span>}</div>
+      <div className={cx(data.format === '9:16' ? cx('relative mx-auto aspect-[9/16]', small ? 'max-h-[30vh]' : 'max-h-[60vh]') : 'relative aspect-video', 'overflow-hidden rounded-md bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]', small ? 'border' : 'border-2', tone === 'programme' ? 'border-live' : 'border-healthy')}>
         <Stage format={data.format}><Renderer state={st} data={data} themes={THEMES} serverNow={c.serverNow} customDefs={custom} renderCustom={renderCustomScene} /></Stage>
       </div>
+    </div>
+  );
+
+  const onAirNow = (
+    <div className="min-w-0">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1"><h3 className="whitespace-nowrap text-xs font-medium text-muted">On air now</h3><Button size="sm" variant="ghost" className="whitespace-nowrap" disabled={!canOp} onClick={() => void toggleScorebug()}>{state.scorebugVisible ? 'Hide' : 'Show'} scorebug <Kbd>{keys.scorebug}</Kbd></Button></div>
+      <ul className="space-y-1 text-sm">
+        {(Object.entries(state.layers) as [Layer, Cue][]).map(([layer, cue]) => (
+          <li key={layer} className="flex flex-wrap items-center gap-x-2">
+            <span className="min-w-0 flex-1 truncate" title={layerLabel(layer)}>{findTemplate(cue.templateKey, custom)?.name ?? cue.templateKey}{cue.outAt ? ' (going out)' : ''}</span>
+            {!cue.outAt ? <Button size="sm" variant="ghost" disabled={!canOp} onClick={() => out(layer)}>Out</Button> : null}
+            <span className="w-full text-xs text-muted">{layerLabel(layer)} · {cue.source === 'automation' ? 'automatic' : 'from this desk'}{cue.durationMs ? ` · ${Math.max(0, Math.round((cue.startedAt + cue.durationMs - c.serverNow()) / 1000))}s left` : ''}</span>
+          </li>
+        ))}
+        {!Object.keys(state.layers).length ? <li className="text-xs text-muted">Nothing on air</li> : null}
+        {presence.locks.map((l) => <li key={`lock:${l.layer}`} className="text-xs text-warning">{l.name} is preparing the {layerLabel(l.layer).toLowerCase()}</li>)}
+      </ul>
     </div>
   );
 
@@ -255,8 +293,6 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
     <div className="flex flex-col gap-3">
       <ApprovalsPanel overlayId={overlayId} canOperate={canOp} custom={custom} describe={describeVar} />
       {monitor('Preview', previewState ?? state, 'preview')}
-      {d.overlay.kind === 'programme' ? <ProgrammeMonitor matchId={matchId} overlayId={overlayId} /> : null}
-      {monitor(d.overlay.kind === 'programme' ? 'On air (sent to the cloud programme)' : 'On air', state, 'programme')}
       <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
         {t ? (
           <>
@@ -272,25 +308,11 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
         {lockedBy ? <p role="status" className="mt-2 text-sm text-warning">{lockedBy.name} is preparing the {layerLabel(lockedBy.layer).toLowerCase()} right now. Wait a moment or pick a graphic on another layer.</p> : null}
         {state.inhibited ? <p className="mt-2 text-sm text-live">Emergency clear is active. Graphics and automation are held until you press Resume output.</p> : null}
       </div>
-      <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
-        <h3 className="mb-1 text-xs font-medium text-muted">What happens next</h3>
-        <ComingNext data={data} gamePlanVersionId={d.overlay.gamePlanVersionId} mode={state.mode} />
+      <div className="grid grid-cols-1 gap-3 rounded-[var(--radius-card)] border border-border bg-panel p-3 sm:grid-cols-2">
+        {monitor(d.overlay.kind === 'programme' ? 'On air (sent to the cloud programme)' : 'On air', state, 'programme', true)}
+        {onAirNow}
       </div>
-      <div className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
-        <div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-medium text-muted">On air now</h3><Button size="sm" variant="ghost" disabled={!canOp} onClick={() => void toggleScorebug()}>{state.scorebugVisible ? 'Hide' : 'Show'} scorebug <Kbd>{keys.scorebug}</Kbd></Button></div>
-        <ul className="space-y-1 text-sm">
-          {(Object.entries(state.layers) as [Layer, Cue][]).map(([layer, cue]) => (
-            <li key={layer} className="flex items-center gap-2">
-              <span className="w-28 truncate text-xs text-muted" title={layer}>{layerLabel(layer)}</span>
-              <span className="flex-1 truncate">{findTemplate(cue.templateKey, custom)?.name ?? cue.templateKey}{cue.outAt ? ' (going out)' : ''}</span>
-              <span className="text-xs text-muted">{cue.source === 'automation' ? 'automatic' : 'from this desk'}{cue.durationMs ? ` · ${Math.max(0, Math.round((cue.startedAt + cue.durationMs - c.serverNow()) / 1000))}s left` : ''}</span>
-              {!cue.outAt ? <Button size="sm" variant="ghost" disabled={!canOp} onClick={() => out(layer)}>Out</Button> : null}
-            </li>
-          ))}
-          {!Object.keys(state.layers).length ? <li className="text-xs text-muted">Nothing on air</li> : null}
-          {presence.locks.map((l) => <li key={`lock:${l.layer}`} className="text-xs text-warning">{l.name} is preparing the {layerLabel(l.layer).toLowerCase()}</li>)}
-        </ul>
-      </div>
+      {d.overlay.kind === 'programme' ? <ProgrammeMonitor matchId={matchId} overlayId={overlayId} /> : null}
     </div>
   );
 
@@ -305,7 +327,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
           <li>Connected outputs: {d.renderers.map((r) => `${r.purpose}${r.reporting ? ' (reports sponsor delivery)' : ''} at revision ${r.displayedRevision}`).join(', ') || 'none'}</li>
           <li>Latest revision sent: {state.revision}; shown by OBS: {c.displayed}.</li>
           {behind ? <li className="text-warning">OBS has not yet shown revision {state.revision}.</li> : null}
-          {d.overlay.pendingThemeProfileVersionId ? <li className="text-warning">A newer version of the look is published but not applied to this output (match page → OBS link).</li> : null}
+          {d.overlay.pendingThemeProfileVersionId ? <li className="text-warning">A newer version of the look is published but not applied to this output (match page → Graphics).</li> : null}
           {disp.alerts.map((a) => <li key={a} className="text-warning">{a}</li>)}
         </ul>
       </TabPanel>
@@ -317,15 +339,15 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
       <Keyframes />
       {header}
       {wide ? (
-        <div className="grid grid-cols-[310px_minmax(0,1fr)_38%] gap-3">{left}{middle}{right}</div>
+        <div className="grid grid-cols-[280px_minmax(0,1fr)_40%] gap-3">{left}{middle}{right}</div>
       ) : (
         <>
           <div className="sticky top-14 z-20">{scoreStrip}</div>
           <Tabs defaultValue="catalogue">
-            <TabList><Tab value="catalogue">Graphics</Tab><Tab value="controls">Preview & controls</Tab><Tab value="log">Event log</Tab></TabList>
+            <TabList><Tab value="catalogue">Graphics</Tab><Tab value="controls">Preview & controls</Tab><Tab value="log">Next & events</Tab></TabList>
             <TabPanel value="catalogue" className="pt-3">{middle}</TabPanel>
             <TabPanel value="controls" className="pt-3">{right}</TabPanel>
-            <TabPanel value="log" className="pt-3">{left}</TabPanel>
+            <TabPanel value="log" className="flex flex-col gap-3 pt-3">{comingNext}{eventLog}</TabPanel>
           </Tabs>
         </>
       )}
@@ -355,7 +377,7 @@ export default function ControlRoom({ params }: { params: Promise<{ id: string; 
             <tr key={what} className="border-t border-border"><td className="py-2">{what}</td><td className="py-2 text-right"><Kbd>{key}</Kbd></td></tr>
           ))}
         </tbody></table>
-        <p className="mt-3 text-xs text-muted">Preview on the right is your draft; the panel below it is what OBS is showing. Automation runs from the scorer's phase buttons; switch to Manual to pause it.</p>
+        <p className="mt-3 text-xs text-muted">Preview is your draft; the smaller On air picture under its controls is what OBS is showing. Export and these shortcuts are under More. Automation runs from the scorer's phase buttons; switch to Manual to pause it.</p>
       </Dialog>
     </div>
   );

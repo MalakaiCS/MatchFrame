@@ -31,13 +31,19 @@ const EVENT_SOURCE: Record<string, FromKey> = { team: 'event.side', player: 'eve
 export const templatesFor = (sport: Sport) => BUILTIN_TEMPLATES.filter((t) => t.sports.includes(sport));
 export const templateName = (key?: string) => BUILTIN_TEMPLATES.find((t) => t.key === key)?.name ?? key?.replace('builtin:', '').replace(/_/g, ' ') ?? '';
 
-export function stepText(it: PlanItem): string {
+/** A step as what it shows ("Show Team lineup") and when ("at 8.8 s · 9 s"), so the timing can sit quieter beside it. */
+export function stepParts(it: PlanItem): { what: string; timing: string } {
   const what =
     it.action === 'show' || it.action === 'update' ? `${ACTIONS[it.action]} ${templateName(it.templateKey)}`
     : it.action === 'sponsor' || it.action === 'creative' ? `Show a sponsor (${placementLabel(it.placement ?? 'detached_logo')})`
     : (ACTIONS[it.action] ?? it.action);
-  const timing = it.action === 'scorebug_show' || it.action === 'scorebug_hide' || it.action === 'clear_layers' ? '' : ` · ${seconds(it.durationMs ?? null)}`;
-  return `${what} · at ${(it.offsetMs / 1000).toFixed(1)} s${timing}`;
+  const length = it.action === 'scorebug_show' || it.action === 'scorebug_hide' || it.action === 'clear_layers' ? '' : ` · ${seconds(it.durationMs ?? null)}`;
+  return { what, timing: `at ${(it.offsetMs / 1000).toFixed(1)} s${length}` };
+}
+
+export function stepText(it: PlanItem): string {
+  const p = stepParts(it);
+  return `${p.what} · ${p.timing}`;
 }
 
 /** Start the new step after the last one ends, with a short gap so exits finish before the next entrance. */

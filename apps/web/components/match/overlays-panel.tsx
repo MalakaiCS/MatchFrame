@@ -84,7 +84,7 @@ function OutputCard({ o, matchId, canEdit, primary = false }: { o: OverlayRow; m
         <h3 className="font-medium">{primary ? 'OBS link' : o.name}</h3>
         <StatusPill tone={st.tone}>{st.text}</StatusPill>
         {o.state.inhibited ? <StatusPill tone="live">Cleared (emergency)</StatusPill> : o.state.mode === 'manual' ? <StatusPill tone="warning">Manual mode</StatusPill> : null}
-        <div className="ml-auto"><Button asChild variant="primary" size="sm"><Link href={`/app/matches/${matchId}/control/${o.id}`}><Clapperboard className="size-4" /> Control room</Link></Button></div>
+        <div className="ml-auto"><Button asChild variant="primary" size="sm"><Link href={`/app/matches/${matchId}/control/${o.id}`}><Clapperboard className="size-4" /> Desk</Link></Button></div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <Input readOnly aria-label="OBS link" value={link ?? (urls.isLoading ? 'Loading…' : 'Not available for your role')} className="min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />

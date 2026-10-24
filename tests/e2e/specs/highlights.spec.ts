@@ -41,7 +41,7 @@ test('highlights: upload the match video, mark the kick-off, make the package', 
   execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=s=1280x720:r=25:d=60', '-f', 'lavfi', '-i', 'sine=f=330:d=60', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-shortest', file]);
 
   await page.goto(`/app/matches/${matchId}`);
-  await page.getByRole('tab', { name: 'Highlights' }).click();
+  await page.getByRole('tab', { name: 'Media' }).click();
   await page.getByLabel('Video of the match').setInputFiles(file);
   const videos = page.getByRole('list', { name: 'Videos' });
   await expect(videos).toContainText('match-recording.mp4', { timeout: 60_000 });

@@ -31,5 +31,5 @@ test('theme page previews every graphic and plays entrance and exit', async ({ b
   await expect(stage.locator('[data-graphic="ticker"]')).toBeVisible();
 
   await page.goto('/app/themes/not-a-theme');
-  await expect(page.getByText('Theme not found')).toBeVisible();
+  await expect(page.getByText('Look not found')).toBeVisible();
 });

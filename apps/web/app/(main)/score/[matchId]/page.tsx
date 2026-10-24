@@ -2,7 +2,7 @@
 // The scorer's match screen, in MatchFrame's console style. Along the top, the match and the connection; under it
 // the scoreboard (each team in its own block with its colour down the outside edge, the period and clock between
 // them) and the clock's controls. Before the match and in breaks, the match details and the run-down to the next
-// period (each step can be skipped); during play, the event pad: a column for each team, in sections (score,
+// period (each step can be skipped, and the period can start at any time); during play, the event pad: a column for each team, in sections (score,
 // possession, the run of play, discipline, the team), each tile with its count; in the shoot-out, scored and missed
 // for each team. Basketball keeps its court controls. A dock along the bottom holds undo, the events, the line-ups,
 // the match details and the button that ends the period.
@@ -182,7 +182,10 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
   const stepState = (i: number) => (i <= doneUpTo ? 'done' : skipped.has(steps[i]!.id) ? 'skipped' : 'todo');
   const clearTo = (i: number) => steps.slice(doneUpTo + 1, i).every((p) => skipped.has(p.id));
   const stepAllowed = (i: number) => stepState(i) === 'todo' && clearTo(i) && transitions.includes(steps[i]!.id);
-  const startAllowed = !!playNext && clearTo(steps.length) && transitions.includes(playNext.id);
+  // the period can start at any time: steps not marked yet are passed over, exactly as if each had been skipped
+  // (a skip sends nothing; the match goes straight to the period)
+  const startAllowed = !!playNext && transitions.includes(playNext.id);
+  const unmarked = steps.some((_, i) => stepState(i) === 'todo');
 
   const sheet = scorerSheet(m.sport);
   const overrunMs = phase.kind === 'play' && proj.phase !== 'shootout' && mainClock?.limitMs ? clockDisplayMs(mainClock, s.serverNow()) - mainClock.limitMs : 0;
@@ -511,7 +514,7 @@ export default function ScorePage({ params }: { params: Promise<{ matchId: strin
           ) : nextPhase ? (
             <button type="button" className="mt-3 min-h-14 w-full rounded-xl bg-primary text-[17px] font-bold text-bg disabled:opacity-35" disabled={!canScore} onClick={() => void setPhase(nextPhase.id)}>{nextPhase.label}</button>
           ) : null}
-          {steps.length && !startAllowed && playNext ? <p className="mt-2 text-center text-sm text-muted">Mark or skip each step to start {playNext.label.toLowerCase()}.</p> : null}
+          {unmarked && startAllowed && playNext ? <p className="mt-2 text-center text-sm text-muted">Steps not marked are skipped when you start {playNext.label.toLowerCase()}.</p> : null}
           {otherPhases.length ? <button className="mt-1 min-h-10 w-full text-sm text-muted underline" onClick={() => setMorePhases(true)}>More options</button> : null}
         </section>
       ) : <p className="px-1 text-sm text-muted">The main scorer starts the match.</p>}

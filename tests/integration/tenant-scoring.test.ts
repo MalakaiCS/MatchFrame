@@ -178,6 +178,14 @@ describe('fixture import (A04)', () => {
     const list = await matchesSvc.listMatches(A.ctx, { competitionId: comp.id });
     expect(list.total).toBe(3);
     expect(list.items[2]!.scheduledAt.toISOString()).toBe('2027-03-15T09:30:00.000Z');
+    // each row says what is still to do before the match can go out (the match page's checklist, in short)
+    const ready = list.items[0]!.ready;
+    expect(ready.total).toBe(5);
+    expect(ready.done + ready.todo.length).toBe(5);
+    expect(ready.todo).toEqual(expect.arrayContaining(['line-ups', 'a scorer', 'OBS']));
+    // the competitions list carries the next fixture
+    const [cup] = await catalog.listCompetitions(A.ctx, { search: 'Import Cup' });
+    expect(cup!.nextMatchAt?.toISOString()).toBe('2027-03-01T05:00:00.000Z');
     // a tampered checksum is rejected
     await expect(imports.commitFixtureImport(A.ctx, good + '\n', { sport: 'football' }, p2.checksum)).rejects.toMatchObject({ code: 'PREVIEW_MISMATCH' });
   });

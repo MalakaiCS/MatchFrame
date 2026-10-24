@@ -35,16 +35,17 @@ test('uploads: an SVG team logo and a GIF player photo, converted in the browser
   const team = (await api<{ id: string; name: string; logoAssetId: string | null }[]>(page, '/api/v1/teams')).find((t) => t.name === name)!;
   expect(team.logoAssetId).toBeTruthy();
   expect(await asset(page, team.logoAssetId)).toMatchObject({ state: 'READY', detectedMime: 'image/png', width: 1024, height: 1024 });
+  await page.getByLabel('Search teams').fill(name);
   await page.getByRole('row', { name: new RegExp(name) }).scrollIntoViewIfNeeded();
   await expect.poll(() => loaded(page, `${name} logo`)).toBe(true);
   await expect(page.getByAltText(`${name} logo`)).toBeVisible();
 
-  // a player photo from a GIF, under Players → Photo & details
+  // a player photo from a GIF: Players, then the player's row
   await api(page, '/api/v1/players', { displayName: `Upload Player ${tag}` });
   await page.getByRole('tab', { name: 'Players' }).click();
   await page.getByLabel('Search players').fill(`Upload Player ${tag}`);
   const row = page.getByRole('row', { name: new RegExp(`Upload Player ${tag}`) });
-  await row.getByRole('button', { name: 'Photo & details' }).click();
+  await row.getByRole('button', { name: new RegExp(`Upload Player ${tag}`) }).click();
   const pd = page.getByRole('dialog', { name: `Upload Player ${tag}` });
   await pd.getByLabel('Upload photo').setInputFiles({ name: 'headshot.gif', mimeType: 'image/gif', buffer: GIF });
   await expect(page.getByText('Photo saved', { exact: false })).toBeVisible();
@@ -57,7 +58,8 @@ test('uploads: an SVG team logo and a GIF player photo, converted in the browser
 
   // the team dialog replaces the logo, and a file that is not an image says so
   await page.getByRole('tab', { name: 'Teams' }).click();
-  await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'Logo, colours & roster' }).click();
+  await page.getByLabel('Search teams').fill(name);
+  await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: new RegExp(name) }).click();
   const td = page.getByRole('dialog', { name });
   await td.getByLabel('Upload team logo').setInputFiles({ name: 'notes.png', mimeType: 'image/png', buffer: Buffer.from('not really a picture') });
   await expect(td.getByRole('alert')).toContainText('cannot be opened as an image');

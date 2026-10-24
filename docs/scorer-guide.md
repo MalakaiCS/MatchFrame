@@ -50,8 +50,9 @@ been recorded), **Line-ups**, **Details** (the match, your preferences and the o
 The screen shows the match details (competition, teams, ground, date, time) and the run-down to the next period:
 **Pre-match**, **Players entering** and **About to start**, numbered, each with **Skip** beside it, then
 **Start 1st Half**.
-Tap a step when it happens (the graphics for it play), or skip it; the half starts once every step is done or
-skipped. A skipped step can be taken back with *Undo* until you start. At half time the same run-down has *Players
+Tap a step when it happens (the graphics for it play), or skip it. **Start 1st Half** works at any time: steps not
+marked are skipped when you start (the screen says so), so a busy scorer can go straight to the kick-off. A skipped
+step can be taken back with *Undo* until you start. At half time the same run-down has *Players
 entering (2nd half)*, *About to start (2nd half)* and **Start 2nd Half**, so the line-ups and kick-off graphics
 play for the second half too. *More options* holds the rest (Ready, Postponed, Abandoned — the last two ask
 first). A red banner says when the starting line-ups are not filled in, with a link to the line-ups.

@@ -43,7 +43,7 @@ test('highlights title graphics: Match Highlights as a ProRes 4444 MOV and Exten
   const { page } = await login(browser, { viewport: { width: 1440, height: 1100 } });
   const m = await matchAtGround(page);
   await page.goto(`/app/matches/${m.id}`);
-  await page.getByRole('tab', { name: 'Highlights' }).click();
+  await page.getByRole('tab', { name: 'Media' }).click();
   const card = page.getByRole('list', { name: 'Title graphics' });
   const match = card.locator('[data-title-export="match"] [data-graphic="highlights_intro"]');
   const extended = card.locator('[data-title-export="extended"] [data-graphic="highlights_intro"]');

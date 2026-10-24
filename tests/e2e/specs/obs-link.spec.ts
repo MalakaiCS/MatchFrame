@@ -6,7 +6,7 @@ test('output format: venue screen, then back to broadcast 16:9', async ({ browse
   const { ctx, page } = await login(browser);
   const matchId = await freshMatch(page);
   await page.goto(`/app/matches/${matchId}`);
-  await page.getByRole('tab', { name: 'OBS link' }).click();
+  await page.getByRole('tab', { name: 'Graphics' }).click();
   const picker = page.getByLabel('Output format').first();
   await expect(picker).toHaveValue('16:9');
   const saved = async () => (await api<{ format: string }[]>(page, `/api/v1/matches/${matchId}/overlays`))[0]!.format;
@@ -38,7 +38,7 @@ test('an output with no automation: "Use the starter flow" puts the pre-match gr
   const plan = await api<{ id: string }>(page, '/api/v1/game-plans', { name: `E2E starter ${matchId.slice(0, 4)}`, sport: 'football', fromStarter: true });
   await api(page, `/api/v1/game-plans/${plan.id}/publish`, {});
   await page.goto(`/app/matches/${matchId}`);
-  await page.getByRole('tab', { name: 'OBS link' }).click();
+  await page.getByRole('tab', { name: 'Graphics' }).click();
   await expect(page.getByText('No automation on this output')).toBeVisible();
   await page.getByRole('button', { name: 'Use the starter flow' }).click();
   await expect(page.getByText('No automation on this output')).toHaveCount(0);

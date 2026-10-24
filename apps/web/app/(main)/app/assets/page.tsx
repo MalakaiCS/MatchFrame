@@ -9,6 +9,7 @@ import { isFull, useMe } from '@/lib/session';
 import { AssetLibrary } from '@/components/asset-library';
 import { ImageField, LogoField } from '@/components/logo-field';
 import { CrestColours, useCrestPalette } from '@/components/crest-colours';
+import { SPORT_LABELS, type Sport } from '@bs/domain';
 
 /** a small logo or photo in a table row */
 function Thumb({ id, alt, tall }: { id: string | null; alt: string; tall?: boolean }) {
@@ -29,9 +30,9 @@ export default function AssetsPage() {
   const full = isFull(me.data?.role);
   return (
     <>
-      <PageHeader title="Assets" subtitle="Clubs, teams, players, venues and media files used by graphics and broadcasts." />
+      <PageHeader title="Library" subtitle="Teams, players, venues and clubs, and the image, video and audio files your graphics use." />
       <Tabs defaultValue="teams">
-        <TabList className="mb-4"><Tab value="teams">Teams</Tab><Tab value="players">Players</Tab><Tab value="venues">Venues</Tab><Tab value="clubs">Clubs</Tab><Tab value="files">Images, video & audio</Tab></TabList>
+        <TabList className="mb-4"><Tab value="teams">Teams</Tab><Tab value="players">Players</Tab><Tab value="venues">Venues</Tab><Tab value="clubs">Clubs</Tab><Tab value="files">Files</Tab></TabList>
         <TabPanel value="teams"><Teams full={full} /></TabPanel>
         <TabPanel value="players"><Players full={full} /></TabPanel>
         <TabPanel value="venues"><Venues full={full} /></TabPanel>
@@ -42,9 +43,27 @@ export default function AssetsPage() {
   );
 }
 
+const PAGE = 25;
+
+/** "Show more" under a long list. */
+function More({ shown, total, onMore }: { shown: number; total: number; onMore: () => void }) {
+  if (total <= shown) return null;
+  return (
+    <div className="mt-3 flex items-center justify-end gap-3 text-sm">
+      <span className="text-muted">Showing {shown} of {total}</span>
+      <Button size="sm" onClick={onMore}>Show more</Button>
+    </div>
+  );
+}
+
 function Teams({ full }: { full: boolean }) {
   const [archived, setArchived] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sport, setSport] = useState('');
+  const [shown, setShown] = useState(PAGE);
   const teams = useGet<Team[]>(['teams', 'all', archived], `teams${archived ? '?includeArchived=true' : ''}`);
+  const q = search.trim().toLowerCase();
+  const rows = (teams.data ?? []).filter((t) => (!sport || t.sport === sport) && (!q || `${t.name} ${t.shortName} ${t.abbreviation}`.toLowerCase().includes(q)));
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
   const blank = { name: '', shortName: '', abbreviation: '', sport: 'football', primaryColor: '#1F6FEB', secondaryColor: '#0B1220', logoAssetId: null as string | null };
@@ -58,18 +77,33 @@ function Teams({ full }: { full: boolean }) {
   }, [crest, coloursSet]);
   return (
     <>
-      <div className="mb-3 flex justify-between">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Input className="max-w-xs" placeholder="Search teams" value={search} onChange={(e) => { setSearch(e.target.value); setShown(PAGE); }} aria-label="Search teams" />
+        <NativeSelect className="max-w-40" value={sport} onChange={(e) => { setSport(e.target.value); setShown(PAGE); }} aria-label="Sport filter"><option value="">All sports</option><SportOptions /></NativeSelect>
         <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} /> Show archived</label>
-        {full ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New team</Button> : null}
+        {full ? <Button variant="primary" className="ml-auto" onClick={() => setOpen(true)}><Plus className="size-4" /> New team</Button> : null}
       </div>
       <ErrorNotice error={teams.error} onRetry={() => teams.refetch()} />
-      {teams.isLoading ? <Spinner /> : !teams.data?.length ? <EmptyState title="No teams yet" body="Teams take part in fixtures; players join them through season rosters." /> : (
-        <Table><thead><tr><th>Team</th><th>Abbr.</th><th>Sport</th><th>Colours</th><th>Status</th><th /></tr></thead><tbody>
-          {teams.data.map((t) => <tr key={t.id}><td><span className="flex items-center gap-2"><Thumb id={t.logoAssetId} alt={`${t.name} logo`} /><span>{t.name}<span className="block text-xs text-muted">{t.shortName}</span></span></span></td><td className="font-mono">{t.abbreviation}</td><td>{t.sport}</td>
-            <td><span className="inline-flex gap-1"><span className="size-4 rounded" style={{ background: t.primaryColor }} title={t.primaryColor} /><span className="size-4 rounded border border-border" style={{ background: t.secondaryColor }} title={t.secondaryColor} /></span></td>
-            <td><StatusPill tone={t.status === 'active' ? 'healthy' : 'neutral'}>{t.status}</StatusPill></td>
-            <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setSel(t.id)}>{full ? 'Logo, colours & roster' : 'Roster'}</Button></td></tr>)}
-        </tbody></Table>
+      {teams.isLoading ? <Spinner /> : !teams.data?.length ? <EmptyState title="No teams yet" body="Teams take part in fixtures; players join them through season rosters." /> : !rows.length ? <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No teams match.</p> : (
+        <>
+          <Table><thead><tr><th>Team</th><th className="max-sm:hidden">Sport</th><th>Colours</th></tr></thead><tbody>
+            {rows.slice(0, shown).map((t) => (
+              // the whole row opens the team: logo, colours and roster
+              <tr key={t.id} className="cursor-pointer hover:bg-elevated/40" onClick={() => setSel(t.id)}>
+                <td>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSel(t.id); }} className="flex items-center gap-2 text-left hover:text-primary">
+                    <Thumb id={t.logoAssetId} alt={`${t.name} logo`} />
+                    <span>{t.name} <span className="font-mono text-xs text-muted">{t.abbreviation}</span><span className="block text-xs text-muted">{t.shortName}</span></span>
+                    {t.status !== 'active' ? <StatusPill tone="neutral">{t.status}</StatusPill> : null}
+                  </button>
+                </td>
+                <td className="text-muted max-sm:hidden">{SPORT_LABELS[t.sport as Sport] ?? t.sport}</td>
+                <td><span className="inline-flex gap-1"><span className="size-4 rounded" style={{ background: t.primaryColor }} title={t.primaryColor} /><span className="size-4 rounded border border-border" style={{ background: t.secondaryColor }} title={t.secondaryColor} /></span></td>
+              </tr>
+            ))}
+          </tbody></Table>
+          <More shown={shown} total={rows.length} onMore={() => setShown(shown + PAGE)} />
+        </>
       )}
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); create.reset(); }} title="New team" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.name || form.abbreviation.length < 2} onClick={() => create.mutate({ ...form, shortName: form.shortName || form.name.slice(0, 24) }, { onSuccess: () => { setOpen(false); setForm(blank); setColoursSet(false); } })}>Create</Button></>}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -143,6 +177,7 @@ function TeamRoster({ id, full, onClose }: { id: string; full: boolean; onClose:
 
 function Players({ full }: { full: boolean }) {
   const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(PAGE);
   const players = useGet<Player[]>(['players', search], `players${search ? `?search=${encodeURIComponent(search)}` : ''}`);
   const [form, setForm] = useState({ displayName: '', shortName: '', defaultNumber: '', position: '' });
   const create = useAction(() => post('players', { displayName: form.displayName, shortName: form.shortName || null, defaultNumber: form.defaultNumber ? Number(form.defaultNumber) : null, position: form.position || null }), [['players']]);
@@ -150,7 +185,7 @@ function Players({ full }: { full: boolean }) {
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <Input className="max-w-xs" placeholder="Search players" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search players" />
+        <Input className="max-w-xs" placeholder="Search players" value={search} onChange={(e) => { setSearch(e.target.value); setShown(PAGE); }} aria-label="Search players" />
         {full ? (
           <div className="ml-auto flex flex-wrap items-end gap-2">
             <Field label="Display name" htmlFor="pd"><Input id="pd" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} /></Field>
@@ -162,7 +197,19 @@ function Players({ full }: { full: boolean }) {
         ) : null}
       </div>
       <ErrorNotice error={create.error ?? players.error} />
-      {players.isLoading ? <Spinner /> : <Table><thead><tr><th>Name</th><th>No.</th><th>Position</th>{full ? <th /> : null}</tr></thead><tbody>{players.data?.map((p) => <tr key={p.id}><td><span className="flex items-center gap-2"><Thumb tall id={p.photoAssetId ?? null} alt={`${p.displayName} photo`} />{p.displayName}</span></td><td className="tabular">{p.defaultNumber ?? '—'}</td><td>{p.position ?? '—'}</td>{full ? <td className="text-right"><Button size="sm" variant="ghost" onClick={() => setEdit(p)}>Photo & details</Button></td> : null}</tr>)}</tbody></Table>}
+      {players.isLoading ? <Spinner /> : (
+        <>
+          <Table><thead><tr><th>Name</th><th>No.</th><th>Position</th></tr></thead><tbody>
+            {players.data?.slice(0, shown).map((p) => (
+              <tr key={p.id} className={full ? 'cursor-pointer hover:bg-elevated/40' : undefined} onClick={full ? () => setEdit(p) : undefined}>
+                <td>{full ? <button type="button" onClick={(e) => { e.stopPropagation(); setEdit(p); }} className="flex items-center gap-2 text-left hover:text-primary"><Thumb tall id={p.photoAssetId ?? null} alt={`${p.displayName} photo`} />{p.displayName}</button> : <span className="flex items-center gap-2"><Thumb tall id={p.photoAssetId ?? null} alt={`${p.displayName} photo`} />{p.displayName}</span>}</td>
+                <td className="tabular">{p.defaultNumber ?? '—'}</td><td>{p.position ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody></Table>
+          <More shown={shown} total={players.data?.length ?? 0} onMore={() => setShown(shown + PAGE)} />
+        </>
+      )}
       {edit ? <PlayerEdit player={edit} onClose={() => setEdit(null)} /> : null}
       <p className="mt-2 text-xs text-muted">Dates of birth are private and never shown in graphics.</p>
     </>

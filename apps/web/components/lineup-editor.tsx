@@ -185,7 +185,7 @@ export function LineupEditor({ matchId, canEdit, canSaveDefault = false, compact
               );
             })}
           </ul>
-        ) : <p className="text-sm text-muted">No players on this team’s season roster. Add players under Assets → Teams first.</p>}
+        ) : <p className="text-sm text-muted">No players on this team’s season roster. Add players under Library → Teams first.</p>}
         <p className="mt-2 text-xs text-muted">
           {starters} starters · {bench} bench{expected && starters !== expected && starters > 0 ? ` · usually ${expected} start in ${d.sport === 'afl' ? 'AFL' : d.sport.replace('_', ' ')}` : ''}
         </p>

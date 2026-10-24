@@ -1,8 +1,8 @@
 // The scorer phone: an event pad with a tile per team for each event, grouped into sections (the home team's on the
 // left, the away team's on the right, each with its count); possession is timed by the match clock, goals ask who
-// scored afterwards and cards ask first. Before the match the screen lists the walk-out steps (each can be skipped);
-// the bar at the bottom ends the period. A level league match offers extra time and penalties at the end of
-// regulation. The match list has a search, three tabs and the matches by day.
+// scored afterwards and cards ask first. Before the match the screen lists the walk-out steps (each can be skipped,
+// and the half can start without them); the bar at the bottom ends the period. A level league match offers extra
+// time and penalties at the end of regulation. The match list has a search, three tabs and the matches by day.
 import { expect, test } from '@playwright/test';
 import { api, cellCount, endPeriod, freshMatch, login, score, sheetCell, startFirstHalf, startNextPeriod } from './helpers';
 
@@ -13,14 +13,22 @@ test('the scorer pad: pregame steps, a tile per team with counts, timed possessi
   const { ctx, page } = await login(browser, { viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
   const id = await freshMatch(page);
   await page.goto(`/score/${id}`);
-  // before the match: the details, and the steps to kick-off; the half starts once each is done or skipped
+  // before the match: the details, and the steps to kick-off; the half can start at any time, and the steps not
+  // marked are passed over (a skip sends nothing, so the match goes straight from the fixture to the half)
   const steps = page.getByRole('region', { name: 'Match phase' });
   await expect(page.getByText('Match details')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Score' })).toContainText('Pregame');
-  await expect(steps.getByRole('button', { name: 'Start 1st Half' })).toBeDisabled();
+  const start = steps.getByRole('button', { name: 'Start 1st Half' });
+  await expect(start).toBeEnabled();
+  await expect(steps).toContainText('Steps not marked are skipped when you start 1st half.');
   await page.screenshot({ path: `${EVIDENCE}/scorer-pregame.png`, fullPage: true });
-  await startFirstHalf(page);
+  await start.click();
+  await expect(page.getByRole('region', { name: 'Clock controls' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: 'End 1st Half' })).toBeVisible();
+  await expect.poll(async () => (await api<{ phase: string }>(page, `/api/v1/matches/${id}/state`)).phase).toBe('first_half');
+  const phases = (await api<{ category: string; payload: { to?: string } }[]>(page, `/api/v1/matches/${id}/facts`)).filter((f) => f.category === 'phase').map((f) => f.payload.to);
+  expect(phases).toContain('first_half');
+  expect(phases.filter((p) => p === 'pre_match' || p === 'players_entering' || p === 'about_to_start'), 'no walk-out step was recorded on the way to the half').toEqual([]);
 
   // the football sections and their tiles, top to bottom, the same events for both teams
   const pad = page.getByRole('region', { name: 'Teams' });

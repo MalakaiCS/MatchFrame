@@ -3,17 +3,34 @@ import { SportOptions } from '@/components/sport-options';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LayoutGrid, List, Plus, Upload } from 'lucide-react';
-import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, Switch, Table } from '@bs/ui';
+import { Button, Dialog, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, Switch, Table, cx } from '@bs/ui';
 import { ApiError, get, post, put } from '@/lib/api';
 import { useAction, useGet } from '@/lib/hooks';
 import { isFull, useMe } from '@/lib/session';
 import { MatchTable, type MatchRow } from '@/components/match-table';
 import { FINALS_ROUND_NAMES } from '@bs/domain';
 
-/** `sortChosen`: the person picked the order themselves (only then is a saved order used; otherwise newest first). */
-interface Filters { from: string; to: string; sport: string; competitionId: string; status: string; view: 'table' | 'cards'; sort: 'scheduledAt' | '-scheduledAt'; sortChosen?: boolean }
-const DEFAULTS: Filters = { from: '', to: '', sport: '', competitionId: '', status: '', view: 'table', sort: '-scheduledAt' };
+/** `sortChosen`: the person picked the order themselves (only then is a saved order used; otherwise newest first,
+ * or soonest first for Upcoming). `range` is a quick date range; `custom` uses from/to. */
+type Range = 'all' | 'upcoming' | 'today' | 'week' | 'past' | 'custom';
+interface Filters { range: Range; from: string; to: string; sport: string; competitionId: string; status: string; view: 'table' | 'cards'; sort: 'scheduledAt' | '-scheduledAt'; sortChosen?: boolean }
+const DEFAULTS: Filters = { range: 'all', from: '', to: '', sport: '', competitionId: '', status: '', view: 'table', sort: '-scheduledAt' };
+const RANGES: { key: Range; label: string }[] = [{ key: 'all', label: 'All' }, { key: 'upcoming', label: 'Upcoming' }, { key: 'today', label: 'Today' }, { key: 'week', label: 'This week' }, { key: 'past', label: 'Past' }, { key: 'custom', label: 'Dates…' }];
 interface Comp { id: string; name: string; sport: string; seasons?: { id: string; name: string }[] }
+
+/** The from/to instants of a quick range, in the browser's day (Monday-to-Sunday weeks). */
+function rangeBounds(f: Filters, now = new Date()): { from?: Date; to?: Date } {
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const plusDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  switch (f.range) {
+    case 'upcoming': return { from: new Date(now.getTime() - 3 * 3600_000) };
+    case 'today': return { from: day, to: plusDays(day, 1) };
+    case 'week': { const monday = plusDays(day, -((day.getDay() + 6) % 7)); return { from: monday, to: plusDays(monday, 7) }; }
+    case 'past': return { to: now };
+    case 'custom': return { from: f.from ? new Date(f.from) : undefined, to: f.to ? new Date(`${f.to}T23:59:59`) : undefined };
+    default: return {};
+  }
+}
 
 function MatchesInner() {
   const me = useMe();
@@ -32,7 +49,9 @@ function MatchesInner() {
       .then((r) => {
         // filters saved before newest-first was the default carry the old order without anyone choosing it
         const { sort, sortChosen, ...saved } = r.prefs.matchFilters ?? {};
-        setF((cur) => ({ ...cur, ...saved, ...(sortChosen && sort ? { sort, sortChosen } : {}), competitionId: qs.get('competitionId') ?? saved.competitionId ?? '' }));
+        // filters saved before quick ranges: dates mean a custom range
+        const range = saved.range ?? (saved.from || saved.to ? 'custom' : 'all');
+        setF((cur) => ({ ...cur, ...saved, range, ...(sortChosen && sort ? { sort, sortChosen } : {}), competitionId: qs.get('competitionId') ?? saved.competitionId ?? '' }));
       })
       .finally(() => setLoaded(true));
   }, [qs]);
@@ -40,14 +59,17 @@ function MatchesInner() {
     if (loaded) void put('me/preferences', { matchFilters: f }).catch(() => undefined);
   }, [f, loaded]);
 
+  // Upcoming reads soonest first unless the person chose an order
+  const sort = f.sortChosen ? f.sort : f.range === 'upcoming' ? 'scheduledAt' : '-scheduledAt';
   const query = useMemo(() => {
-    const p = new URLSearchParams({ page: String(page), pageSize: '25', sort: f.sort });
-    if (f.from) p.set('from', new Date(f.from).toISOString());
-    if (f.to) p.set('to', new Date(`${f.to}T23:59:59`).toISOString());
+    const p = new URLSearchParams({ page: String(page), pageSize: '25', sort });
+    const b = rangeBounds(f);
+    if (b.from) p.set('from', b.from.toISOString());
+    if (b.to) p.set('to', b.to.toISOString());
     for (const k of ['sport', 'competitionId', 'status'] as const) if (f[k]) p.set(k, f[k]);
     if (search) p.set('search', search);
     return p.toString();
-  }, [f, page, search]);
+  }, [f, page, search, sort]);
   const list = useGet<{ items: MatchRow[]; total: number; page: number; pageSize: number }>(['matches', query], loaded ? `matches?${query}` : null, { refetchInterval: 15_000 });
   const full = isFull(me.data?.role);
   const set = (patch: Partial<Filters>) => { setF({ ...f, ...patch }); setPage(1); };
@@ -56,24 +78,30 @@ function MatchesInner() {
   return (
     <>
       <PageHeader title="Matches" subtitle={`Kick-off times in ${tz}`} actions={full ? <>
-        <Button onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), import: '1' })}`)}><Upload className="size-4" /> Import CSV</Button>
-        <Button variant="primary" onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), new: '1' })}`)}><Plus className="size-4" /> New match</Button>
+        <Button onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), import: '1' })}`)}><Upload className="size-4" /> Import</Button>
+        <Button variant="primary" className="lg:hidden" onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), new: '1' })}`)}><Plus className="size-4" /> New match</Button>
       </> : null} />
-      <div className="mb-4 flex flex-wrap items-end gap-2">
-        <Field label="From" htmlFor="ff"><Input id="ff" type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></Field>
-        <Field label="To" htmlFor="ft"><Input id="ft" type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} /></Field>
-        <Field label="Sport" htmlFor="fs"><NativeSelect id="fs" value={f.sport} onChange={(e) => set({ sport: e.target.value })}><option value="">All</option><SportOptions /></NativeSelect></Field>
-        <Field label="Competition" htmlFor="fc"><NativeSelect id="fc" value={f.competitionId} onChange={(e) => set({ competitionId: e.target.value })}><option value="">All</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
-        <Field label="Status" htmlFor="fst"><NativeSelect id="fst" value={f.status} onChange={(e) => set({ status: e.target.value })}><option value="">Active</option>{['scheduled', 'live', 'completed', 'postponed', 'cancelled', 'abandoned', 'archived'].map((s) => <option key={s}>{s}</option>)}</NativeSelect></Field>
-        <Field label="Order" htmlFor="fo"><NativeSelect id="fo" value={f.sort} onChange={(e) => set({ sort: e.target.value as Filters['sort'], sortChosen: true })}><option value="-scheduledAt">Newest first</option><option value="scheduledAt">Oldest first</option></NativeSelect></Field>
-        <div className="ml-auto flex gap-1" role="group" aria-label="View">
-          <Button size="sm" variant={f.view === 'table' ? 'primary' : 'secondary'} onClick={() => set({ view: 'table' })} aria-pressed={f.view === 'table'}><List className="size-4" /> Table</Button>
-          <Button size="sm" variant={f.view === 'cards' ? 'primary' : 'secondary'} onClick={() => set({ view: 'cards' })} aria-pressed={f.view === 'cards'}><LayoutGrid className="size-4" /> Cards</Button>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-panel p-1" role="group" aria-label="When">
+          {RANGES.map((r) => <button key={r.key} type="button" aria-pressed={f.range === r.key} onClick={() => set({ range: r.key })} className={cx('rounded-md px-3 py-1.5 text-sm font-medium', f.range === r.key ? 'bg-primary/15 text-text ring-1 ring-inset ring-primary/40' : 'text-muted hover:text-text')}>{r.label}</button>)}
         </div>
+        <div className="ml-auto flex gap-1" role="group" aria-label="View">
+          <Button size="sm" variant={f.view === 'table' ? 'primary' : 'ghost'} onClick={() => set({ view: 'table' })} aria-pressed={f.view === 'table'}><List className="size-4" /> Table</Button>
+          <Button size="sm" variant={f.view === 'cards' ? 'primary' : 'ghost'} onClick={() => set({ view: 'cards' })} aria-pressed={f.view === 'cards'}><LayoutGrid className="size-4" /> Cards</Button>
+        </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        {f.range === 'custom' ? <>
+          <Field label="From" htmlFor="ff"><Input id="ff" type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></Field>
+          <Field label="To" htmlFor="ft"><Input id="ft" type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} /></Field>
+        </> : null}
+        <Field label="Competition" htmlFor="fc"><NativeSelect id="fc" value={f.competitionId} onChange={(e) => set({ competitionId: e.target.value })}><option value="">All competitions</option>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
+        <Field label="Sport" htmlFor="fs"><NativeSelect id="fs" value={f.sport} onChange={(e) => set({ sport: e.target.value })}><option value="">All sports</option><SportOptions /></NativeSelect></Field>
+        <Field label="Status" htmlFor="fst"><NativeSelect id="fst" value={f.status} onChange={(e) => set({ status: e.target.value })}><option value="">Active</option>{['scheduled', 'live', 'completed', 'postponed', 'cancelled', 'abandoned', 'archived'].map((s) => <option key={s} value={s}>{s === 'completed' ? 'full time' : s}</option>)}</NativeSelect></Field>
       </div>
       {search ? <p className="mb-2 text-sm text-muted">Search: “{search}” <button className="underline" onClick={() => router.push('/app/matches')}>clear</button></p> : null}
       <ErrorNotice error={list.error} onRetry={() => list.refetch()} />
-      {!list.data && list.isLoading ? <Spinner /> : list.data ? <MatchTable rows={list.data.items} tz={tz} view={f.view} /> : null}
+      {!list.data && list.isLoading ? <Spinner /> : list.data ? <MatchTable rows={list.data.items} tz={tz} view={f.view} sort={sort} onSort={() => set({ sort: sort === 'scheduledAt' ? '-scheduledAt' : 'scheduledAt', sortChosen: true })} /> : null}
       {list.data && list.data.total > list.data.pageSize ? (
         <div className="mt-3 flex items-center justify-end gap-2 text-sm">
           <span className="text-muted">{list.data.total} matches · page {page} of {pages}</span>

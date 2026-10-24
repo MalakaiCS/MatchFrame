@@ -183,9 +183,13 @@ export function ScoreBlock({ side, team, score, detail, provisional, children }:
     <div className={cx('relative grid min-w-0 content-center gap-1 py-2.5', away ? 'pl-2 pr-4 text-right' : 'pl-4 pr-2')}
       style={{ background: `linear-gradient(${away ? 270 : 90}deg, color-mix(in srgb, ${team.primaryColor} 32%, transparent), transparent 85%)` }}>
       <span aria-hidden className={cx('absolute inset-y-0 w-1.5', away ? 'right-0' : 'left-0')} style={{ background: team.primaryColor }} />
-      <span className={cx('flex min-w-0 items-center gap-2', away && 'flex-row-reverse')}>
-        <TeamCrest team={team} size={28} />
-        <span className="min-w-0 truncate text-[15px] font-bold leading-tight">{team.shortName}</span>
+      {/* phones: the team's letters (its crest is left out when it would only repeat them); wider: the short name */}
+      <span className={cx('flex min-w-0 items-center gap-2', away && 'flex-row-reverse')} title={team.name}>
+        <TeamCrest team={team} size={28} className={team.logoAssetId ? undefined : 'max-sm:hidden'} />
+        <span className="min-w-0 truncate text-[15px] font-bold leading-tight">
+          <span aria-hidden className="sm:hidden">{team.abbreviation}</span>
+          <span className="max-sm:sr-only">{team.shortName}</span>
+        </span>
       </span>
       {score != null || detail ? (
         <span className={cx('flex min-w-0 items-end gap-2', away ? 'flex-row' : 'flex-row-reverse')}>

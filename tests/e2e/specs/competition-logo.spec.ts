@@ -67,7 +67,8 @@ test('competition logo: upload on the competition, shown in the app and in the g
 
   // removed: gone from the graphics
   await page.goto(`/app/competitions/${comp.id}`);
-  await page.getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('button', { name: /Change logo/ }).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
   await expect(page.getByText('Logo removed')).toBeVisible();
   await expect.poll(logoUrl).toBeNull();
 });

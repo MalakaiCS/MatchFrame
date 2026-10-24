@@ -1,5 +1,5 @@
 'use client';
-// The app's frame. Navigation in four plain groups (Home, On air, Graphics, Sponsors & media) with one primary
+// The app's frame. Navigation in plain groups (Home/Live/Matches/Competitions, Graphics, Sponsors, Video) with one primary
 // action, New match; it folds to icons on desktop and slides in from the side on phones. Ctrl/⌘ K jumps to any
 // page or searches matches. The top bar holds the organisation, connection state, notifications, the light/dark
 // switch and the account menu. Guards: signed out → login; no organisation → onboarding; scorers → the scorer;
@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DM from '@radix-ui/react-dropdown-menu';
 import * as DialogP from '@radix-ui/react-dialog';
 import {
-  Bell, BarChart3, BookOpen, Building2, ChevronDown, ChevronsLeft, ChevronsRight, Clapperboard, CornerDownLeft, Film, Gauge, Image, LayoutDashboard, LayoutGrid, LogOut, Megaphone, Menu, Palette, Plus, Radio, Search, Settings, ShieldCheck, Trophy, UserRound, Workflow, X,
+  Bell, BarChart3, BookOpen, Building2, Check, ChevronDown, ChevronsLeft, ChevronsRight, Clapperboard, CornerDownLeft, Film, Gauge, Image, LayoutGrid, LogOut, Megaphone, Menu, Palette, Plus, Radio, Search, Settings, ShieldCheck, Trophy, UserRound, Workflow, X,
 } from 'lucide-react';
 import { Button, cx, Spinner, StatusPill, Toaster } from '@bs/ui';
 import { api, get, post } from '@/lib/api';
@@ -27,32 +27,31 @@ const GROUPS: { label: string | null; items: NavItem[] }[] = [
     label: null,
     items: [
       { href: '/app', label: 'Home', icon: Gauge, area: 'dashboard', hint: 'Live and upcoming matches' },
+      { href: '/app/live', label: 'Live', icon: Radio, area: 'control', hint: 'Every live match and today’s fixtures, with their desks' },
       { href: '/app/matches', label: 'Matches', icon: LayoutGrid, area: 'matches', hint: 'Fixtures, scorers and graphics for each match' },
-      { href: '/app/competitions', label: 'Competitions', icon: Trophy, area: 'competitions', hint: 'Seasons, teams, tables and finals' },
-    ],
-  },
-  {
-    label: 'On air',
-    items: [
-      { href: '/app/control-rooms', label: 'Control rooms', icon: Clapperboard, area: 'control', hint: 'Send graphics to air for a match' },
-      { href: '/app/board', label: 'Producer board', icon: LayoutDashboard, area: 'control', hint: 'Every live match on one screen' },
-      { href: '/app/streams', label: 'Streams', icon: Radio, area: 'streams', hint: 'Cloud production inputs and outputs' },
+      { href: '/app/competitions', label: 'Competitions', icon: Trophy, area: 'competitions', hint: 'Seasons, tables and finals' },
     ],
   },
   {
     label: 'Graphics',
     items: [
-      { href: '/app/themes', label: 'Themes', icon: Palette, area: 'themes', hint: 'Looks, colours and logos' },
+      { href: '/app/themes', label: 'Looks', icon: Palette, area: 'themes', hint: 'Graphics styles, colours and logos' },
       { href: '/app/automation', label: 'Automation', icon: Workflow, area: 'automation', hint: 'What goes on air by itself' },
-      { href: '/app/assets', label: 'Assets', icon: Image, area: 'assets', hint: 'Teams, players, venues and images' },
+      { href: '/app/assets', label: 'Library', icon: Image, area: 'assets', hint: 'Teams, players, venues and files' },
     ],
   },
   {
-    label: 'Sponsors & media',
+    label: 'Sponsors',
     items: [
       { href: '/app/sponsors', label: 'Sponsors', icon: Megaphone, area: 'sponsors', hint: 'Campaigns and placements' },
       { href: '/app/reports', label: 'Reports', icon: BarChart3, area: 'reports', hint: 'Sponsor delivery and graphics on air' },
-      { href: '/app/media', label: 'Media', icon: Film, area: 'media', hint: 'Clips, highlights and exports' },
+    ],
+  },
+  {
+    label: 'Video',
+    items: [
+      { href: '/app/streams', label: 'Streams', icon: Clapperboard, area: 'streams', hint: 'Cloud production inputs and outputs' },
+      { href: '/app/media', label: 'Videos', icon: Film, area: 'media', hint: 'Highlights, exports, recordings and share links' },
     ],
   },
 ];
@@ -181,6 +180,32 @@ function QuickJump({ m, open, onOpenChange }: { m: Me; open: boolean; onOpenChan
         </DialogP.Content>
       </DialogP.Portal>
     </DialogP.Root>
+  );
+}
+
+/** The organisation menu in the top bar (from sm: up; on phones the organisations are in the menu drawer). */
+function OrgSwitcher({ m, onSwitch, onCreate }: { m: Me; onSwitch: (id: string) => void; onCreate: () => void }) {
+  const org = m.activeOrganisation!;
+  return (
+    <DM.Root>
+      <DM.Trigger className="hidden min-h-10 min-w-0 items-center gap-2 sm:flex rounded-lg border border-border bg-panel px-3 text-sm font-medium hover:border-border-strong">
+        <Building2 className="size-4 shrink-0 text-muted" aria-hidden />
+        <span className="max-w-48 truncate">{org.name}</span>
+        <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />
+      </DM.Trigger>
+      <DM.Portal>
+        <DM.Content align="start" sideOffset={6} className="z-50 min-w-64 rounded-xl border border-border bg-panel p-1.5 text-sm shadow-pop">
+          <DM.Label className="px-2.5 py-1.5 text-xs font-medium text-muted">Your organisations</DM.Label>
+          {m.organisations.map((o) => (
+            <DM.Item key={o.id} onSelect={() => onSwitch(o.id)} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2 outline-none data-[highlighted]:bg-elevated">
+              <span className="truncate">{o.name}</span> <span className="text-xs text-muted">{o.role}{o.id === org.id ? ' · current' : ''}</span>
+            </DM.Item>
+          ))}
+          <DM.Separator className="my-1 h-px bg-border" />
+          <DM.Item onSelect={onCreate} className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 outline-none data-[highlighted]:bg-elevated"><Plus className="size-4" aria-hidden /> Create an organisation</DM.Item>
+        </DM.Content>
+      </DM.Portal>
+    </DM.Root>
   );
 }
 
@@ -356,7 +381,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DialogP.Title className="flex items-center gap-2.5 font-brand text-[17px] font-extrabold"><MatchFrameMark size={26} /> {process.env.NEXT_PUBLIC_PRODUCT_NAME}</DialogP.Title>
               <DialogP.Close className="grid size-10 place-items-center rounded-lg text-muted hover:bg-elevated hover:text-text" aria-label="Close menu"><X className="size-5" /></DialogP.Close>
             </div>
-            <div className="px-4 pb-4">{full ? <Button asChild variant="primary" className="w-full"><Link href="/app/matches?new=1" onClick={() => setDrawer(false)}><Plus className="size-4" aria-hidden /> New match</Link></Button> : null}</div>
+            <div className="px-4 pb-4">
+              <div className="mb-3 sm:hidden">
+                <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted/80">Organisation</p>
+                <ul className="grid gap-0.5">
+                  {m.organisations.map((o) => (
+                    <li key={o.id}>
+                      <button type="button" onClick={() => (o.id === org.id ? setDrawer(false) : void switchOrg(o.id))} aria-current={o.id === org.id ? 'true' : undefined} className={cx('flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm', o.id === org.id ? 'font-semibold text-text' : 'text-muted hover:bg-elevated hover:text-text')}>
+                        <Building2 className="size-4 shrink-0" aria-hidden /><span className="min-w-0 flex-1 truncate">{o.name}</span>{o.id === org.id ? <Check className="size-4 text-primary" aria-label="current" /> : <span className="text-xs">{o.role}</span>}
+                      </button>
+                    </li>
+                  ))}
+                  <li><button type="button" onClick={() => router.push('/onboarding?new=1')} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-muted hover:bg-elevated hover:text-text"><Plus className="size-4" aria-hidden /> Create an organisation</button></li>
+                </ul>
+              </div>
+              {full ? <Button asChild variant="primary" className="w-full"><Link href="/app/matches?new=1" onClick={() => setDrawer(false)}><Plus className="size-4" aria-hidden /> New match</Link></Button> : null}
+            </div>
             <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Main (menu)">
               <NavList m={m} path={path} onNavigate={() => setDrawer(false)} />
             </nav>
@@ -372,25 +412,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-bg/95 px-3 sm:px-5">
           <button type="button" onClick={() => setDrawer(true)} className="grid size-10 place-items-center rounded-lg text-text hover:bg-elevated lg:hidden" aria-label="Open menu"><Menu className="size-5" /></button>
           <Link href="/app" className="mr-1 lg:hidden" aria-label="Home"><MatchFrameMark size={24} /></Link>
-          <DM.Root>
-            <DM.Trigger className="flex min-h-10 min-w-0 items-center gap-2 rounded-lg border border-border bg-panel px-3 text-sm font-medium hover:border-border-strong">
-              <Building2 className="size-4 shrink-0 text-muted" aria-hidden />
-              <span className="max-w-32 truncate sm:max-w-48">{org.name}</span>
-              <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />
-            </DM.Trigger>
-            <DM.Portal>
-              <DM.Content align="start" sideOffset={6} className="z-50 min-w-64 rounded-xl border border-border bg-panel p-1.5 text-sm shadow-pop">
-                <DM.Label className="px-2.5 py-1.5 text-xs font-medium text-muted">Your organisations</DM.Label>
-                {m.organisations.map((o) => (
-                  <DM.Item key={o.id} onSelect={() => void switchOrg(o.id)} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2.5 py-2 outline-none data-[highlighted]:bg-elevated">
-                    <span className="truncate">{o.name}</span> <span className="text-xs text-muted">{o.role}{o.id === org.id ? ' · current' : ''}</span>
-                  </DM.Item>
-                ))}
-                <DM.Separator className="my-1 h-px bg-border" />
-                <DM.Item onSelect={() => router.push('/onboarding?new=1')} className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 outline-none data-[highlighted]:bg-elevated"><Plus className="size-4" aria-hidden /> Create an organisation</DM.Item>
-              </DM.Content>
-            </DM.Portal>
-          </DM.Root>
+          <OrgSwitcher m={m} onSwitch={(id) => void switchOrg(id)} onCreate={() => router.push('/onboarding?new=1')} />
           <button type="button" onClick={() => setJump(true)} className="ml-1 hidden min-h-10 w-full max-w-sm items-center gap-2.5 rounded-lg border border-border bg-panel px-3 text-sm text-muted hover:border-border-strong md:flex" aria-label="Jump to a page or search matches (Control K)">
             <Search className="size-4" aria-hidden />
             <span className="flex-1 text-left">Jump to or search…</span>

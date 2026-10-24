@@ -1,5 +1,6 @@
 // Choosing a look for a tournament and for a match, from all eleven built-in looks: upcoming matches follow the
-// tournament, a match can have its own, and "Same as the tournament" puts it back.
+// tournament, a match can have its own, and "Same as the tournament" puts it back. A look applies as soon as it is
+// chosen (no Apply button).
 import { expect, test } from '@playwright/test';
 import { api, login } from './helpers';
 
@@ -19,7 +20,6 @@ test('tournament look and match look from the built-in looks', async ({ browser 
   await page.goto(`/app/competitions/${comp.id}`);
   await page.getByRole('tab', { name: 'Graphics & production' }).click();
   await page.getByLabel('Tournament look').selectOption({ label: 'Liga' });
-  await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByText(/Every match uses Liga unless it has a look of its own/)).toBeVisible();
   await expect.poll(onScreen).toBe('liga');
 
@@ -29,14 +29,12 @@ test('tournament look and match look from the built-in looks', async ({ browser 
   await expect(row).toContainText('Look: Liga v');
   await expect(row).toContainText('The tournament’s look');
   await row.getByLabel('Look', { exact: true }).selectOption({ label: 'Premier' });
-  await row.getByRole('button', { name: 'Apply' }).click();
   await expect(row).toContainText('Look: Premier v');
   await expect(row).toContainText('This match’s own look');
   await expect.poll(onScreen).toBe('premier');
 
   // back to the tournament's look
   await row.getByLabel('Look', { exact: true }).selectOption({ label: 'Same as the tournament (Liga)' });
-  await row.getByRole('button', { name: 'Apply' }).click();
   await expect(row).toContainText('Look: Liga v');
   await expect.poll(onScreen).toBe('liga');
   await ctx.close();

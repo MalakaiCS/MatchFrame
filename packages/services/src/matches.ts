@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, lt, lte, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql, type SQL } from 'drizzle-orm';
 import {
   broadcastSessions,
   competitions,
@@ -16,6 +16,7 @@ import {
   venues,
   memberships,
   permissionGrants,
+  rendererSessions,
   users,
   type Tx,
 } from '@bs/db';
@@ -197,15 +198,40 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
       .offset((q.page - 1) * q.pageSize);
     const ids = rows.map((r) => r.m.id);
     const teamIds = [...new Set(rows.flatMap((r) => [r.m.homeTeamId, r.m.awayTeamId]))];
-    const [ts, ovs, outs, sess, leases] = ids.length
+    const orgId = ctx.actor.organisationId;
+    const [ts, ovs, outs, sess, leases, lineups, assigned] = ids.length
       ? await Promise.all([
           t.select().from(teams).where(inArray(teams.id, teamIds)),
           t.select({ o: overlays, st: overlayState }).from(overlays).leftJoin(overlayState, eq(overlayState.overlayId, overlays.id)).where(inArray(overlays.matchId, ids)),
           t.select().from(streamOutputs).where(inArray(streamOutputs.matchId, ids)),
           t.select().from(broadcastSessions).where(inArray(broadcastSessions.matchId, ids)).orderBy(desc(broadcastSessions.createdAt)),
           t.select({ l: scorerLeases, name: users.name }).from(scorerLeases).leftJoin(users, eq(users.id, scorerLeases.holderUserId)).where(inArray(scorerLeases.matchId, ids)),
+          t.select({ matchId: matchLineups.matchId, snapshot: matchLineups.snapshot }).from(matchLineups).where(and(eq(matchLineups.organisationId, orgId), inArray(matchLineups.matchId, ids))),
+          t.select({ matchId: permissionGrants.scopeId }).from(permissionGrants).innerJoin(memberships, eq(memberships.id, permissionGrants.membershipId))
+            .where(and(eq(permissionGrants.organisationId, orgId), eq(permissionGrants.scopeType, 'match'), inArray(permissionGrants.scopeId, ids), eq(permissionGrants.action, 'match.score'), eq(memberships.status, 'active'))),
         ])
-      : [[], [], [], [], []];
+      : [[], [], [], [], [], [], []];
+    // OBS has the match's main output open (a production or compositor renderer connected now)
+    const mainOverlay = new Map<string, string>();
+    for (const o of [...ovs].sort((a, b) => a.o.createdAt.getTime() - b.o.createdAt.getTime())) if (!mainOverlay.has(o.o.matchId)) mainOverlay.set(o.o.matchId, o.o.id);
+    const watching = mainOverlay.size
+      ? await t.select({ overlayId: rendererSessions.overlayId }).from(rendererSessions)
+          .where(and(eq(rendererSessions.organisationId, orgId), inArray(rendererSessions.overlayId, [...mainOverlay.values()]), inArray(rendererSessions.purpose, ['production', 'compositor']), isNull(rendererSessions.disconnectedAt)))
+      : [];
+    // the match page's match-day checklist, in short: what is still to do before the match can go out
+    const readiness = (matchId: string) => {
+      const main = ovs.find((o) => o.o.id === mainOverlay.get(matchId))?.o;
+      const snap = lineups.find((l) => l.matchId === matchId)?.snapshot as LineupSnapshot | undefined;
+      const starters = (side: 'home' | 'away') => (snap?.[side] ?? []).filter((p) => p.starter).length;
+      const todo = [
+        ...(starters('home') > 0 && starters('away') > 0 ? [] : ['line-ups']),
+        ...(main?.themeProfileVersionId ? [] : ['a look']),
+        ...(main?.gamePlanVersionId ? [] : ['automation']),
+        ...(assigned.some((a) => a.matchId === matchId) ? [] : ['a scorer']),
+        ...(main && watching.some((w) => w.overlayId === main.id) ? [] : ['OBS']),
+      ];
+      return { done: 5 - todo.length, total: 5, todo };
+    };
     const search = q.search?.toLowerCase();
     const items = rows
       .map((r) => {
@@ -228,6 +254,7 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
           overlays: ovs.filter((o) => o.o.matchId === r.m.id).map((o) => ({ id: o.o.id, name: o.o.name, kind: o.o.kind, publicId: o.o.publicId, mode: o.st?.mode, inhibited: o.st?.inhibited, revision: o.st?.revision, displayedRevision: o.st?.displayedRevision })),
           outputs: outs.filter((o) => o.matchId === r.m.id).map((o) => ({ id: o.id, name: o.name, mode: o.mode })),
           stream: session ? { id: session.id, state: session.state, error: session.error } : null,
+          ready: readiness(r.m.id),
         };
       })
       .filter((x) => !search || [x.home?.name, x.away?.name, x.competition.name, x.round, x.externalId].some((s) => s?.toLowerCase().includes(search)));

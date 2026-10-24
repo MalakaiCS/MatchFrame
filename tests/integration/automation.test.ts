@@ -504,6 +504,10 @@ describe('sponsor delivery', () => {
     expect(occ).toHaveLength(1);
     expect(occ[0]!.confirmedSeconds).toBeLessThanOrEqual(5.1);
     expect(occ[0]!.closeReason).toBe('disconnected');
+    // matches and outputs are named, not shown as ids
+    expect(occ[0]!.matchLabel).toBe('Harbour City FC v Ridgeback United');
+    expect(rep.byMatch.find((b) => b.matchId === x.m.id)).toMatchObject({ key: 'Harbour City FC v Ridgeback United', occurrences: 1 });
+    expect(rep.byOutput.find((b) => b.overlayId === x.ov.id)).toMatchObject({ key: x.ov.name, match: 'Harbour City FC v Ridgeback United', matchId: x.m.id });
     expect(rep.definitions.notIncluded).toMatch(/not measured/);
     const csv = sponsorsSvc.sponsorReportCsv(rep);
     expect(csv).toContain(`"'=HYPERLINK(""http://evil.example"") Coffee"`);

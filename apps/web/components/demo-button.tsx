@@ -18,7 +18,7 @@ export function DemoButton({ competitionId, size = 'sm', variant = 'secondary' }
   return (
     <>
       <Button size={size} variant={variant} onClick={() => setOpen(true)}><PlayCircle className="size-4" /> Start a demo match</Button>
-      <Dialog open={open} onOpenChange={setOpen} title="Start a demo match" description="Two of your teams play a made-up match that scores itself. Open the scorer, the control room and the OBS link to watch everything move."
+      <Dialog open={open} onOpenChange={setOpen} title="Start a demo match" description="Two of your teams play a made-up match that scores itself. Open the scorer, the desk and the OBS link to watch everything move."
         footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={start.isPending} disabled={!(comp || comps.data?.[0]?.id)} onClick={() => start.mutate(undefined, { onSuccess: (r) => { setOpen(false); router.push(`/app/matches/${r.matchId}`); } })}>Start</Button></>}>
         <div className="grid gap-3">
           <Field label="Competition" htmlFor="demo-c" hint="Needs an active season and two teams in the sport"><NativeSelect id="demo-c" value={comp || comps.data?.[0]?.id || ''} onChange={(e) => setComp(e.target.value)}>{comps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>

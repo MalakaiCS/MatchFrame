@@ -53,10 +53,10 @@ test('finals: semi-finals from the ladder, knockout rules, Grand Final waits for
   await expect(page.getByRole('switch', { name: /Knockout: extra time and penalties when level/ })).toBeChecked();
   await page.screenshot({ path: `${EVIDENCE}/finals-semi-final.png` });
 
-  // Results & fixtures: the finals after the regular season
+  // Fixtures and results, by round: the finals after the regular season
   await page.goto(`/app/competitions/${comp.id}`);
   await expect(page.getByRole('heading', { name: 'Seasons' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Results & fixtures' }).click();
+  await page.getByRole('tab', { name: /^Fixtures and results/ }).click();
   const headings = page.getByRole('tabpanel').getByRole('heading', { level: 3 });
   await expect(headings).toHaveText(['Round 1', 'Semi-finalFinals']);
   await ctx.close();

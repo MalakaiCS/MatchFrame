@@ -139,7 +139,7 @@ active session are never deleted. The media worker runs retention hourly. `entit
 
 Structured JSON logs (pino) with request ids; URLs are redacted (`t`, `bt`, `s`, `token`, `key`, `sig` query
 params, RTMP keys). Useful signals: outbox lag (`select count(*), min(created_at) from outbox_events where
-state='pending'`), dead letters (`state='dead'`), automation runs/cues tables (control room shows reasons),
+state='pending'`), dead letters (`state='dead'`), automation runs/cues tables (the desk shows reasons),
 `broadcast_sessions`/`output_sessions` state and `error`, destination `last_status`, export job states,
 `usage_ledger`.
 
@@ -163,8 +163,8 @@ state='pending'`), dead letters (`state='dead'`), automation runs/cues tables (c
 | **DEGRADED: DESTINATION_FAILED** | Destination status badge/error | Other destinations and the recording continue. Fix the platform key/server and restart the stream when convenient. |
 | **CAPACITY_REACHED** on start | Streams → Sessions capacity line | Stop another output or add egress capacity, then raise `MAX_CONCURRENT_PROGRAMMES` only after measuring. |
 | Egress failed repeatedly | `output_sessions.error`, egress logs | Up to 3 automatic restarts create new recording parts; after that the output is FAILED. Check `INTERNAL_RENDER_BASE_URL` reachability from egress and S3 credentials in `.data/config/egress.yaml` (`storage.s3`). |
-| An upload fails or a logo never appears | Assets → Images: the file's state and reason; API logs | Images are ready as soon as the upload completes; a FAILED image says why (*not a PNG, JPEG or WebP image*, *larger than 8000 px*). If object storage is down, small files are kept in `media_blobs` automatically; video needs storage, so fix `S3_*`. An image stuck in PROCESSING is over 25 MB and waits for the media worker. |
-| Graphics on desk but not on output | Control room diagnostics: renderer list, *displayed* revision | Output not connected (reload the browser source), capability rotated (use the new URL), or realtime bus down (see Redis). |
+| An upload fails or a logo never appears | Library → Files: the file's state and reason; API logs | Images are ready as soon as the upload completes; a FAILED image says why (*not a PNG, JPEG or WebP image*, *larger than 8000 px*). If object storage is down, small files are kept in `media_blobs` automatically; video needs storage, so fix `S3_*`. An image stuck in PROCESSING is over 25 MB and waits for the media worker. |
+| Graphics on desk but not on output | Desk diagnostics: renderer list, *displayed* revision | Output not connected (reload the browser source), capability rotated (use the new URL), or realtime bus down (see Redis). |
 | Redis down | `redis-cli ping`; API readiness | Scoring and automation keep committing; outputs do not show *displayed* until Redis returns; the outbox drains automatically. |
 | Worker restarted mid-match | worker logs | Automation lease moves with a higher fence; expired cues are skipped, not replayed. Sessions are reconciled from provider state; unknown egress in our rooms is stopped. |
 | Highlight **NEEDS_ALIGNMENT / FAILED (gap)** | Match → Media → highlight reason | The recording lacks media at the event time. Cut manually from the recording if partial media exists; calibrate input delay (`inputs.source_delay_ms`, output `calibration_ms`). |

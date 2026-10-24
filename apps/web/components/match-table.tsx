@@ -1,10 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { Fragment, useState } from 'react';
-import { ChevronDown, ChevronRight, Copy } from 'lucide-react';
-import { Button, StatusPill, Table, type Tone } from '@bs/ui';
+import { useRouter } from 'next/navigation';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import { StatusPill, Table, cx, type Tone } from '@bs/ui';
 import { fmtDate } from '@/lib/hooks';
-import { get } from '@/lib/api';
 
 export interface MatchRow {
   id: string;
@@ -24,6 +23,8 @@ export interface MatchRow {
   overlays: { id: string; name: string; kind: string; mode?: string; inhibited?: boolean; revision?: number; displayedRevision?: number }[];
   outputs: { id: string; name: string; mode: string }[];
   stream: { id: string; state: string; error: unknown } | null;
+  /** the match-day checklist in short (lists only) */
+  ready?: { done: number; total: number; todo: string[] };
 }
 
 export const phaseTone = (status: string): Tone => (status === 'live' ? 'live' : status === 'completed' ? 'neutral' : ['postponed', 'cancelled', 'abandoned'].includes(status) ? 'warning' : 'primary');
@@ -39,9 +40,30 @@ function Team({ t }: { t: MatchRow['home'] }) {
   );
 }
 
-export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz: string; view?: 'table' | 'cards' }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
+/** What a row says about the match: live → phase and scorer; not started → how ready it is; otherwise its result. */
+function Status({ m }: { m: MatchRow }) {
+  if (m.status === 'live') {
+    return (
+      <span className="flex flex-col items-start gap-0.5">
+        <StatusPill tone="live">{m.phase.replace(/_/g, ' ')}</StatusPill>
+        <span className={cx('text-xs', m.scorer?.name ? 'text-muted' : 'text-warning')}>{m.scorer?.name ? `Scoring: ${m.scorer.name}` : 'No scorer connected'}</span>
+      </span>
+    );
+  }
+  if (m.status === 'scheduled' && m.ready) {
+    const { done, total, todo } = m.ready;
+    return done === total ? <StatusPill tone="healthy">Ready</StatusPill> : (
+      <span className="flex flex-col items-start gap-0.5" title={`Still to do: ${todo.join(', ')}`}>
+        <StatusPill tone="primary">{done} of {total} ready</StatusPill>
+        <span className="text-xs text-muted">Needs {todo.join(', ')}</span>
+      </span>
+    );
+  }
+  return <StatusPill tone={phaseTone(m.status)}>{m.status === 'completed' ? 'full time' : m.status}</StatusPill>;
+}
+
+export function MatchTable({ rows, tz, view = 'table', sort, onSort }: { rows: MatchRow[]; tz: string; view?: 'table' | 'cards'; sort?: 'scheduledAt' | '-scheduledAt'; onSort?: () => void }) {
+  const router = useRouter();
   if (!rows.length) return <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No matches.</p>;
 
   if (view === 'cards')
@@ -49,81 +71,38 @@ export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz:
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {rows.map((m) => (
           <Link key={m.id} href={`/app/matches/${m.id}`} className="rounded-[var(--radius-card)] border border-border bg-panel p-3 hover:border-primary">
-            <div className="flex justify-between text-xs text-muted"><span>{fmtDate(m.scheduledAt, tz)}</span><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? `LIVE · ${m.phase.replace(/_/g, ' ')}` : m.status}</StatusPill></div>
-            <div className="mt-2 grid grid-cols-[1fr_auto] gap-1 text-sm"><Team t={m.home} /><span className="tabular font-semibold">{m.score.home}</span><Team t={m.away} /><span className="tabular font-semibold">{m.score.away}</span></div>
+            <div className="flex justify-between text-xs text-muted"><span>{fmtDate(m.scheduledAt, tz)}</span><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? `LIVE · ${m.phase.replace(/_/g, ' ')}` : m.status === 'completed' ? 'full time' : m.status}</StatusPill></div>
+            <div className="mt-2 grid grid-cols-[1fr_auto] gap-1 text-sm"><Team t={m.home} /><span className="tabular font-semibold">{m.status === 'scheduled' ? '' : m.score.home}</span><Team t={m.away} /><span className="tabular font-semibold">{m.status === 'scheduled' ? '' : m.score.away}</span></div>
             <div className="mt-2 text-xs text-muted">{m.competition.shortName ?? m.competition.name}{m.round ? ` · ${m.round}` : ''}{m.venue ? ` · ${m.venue.name}` : ''}</div>
           </Link>
         ))}
       </div>
     );
 
-  const copyUrl = async (overlayId: string) => {
-    try {
-      const r = await get<{ production: string }>(`overlays/${overlayId}/urls`);
-      await navigator.clipboard.writeText(r.production);
-      setCopied(overlayId);
-    } catch {
-      setCopied(`err:${overlayId}`);
-    }
-    setTimeout(() => setCopied(null), 2000);
-  };
-
+  const Arrow = sort === 'scheduledAt' ? ArrowUp : ArrowDown;
   return (
     <Table>
       <thead>
         <tr>
-          <th className="w-8"><span className="sr-only">Expand</span></th>
-          <th>Kick-off</th><th>Competition</th><th>Match</th><th className="text-right">Score</th><th>Phase</th><th>Scorer</th><th>Programme</th><th>Graphics</th><th><span className="sr-only">Actions</span></th>
+          <th aria-sort={onSort ? (sort === 'scheduledAt' ? 'ascending' : 'descending') : undefined}>
+            {onSort ? <button type="button" onClick={onSort} className="inline-flex items-center gap-1 hover:text-text" title={sort === 'scheduledAt' ? 'Oldest first. Click for newest first.' : 'Newest first. Click for oldest first.'}>Kick-off <Arrow className="size-3.5" aria-hidden /><span className="sr-only">{sort === 'scheduledAt' ? '(oldest first)' : '(newest first)'}</span></button> : 'Kick-off'}
+          </th>
+          <th>Match</th><th className="max-md:hidden">Competition</th><th className="text-right">Score</th><th>Status</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((m) => (
-          <Fragment key={m.id}>
-            <tr className="hover:bg-elevated/40">
-              <td><button aria-expanded={open === m.id} aria-label="Show graphics outputs and streams" onClick={() => setOpen(open === m.id ? null : m.id)} className="text-muted hover:text-text">{open === m.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
-              <td className="whitespace-nowrap tabular">{fmtDate(m.scheduledAt, tz)}</td>
-              <td className="text-muted">{m.competition.shortName ?? m.competition.name}{m.round ? <span className="block text-xs">{m.round}</span> : null}</td>
-              <td><Link href={`/app/matches/${m.id}`} className="flex flex-col hover:text-primary"><Team t={m.home} /><Team t={m.away} /></Link>{m.venue ? <span className="text-xs text-muted">{m.venue.name}</span> : null}</td>
-              <td className="text-right tabular font-semibold">{m.status === 'scheduled' ? '—' : `${m.score.home}–${m.score.away}`}</td>
-              <td><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? m.phase.replace(/_/g, ' ') : m.status}</StatusPill>{m.isDemo ? <StatusPill className="ml-1" tone="warning">demo</StatusPill> : null}</td>
-              <td className="text-muted">{m.scorer?.name ?? 'Nobody scoring'}</td>
-              <td>{m.stream ? <StatusPill tone={streamTone(m.stream.state)}>{m.stream.state.replace(/_/g, ' ').toLowerCase()}</StatusPill> : <span className="text-xs text-muted">Not configured</span>}</td>
-              <td>{m.overlays.length ? m.overlays.map((o) => <StatusPill key={o.id} className="mr-1" tone={o.inhibited ? 'live' : o.mode === 'manual' ? 'warning' : 'primary'}>{o.inhibited ? 'cleared' : o.mode ?? 'auto'}</StatusPill>) : <span className="text-xs text-muted">No OBS link</span>}</td>
-              <td className="whitespace-nowrap text-right"><Button asChild size="sm" variant="ghost"><Link href={`/app/matches/${m.id}`}>Open</Link></Button></td>
-            </tr>
-            {open === m.id ? (
-              <tr>
-                <td />
-                <td colSpan={9} className="bg-bg/60">
-                  <div className="grid grid-cols-1 gap-3 py-2 md:grid-cols-2">
-                    <div>
-                      <h3 className="mb-1 text-xs font-medium text-muted">Graphics outputs</h3>
-                      {m.overlays.length ? m.overlays.map((o) => (
-                        <div key={o.id} className="flex flex-wrap items-center gap-2 py-1 text-sm">
-                          <span className="min-w-32">{o.name}</span>
-                          <span className="text-xs text-muted">{(o.displayedRevision ?? 0) >= (o.revision ?? 0) ? 'OBS up to date' : 'OBS catching up'}</span>
-                          <Button asChild size="sm" variant="primary"><Link href={`/app/matches/${m.id}/control/${o.id}`}>Control room</Link></Button>
-                          <Button asChild size="sm"><Link href={`/app/matches/${m.id}?tab=overlays`}>OBS link</Link></Button>
-                          <Button size="sm" variant="ghost" onClick={() => copyUrl(o.id)}><Copy className="size-3.5" />{copied === o.id ? 'Copied' : copied === `err:${o.id}` ? 'Not permitted' : 'Copy OBS link'}</Button>
-                        </div>
-                      )) : <p className="text-sm text-muted">No OBS link yet. <Link className="text-primary" href={`/app/matches/${m.id}?tab=overlays`}>Create one</Link></p>}
-                    </div>
-                    <div>
-                      <h3 className="mb-1 text-xs font-medium text-muted">Outputs</h3>
-                      {m.outputs.length ? m.outputs.map((o) => (
-                        <div key={o.id} className="flex flex-wrap items-center gap-2 py-1 text-sm">
-                          <span className="min-w-32">{o.name}</span><StatusPill tone="neutral">{o.mode}</StatusPill>
-                          <Button asChild size="sm"><Link href={`/app/matches/${m.id}?tab=streams`}>Configure</Link></Button>
-                          <Button asChild size="sm" variant="ghost"><Link href={`/app/media?matchId=${m.id}`}>Recordings</Link></Button>
-                          <Button asChild size="sm" variant="ghost"><Link href={`/app/media?matchId=${m.id}&tab=highlights`}>Highlights</Link></Button>
-                        </div>
-                      )) : <p className="text-sm text-muted">No outputs. <Link className="text-primary" href={`/app/matches/${m.id}?tab=streams`}>Add one</Link></p>}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : null}
-          </Fragment>
+          // the whole row opens the match; the link in it is what keyboards and screen readers use
+          <tr key={m.id} className="cursor-pointer hover:bg-elevated/40" onClick={(e) => { if (!(e.target as HTMLElement).closest('a,button')) router.push(`/app/matches/${m.id}`); }}>
+            <td className="whitespace-nowrap tabular">{fmtDate(m.scheduledAt, tz)}</td>
+            <td>
+              <Link href={`/app/matches/${m.id}`} className="flex flex-col hover:text-primary"><Team t={m.home} /><Team t={m.away} /></Link>
+              <span className="text-xs text-muted md:hidden">{m.competition.shortName ?? m.competition.name}{m.round ? ` · ${m.round}` : ''}</span>
+            </td>
+            <td className="text-muted max-md:hidden">{m.competition.shortName ?? m.competition.name}{m.round ? <span className="block text-xs">{/^\d+$/.test(m.round) ? `Round ${m.round}` : m.round}</span> : null}{m.venue ? <span className="block text-xs">{m.venue.name}</span> : null}</td>
+            <td className="text-right tabular font-semibold">{m.status === 'scheduled' ? '' : `${m.score.home}–${m.score.away}`}</td>
+            <td><span className="flex flex-wrap items-start gap-1"><Status m={m} />{m.isDemo ? <StatusPill tone="warning">demo</StatusPill> : null}</span></td>
+          </tr>
         ))}
       </tbody>
     </Table>

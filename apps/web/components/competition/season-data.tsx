@@ -59,7 +59,7 @@ export function SeasonStandings({ seasons }: { seasons: Season[] }) {
               {!q.data.rows.length ? <tr><td colSpan={11} className="text-center text-muted">No teams in this season yet.</td></tr> : null}
             </tbody>
           </Table>
-          <p className="p-3 text-xs text-muted">{q.data.resultsCounted} result{q.data.resultsCounted === 1 ? '' : 's'} counted · {q.data.rules.win} for a win, {q.data.rules.draw} for a draw{q.data.rules.loss ? `, ${q.data.rules.loss} for a loss` : ''}. Completed regular-season matches count; finals and demo matches never do. The same table is available as a graphic in every control room.</p>
+          <p className="p-3 text-xs text-muted">{q.data.resultsCounted} result{q.data.resultsCounted === 1 ? '' : 's'} counted · {q.data.rules.win} for a win, {q.data.rules.draw} for a draw{q.data.rules.loss ? `, ${q.data.rules.loss} for a loss` : ''}. Completed regular-season matches count; finals and demo matches never do. The same table is available as a graphic on every desk.</p>
         </Card>
       )}
     </div>

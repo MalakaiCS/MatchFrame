@@ -44,7 +44,7 @@ export const FAQS: Faq[] = [
     q: 'Who is MatchFrame for?',
     a: [
       '**Clubs and volunteers** who stream their own games and want them to look like a real broadcast without a big crew: one scorer and one person at the streaming computer is enough, with automation doing the routine graphics.',
-      '**Competitions** that want the same look across their fixtures: a look and an automation plan can be set once for a competition, and each match gets its own scorer link, graphics output and control room. A producer board shows every live match together.',
+      '**Competitions** that want the same look across their fixtures: a look and an automation plan can be set once for a competition, and each match gets its own scorer link, graphics output and desk. The Live page shows every live match together.',
       '**Production crews** who want graphics they control from a browser, with a preview before anything goes to air, keyboard shortcuts and Stream Deck buttons.',
     ],
     basis: 'Operator guide: competition defaults, producer board, hotkeys.',
@@ -87,7 +87,7 @@ export const FAQS: Faq[] = [
     q: 'What equipment do I need?',
     a: [
       '**Hosted edition with OBS:** a computer running OBS Studio that receives your camera (for example through a USB or HDMI capture device), a phone or tablet for the scorer, and an internet connection for both. Your stream goes out from OBS to YouTube, Facebook or another platform.',
-      '**Cloud production (self-hosted with the media server):** a camera or encoder that can send an RTMP feed, a phone or tablet for the scorer, and a laptop for the control room. MatchFrame adds the graphics and streams to your destinations.',
+      '**Cloud production (self-hosted with the media server):** a camera or encoder that can send an RTMP feed, a phone or tablet for the scorer, and a laptop for the desk. MatchFrame adds the graphics and streams to your destinations.',
       'Details are in [requirements](/docs/getting-started/requirements).',
     ],
     home: true,
@@ -140,7 +140,7 @@ export const FAQS: Faq[] = [
     category: 'graphics-scoring',
     q: 'Are graphics controlled manually or automatically?',
     a: [
-      'Both. Each output has an **Auto** and a **Manual** mode. In Auto, the automation plan puts graphics on air as the scorer records the match. In the control room an operator can prepare any graphic in a preview, edit it, then send it **To air** (F8) and take it **Out** (F9) at any time.',
+      'Both. Each output has an **Auto** and a **Manual** mode. In Auto, the automation plan puts graphics on air as the scorer records the match. On the desk an operator can prepare any graphic in a preview, edit it, then send it **To air** (F8) and take it **Out** (F9) at any time.',
       'Manual pauses automatic graphics without clearing what is on air. **Emergency clear** (press and hold) takes everything off and pauses automation until someone presses Resume. A playlist can also be set to wait for a producer to press **Send now**.',
     ],
     home: true,
@@ -162,7 +162,7 @@ export const FAQS: Faq[] = [
     q: 'Can several people work on the same match?',
     a: [
       'Yes. Only one device controls the score at a time, so two people can never record conflicting scores; a producer can take control over with a reason, and anything the first device recorded offline then waits for review. Extra scorers can be given **statistics only**, which never changes the score or clock.',
-      'Several operators can have the control room open for one output: each sees who else is there, and if someone is preparing the same layer, To air waits and says who. A read-only commentator view shows line-ups, events and statistics in large type.',
+      'Several operators can have the desk open for one output: each sees who else is there, and if someone is preparing the same layer, To air waits and says who. A read-only commentator view shows line-ups, events and statistics in large type.',
     ],
     basis: 'Scorer lease and takeover (A15); presence and locks; commentator view.',
   },
@@ -174,7 +174,7 @@ export const FAQS: Faq[] = [
       'Yes. Each match has its own scorer, graphics outputs and automation, kept separate from the others, and the producer board shows every live match on one screen. Plans include 1 (Starter), 2 (Club) or 5 (Studio) simultaneous live matches; League / Enterprise allowances are agreed in the quote.',
       'Graphics-only matches need little from the server. Cloud production is different: each programme uses real processing power, and how many can run together depends on the media server\'s hardware, so try the number you need on your own hardware before match day.',
     ],
-    basis: 'Producer board; capacity check A51 (failed on a 4-core host).',
+    basis: 'Live page; capacity check A51 (failed on a 4-core host).',
   },
   // ------------------------------------------------------------------ production and connectivity
   {
@@ -223,7 +223,7 @@ export const FAQS: Faq[] = [
     q: 'Can I run it from a phone or tablet?',
     a: [
       'The **scorer app** is built for phones and tablets: large buttons, a sunlight mode for outdoor screens, vibration and sounds on each action, and a low data mode. Add it to the home screen and it opens even without a connection.',
-      'The **control room** is designed for a laptop or desktop browser. The commentator view works well on a tablet. MatchFrame is checked in Chromium, the engine behind Chrome and Edge; other browsers are not yet formally tested.',
+      'The **desk** is designed for a laptop or desktop browser. The commentator view works well on a tablet. MatchFrame is checked in Chromium, the engine behind Chrome and Edge; other browsers are not yet formally tested.',
     ],
     basis: 'Scorer guide; phone-sized browser tests.',
   },
@@ -304,9 +304,9 @@ export const FAQS: Faq[] = [
     q: 'Can I make vertical clips for social media?',
     a: [
       'Yes. Trim a clip, choose 16:9, 9:16 or 1:1 with a crop position, add intro and outro artwork, then download it or share an expiring link you can revoke. These need cloud production.',
-      'On any edition, the control room can export a graphic as a transparent PNG, or a short WebM clip of its animation, for social posts.',
+      'On any edition, the desk can export a graphic as a transparent PNG, or a short WebM clip of its animation, for social posts.',
     ],
-    basis: 'Exports in three shapes (A44); browser exports in the control room.',
+    basis: 'Exports in three shapes (A44); browser exports on the desk.',
   },
   // ------------------------------------------------------------------ accounts and pricing
   {

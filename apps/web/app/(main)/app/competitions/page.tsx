@@ -1,5 +1,5 @@
 'use client';
-// Competitions: the list, and a new competition with its rules. The rules start from a preset (built-in or one of the
+// Competitions: the list (searchable, 25 at a time, archived ones on request), and a new competition with its rules. The rules start from a preset (built-in or one of the
 // organisation's own); its match timing is shown ready to change (period length, breaks, halves or quarters…) with a
 // picture of the match, and extra time and the other rules are one step further down.
 import { SportOptions } from '@/components/sport-options';
@@ -8,10 +8,11 @@ import { MatchTimeline, RulesFields } from '@/components/competition/rules-timin
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trophy } from 'lucide-react';
-import { getAdapter, regulationTimeline, setRulesValue, type Sport } from '@bs/domain';
-import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill } from '@bs/ui';
+import { getAdapter, regulationTimeline, setRulesValue, SPORT_LABELS, type Sport } from '@bs/domain';
+import { Button, Dialog, EmptyState, ErrorNotice, Field, Input, NativeSelect, PageHeader, Spinner, StatusPill, Table } from '@bs/ui';
 import { post } from '@/lib/api';
-import { useAction, useGet } from '@/lib/hooks';
+import { fmtDate, useAction, useGet } from '@/lib/hooks';
+import { useRouter } from 'next/navigation';
 import { isFull, useMe } from '@/lib/session';
 
 /** A name for changed rules from their timing: "2×18, 5-minute half time", "4×10". */
@@ -23,14 +24,20 @@ function timingName(sport: Sport, cfg: Record<string, unknown>) {
   return `${plays.length}×${plays[0]?.minutes ?? ''}${half ? `, ${half.minutes}-minute half time` : ''}`;
 }
 
-interface Comp { id: string; name: string; shortName: string | null; sport: string; status: string; seasonCount: number; matchCount: number; currentSeason: { name: string } | null; logoAssetId: string | null }
+interface Comp { id: string; name: string; shortName: string | null; sport: string; status: string; seasonCount: number; matchCount: number; currentSeason: { name: string } | null; logoAssetId: string | null; nextMatchAt: string | null }
+const PAGE = 25;
+const sportLabel = (s: string) => SPORT_LABELS[s as Sport] ?? s;
 
 export default function CompetitionsPage() {
   const me = useMe();
   const [search, setSearch] = useState('');
   const [sport, setSport] = useState('');
+  const [archived, setArchived] = useState(false);
+  const [shown, setShown] = useState(PAGE);
   const [open, setOpen] = useState(false);
-  const list = useGet<Comp[]>(['competitions', search, sport], `competitions?${new URLSearchParams({ ...(search ? { search } : {}), ...(sport ? { sport } : {}) })}`);
+  const router = useRouter();
+  const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';
+  const list = useGet<Comp[]>(['competitions', search, sport, archived], `competitions?${new URLSearchParams({ ...(search ? { search } : {}), ...(sport ? { sport } : {}), ...(archived ? { status: 'archived' } : {}) })}`);
   const [form, setForm] = useState({ name: '', shortName: '', sport: 'football', rulesPreset: '', defaultTimezone: me.data?.activeOrganisation?.timezone ?? 'Australia/Brisbane' });
   // each sport's own presets (the first is its default rules), and the organisation's for the sport
   const presetOptions = usePresetOptions(form.sport);
@@ -73,31 +80,42 @@ export default function CompetitionsPage() {
   return (
     <>
       <PageHeader title="Competitions" subtitle="Leagues and cups with their seasons, rules, graphics and production defaults." actions={isFull(me.data?.role) ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New competition</Button> : null} />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Input className="max-w-xs" placeholder="Search competitions" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search competitions" />
-        <NativeSelect className="max-w-40" value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Sport filter"><option value="">All sports</option><SportOptions /></NativeSelect>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Input className="max-w-xs" placeholder="Search competitions" value={search} onChange={(e) => { setSearch(e.target.value); setShown(PAGE); }} aria-label="Search competitions" />
+        <NativeSelect className="max-w-40" value={sport} onChange={(e) => { setSport(e.target.value); setShown(PAGE); }} aria-label="Sport filter"><option value="">All sports</option><SportOptions /></NativeSelect>
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted"><input type="checkbox" className="size-4" checked={archived} onChange={(e) => { setArchived(e.target.checked); setShown(PAGE); }} /> Archived only</label>
       </div>
       <ErrorNotice error={list.error} onRetry={() => list.refetch()} />
       {list.isLoading ? <Spinner /> : !list.data?.length ? (
-        <EmptyState icon={<Trophy className="size-6 text-muted" />} title={search || sport ? 'No competitions match these filters' : 'No competitions yet'} body="Create a competition to add seasons, teams and fixtures." action={isFull(me.data?.role) ? <Button variant="primary" onClick={() => setOpen(true)}>New competition</Button> : null} />
+        <EmptyState icon={<Trophy className="size-6 text-muted" />} title={search || sport || archived ? 'No competitions match these filters' : 'No competitions yet'} body="Create a competition to add seasons, teams and fixtures." action={isFull(me.data?.role) && !archived ? <Button variant="primary" onClick={() => setOpen(true)}>New competition</Button> : null} />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {list.data.map((c) => (
-            <Link key={c.id} href={`/app/competitions/${c.id}`}>
-              <Card className="h-full p-4 hover:border-primary">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">{c.logoAssetId ? <img src={`/api/v1/assets/${c.logoAssetId}/preview`} alt="" className="h-10 w-10 shrink-0 object-contain" loading="lazy" /> : null}<div><h2 className="font-medium">{c.name}</h2><p className="text-xs text-muted">{c.shortName ?? '—'} · {c.sport}</p></div></div>
-                  <StatusPill tone={c.status === 'active' ? 'healthy' : 'neutral'}>{c.status}</StatusPill>
-                </div>
-                <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                  <div><dt className="text-muted">Season</dt><dd>{c.currentSeason?.name ?? '—'}</dd></div>
-                  <div><dt className="text-muted">Seasons</dt><dd className="tabular">{c.seasonCount}</dd></div>
-                  <div><dt className="text-muted">Matches</dt><dd className="tabular">{c.matchCount}</dd></div>
-                </dl>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <>
+          <Table>
+            <thead><tr><th>Competition</th><th className="max-sm:hidden">Season</th><th className="max-md:hidden">Next match</th><th className="text-right">Matches</th></tr></thead>
+            <tbody>
+              {list.data.slice(0, shown).map((c) => (
+                <tr key={c.id} className="cursor-pointer hover:bg-elevated/40" onClick={(e) => { if (!(e.target as HTMLElement).closest('a')) router.push(`/app/competitions/${c.id}`); }}>
+                  <td>
+                    <Link href={`/app/competitions/${c.id}`} className="flex items-center gap-3 hover:text-primary">
+                      {c.logoAssetId ? <img src={`/api/v1/assets/${c.logoAssetId}/preview`} alt="" className="size-8 shrink-0 object-contain" loading="lazy" /> : <span className="grid size-8 shrink-0 place-items-center rounded-md bg-elevated text-muted" aria-hidden><Trophy className="size-4" /></span>}
+                      <span className="min-w-0"><span className="block font-medium">{c.name}</span><span className="block text-xs text-muted">{[c.shortName, sportLabel(c.sport)].filter(Boolean).join(' · ')}</span></span>
+                      {c.status !== 'active' ? <StatusPill tone="neutral">{c.status}</StatusPill> : null}
+                    </Link>
+                  </td>
+                  <td className="text-muted max-sm:hidden">{c.currentSeason?.name ?? 'No season'}</td>
+                  <td className="whitespace-nowrap text-muted max-md:hidden">{c.nextMatchAt ? fmtDate(c.nextMatchAt, tz, { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}</td>
+                  <td className="text-right tabular">{c.matchCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          {list.data.length > shown ? (
+            <div className="mt-3 flex items-center justify-end gap-3 text-sm">
+              <span className="text-muted">Showing {shown} of {list.data.length}</span>
+              <Button size="sm" onClick={() => setShown(shown + PAGE)}>Show more</Button>
+            </div>
+          ) : null}
+        </>
       )}
       <Dialog wide open={open} onOpenChange={(o) => { setOpen(o); create.reset(); }} title="New competition" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.name.trim() || (!!parsed && !parsed.success)} onClick={() => create.mutate(form, { onSuccess: () => setOpen(false) })}>Create</Button></>}>
         <div className="grid gap-3">

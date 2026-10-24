@@ -1,30 +1,20 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { BadgeCheck, CalendarDays, Clapperboard, Copy, Film, Plus, Radio, Smartphone, Upload, X } from 'lucide-react';
+import { BadgeCheck, CalendarDays, Clapperboard, Copy, Plus, Radio, Smartphone, Upload, X } from 'lucide-react';
 import { PRICE_PLANS } from '@bs/domain';
 import { Button, Card, CheckRow, ErrorNotice, PageHeader, Spinner, StatusPill } from '@bs/ui';
 import { get } from '@/lib/api';
 import { fmtDate, useCopy, useGet } from '@/lib/hooks';
 import { isFull, streamingOn, useMe } from '@/lib/session';
 import { MatchTable, streamTone, type MatchRow } from '@/components/match-table';
+import { isStale } from '@/lib/live';
 import { DemoButton } from '@/components/demo-button';
 import { forgetPlan, intendedPlan, type IntendedPlan } from '@/lib/sign-in';
 
 interface StreamRow { id: string; matchId: string; matchLabel: string; state: string; error: { message?: string } | null }
 const UNHEALTHY = ['DEGRADED', 'WAITING_FOR_INPUT', 'FAILED'];
-/** A match still "live" with no scoring activity for this long was probably never closed. */
-const STALE_MS = 3 * 3600_000;
 const DISMISS_KEY = 'bs.setup.dismissed';
-
-const USAGE_NAMES: Record<string, string> = { media_jobs: 'Media processing', storage: 'Storage', programme: 'Cloud production', recording: 'Recording', egress: 'Streaming out' };
-const usageName = (m: string) => USAGE_NAMES[m] ?? m.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
-/** Usage in words people read: minutes rather than job seconds, MB or GB rather than bytes. */
-function usageAmount(total: number, unit: string) {
-  if (unit === 'bytes') return total >= 1e9 ? `${(total / 1e9).toFixed(1)} GB` : `${Math.max(0.1, total / 1e6).toFixed(1)} MB`;
-  if (/seconds$/.test(unit)) return `${(total / 60).toFixed(total < 600 ? 1 : 0)} min`;
-  return `${total.toFixed(1)} ${unit.replace(/_/g, ' ')}`;
-}
 
 const relative = (iso: string, now: Date) => {
   const diff = new Date(iso).getTime() - now.getTime();
@@ -40,19 +30,16 @@ export default function Dashboard() {
   const me = useMe();
   const tz = me.data?.activeOrganisation?.timezone ?? 'Australia/Brisbane';
   const now = new Date();
-  const live = useGet<{ items: MatchRow[] }>(['matches', 'live'], 'matches?status=live&pageSize=20', { refetchInterval: 10_000 });
+  // newest first, so the matches really under way are on the page whatever is left over from before
+  const live = useGet<{ items: MatchRow[]; total: number }>(['matches', 'live'], 'matches?status=live&sort=-scheduledAt&pageSize=100', { refetchInterval: 10_000 });
   const upcoming = useGet<{ items: MatchRow[]; total: number }>(['matches', 'upcoming'], `matches?status=scheduled&from=${encodeURIComponent(new Date(now.getTime() - 3600_000).toISOString())}&pageSize=8`);
   const streaming = streamingOn(me.data);
   const overview = useGet<{ sessions: StreamRow[] }>(['streams-overview'], 'streams', { refetchInterval: 10_000, enabled: !!me.data && streaming });
-  const unhealthy = overview.data?.sessions.filter((s) => UNHEALTHY.includes(s.state));
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const usage = useGet<{ totals: { module: string; unit: string; total: number }[] }>(['usage-month'], `usage/ledger?from=${encodeURIComponent(monthStart)}`);
+  const unhealthy = overview.data?.sessions.filter((s) => UNHEALTHY.includes(s.state)) ?? [];
   const full = isFull(me.data?.role);
-  const [allStale, setAllStale] = useState(false);
 
-  const stale = (m: MatchRow) => !!m.stateUpdatedAt && now.getTime() - new Date(m.stateUpdatedAt).getTime() > STALE_MS;
-  const liveNow = (live.data?.items ?? []).filter((m) => !stale(m));
-  const needsClosing = (live.data?.items ?? []).filter(stale);
+  const liveNow = (live.data?.items ?? []).filter((m) => !isStale(m, now.getTime()));
+  const needsClosing = (live.data?.total ?? 0) - liveNow.length;
   const next = liveNow[0] ?? upcoming.data?.items[0] ?? null;
 
   return (
@@ -60,50 +47,29 @@ export default function Dashboard() {
       <PageHeader title={me.data?.user.name ? `Welcome back, ${me.data.user.name.split(' ')[0]}` : 'Welcome back'} subtitle={<>{me.data?.activeOrganisation?.name} · {new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</>}
         actions={full ? <>
           <Button asChild><Link href="/app/matches?import=1"><Upload className="size-4" /> Import fixtures</Link></Button>
-          <Button asChild variant="primary"><Link href="/app/matches?new=1"><Plus className="size-4" /> New match</Link></Button>
+          {/* the sidebar has New match from lg: up */}
+          <Button asChild variant="primary" className="lg:hidden"><Link href="/app/matches?new=1"><Plus className="size-4" /> New match</Link></Button>
         </> : null} />
       {me.data?.role === 'owner' ? <PlanReminder /> : null}
       {full ? <FirstRun hasMatches={!!(liveNow.length || upcoming.data?.total)} /> : null}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="min-w-0 xl:col-span-2">
-          {next ? <NextMatch m={next} tz={tz} now={now} /> : null}
-          <h2 className="mb-3 flex items-center gap-2 font-semibold"><Radio className="size-4 text-live" aria-hidden /> Live now</h2>
-          <ErrorNotice error={live.error} onRetry={() => live.refetch()} />
-          {live.isLoading ? <Spinner /> : liveNow.length ? <MatchTable rows={liveNow} tz={tz} view="cards" /> : <Card className="p-5 text-sm text-muted">No live matches right now. When the scorer starts a match it appears here.</Card>}
-          {needsClosing.length ? (
-            <Card className="mt-3 p-3">
-              <h3 className="text-sm font-medium">Needs closing ({needsClosing.length})</h3>
-              <p className="mb-2 text-xs text-muted">Still marked live, but nothing has been recorded for hours. Open the scorer and move the match to Full Time.</p>
-              <ul className="grid gap-1 text-sm">{(allStale ? needsClosing : needsClosing.slice(0, 3)).map((m) => <li key={m.id} className="flex flex-wrap items-center gap-2"><span>{m.home?.name} v {m.away?.name}</span><span className="text-xs text-muted">{fmtDate(m.scheduledAt, tz)}</span><Button asChild size="sm" variant="ghost"><Link href={`/score/${m.id}`}>Open scorer</Link></Button></li>)}</ul>
-              {needsClosing.length > 3 ? <button type="button" className="mt-2 text-sm font-medium text-primary hover:underline" onClick={() => setAllStale(!allStale)}>{allStale ? 'Show fewer' : `Show all ${needsClosing.length}`}</button> : null}
-            </Card>
-          ) : null}
-          <h2 className="mb-3 mt-8 flex items-center gap-2 font-semibold"><CalendarDays className="size-4 text-primary" aria-hidden /> Upcoming</h2>
-          {upcoming.isLoading ? <Spinner /> : <MatchTable rows={upcoming.data?.items ?? []} tz={tz} />}
-        </section>
-        <aside className="grid content-start gap-4">
-          <Card className="p-5">
-            <h2 className="mb-3 font-semibold">Quick actions</h2>
-            <div className="grid gap-2">
-              <Button asChild className="justify-start"><Link href="/app/control-rooms"><Clapperboard className="size-4" aria-hidden /> Control rooms</Link></Button>
-              <Button asChild className="justify-start"><Link href="/score"><Smartphone className="size-4" aria-hidden /> Scorer app</Link></Button>
-              {streaming ? <Button asChild className="justify-start"><Link href="/app/streams"><Radio className="size-4" aria-hidden /> Streams</Link></Button> : null}
-              <Button asChild className="justify-start"><Link href="/app/media"><Film className="size-4" aria-hidden /> Media library</Link></Button>
-              {full ? <DemoButton /> : null}
-            </div>
-          </Card>
-          {streaming ? <Card className="p-5">
-            <h2 className="mb-2 font-semibold">Stream health</h2>
-            {overview.error ? <p className="text-sm text-muted">Unavailable</p> : overview.isLoading ? <Spinner /> : unhealthy?.length ? (
-              <ul className="grid gap-2">{unhealthy.map((s) => <li key={s.id} className="text-sm"><Link href={`/app/matches/${s.matchId}?tab=streams`} className="hover:text-primary">{s.matchLabel}</Link> <StatusPill tone={streamTone(s.state)}>{s.state.toLowerCase()}</StatusPill>{s.error?.message ? <span className="block text-xs text-muted">{s.error.message}</span> : null}</li>)}</ul>
-            ) : <p className="text-sm text-healthy">All streams healthy or idle.</p>}
-          </Card> : null}
-          <Card className="p-5">
-            <h2 className="mb-2 font-semibold">Usage this month</h2>
-            {usage.data?.totals.length ? <ul className="text-sm">{usage.data.totals.map((u) => <li key={u.module + u.unit} className="flex justify-between py-0.5"><span className="text-muted">{usageName(u.module)}</span><span className="tabular">{usageAmount(u.total, u.unit)}</span></li>)}</ul> : <p className="text-sm text-muted">No measured usage yet.</p>}
-          </Card>
-        </aside>
-      </div>
+      {unhealthy.length ? (
+        <Card className="mb-6 border-warning/60 p-4">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold"><Radio className="size-4 text-warning" aria-hidden /> Streams that need a look</h2>
+          <ul className="grid gap-2">{unhealthy.map((s) => <li key={s.id} className="text-sm"><Link href={`/app/matches/${s.matchId}?tab=streams`} className="hover:text-primary">{s.matchLabel}</Link> <StatusPill tone={streamTone(s.state)}>{s.state.toLowerCase().replace(/_/g, ' ')}</StatusPill>{s.error?.message ? <span className="block text-xs text-muted">{s.error.message}</span> : null}</li>)}</ul>
+        </Card>
+      ) : null}
+      {next ? <NextMatch m={next} tz={tz} now={now} /> : null}
+      <h2 className="mb-3 flex items-center gap-2 font-semibold"><Radio className="size-4 text-live" aria-hidden /> Live now</h2>
+      <ErrorNotice error={live.error} onRetry={() => live.refetch()} />
+      {live.isLoading ? <Spinner /> : liveNow.length ? <MatchTable rows={liveNow} tz={tz} view="cards" /> : <Card className="p-5 text-sm text-muted">No live matches right now. When the scorer starts a match it appears here.</Card>}
+      {needsClosing > 0 ? (
+        <p className="mt-3 flex flex-wrap items-center gap-x-2 rounded-lg border border-warning/50 px-3 py-2 text-sm">
+          <span><strong className="font-semibold">{needsClosing} {needsClosing === 1 ? 'match is' : 'matches are'} still marked live</strong> <span className="text-muted">but nothing has been recorded for hours.</span></span>
+          <Link href="/app/live#needs-closing" className="font-medium text-primary hover:underline">Close {needsClosing === 1 ? 'it' : 'them'}</Link>
+        </p>
+      ) : null}
+      <h2 className="mb-3 mt-8 flex items-center gap-2 font-semibold"><CalendarDays className="size-4 text-primary" aria-hidden /> Upcoming</h2>
+      {upcoming.isLoading ? <Spinner /> : <MatchTable rows={upcoming.data?.items ?? []} tz={tz} />}
     </>
   );
 }
@@ -133,8 +99,8 @@ function NextMatch({ m, tz, now }: { m: MatchRow; tz: string; now: Date }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="primary"><Link href={`/score/${m.id}`}><Smartphone className="size-4" /> Open scorer</Link></Button>
-          <Button asChild><Link href={ov ? `/app/matches/${m.id}/control/${ov.id}` : `/app/matches/${m.id}?tab=overlays`}><Clapperboard className="size-4" /> Control room</Link></Button>
-          {ov ? <Button onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button> : <Button asChild><Link href={`/app/matches/${m.id}?tab=overlays`}><Copy className="size-4" /> OBS link</Link></Button>}
+          <Button asChild><Link href={ov ? `/app/matches/${m.id}/control/${ov.id}` : `/app/matches/${m.id}?tab=graphics`}><Clapperboard className="size-4" /> Desk</Link></Button>
+          {ov ? <Button onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button> : <Button asChild><Link href={`/app/matches/${m.id}?tab=graphics`}><Copy className="size-4" /> OBS link</Link></Button>}
         </div>
       </div>
     </Card>
@@ -169,7 +135,7 @@ function FirstRun({ hasMatches }: { hasMatches: boolean }) {
   }, []);
   if (dismissed || comps.isLoading || profiles.isLoading || plans.isLoading || members.isLoading) return null;
   const steps = [
-    { done: !!comps.data?.length, label: 'Add a competition and its teams', href: '/app/competitions', detail: 'Teams, players and venues live under Assets.' },
+    { done: !!comps.data?.length, label: 'Add a competition and its teams', href: '/app/competitions', detail: 'Teams, players and venues live in the Library.' },
     { done: hasMatches, label: 'Add your fixtures', href: '/app/matches?new=1', detail: 'One at a time, or import a CSV.' },
     { done: !!profiles.data?.some((p) => p.currentVersion > 0), label: 'Choose a graphics look', href: '/app/themes', detail: 'Pick a style, set your colours, add a logo, publish it.' },
     { done: !!plans.data?.some((p) => p.currentVersion > 0), label: 'Create an automation plan', href: '/app/automation', detail: 'Start from the starter plan; it follows a normal match.' },
@@ -183,7 +149,8 @@ function FirstRun({ hasMatches }: { hasMatches: boolean }) {
       <div className="flex items-center gap-3">
         <h2 className="font-semibold">Get set up</h2>
         <StatusPill tone="primary">{steps.length - left} of {steps.length} done</StatusPill>
-        <button className="ml-auto text-muted hover:text-text" aria-label="Hide the set-up steps" onClick={dismiss}><X className="size-4" /></button>
+        <span className="ml-auto"><DemoButton /></span>
+        <button className="text-muted hover:text-text" aria-label="Hide the set-up steps" onClick={dismiss}><X className="size-4" /></button>
       </div>
       <ul className="mt-1 divide-y divide-border">
         {steps.map((s) => <CheckRow key={s.label} done={s.done} label={s.label} detail={s.done ? undefined : s.detail} action={s.done ? null : <Button asChild size="sm"><Link href={s.href}>Go</Link></Button>} />)}

@@ -13,7 +13,7 @@ export interface Shot {
 export const SHOTS = {
   prepare: { src: '/site/product-prepare.jpg', alt: 'A match in MatchFrame: the matchday checklist with teams, line-ups, look and the OBS link ready', w: 1600, h: 1000 },
   scorer: { src: '/site/product-scorer.jpg', alt: "The MatchFrame scorer on a phone: both teams' scores, the clock and the event buttons for a fictional football match", w: 780, h: 1560 },
-  control: { src: '/site/product-control.jpg', alt: 'The MatchFrame control room: the programme and preview monitors, the graphics catalogue and the automation panel', w: 1600, h: 1000 },
+  control: { src: '/site/product-control.jpg', alt: 'The MatchFrame desk: the preview and on-air monitors, the graphics catalogue and the automation panel', w: 1600, h: 1000 },
   bug: { src: '/site/graphic-scorebug.jpg', alt: 'A MatchFrame scorebug with the score, clock and a sample sponsor for a fictional football match', w: 1600, h: 900 },
   lineup: { src: '/site/graphic-lineup.jpg', alt: 'A MatchFrame line-up board listing the starting players of a fictional team', w: 1600, h: 900 },
   goal: { src: '/site/graphic-goal.jpg', alt: 'A MatchFrame goal graphic naming the scorer and the minute, inside the scorebug', w: 1600, h: 900 },

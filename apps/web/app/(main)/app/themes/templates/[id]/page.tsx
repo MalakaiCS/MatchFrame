@@ -207,7 +207,7 @@ export default function Designer({ params }: { params: Promise<{ id: string }> }
   return (
     <>
       <Keyframes />
-      <PageHeader crumbs={<><Link href="/app/themes" className="hover:text-text">Themes</Link> / Templates</>} title={name || 'Template'} subtitle={<>Constrained designer: typed bindings only, no code. {version ? <StatusPill tone="primary">published v{version}</StatusPill> : <StatusPill tone="warning">not published</StatusPill>}</>}
+      <PageHeader crumbs={<><Link href="/app/themes" className="hover:text-text">Looks</Link> / Custom graphics</>} title={name || 'Custom graphic'} subtitle={<>Design from text, shapes and match data; no code. {version ? <StatusPill tone="primary">published v{version}</StatusPill> : <StatusPill tone="warning">not published</StatusPill>}</>}
         actions={<>
           <Button variant="ghost" onClick={h.undo} disabled={!h.canUndo} aria-label="Undo"><Undo2 className="size-4" /></Button>
           <Button variant="ghost" onClick={h.redo} disabled={!h.canRedo} aria-label="Redo"><Redo2 className="size-4" /></Button>

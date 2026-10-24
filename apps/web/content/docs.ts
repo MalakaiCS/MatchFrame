@@ -75,7 +75,7 @@ export const DOCS: DocArticle[] = [
       { h: 'For everyone' },
       { list: [
         '**A phone or tablet for the scorer.** The scorer app runs in the browser; add it to the home screen for a full-screen app that opens even without a connection.',
-        '**A laptop or desktop for the control room**, in an up-to-date browser. Our tests run in Chromium-based browsers (Chrome, Edge); others are not yet formally tested.',
+        '**A laptop or desktop for the desk**, in an up-to-date browser. Our tests run in Chromium-based browsers (Chrome, Edge); others are not yet formally tested.',
         '**An email address you can receive mail at**, to verify your account.',
       ] },
       { h: 'OBS on your computer' },
@@ -115,13 +115,13 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: '2. Add your players' },
       { steps: [
-        { do: 'Open **Assets** → **Players** and use **Add player** for each player, with their name and usual number.' },
-        { do: 'Open **Assets** → **Teams**, press **Roster** next to a team, choose a player and the season, check the number and press **Add**. Repeat for each player in each team.', expect: 'Each team\'s roster lists its players for the season.' },
+        { do: 'Open **Library** → **Players** and use **Add player** for each player, with their name and usual number.' },
+        { do: 'Open **Library** → **Teams**, click a team, choose a player and the season, check the number and press **Add**. Repeat for each player in each team.', expect: 'Each team\'s roster lists its players for the season.' },
       ] },
       { note: 'A fixture created after its teams have rosters starts with the roster as its line-up. For a fixture created earlier, set the line-up as in the next step.' },
       { h: '3. Set the line-ups' },
       { steps: [
-        { do: 'Open **Matches**, choose the match, and open the **Lineup** tab.' },
+        { do: 'Open **Matches**, choose the match, and open the **Line-ups** tab.' },
         { do: 'For each player choose **Start**, **Bench** or **Out**, then press **Save line-ups**. **Save as team default** keeps a side for next time.', expect: 'The match-day checklist at the top of the match says the line-ups are entered.' },
       ] },
       { h: '4. Choose a look and turn on automation' },
@@ -132,7 +132,7 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: '5. Add the graphics to OBS' },
       { steps: [
-        { do: 'Open the match\'s **OBS link** tab and press **Copy link**.' },
+        { do: 'Open the match\'s **Graphics** tab and press **Copy OBS link**.' },
         { do: 'In OBS, under **Sources** press **+**, choose **Browser**, paste the link, and set the width to 1920 and the height to 1080. Leave the custom CSS box empty.' },
         { do: 'Untick **Shutdown source when not visible** and move the source above your camera.', expect: 'The animated background and the match header appear over your camera (with the football starter plan), and the status on the OBS link tab turns green.' },
       ] },
@@ -162,7 +162,7 @@ export const DOCS: DocArticle[] = [
         { do: 'On the scorer\'s phone, press **Next:** through **Pre-match**, **Players entering** and **About to start**.', expect: 'In OBS: the background and header clear when the players walk out, about 15 seconds later each team\'s line-up shows for 8 seconds, and the scorebug comes up at About to start with its clock at 0:00.' },
         { do: 'Press **Next: 1st Half**.', expect: 'The kick-off banner comes in and the clock runs.' },
         { do: 'Record a goal, then use **Undo** straight away.', expect: 'The goal graphic shows, then the score goes back and the graphic comes off.' },
-        { do: 'In the control room, switch the output to **Manual**, send a lower third with **To air**, take it **Out**, then switch back to **Auto**.', expect: 'Nothing automatic happens while in Manual; the lower third comes and goes when you say.' },
+        { do: 'On the desk, switch the output to **Manual**, send a lower third with **To air**, take it **Out**, then switch back to **Auto**.', expect: 'Nothing automatic happens while in Manual; the lower third comes and goes when you say.' },
         { do: 'Turn the scorer phone\'s Wi-Fi and mobile data off, record a card, then turn them back on.', expect: 'The phone shows Offline and a pending action; when it reconnects the card applies once.' },
         { do: 'Press **Half Time**, then **Players entering (2nd half)**.', expect: 'The half-time background, stats and header come up, then clear; the scorebug returns 7 seconds after the walk-out.' },
       ] },
@@ -186,15 +186,15 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: 'An hour before' },
       { list: [
-        'OBS open with the graphics source above the camera; the **OBS link** tab shows it connected.',
+        'OBS open with the graphics source above the camera; the match\'s **Graphics** tab shows it connected.',
         'The scorer signed in on the phone, with **Next: Pre-match** ready.',
         'The stream set up on your platform and a short private test done.',
-        'The control room open on a laptop in case you need to take over.',
+        'The desk open on a laptop in case you need to take over.',
       ] },
       { h: 'During the match' },
       { list: [
         'The scorer presses the phase buttons as the match goes: Players entering, About to start, 1st Half, Half Time, Players entering (2nd half), About to start (2nd half), 2nd Half, Full Time.',
-        'Keep an eye on the control room preview; switch to **Manual** if you need to stop automatic graphics.',
+        'Keep an eye on the desk preview; switch to **Manual** if you need to stop automatic graphics.',
         'In an emergency, press and hold **Emergency clear**, then **Resume** when ready.',
       ] },
       { h: 'After the match' },
@@ -312,7 +312,7 @@ export const DOCS: DocArticle[] = [
     prerequisites: ['OBS Studio with your camera already in a scene', 'A match in MatchFrame'],
     body: [
       { steps: [
-        { do: 'Open the match, then its **OBS link** tab, and press **Copy link**.' },
+        { do: 'Open the match, then its **Graphics** tab, and press **Copy OBS link**.' },
         { do: 'In OBS, under **Sources** press **+** and choose **Browser**. Give it a name such as MatchFrame graphics.' },
         { do: 'Paste the link into URL. Set the width to **1920** and the height to **1080** (for a vertical output, 1080 and 1920). Leave the custom CSS box empty: the background is already transparent.' },
         { do: 'Untick **Shutdown source when not visible**, so the graphics stay up to date, and press OK.' },
@@ -334,7 +334,7 @@ export const DOCS: DocArticle[] = [
     outcome: 'Put your logo and colours on the graphics.',
     body: [
       { steps: [
-        { do: `Open **Themes** and choose one of the ${countWord(LOOK_COUNT)} looks, such as Broadcast, Premier, Liga, Primetime or Derby.`, expect: 'Every graphic previews in that look with sample teams.' },
+        { do: `Open **Looks** and choose one of the ${countWord(LOOK_COUNT)} looks, such as Broadcast, Premier, Liga, Primetime or Derby.`, expect: 'Every graphic previews in that look with sample teams.' },
         { do: 'Set your colours, logo and team colours, and the scorebug variant and position, the clock style and any wording changes.' },
         { do: 'Publish the look, then choose it on the match (match-day checklist → **Look** → **Apply**), or for a whole competition (**Graphics & production** → **Tournament look** → **Apply**).' },
       ] },
@@ -346,7 +346,7 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: 'Artwork' },
       { list: [
-        'Upload logos, headshots and sponsor artwork under **Assets** → **Images, video & audio**: PNG or JPEG images up to 25 megapixels, MP4 video up to ten minutes.',
+        'Upload logos, headshots and sponsor artwork under **Library** → **Files**: PNG or JPEG images up to 25 megapixels, MP4 video up to ten minutes.',
         'A custom font can be uploaded the same way and chosen in the look.',
         'When the two teams\' colours are too close, the away team switches to its alternate colours automatically.',
       ] },
@@ -392,7 +392,7 @@ export const DOCS: DocArticle[] = [
         '**Manual** (per output): automatic graphics pause and pending automatic steps are cancelled; what is on air stays. Returning to **Auto** does not replay what happened meanwhile, and the scorebug is restored in play.',
         '**To air** (F8) and **Out** (F9): send or remove any graphic yourself, in Auto or Manual. Automation never takes off a graphic an operator put on.',
         '**Emergency clear**: press and hold to take every graphic and the scorebug off and pause automation until someone presses **Resume**.',
-        '**Ask the producer before sending**: set on a playlist, its graphics wait in the control room for **Send now** or **Skip**.',
+        '**Ask the producer before sending**: set on a playlist, its graphics wait on the desk for **Send now** or **Skip**.',
       ] },
     ],
     related: ['automation/football-flow'],
@@ -448,13 +448,13 @@ export const DOCS: DocArticle[] = [
     outcome: 'Find out why nothing, or not the right thing, shows in OBS, checking in a sensible order.',
     body: [
       { steps: [
-        { do: 'Open the match\'s **OBS link** tab and look at the status.', expect: 'Green means OBS is showing the page. If it is not green, OBS has not loaded the link: check the URL in the browser source, and that the OBS computer is online.' },
+        { do: 'Open the match\'s **Graphics** tab and look at the OBS status.', expect: 'Green means OBS is showing the page. If it is not green, OBS has not loaded the link: check the URL in the browser source, and that the OBS computer is online.' },
         { do: 'In OBS, check the browser source is above the camera, visible (the eye icon), 1920 × 1080, and that **Shutdown source when not visible** is unticked. Right-click it and choose **Refresh**.' },
         { do: 'If the link was replaced under **Advanced**, the old link no longer works: copy the new one into OBS.' },
         { do: 'Check the match has automation: the match-day checklist should say "Automation: <plan name>". Without a plan, nothing goes on air on its own.' },
-        { do: 'Open the control room for the output. If it says **Manual mode** or **Cleared (emergency)**, automation is paused: switch to **Auto**, or press **Resume**.' },
+        { do: 'Open the desk for the output. If it says **Manual mode** or **Cleared (emergency)**, automation is paused: switch to **Auto**, or press **Resume**.' },
         { do: 'Check the scorer pressed the phase buttons: the graphics follow the phases, not the clock.', expect: 'For example the line-ups wait for **Players entering**.' },
-        { do: 'A line-up board is skipped for a team with no line-up entered; check the **Lineup** tab. The automation history on the control room explains every skipped step.' },
+        { do: 'A line-up board is skipped for a team with no line-up entered; check the **Line-ups** tab. The automation history on the desk explains every skipped step.' },
       ] },
       { p: 'Still stuck? [Contact us](/contact) with the match, what you expected and what you saw.' },
     ],
@@ -472,7 +472,7 @@ export const DOCS: DocArticle[] = [
         ['OBS graphics page', 'Needs the connection to receive changes.', 'Restore the OBS computer\'s connection; refresh the browser source if it does not catch up.'],
         ['Your OBS stream', 'Depends on OBS and your platform.', 'Check OBS\'s own stream status.'],
         ['Cloud production: camera feed', 'A holding slate goes on air; the stream stays up (13–16 seconds to recover in our tests once the feed returns).', 'Fix the camera or encoder connection; the programme recovers on its own.'],
-        ['Cloud production: MatchFrame servers', 'The stream keeps going while the servers restart; the match and clock are unchanged afterwards.', 'Wait for the control room to reconnect.'],
+        ['Cloud production: MatchFrame servers', 'The stream keeps going while the servers restart; the match and clock are unchanged afterwards.', 'Wait for the desk to reconnect.'],
       ] } },
       { note: 'Scoring offline is safe: an action is never applied twice, and events entered late never trigger a celebration for something that happened long ago.', tone: 'info' },
     ],
@@ -490,7 +490,7 @@ export const DOCS: DocArticle[] = [
       { list: [
         'Which match (its name or date) and which output.',
         'What you expected to happen, and what you saw instead.',
-        'A screenshot of the control room or OBS, if you can.',
+        'A screenshot of the desk or OBS, if you can.',
       ] },
       { note: 'Never send passwords, stream keys or graphics links. We will never ask for them.', tone: 'warning' },
       { p: 'We do not offer live matchday support. For problems during a match, the [troubleshooting guides](/docs#troubleshooting) go through what to check first.' },

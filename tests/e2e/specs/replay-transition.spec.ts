@@ -110,7 +110,7 @@ test('replay transition from a match: with the teams, 30 fps, covered at 1000 ms
   await loopFinishedAnimations(page);
   const matchId = await freshMatch(page);
   await page.goto(`/app/matches/${matchId}`);
-  await page.getByRole('tab', { name: 'OBS link' }).click();
+  await page.getByRole('tab', { name: 'Graphics' }).click();
   await page.getByRole('button', { name: 'Export replay transition' }).click();
   const dialog = page.getByRole('dialog', { name: 'Replay transition for OBS or vMix' });
   await expect(dialog.getByLabel('Version')).toHaveValue('teams');

@@ -1,8 +1,8 @@
 // Graphics on-air metering: every change of an output's state opens and closes airtime rows per cue, so a match
 // report can say how long each graphic (and each sponsor creative) was on screen. Derived data: rebuilt from
 // overlay state updates, never from the renderer.
-import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
-import { graphicAirtime, matches, overlays, type Db } from '@bs/db';
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { brands, creativeSets, creatives, graphicAirtime, matches, overlays, teams, type Db, type Tx } from '@bs/db';
 import type { OverlayPublicState } from '@bs/graphics';
 import { assertCan } from './authz';
 import { tx, type Ctx } from './context';
@@ -59,10 +59,23 @@ export async function closeExpiredAirtime(db: Db) {
   return stale.length;
 }
 
+/** "Home v Away" and the kick-off of each match, so report rows name the match rather than its id. */
+export async function matchLabels(t: Tx, organisationId: string, ids: string[]) {
+  const out = new Map<string, { label: string; scheduledAt: string }>();
+  if (!ids.length) return out;
+  const ms = await t.select({ id: matches.id, home: matches.homeTeamId, away: matches.awayTeamId, scheduledAt: matches.scheduledAt }).from(matches).where(and(eq(matches.organisationId, organisationId), inArray(matches.id, [...new Set(ids)])));
+  const teamIds = [...new Set(ms.flatMap((m) => [m.home, m.away]))];
+  const names = new Map((teamIds.length ? await t.select({ id: teams.id, name: teams.name }).from(teams).where(and(eq(teams.organisationId, organisationId), inArray(teams.id, teamIds))) : []).map((x) => [x.id, x.name]));
+  for (const m of ms) out.set(m.id, { label: `${names.get(m.home) ?? 'Home'} v ${names.get(m.away) ?? 'Away'}`, scheduledAt: m.scheduledAt.toISOString() });
+  return out;
+}
+
 export interface AirtimeReport {
   totals: { graphics: number; seconds: number };
   byTemplate: { key: string; count: number; seconds: number }[];
-  byMatch: { key: string; matchId: string; count: number; seconds: number }[];
+  /** key: "Home v Away" */
+  byMatch: { key: string; matchId: string; scheduledAt: string | null; count: number; seconds: number }[];
+  /** key: "Brand · creative" */
   bySponsorCreative: { key: string; count: number; seconds: number }[];
   bySource: { key: string; count: number; seconds: number }[];
 }
@@ -97,11 +110,20 @@ export async function airtimeReport(ctx: Ctx, q: { from?: string; to?: string; c
       return [...m.values()].sort((x, y) => y.seconds - x.seconds);
     };
     const real = rows.filter((r) => !r.isDemo);
+    const org = ctx.actor.organisationId;
+    const labels = await matchLabels(t, org, real.map((r) => r.a.matchId));
+    const creativeIds = [...new Set(real.map((r) => r.a.sponsorCreativeId).filter((x): x is string => !!x))];
+    const creativeNames = new Map(
+      (creativeIds.length
+        ? await t.select({ id: creatives.id, name: creatives.name, brand: brands.name }).from(creatives).innerJoin(creativeSets, eq(creativeSets.id, creatives.creativeSetId)).innerJoin(brands, eq(brands.id, creativeSets.brandId)).where(and(eq(creatives.organisationId, org), inArray(creatives.id, creativeIds)))
+        : []
+      ).map((c) => [c.id, `${c.brand} · ${c.name}`]),
+    );
     return {
       totals: { graphics: real.length, seconds: real.reduce((a, r) => a + seconds(r.a), 0) },
       byTemplate: group((r) => r.a.templateKey.replace('builtin:', '')),
-      byMatch: group((r) => r.a.matchId).map((g) => ({ ...g, matchId: g.key })),
-      bySponsorCreative: group((r) => r.a.sponsorCreativeId),
+      byMatch: group((r) => r.a.matchId).map((g) => ({ ...g, matchId: g.key, key: labels.get(g.key)?.label ?? 'Deleted match', scheduledAt: labels.get(g.key)?.scheduledAt ?? null })),
+      bySponsorCreative: group((r) => (r.a.sponsorCreativeId ? creativeNames.get(r.a.sponsorCreativeId) ?? 'Removed artwork' : null)),
       bySource: group((r) => r.a.source),
     };
   });

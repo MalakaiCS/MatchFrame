@@ -14,8 +14,11 @@ interface Share { id: string; resourceType: string; resourceId: string; publicId
 
 const TONE: Record<string, Tone> = { READY: 'healthy', COMPLETED: 'healthy', PROCESSING: 'primary', RUNNING: 'primary', QUEUED: 'neutral', STALE: 'warning', FAILED: 'offline', CANCELLED: 'neutral', PARTIAL: 'warning', RECORDING: 'live', NEEDS_ALIGNMENT: 'warning', WAITING_FOR_MEDIA: 'neutral', DELETED: 'offline' };
 const secs = (ms: number | null) => (ms ? `${Math.round(ms / 1000)}s` : '—');
+/** processing steps people never asked for by name (checking an upload, reading a match video, cutting a clip) */
+const INTERNAL_JOBS = ['asset_normalise', 'match_video_probe', 'clip_extract'];
 
-export function MediaLibrary({ matchId, tz }: { matchId?: string; tz: string }) {
+/** `streaming` false (graphics-only installations): no recordings or clips, so only exports (highlights packages) and share links. */
+export function MediaLibrary({ matchId, tz, streaming = true }: { matchId?: string; tz: string; streaming?: boolean }) {
   const q = matchId ? `?matchId=${matchId}` : '';
   const clips = useGet<Clip[]>(['clips', matchId], `clips${q}`, { refetchInterval: 4000 });
   const recs = useGet<Rec[]>(['recordings', matchId], `recordings${q}`, { refetchInterval: 8000 });
@@ -41,8 +44,8 @@ export function MediaLibrary({ matchId, tz }: { matchId?: string; tz: string }) 
   return (
     <div className="space-y-3">
       <ErrorNotice error={err} />
-      <Tabs defaultValue="clips">
-        <TabList className="mb-3"><Tab value="clips">Clips</Tab><Tab value="recordings">Recordings</Tab><Tab value="jobs">Exports</Tab><Tab value="shares">Share links</Tab></TabList>
+      <Tabs defaultValue={streaming ? 'clips' : 'jobs'}>
+        <TabList className="mb-3">{streaming ? <><Tab value="clips">Clips</Tab><Tab value="recordings">Recordings</Tab></> : null}<Tab value="jobs">{streaming ? 'Exports' : 'Highlights and exports'}</Tab><Tab value="shares">Share links</Tab></TabList>
         <TabPanel value="clips" className="space-y-3">
           {matchId && highlights.data?.some((h) => h.state !== 'READY') ? (
             <ul className="space-y-1 text-xs" aria-label="Highlight requests">
@@ -96,11 +99,11 @@ export function MediaLibrary({ matchId, tz }: { matchId?: string; tz: string }) 
         </TabPanel>
         <TabPanel value="jobs">
           <Table>
-            <thead><tr><th>Job</th><th>State</th><th>Progress</th><th>Created</th><th /></tr></thead>
+            <thead><tr><th>Export</th><th>State</th><th>Progress</th><th>Created</th><th /></tr></thead>
             <tbody>
-              {jobs.data?.filter((j) => j.kind !== 'asset_normalise').map((j) => (
+              {jobs.data?.filter((j) => !INTERNAL_JOBS.includes(j.kind)).map((j) => (
                 <tr key={j.id}>
-                  <td>{j.kind.replace(/_/g, ' ')}{j.params.aspect ? ` · ${j.params.aspect}` : ''}{j.params.title ? ` · ${j.params.title}` : ''}{j.error ? <div className="text-xs text-live">{j.error}</div> : null}</td>
+                  <td>{j.params.title ?? j.kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}<span className="text-xs text-muted">{j.params.title ? ` · ${j.kind.replace(/_/g, ' ')}` : ''}{j.params.aspect ? ` · ${j.params.aspect}` : ''}</span>{j.error ? <div className="text-xs text-live">{j.error}</div> : null}</td>
                   <td><StatusPill tone={TONE[j.state] ?? 'neutral'}>{j.state.toLowerCase()}</StatusPill>{j.attempts > 1 ? <span className="text-xs text-muted"> attempt {j.attempts}</span> : null}</td>
                   <td>{Math.round(j.progress * 100)}%</td>
                   <td className="text-xs">{fmtDate(j.createdAt, tz, { timeStyle: 'medium' })}</td>
@@ -111,6 +114,7 @@ export function MediaLibrary({ matchId, tz }: { matchId?: string; tz: string }) 
                   </td>
                 </tr>
               ))}
+              {jobs.data && !jobs.data.some((x) => !INTERNAL_JOBS.includes(x.kind)) ? <tr><td colSpan={5} className="py-6 text-center text-muted">Nothing exported yet. Highlights packages made on a match’s Media tab appear here.</td></tr> : null}
             </tbody>
           </Table>
         </TabPanel>

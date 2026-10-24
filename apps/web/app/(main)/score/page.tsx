@@ -2,7 +2,8 @@
 // The scorer's match list, in MatchFrame's console style: a search box and a competition picker, three tabs (now and
 // next, matches that were never played, results), and the matches by day, each as a ticker: the kick-off time or
 // the state on the left, the two teams in their colours with their scores, the competition, round and ground, and a
-// menu (the scorer, the line-ups, the match page). Producers get a button to add a match.
+// menu (the scorer, the line-ups, the match page). Producers get a button in the header to add a match (in the
+// header rather than floating over the list, so it never covers a score).
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import * as DM from '@radix-ui/react-dropdown-menu';
@@ -154,7 +155,7 @@ export default function ScoreList() {
   };
 
   return (
-    <div className="min-h-screen bg-bg pb-28 text-text">
+    <div className="min-h-screen bg-bg pb-[max(2rem,env(safe-area-inset-bottom))] text-text">
       <header className="border-b border-border bg-panel px-4 pt-4">
         <div className="flex items-center gap-3">
           <img src="/icon.svg" alt="" className="size-9 shrink-0 rounded-lg" />
@@ -162,6 +163,11 @@ export default function ScoreList() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">MatchFrame</p>
             <h1 className="truncate text-[22px] font-bold leading-tight">Scoring</h1>
           </div>
+          {full ? (
+            <Link href="/app/matches?new=1" aria-label="New match" className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[15px] font-bold text-bg active:opacity-90">
+              <Plus className="size-5" aria-hidden />Match
+            </Link>
+          ) : null}
           <DM.Root>
             <DM.Trigger aria-label="Account" className="grid size-11 place-items-center rounded-lg border border-border bg-elevated"><UserRound className="size-5" /></DM.Trigger>
             <DM.Portal>
@@ -186,7 +192,7 @@ export default function ScoreList() {
         <div role="tablist" aria-label="Matches" className="mt-3 flex gap-1">
           {TABS.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-              className={cx('flex min-h-12 flex-1 items-center justify-center gap-1.5 border-b-2 px-1 text-[14px] font-semibold', tab === t.id ? 'border-primary text-text' : 'border-transparent text-muted')}>
+              className={cx('flex min-h-12 flex-auto items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-[14px] font-semibold', tab === t.id ? 'border-primary text-text' : 'border-transparent text-muted')}>
               {t.label}{rows ? <span className={cx('rounded-full px-1.5 text-[11px] tabular', tab === t.id ? 'bg-primary text-bg' : 'bg-elevated text-muted')}>{byTab[t.id].length}</span> : null}
             </button>
           ))}
@@ -212,12 +218,6 @@ export default function ScoreList() {
           </section>
         ))}
       </main>
-
-      {full ? (
-        <Link href="/app/matches?new=1" aria-label="New match" className="fixed bottom-5 right-5 z-20 flex h-14 items-center gap-2 rounded-xl bg-primary px-5 text-[15px] font-bold text-bg shadow-lg active:opacity-90">
-          <Plus className="size-5" aria-hidden />Match
-        </Link>
-      ) : null}
     </div>
   );
 }

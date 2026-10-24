@@ -46,7 +46,7 @@ export function triggerText(t: Trigger, sport: Sport): string {
     case 'milestone':
       return `Every ${t.every} ${COUNTERS.find((c) => c.id === t.counter)?.label ?? t.counter}`;
     case 'manual':
-      return 'When run from the control room';
+      return 'When run from the desk';
   }
 }
 
@@ -95,7 +95,7 @@ export function TriggerDialog({ sport, trigger, id, onSave, onClose }: { sport: 
             <option value="event">When an event is recorded</option>
             <option value="match_clock">At a minute on the match clock</option>
             {sport === 'basketball' ? <option value="milestone">Every N points (or goals, cards)</option> : <option value="milestone">Every N goals (or cards, substitutions)</option>}
-            <option value="manual">Only when I press Run in the control room</option>
+            <option value="manual">Only when I press Run on the desk</option>
           </NativeSelect>
         </Field>
         {d.kind === 'phase' ? (
@@ -135,7 +135,7 @@ export function TriggerDialog({ sport, trigger, id, onSave, onClose }: { sport: 
             <Field label="Of" htmlFor="mc"><NativeSelect id="mc" value={d.counter} onChange={(e) => setD({ ...d, counter: e.target.value })}>{COUNTERS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</NativeSelect></Field>
           </div>
         ) : null}
-        {d.kind === 'manual' ? <p className="text-sm text-muted">The control room shows a "Run" button for this playlist. Nothing starts it automatically.</p> : null}
+        {d.kind === 'manual' ? <p className="text-sm text-muted">The desk shows a "Run" button for this playlist. Nothing starts it automatically.</p> : null}
       </div>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 // Competitions, seasons, clubs, teams, players, rosters, venues. Entities with history are archived, never cascaded.
-import { and, asc, count, eq, ilike, inArray, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, eq, gte, ilike, inArray, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import {
   clubs,
   competitions,
@@ -204,10 +204,17 @@ export async function listCompetitions(ctx: Ctx, q: { search?: string; status?: 
     const seasonCounts = await t.select({ id: seasons.competitionId, n: count() }).from(seasons).where(inArray(seasons.competitionId, ids)).groupBy(seasons.competitionId);
     const matchCounts = await t.select({ id: matches.competitionId, n: count() }).from(matches).where(inArray(matches.competitionId, ids)).groupBy(matches.competitionId);
     const current = await t.select().from(seasons).where(and(inArray(seasons.competitionId, ids), eq(seasons.status, 'active')));
+    // the next fixture of each, for the list ("Next match Sat 26 Oct")
+    const next = await t
+      .select({ id: matches.competitionId, at: sql<Date>`min(${matches.scheduledAt})`.mapWith(matches.scheduledAt) })
+      .from(matches)
+      .where(and(eq(matches.organisationId, ctx.actor.organisationId), inArray(matches.competitionId, ids), eq(matches.status, 'scheduled'), gte(matches.scheduledAt, new Date())))
+      .groupBy(matches.competitionId);
     return rows.map((r) => ({
       ...r,
       seasonCount: seasonCounts.find((x) => x.id === r.id)?.n ?? 0,
       matchCount: matchCounts.find((x) => x.id === r.id)?.n ?? 0,
+      nextMatchAt: next.find((x) => x.id === r.id)?.at ?? null,
       currentSeason: current.filter((s) => s.competitionId === r.id).sort((a, b) => String(b.startsOn).localeCompare(String(a.startsOn)))[0] ?? null,
     }));
   });

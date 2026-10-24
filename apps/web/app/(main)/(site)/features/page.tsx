@@ -16,7 +16,7 @@ const EXTRA: Capability['key'][] = ['streaming', 'highlights'];
 const FALLBACK: Partial<Record<Capability['key'], Shot>> = { streaming: SHOTS.bug, highlights: SHOTS.goal };
 
 const MORE = [
-  ['Producer board', 'Every live match and today’s fixtures on one screen: score, scorer connection, what each output shows and cues waiting for approval.'],
+  ['Live page', 'Every live match and today’s fixtures on one screen: score, scorer connection, what each output shows and cues waiting for approval.'],
   ['Commentator view', 'A large-type, read-only page for the commentary position: line-ups, key events, statistics, head to head and the table.'],
   ['Public match centre', 'A link for fans with the live score, events, line-ups and statistics, plus a JSON feed for club websites. Switch it off at any time.'],
   ['Run sheet and activity', 'A shared, timed run sheet ticked off live, and one plain-language timeline of what happened on the match and who did it.'],

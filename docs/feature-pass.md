@@ -11,7 +11,7 @@ visual and unit suites behind each group are listed in `ACCEPTANCE_RESULTS.md`.
 | # | Item | Status | What shipped |
 | --- | --- | --- | --- |
 | 1 | League table graphic | Done | Standings computed from completed results (`packages/domain/src/standings.ts`, rules per sport, byes, percentage, win %); *League table* full-frame graphic in all looks; Table tab on the competition page. |
-| 2 | Fixtures and results board | Done | *Fixtures and results* graphic by round; Results & fixtures tab; season fixtures API. |
+| 2 | Fixtures and results board | Done | *Fixtures and results* graphic by round; Fixtures and results tab (by round); season fixtures API. |
 | 3 | Formation graphic | Done | Formation field on the line-up (phone and desktop editors); *Formation* graphic draws the starters by position. |
 | 4 | Full-time match summary | Done | *Match summary* graphic: scorers with minutes, cards, substitutions; scorers line on the break/final board. |
 | 5 | Head-to-head and form | Done | Meetings and last-five form from stored results; *Head to head and form* graphic; commentator view. |
@@ -30,7 +30,7 @@ visual and unit suites behind each group are listed in `ACCEPTANCE_RESULTS.md`.
 | 13 | Narrower scorer roles | Done | `match.stats` (statistics only, no lease, server-enforced event group) and `match.view`; badges and reduced controls on the phone. |
 | 14 | More sports | Done | Netball, rugby league, AFL and hockey adapters (rules, periods, events, display, starter automation plans), with unit tests. |
 | 15 | Basketball depth | Done | Team fouls and bonus, timeouts remaining, possession, foul types, player fouls and foul-outs in the picker, rebounds and assists. |
-| 16 | Producer board | Done | `/app/board`: live and today's matches with scorer, OBS state, mode, on-air layers, approvals waiting, links. |
+| 16 | Producer board | Done | `/app/live` (Live, which replaced the Producer board and Control rooms; the old addresses redirect): live and today's matches with scorer, OBS state, mode, on-air layers, approvals waiting, links. |
 | 17 | Stream Deck and hotkey API | Done | `POST /api/v1/hotkeys/:overlay/:action` with API keys; the OBS link tab lists every button as a request. |
 | 18 | OBS scene collection download | Done | `GET /api/v1/matches/:id/obs-scene-collection.json`: a scene per output with the sized browser source. |
 | 19 | Social exports | Partial | Transparent PNG and short WebM of the preview or on-air graphics at native size, rendered in the browser. The WebM is recorded at the browser's frame rate (not broadcast quality); MP4 is not produced. |
@@ -57,7 +57,7 @@ visual and unit suites behind each group are listed in `ACCEPTANCE_RESULTS.md`.
 | --- | --- | --- | --- |
 | 31 | Around-the-grounds ticker | Done | The ticker carries the other live scores of the same competition and round. |
 | 32 | Moment sponsorship | Done | "Presented by" on goal, card and substitution graphics; counted in sponsor delivery. |
-| 33 | Stinger wipe | Done | *Stinger wipe* full-frame graphic with sponsor, from the control room or a hotkey. |
+| 33 | Stinger wipe | Done | *Stinger wipe* full-frame graphic with sponsor, from the desk or a hotkey. |
 | 34 | Audio stings | Removed (2026-10-24) | Built as a look option (short WebAudio stings on goals and cards from the browser source), then taken out on request: graphics are silent. Looks saved with the option keep working; the setting is ignored. |
 | 35 | Player headshots | Partial | Photos on goal cards, line-ups and player cards from the asset library; the top-scorers board shows photos only for players in the match line-up. |
 | 36 | Scorebug variants and position | Partial | Box or strip, left/centre/right per look; the club look keeps its pill shape for the strip variant. |
@@ -85,9 +85,9 @@ visual and unit suites behind each group are listed in `ACCEPTANCE_RESULTS.md`.
 | # | Item | Status | What shipped |
 | --- | --- | --- | --- |
 | 50 | Conditional automation | Done | Condition guards (score gap, total score, statistic, minute, quiet time) edited in plain words; skipped runs say why. |
-| 51 | Approval mode | Done | Per-playlist "Ask the producer before sending"; cues wait in the control room with Send now / Skip. |
-| 52 | Presence and action locks | Done | Who else is in the control room; advisory layer locks while preparing a graphic; the command route refuses a clash (409). |
-| 53 | Shared run sheet | Done | Timed lines and notes per match, ticked live; on the match page, in the control room and the commentator view. |
+| 51 | Approval mode | Done | Per-playlist "Ask the producer before sending"; cues wait on the desk with Send now / Skip. |
+| 52 | Presence and action locks | Done | Who else is on the desk; advisory layer locks while preparing a graphic; the command route refuses a clash (409). |
+| 53 | Shared run sheet | Done | Timed lines and notes per match, ticked live; on the match page, on the desk and in the commentator view. |
 | 54 | Accessibility pass | Partial | Skip link, main landmark, labelled icon buttons, reduced-motion and prefers-contrast support, keyboard-reachable dialogs. No external audit was run. |
 
 ## Platform, integration and business (55–60)

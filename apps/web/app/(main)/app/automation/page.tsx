@@ -1,19 +1,21 @@
 'use client';
-// Automation plans: playlists that run graphics from the scorer's phases and events. Edited in plain language
-// (when it runs, which steps, how long); the JSON view stays for power users. Rehearsal plays the plan through
-// the real renderer against a synthetic match.
+// Automation plans: playlists that run graphics from the scorer's phases and events. A plan opens on a plain summary
+// of what it does; each playlist shows when it runs and its steps, with priority, repeats, conditions and approval
+// folded under Fine-tune. The JSON view is for owners and admins. Rehearsal plays the plan through the real
+// renderer against a synthetic match.
 import { SportOptions } from '@/components/sport-options';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Pause, Pencil, Play, Plus, Trash2, Upload } from 'lucide-react';
-import { STARTER_PLANS, gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pause, Pencil, Play, Plus, RotateCcw, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
+import { SPORTS, SPORT_LABELS, STARTER_PLANS, gamePlanSchema, type GamePlan, type Guard, type PlanItem, type Playlist, type Trigger } from '@bs/domain';
 import { LOOKS, type ThemeKey } from '@bs/graphics';
 import { Button, Card, Dialog, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Tab, TabList, TabPanel, Table, Tabs, Textarea, cx, toast } from '@bs/ui';
 import { ApiError, post, put } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
-import { isFull, useMe } from '@/lib/session';
+import { isAdmin, isFull, useMe } from '@/lib/session';
 import { PLAYLIST_KINDS, PRIORITIES } from '@/lib/labels';
 import { TriggerDialog, triggerText, type Sport } from '@/components/automation/trigger-editor';
-import { StepDialog, stepText } from '@/components/automation/step-editor';
+import { StepDialog, stepParts } from '@/components/automation/step-editor';
+import { PlanSummary, playlistExtras } from '@/components/automation/plan-summary';
 import { GuardDialog, guardText } from '@/components/automation/guard-editor';
 import { RehearsalPreview, type RehearsalCue } from '@/components/automation/rehearsal-preview';
 
@@ -43,9 +45,12 @@ export default function AutomationPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', sport: 'football', fromStarter: true });
   const create = useAction(() => post<{ id: string }>('game-plans', form), [['game-plans']], { success: 'Plan created' });
+  // listed by sport, in the usual sport order; the first one opens
+  const ordered = SPORTS.flatMap((s) => (plans.data ?? []).filter((p) => p.sport === s));
+  const first = ordered[0]?.id;
   useEffect(() => {
-    if (!sel && plans.data?.[0]) setSel(plans.data[0].id);
-  }, [plans.data, sel]);
+    if (!sel && first) setSel(first);
+  }, [first, sel]);
 
   return (
     <>
@@ -53,20 +58,8 @@ export default function AutomationPage() {
       <ErrorNotice error={plans.error} />
       {plans.isLoading ? <Spinner /> : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
-          <Card className="p-2">
-            <ul aria-label="Automation plans">
-              {plans.data?.map((p) => (
-                <li key={p.id}>
-                  <button type="button" onClick={() => setSel(p.id)} className={cx('w-full rounded px-2 py-2 text-left text-sm', sel === p.id ? 'bg-elevated' : 'hover:bg-elevated/60')} aria-current={sel === p.id}>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-muted">{p.sport} · {p.currentVersion ? `v${p.currentVersion} published` : 'draft only'}</div>
-                  </button>
-                </li>
-              ))}
-              {!plans.data?.length ? <li className="p-2 text-sm text-muted">No plans yet. Create one from the starter plan: it already follows a normal match.</li> : null}
-            </ul>
-          </Card>
-          {sel ? <PlanEditor key={sel} id={sel} canEdit={full} tz={tz} /> : null}
+          <PlanList plans={ordered} sel={sel} onSelect={setSel} />
+          {sel ? <PlanEditor key={sel} id={sel} canEdit={full} admin={isAdmin(me.data?.role)} tz={tz} /> : null}
         </div>
       )}
       <Dialog open={open} onOpenChange={setOpen} title="New automation plan" footer={<Button variant="primary" disabled={!form.name || create.isPending} onClick={async () => { const r = await create.mutateAsync(undefined as never); setSel(r.id); setOpen(false); }}>Create</Button>}>
@@ -81,6 +74,47 @@ export default function AutomationPage() {
   );
 }
 
+const LIST_CAP = 8;
+
+/** The plans by sport, with a search; a long sport shows its first few until "Show all". */
+function PlanList({ plans, sel, onSelect }: { plans: PlanSummary[]; sel: string | null; onSelect: (id: string) => void }) {
+  const [q, setQ] = useState('');
+  const [all, setAll] = useState<Record<string, boolean>>({});
+  const t = q.trim().toLowerCase();
+  const shown = plans.filter((p) => !t || p.name.toLowerCase().includes(t));
+  const groups = SPORTS.map((s) => ({ sport: s, items: shown.filter((p) => p.sport === s) })).filter((g) => g.items.length);
+  return (
+    <Card className="self-start p-2 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+      {plans.length > 4 ? <Input aria-label="Search plans" placeholder="Search plans" className="mb-2" value={q} onChange={(e) => setQ(e.target.value)} /> : null}
+      <nav aria-label="Automation plans">
+        {groups.map((g) => {
+          const capped = !t && !all[g.sport] && g.items.length > LIST_CAP;
+          const list = capped ? g.items.filter((p, i) => i < LIST_CAP || p.id === sel) : g.items;
+          return (
+            <details key={g.sport} open className="group/sport mb-1">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded px-2 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted hover:text-text [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="size-3.5 transition-transform group-open/sport:rotate-90" aria-hidden />{SPORT_LABELS[g.sport]}<span className="ml-auto font-normal normal-case tracking-normal">{g.items.length}</span>
+              </summary>
+              <ul aria-label={`${SPORT_LABELS[g.sport]} plans`}>
+                {list.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" onClick={() => onSelect(p.id)} className={cx('w-full rounded px-2 py-2 text-left text-sm', sel === p.id ? 'bg-elevated' : 'hover:bg-elevated/60')} aria-current={sel === p.id}>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-muted">{p.currentVersion ? `v${p.currentVersion} published` : 'draft only'}</div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {capped ? <button type="button" onClick={() => setAll({ ...all, [g.sport]: true })} className="px-2 py-1 text-xs font-medium text-primary hover:underline">Show all {g.items.length}</button> : null}
+            </details>
+          );
+        })}
+      </nav>
+      {!plans.length ? <p className="p-2 text-sm text-muted">No plans yet. Create one from the starter plan: it already follows a normal match.</p> : t && !shown.length ? <p className="p-2 text-sm text-muted">No plan called “{q.trim()}”.</p> : null}
+    </Card>
+  );
+}
+
 function issueText(i: Issue, plan: GamePlan): string {
   const m = /playlists\[(\d+)\](?:\.items\[(\d+)\])?(?:\.triggers\.(\w+))?/.exec(i.path);
   if (!m) return `${i.path === '(json)' ? 'JSON' : i.path}: ${i.message}`;
@@ -89,7 +123,7 @@ function issueText(i: Issue, plan: GamePlan): string {
   return `${where}: ${i.message}`;
 }
 
-function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: string }) {
+function PlanEditor({ id, canEdit, admin, tz }: { id: string; canEdit: boolean; admin: boolean; tz: string }) {
   const plan = useGet<PlanDetail>(['game-plan', id], `game-plans/${id}`);
   const [draft, setDraft] = useState<GamePlan | null>(null);
   const [json, setJson] = useState('');
@@ -100,6 +134,7 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
   const [editStep, setEditStep] = useState<{ pi: number; ii: number | null } | null>(null);
   const [editGuard, setEditGuard] = useState<{ pi: number; gi: number | null } | null>(null);
   const [newPlaylist, setNewPlaylist] = useState<{ name: string; kind: Playlist['kind'] } | null>(null);
+  const [tab, setTab] = useState('playlists');
   useEffect(() => {
     if (plan.data && !draft) {
       const d = asPlan(plan.data.draft);
@@ -147,16 +182,22 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
     if (j < 0 || j >= items.length) return;
     [items[ii], items[j]] = [items[j]!, items[ii]!];
   });
+  const openPlaylist = (pid: string) => {
+    setTab('playlists');
+    requestAnimationFrame(() => document.getElementById(`playlist-${pid}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const resetToStarter = () => {
+    if (confirm('Replace this draft with the latest starter flow? Your playlists in the draft are replaced; published versions are not touched until you publish.')) update(() => structuredClone(STARTER_PLANS[sport]!));
+  };
 
   return (
     <div className="min-w-0 space-y-4">
       <Card className="flex flex-wrap items-center gap-3 p-3">
         <h2 className="text-lg font-semibold">{plan.data.name}</h2>
-        <StatusPill tone="primary">{sport}</StatusPill>
+        <StatusPill tone="primary">{SPORT_LABELS[sport] ?? sport}</StatusPill>
         <span className="text-xs text-muted">{plan.data.currentVersion ? `v${plan.data.currentVersion} published ${fmtDate(plan.data.versions[0]?.publishedAt, tz)}` : 'not yet published'}</span>
         <div className="ml-auto flex items-center gap-2">
           {saved ? <span role="status" className="text-xs text-muted">{saved}</span> : null}
-          {canEdit && STARTER_PLANS[sport] ? <Button variant="ghost" onClick={() => { if (confirm('Replace this draft with the latest starter flow? Your playlists in the draft are replaced; published versions are not touched until you publish.')) update(() => structuredClone(STARTER_PLANS[sport]!)); }}>Use the latest starter flow</Button> : null}
           {canEdit ? <Button variant="primary" disabled={!!errors.length} onClick={() => void publish()}><Upload className="size-4" /> Publish</Button> : null}
         </div>
       </Card>
@@ -167,25 +208,22 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
           <ul className="space-y-0.5 text-xs">{issues.map((i, k) => <li key={k} className={i.severity === 'error' ? 'text-live' : 'text-warning'}>{issueText(i, draft)}</li>)}</ul>
         </Card>
       ) : null}
-      <Tabs defaultValue="playlists">
-        <TabList className="mb-3"><Tab value="playlists">Playlists</Tab><Tab value="rehearse">Rehearse</Tab><Tab value="advanced">Advanced (JSON)</Tab></TabList>
+      <PlanSummary plan={draft} sport={sport} onOpen={openPlaylist} />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabList className="mb-3"><Tab value="playlists">Playlists</Tab><Tab value="rehearse">Rehearse</Tab>{admin ? <Tab value="advanced">Advanced (JSON)</Tab> : null}</TabList>
         <TabPanel value="playlists" className="space-y-3">
-          <Card className="flex flex-wrap items-center gap-4 p-3 text-sm">
+          <Card className="p-3 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" disabled={!canEdit} checked={draft.defaultScorebug} onChange={(e) => update((d) => { d.defaultScorebug = e.target.checked; })} /> Show the scorebug during play by default</label>
-            <label className="flex items-center gap-2">Ignore events older than <Input type="number" className="w-20" disabled={!canEdit} value={draft.freshnessMs / 1000} min={1} max={120} onChange={(e) => update((d) => { d.freshnessMs = Math.max(1, Math.min(120, Number(e.target.value) || 10)) * 1000; })} /> s <InfoTip text="A goal typed in late (for example after a connection drop) updates the score but never replays its celebration graphic." /></label>
+            <FineTune summary={`late events: ignored after ${draft.freshnessMs / 1000} s`}>
+              <label className="flex items-center gap-2">Ignore events older than <Input type="number" className="w-20" disabled={!canEdit} value={draft.freshnessMs / 1000} min={1} max={120} onChange={(e) => update((d) => { d.freshnessMs = Math.max(1, Math.min(120, Number(e.target.value) || 10)) * 1000; })} /> s <InfoTip text="A goal typed in late (for example after a connection drop) updates the score but never replays its celebration graphic." /></label>
+            </FineTune>
           </Card>
           {draft.playlists.map((pl, pi) => (
-            <Card key={pl.id} className="p-3">
+            <Card key={pl.id} id={`playlist-${pl.id}`} className="scroll-mt-20 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Input aria-label="Playlist name" className="w-60" disabled={!canEdit} value={pl.name} onChange={(e) => update((d) => { d.playlists[pi]!.name = e.target.value; })} />
                 <NativeSelect aria-label="Part of the match" className="w-auto" disabled={!canEdit} value={pl.kind} onChange={(e) => update((d) => { d.playlists[pi]!.kind = e.target.value as Playlist['kind']; })}>{Object.entries(PLAYLIST_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect>
-                <label className="ml-auto flex items-center gap-1 text-xs">Priority
-                  <NativeSelect aria-label="Priority" className="w-auto" disabled={!canEdit} value={pl.priority} onChange={(e) => update((d) => { d.playlists[pi]!.priority = Number(e.target.value); })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} · {PRIORITIES[p]}</option>)}</NativeSelect>
-                </label>
-                <label className="flex items-center gap-1 text-xs"><input type="checkbox" disabled={!canEdit} checked={pl.repeat.mode === 'loop'} onChange={(e) => update((d) => { d.playlists[pi]!.repeat = { ...pl.repeat, mode: e.target.checked ? 'loop' : 'once' }; })} /> Repeat</label>
-                {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1 text-xs">gap <Input type="number" className="w-16" min={0} disabled={!canEdit} value={pl.repeat.gapMs / 1000} onChange={(e) => update((d) => { d.playlists[pi]!.repeat.gapMs = Math.max(0, Number(e.target.value) || 0) * 1000; })} /> s</label> : null}
-                {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1 text-xs" title="Wait this long before the first pass; the repeats follow on without it">first after <Input type="number" aria-label="First pass after (seconds)" className="w-16" min={0} step={0.1} disabled={!canEdit} value={(pl.startDelayMs ?? 0) / 1000} onChange={(e) => update((d) => { const ms = Math.round(Math.max(0, Number(e.target.value) || 0) * 1000); if (ms) d.playlists[pi]!.startDelayMs = ms; else delete d.playlists[pi]!.startDelayMs; })} /> s</label> : null}
-                {canEdit ? <Button size="sm" variant="ghost" aria-label={`Remove playlist ${pl.name}`} onClick={() => confirm(`Remove “${pl.name}”?`) && update((d) => { d.playlists.splice(pi, 1); })}><Trash2 className="size-4" /></Button> : null}
+                {canEdit ? <Button size="sm" variant="ghost" className="ml-auto" aria-label={`Remove playlist ${pl.name}`} onClick={() => confirm(`Remove “${pl.name}”?`) && update((d) => { d.playlists.splice(pi, 1); })}><Trash2 className="size-4" /></Button> : null}
               </div>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[18rem_minmax(0,1fr)]">
                 <div>
@@ -203,54 +241,76 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
                 <div>
                   <h4 className="mb-1 text-xs font-medium text-muted">Steps</h4>
                   <ol className="space-y-1 text-sm">
-                    {pl.items.map((it, ii) => (
-                      <li key={it.id} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
-                        <span className="w-5 text-xs text-muted">{ii + 1}.</span>
-                        <span className="flex-1">{stepText(it)}</span>
-                        {canEdit ? <>
-                          <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move up" disabled={ii === 0} onClick={() => move(pi, ii, -1)}><ArrowUp className="size-3.5" /></button>
-                          <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move down" disabled={ii === pl.items.length - 1} onClick={() => move(pi, ii, 1)}><ArrowDown className="size-3.5" /></button>
-                          <button className="text-muted hover:text-text" aria-label="Edit step" onClick={() => setEditStep({ pi, ii })}><Pencil className="size-3.5" /></button>
-                          <button className="text-muted hover:text-live" aria-label="Remove step" onClick={() => update((d) => { d.playlists[pi]!.items.splice(ii, 1); })}><Trash2 className="size-3.5" /></button>
-                        </> : null}
-                      </li>
-                    ))}
+                    {pl.items.map((it, ii) => {
+                      const step = stepParts(it);
+                      return (
+                        <li key={it.id} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
+                          <span className="w-5 text-xs text-muted">{ii + 1}.</span>
+                          <span className="flex-1">{step.what} <span className="text-xs text-muted">· {step.timing}</span></span>
+                          {canEdit ? <>
+                            <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move up" disabled={ii === 0} onClick={() => move(pi, ii, -1)}><ArrowUp className="size-3.5" /></button>
+                            <button className="text-muted hover:text-text disabled:opacity-30" aria-label="Move down" disabled={ii === pl.items.length - 1} onClick={() => move(pi, ii, 1)}><ArrowDown className="size-3.5" /></button>
+                            <button className="text-muted hover:text-text" aria-label="Edit step" onClick={() => setEditStep({ pi, ii })}><Pencil className="size-3.5" /></button>
+                            <button className="text-muted hover:text-live" aria-label="Remove step" onClick={() => update((d) => { d.playlists[pi]!.items.splice(ii, 1); })}><Trash2 className="size-3.5" /></button>
+                          </> : null}
+                        </li>
+                      );
+                    })}
                     {!pl.items.length ? <li className="text-xs text-muted">No steps yet.</li> : null}
                   </ol>
                   {canEdit ? <Button size="sm" variant="ghost" className="mt-1" onClick={() => setEditStep({ pi, ii: null })}><Plus className="size-3.5" /> Add step</Button> : null}
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-medium text-muted">Only when</span>
-                {pl.guards.map((g, gi) => (
-                  <span key={gi} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
-                    {guardText(g, sport)}
-                    {canEdit ? <><button className="text-muted hover:text-text" aria-label="Edit condition" onClick={() => setEditGuard({ pi, gi })}><Pencil className="size-3" /></button><button className="text-muted hover:text-live" aria-label="Remove condition" onClick={() => update((d) => { d.playlists[pi]!.guards.splice(gi, 1); })}><Trash2 className="size-3" /></button></> : null}
-                  </span>
-                ))}
-                {!pl.guards.length ? <span className="text-muted">always (no conditions)</span> : null}
-                {canEdit ? <Button size="sm" variant="ghost" onClick={() => setEditGuard({ pi, gi: null })}><Plus className="size-3.5" /> Add condition</Button> : null}
-                {pl.triggers.every((t) => t.type === 'phase') ? (
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" disabled={!canEdit} checked={!!pl.continueOnPhaseStep} onChange={(e) => update((d) => { d.playlists[pi]!.continueOnPhaseStep = e.target.checked; })} /> Keep going when the scorer presses the next step
-                    <InfoTip text="Normally a phase playlist stops when the scorer moves on (for example from Players entering to About to start). With this on it finishes its steps, and still stops at kick-off, at a break or at full time." />
+              <FineTune summary={[pl.priority !== 2 ? `priority: ${PRIORITIES[pl.priority]?.toLowerCase()}` : null, ...playlistExtras(pl), pl.continueOnPhaseStep ? 'keeps going through the next step' : null].filter(Boolean).join(' · ') || 'priority, repeats, conditions and approval'}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-1">Priority
+                    <NativeSelect aria-label="Priority" className="w-auto" disabled={!canEdit} value={pl.priority} onChange={(e) => update((d) => { d.playlists[pi]!.priority = Number(e.target.value); })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} · {PRIORITIES[p]}</option>)}</NativeSelect>
                   </label>
-                ) : null}
-                <label className="ml-auto flex items-center gap-1">
-                  <input type="checkbox" disabled={!canEdit} checked={pl.approval === 'manual'} onChange={(e) => update((d) => { d.playlists[pi]!.approval = e.target.checked ? 'manual' : 'auto'; })} /> Ask the producer before sending
-                  <InfoTip text="Graphics from this playlist wait in the control room until someone presses Send now. Goals and other urgent graphics usually stay automatic." />
-                </label>
-              </div>
+                  <label className="flex items-center gap-1"><input type="checkbox" disabled={!canEdit} checked={pl.repeat.mode === 'loop'} onChange={(e) => update((d) => { d.playlists[pi]!.repeat = { ...pl.repeat, mode: e.target.checked ? 'loop' : 'once' }; })} /> Repeat</label>
+                  {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1">gap <Input type="number" className="w-16" min={0} disabled={!canEdit} value={pl.repeat.gapMs / 1000} onChange={(e) => update((d) => { d.playlists[pi]!.repeat.gapMs = Math.max(0, Number(e.target.value) || 0) * 1000; })} /> s</label> : null}
+                  {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1" title="Wait this long before the first pass; the repeats follow on without it">first after <Input type="number" aria-label="First pass after (seconds)" className="w-16" min={0} step={0.1} disabled={!canEdit} value={(pl.startDelayMs ?? 0) / 1000} onChange={(e) => update((d) => { const ms = Math.round(Math.max(0, Number(e.target.value) || 0) * 1000); if (ms) d.playlists[pi]!.startDelayMs = ms; else delete d.playlists[pi]!.startDelayMs; })} /> s</label> : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-muted">Only when</span>
+                  {pl.guards.map((g, gi) => (
+                    <span key={gi} className="flex items-center gap-1 rounded bg-elevated px-2 py-1">
+                      {guardText(g, sport)}
+                      {canEdit ? <><button className="text-muted hover:text-text" aria-label="Edit condition" onClick={() => setEditGuard({ pi, gi })}><Pencil className="size-3" /></button><button className="text-muted hover:text-live" aria-label="Remove condition" onClick={() => update((d) => { d.playlists[pi]!.guards.splice(gi, 1); })}><Trash2 className="size-3" /></button></> : null}
+                    </span>
+                  ))}
+                  {!pl.guards.length ? <span className="text-muted">always (no conditions)</span> : null}
+                  {canEdit ? <Button size="sm" variant="ghost" onClick={() => setEditGuard({ pi, gi: null })}><Plus className="size-3.5" /> Add condition</Button> : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {pl.triggers.every((t) => t.type === 'phase') ? (
+                    <label className="flex items-center gap-1">
+                      <input type="checkbox" disabled={!canEdit} checked={!!pl.continueOnPhaseStep} onChange={(e) => update((d) => { d.playlists[pi]!.continueOnPhaseStep = e.target.checked; })} /> Keep going when the scorer presses the next step
+                      <InfoTip text="Normally a phase playlist stops when the scorer moves on (for example from Players entering to About to start). With this on it finishes its steps, and still stops at kick-off, at a break or at full time." />
+                    </label>
+                  ) : null}
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" disabled={!canEdit} checked={pl.approval === 'manual'} onChange={(e) => update((d) => { d.playlists[pi]!.approval = e.target.checked ? 'manual' : 'auto'; })} /> Ask the producer before sending
+                    <InfoTip text="Graphics from this playlist wait on the desk until someone presses Send now. Goals and other urgent graphics usually stay automatic." />
+                  </label>
+                </div>
+              </FineTune>
             </Card>
           ))}
-          {canEdit ? <Button onClick={() => setNewPlaylist({ name: '', kind: 'in_play' })}><Plus className="size-4" /> Add playlist</Button> : null}
+          {canEdit ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => setNewPlaylist({ name: '', kind: 'in_play' })}><Plus className="size-4" /> Add playlist</Button>
+              {STARTER_PLANS[sport] ? <Button variant="ghost" className="ml-auto" onClick={resetToStarter}><RotateCcw className="size-4" /> Reset to the starter flow</Button> : null}
+            </div>
+          ) : null}
           <p className="text-xs text-muted">Playlists on the same layer take turns by priority: a goal (priority 1) interrupts a sponsor loop (priority 3). Changes save as a draft; matches use the published version you choose for them.</p>
         </TabPanel>
         <TabPanel value="rehearse"><RehearsalView id={id} sport={sport} names={Object.fromEntries(draft.playlists.map((p) => [p.id, p.name]))} /></TabPanel>
-        <TabPanel value="advanced" className="space-y-2">
-          <Textarea aria-label="Plan JSON" className="h-[28rem] font-mono text-xs" disabled={!canEdit} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} />
-          {canEdit ? <Button onClick={() => { try { const d = asPlan(JSON.parse(json)); setDraft(d); void save(d); } catch { setIssues([{ path: '(json)', message: 'Not valid JSON', severity: 'error' }]); } }}>Save draft</Button> : null}
-        </TabPanel>
+        {admin ? (
+          <TabPanel value="advanced" className="space-y-2">
+            <Textarea aria-label="Plan JSON" className="h-[28rem] font-mono text-xs" disabled={!canEdit} value={json} onChange={(e) => setJson(e.target.value)} spellCheck={false} />
+            {canEdit ? <Button onClick={() => { try { const d = asPlan(JSON.parse(json)); setDraft(d); void save(d); } catch { setIssues([{ path: '(json)', message: 'Not valid JSON', severity: 'error' }]); } }}>Save draft</Button> : null}
+          </TabPanel>
+        ) : null}
       </Tabs>
 
       {editTrigger ? (
@@ -289,6 +349,21 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
         </Dialog>
       ) : null}
     </div>
+  );
+}
+
+/** Settings most plans never change, folded away; the summary line says what is set. */
+function FineTune({ summary, children }: { summary: string; children: React.ReactNode }) {
+  return (
+    <details className="group/fine mt-3 rounded-md border border-border">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs [&::-webkit-details-marker]:hidden">
+        <SlidersHorizontal className="size-3.5 shrink-0 text-muted" aria-hidden />
+        <span className="font-medium">Fine-tune</span>
+        <span className="min-w-0 truncate text-muted">· {summary}</span>
+        <ChevronDown className="ml-auto size-3.5 shrink-0 text-muted transition-transform group-open/fine:rotate-180" aria-hidden />
+      </summary>
+      <div className="grid gap-3 border-t border-border px-3 py-3 text-xs">{children}</div>
+    </details>
   );
 }
 

@@ -305,7 +305,8 @@ export function CheckRow({ done, label, detail, action }: { done: boolean; label
         {done ? <CheckCircle2 className="size-4" /> : <CircleDot className="size-3" />}
       </span>
       <span className="sr-only">{done ? 'Done:' : 'To do:'}</span>
-      <div className="min-w-0 flex-1">
+      {/* at least 14rem for the words, so on a phone the action wraps under them instead of squeezing them */}
+      <div className="min-w-[min(100%,14rem)] flex-1">
         <div className={cx('text-sm', done ? 'text-text' : 'font-medium')}>{label}</div>
         {detail ? <div className="text-xs text-muted">{detail}</div> : null}
       </div>

@@ -26,6 +26,7 @@ import { audit } from './audit';
 import { invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { signedAssetUrl, type RendererScope } from './overlays';
+import { matchLabels } from './airtime';
 
 export const PLACEMENTS = ['scorebug_logo', 'lower_third_banner', 'event_partner', 'detached_logo', 'full_frame_image', 'full_frame_video', 'clip_intro', 'clip_outro'] as const;
 
@@ -319,13 +320,15 @@ export async function sponsorReport(ctx: Ctx, query: z.input<typeof reportQuery>
     if (q.from) decConds.push(gte(sponsorDecisions.createdAt, new Date(q.from)));
     if (q.to) decConds.push(lte(sponsorDecisions.createdAt, new Date(q.to)));
     const decisions = await t.select().from(sponsorDecisions).where(and(...decConds));
+    const labels = await matchLabels(t, org, rows.map((r) => r.m.id));
     const occurrences = rows.map((r) => {
       const end = (r.e.closedAt ?? r.e.lastConfirmedAt).getTime();
       const seconds = Math.max(0, (end - r.e.firstVisibleAt.getTime()) / 1000);
       return {
         exposureId: r.e.id,
         matchId: r.m.id,
-        matchLabel: `${(r.m as { externalId?: string | null }).externalId ?? ''}`.trim() || r.m.id.slice(0, 8),
+        matchLabel: labels.get(r.m.id)?.label ?? r.m.id.slice(0, 8),
+        matchScheduledAt: r.m.scheduledAt.toISOString(),
         output: r.o.name,
         overlayId: r.o.id,
         brand: r.b.name,
@@ -342,16 +345,20 @@ export async function sponsorReport(ctx: Ctx, query: z.input<typeof reportQuery>
       };
     });
     const by = <K extends string>(key: (o: (typeof occurrences)[number]) => K) => {
-      const m = new Map<K, { occurrences: number; seconds: number }>();
+      const m = new Map<K, { occurrences: number; seconds: number; first: (typeof occurrences)[number] }>();
       for (const o of occurrences) {
         const k = key(o);
-        const v = m.get(k) ?? { occurrences: 0, seconds: 0 };
+        const v = m.get(k) ?? { occurrences: 0, seconds: 0, first: o };
         v.occurrences++;
         v.seconds += o.confirmedSeconds;
         m.set(k, v);
       }
-      return [...m.entries()].map(([k, v]) => ({ key: k, ...v, seconds: Math.round(v.seconds * 10) / 10 }));
+      return [...m.entries()].map(([k, { first, ...v }]) => ({ key: k, ...v, seconds: Math.round(v.seconds * 10) / 10, first }));
     };
+    // per match and per output: one row each (two matches between the same teams stay apart), named, with the kick-off
+    const byMatch = by((o) => o.matchId).map(({ first, ...v }) => ({ ...v, key: first.matchLabel, matchId: first.matchId, scheduledAt: first.matchScheduledAt }));
+    const byOutput = by((o) => o.overlayId).map(({ first, ...v }) => ({ ...v, key: first.output, overlayId: first.overlayId, matchId: first.matchId, match: first.matchLabel, scheduledAt: first.matchScheduledAt }));
+    const plain = <T extends { first: unknown }>(rows: T[]) => rows.map(({ first: _f, ...v }) => v);
     return {
       definitions: {
         occurrence: 'One continuous on-air interval of a creative on one output, confirmed by that output’s single reporting authority (cloud compositor or nominated production renderer).',
@@ -360,10 +367,10 @@ export async function sponsorReport(ctx: Ctx, query: z.input<typeof reportQuery>
         evidenceType: 'compositor = cloud programme pixels; renderer = graphics-only browser source (render delivery, not proof that a viewer saw it).',
       },
       totals: { occurrences: occurrences.length, confirmedSeconds: Math.round(occurrences.reduce((n, o) => n + o.confirmedSeconds, 0) * 10) / 10, skippedOrEmpty: decisions.filter((d) => d.outcome !== 'selected').length },
-      byCampaign: by((o) => o.campaign),
-      byCreative: by((o) => `${o.brand} · ${o.creative}`),
-      byMatch: by((o) => o.matchLabel),
-      byOutput: by((o) => o.output),
+      byCampaign: plain(by((o) => o.campaign)),
+      byCreative: plain(by((o) => `${o.brand} · ${o.creative}`)),
+      byMatch,
+      byOutput,
       skipped: decisions.filter((d) => d.outcome !== 'selected').map((d) => ({ at: d.createdAt.toISOString(), placement: d.placement, matchId: d.matchId, reason: d.reason })),
       occurrences,
     };

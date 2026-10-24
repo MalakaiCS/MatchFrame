@@ -1,5 +1,5 @@
 'use client';
-// Sponsors: brands, creatives (approval), campaigns with allocations, caps and spacing.
+// Sponsors (stored as brands): creatives (approval), campaigns with allocations, caps and spacing.
 import { useState } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import { Button, Card, Dialog, EmptyState, ErrorNotice, Field, InfoTip, Input, NativeSelect, PageHeader, Spinner, StatusPill, Table } from '@bs/ui';
@@ -24,7 +24,7 @@ export default function SponsorsPage() {
   const comps = useGet<{ id: string; name: string }[]>(['competitions'], 'competitions');
   const [brandOpen, setBrandOpen] = useState(false);
   const [brand, setBrand] = useState({ name: '', category: '' });
-  const addBrand = useAction(() => post('brands', { name: brand.name, category: brand.category || null }), [['sponsors']], { success: 'Brand added' });
+  const addBrand = useAction(() => post('brands', { name: brand.name, category: brand.category || null }), [['sponsors']], { success: 'Sponsor added' });
   const [crOpen, setCrOpen] = useState<string | null>(null);
   const [cr, setCr] = useState({ assetId: '', name: '' });
   const addCreative = useAction(() => post('creatives', { creativeSetId: crOpen, ...cr }), [['sponsors']], { success: 'Creative added. Approve it before it can go to air.' });
@@ -38,14 +38,14 @@ export default function SponsorsPage() {
 
   return (
     <>
-      <PageHeader title="Sponsors" subtitle="Sponsor logos and slates rotate into the graphics in the places you choose, with limits and spacing you set. Only approved artwork goes to air." actions={canManage ? <Button variant="primary" onClick={() => setBrandOpen(true)}><Plus className="size-4" /> New brand</Button> : null} />
+      <PageHeader title="Sponsors" subtitle="Sponsor logos and slates rotate into the graphics in the places you choose, with limits and spacing you set. Only approved artwork goes to air." actions={canManage ? <Button variant="primary" onClick={() => setBrandOpen(true)}><Plus className="size-4" /> New sponsor</Button> : null} />
       <ErrorNotice error={data.error} />
-      {data.isLoading ? <Spinner /> : !data.data?.brands.length ? <EmptyState title="No sponsors yet" body="Add a brand, upload creatives in Assets, approve them and create a campaign." /> : (
+      {data.isLoading ? <Spinner /> : !data.data?.brands.length ? <EmptyState title="No sponsors yet" body="Add a sponsor, add their logos and slates, approve them and create a campaign." /> : (
         <div className="space-y-4">
           {data.data.brands.map((b) => (
             <Card key={b.id} className="p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold">{b.name}</h2>{b.category ? <StatusPill tone="neutral">{b.category}</StatusPill> : null}
-                {canManage ? <div className="ml-auto flex gap-2"><Button size="sm" onClick={() => setCrOpen(b.creativeSets[0]?.id ?? null)}>Add creative</Button><Button size="sm" variant="secondary" onClick={() => startCampaign(b)}>New campaign</Button></div> : null}
+                {canManage ? <div className="ml-auto flex gap-2"><Button size="sm" onClick={() => setCrOpen(b.creativeSets[0]?.id ?? null)}>Add artwork</Button><Button size="sm" variant="secondary" onClick={() => startCampaign(b)}>New campaign</Button></div> : null}
               </div>
               <div className="flex flex-wrap gap-3">
                 {b.creativeSets.flatMap((s) => s.creatives).map((c) => (
@@ -83,15 +83,15 @@ export default function SponsorsPage() {
         </div>
       )}
 
-      <Dialog open={brandOpen} onOpenChange={setBrandOpen} title="New brand" footer={<Button variant="primary" disabled={!brand.name} onClick={async () => { await addBrand.mutateAsync(undefined as never); setBrandOpen(false); }}>Create</Button>}>
+      <Dialog open={brandOpen} onOpenChange={setBrandOpen} title="New sponsor" footer={<Button variant="primary" disabled={!brand.name} onClick={async () => { await addBrand.mutateAsync(undefined as never); setBrandOpen(false); }}>Create</Button>}>
         <Field label="Name" htmlFor="b-name"><Input id="b-name" value={brand.name} onChange={(e) => setBrand({ ...brand, name: e.target.value })} /></Field>
-        <Field label="Category (keeps rival brands apart, e.g. beverage)" htmlFor="b-cat"><Input id="b-cat" value={brand.category} onChange={(e) => setBrand({ ...brand, category: e.target.value })} /></Field>
+        <Field label="Category (keeps rival sponsors apart, e.g. beverage)" htmlFor="b-cat"><Input id="b-cat" value={brand.category} onChange={(e) => setBrand({ ...brand, category: e.target.value })} /></Field>
         <ErrorNotice error={addBrand.error} />
       </Dialog>
 
-      <Dialog open={!!crOpen} onOpenChange={(o) => !o && setCrOpen(null)} title="Add creative" description="Upload an image, or choose an image or video from the asset library. Creatives need approval before they can air." footer={<Button variant="primary" disabled={!cr.assetId || !cr.name} onClick={async () => { await addCreative.mutateAsync(undefined as never); setCrOpen(null); }}>Add</Button>}>
+      <Dialog open={!!crOpen} onOpenChange={(o) => !o && setCrOpen(null)} title="Add artwork" description="Upload an image, or choose an image or video from your library. Artwork needs approval before it can air." footer={<Button variant="primary" disabled={!cr.assetId || !cr.name} onClick={async () => { await addCreative.mutateAsync(undefined as never); setCrOpen(null); }}>Add</Button>}>
         <div className="mb-3"><ImageField label="Creative" kind="image" value={cr.assetId || null} onChange={(v) => { setCr({ assetId: v ?? '', name: cr.name || (v ? 'Sponsor creative' : '') }); void assets.refetch(); }} /></div>
-        <Field label="Or choose a file" htmlFor="c-asset" hint="Videos are uploaded under Assets → Images, video & audio"><NativeSelect id="c-asset" value={cr.assetId} onChange={(e) => setCr({ assetId: e.target.value, name: cr.name || (assets.data?.find((a) => a.id === e.target.value)?.name ?? '') })}><option value="">Choose…</option>{assets.data?.filter((a) => ['image', 'logo', 'video'].includes(a.kind) && (a.state === 'READY' || a.id === cr.assetId)).map((a) => <option key={a.id} value={a.id}>{a.name}{a.width ? ` · ${a.width}×${a.height}` : ''}</option>)}</NativeSelect></Field>
+        <Field label="Or choose a file" htmlFor="c-asset" hint="Upload videos under Library → Files"><NativeSelect id="c-asset" value={cr.assetId} onChange={(e) => setCr({ assetId: e.target.value, name: cr.name || (assets.data?.find((a) => a.id === e.target.value)?.name ?? '') })}><option value="">Choose…</option>{assets.data?.filter((a) => ['image', 'logo', 'video'].includes(a.kind) && (a.state === 'READY' || a.id === cr.assetId)).map((a) => <option key={a.id} value={a.id}>{a.name}{a.width ? ` · ${a.width}×${a.height}` : ''}</option>)}</NativeSelect></Field>
         <Field label="Name" htmlFor="c-name"><Input id="c-name" value={cr.name} onChange={(e) => setCr({ ...cr, name: e.target.value })} /></Field>
         <ErrorNotice error={addCreative.error} />
       </Dialog>

@@ -96,7 +96,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
   if (!theme || !data) {
     return (
       <>
-        <PageHeader title="Theme not found" crumbs={<Link href="/app/themes" className="inline-flex items-center gap-1 hover:underline"><ArrowLeft className="size-3" /> Themes</Link>} />
+        <PageHeader title="Look not found" crumbs={<Link href="/app/themes" className="inline-flex items-center gap-1 hover:underline"><ArrowLeft className="size-3" /> Looks</Link>} />
         <ErrorNotice error={themes.error ?? { message: `No theme called "${themeKey}".` }} />
       </>
     );
@@ -111,7 +111,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
       <PageHeader
         title={profile ? `${profile.name} (${meta?.name ?? themeKey})` : (meta?.name ?? themeKey)}
         subtitle={meta?.description ?? undefined}
-        crumbs={<Link href="/app/themes" className="inline-flex items-center gap-1 hover:underline"><ArrowLeft className="size-3" /> Themes</Link>}
+        crumbs={<Link href="/app/themes" className="inline-flex items-center gap-1 hover:underline"><ArrowLeft className="size-3" /> Looks</Link>}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <NativeSelect aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><SportOptions /></NativeSelect>

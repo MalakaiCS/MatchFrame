@@ -1,6 +1,6 @@
 'use client';
 // Run sheet and notes for one match: timed lines the production team ticks off ("KO-10 ident", "HT sponsor
-// read") plus free notes. Shared live between the match page and every control room on the match.
+// read") plus free notes. Shared live between the match page and every desk on the match.
 import { useState } from 'react';
 import { Check, Trash2 } from 'lucide-react';
 import { Button, ErrorNotice, Input, StatusPill, cx } from '@bs/ui';

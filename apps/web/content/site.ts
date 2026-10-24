@@ -78,7 +78,7 @@ export const CAPABILITIES: Capability[] = [
       `${GRAPHIC_COUNT} built-in graphics: the scorebug (the on-screen score and clock), line-ups, goals and cards, lower thirds (name captions near the bottom of the picture), statistics, tables and more.`,
       `${LOOK_COUNT} original looks, from clean network panels to European, American and Australian football styles, retinted with your logo, colours and team colours.`,
       'Widescreen 16:9, vertical 9:16 for social streams, and a large-type venue screen layout.',
-      'A transparent graphics page you add to OBS as a Browser Source, controlled live from the control room.',
+      'A transparent graphics page you add to OBS as a Browser Source, controlled live from the desk.',
     ],
     plans: 'All plans. Starter has the scoreboard, clock and basic match graphics; Club and above have the full graphics package',
     hosted: 'available',
@@ -101,7 +101,7 @@ export const CAPABILITIES: Capability[] = [
     hosted: 'available',
     media: 'available',
     evidence: 'Priorities, duplicates, manual mode, emergency clear and worker restarts are covered by A23–A29; the football flow is checked in real time on a live output.',
-    image: { src: '/site/product-control.jpg', alt: 'The MatchFrame control room: the programme and preview monitors, the graphics catalogue and the automation panel', w: 1600, h: 1000 },
+    image: { src: '/site/product-control.jpg', alt: 'The MatchFrame desk: the preview and on-air monitors, the graphics catalogue and the automation panel', w: 1600, h: 1000 },
     guide: { label: 'How the football automation runs', href: '/docs/automation/football-flow' },
   },
   {
