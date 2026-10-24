@@ -1,13 +1,14 @@
-// The scorer phone as one sheet of mirrored rows: the home team's half of each row on the left, the away team's on
-// the right, each with its count; possession is timed by the match clock, goals ask who scored afterwards and cards
-// ask first. Before the match the sheet lists the walk-out steps (each can be skipped); the header's button ends the
-// period. A level league match offers extra time and penalties at the end of regulation.
+// The scorer phone: an event pad with a tile per team for each event, grouped into sections (the home team's on the
+// left, the away team's on the right, each with its count); possession is timed by the match clock, goals ask who
+// scored afterwards and cards ask first. Before the match the screen lists the walk-out steps (each can be skipped);
+// the bar at the bottom ends the period. A level league match offers extra time and penalties at the end of
+// regulation. The match list has a search, three tabs and the matches by day.
 import { expect, test } from '@playwright/test';
 import { api, cellCount, endPeriod, freshMatch, login, score, sheetCell, startFirstHalf, startNextPeriod } from './helpers';
 
 const EVIDENCE = '../../docs/evidence/e2e';
 
-test('the scorer sheet: pregame steps, mirrored rows with counts, timed possession, goals and cards', async ({ browser }) => {
+test('the scorer pad: pregame steps, a tile per team with counts, timed possession, goals and cards', async ({ browser }) => {
   test.setTimeout(180_000);
   const { ctx, page } = await login(browser, { viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
   const id = await freshMatch(page);
@@ -21,11 +22,14 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await startFirstHalf(page);
   await expect(page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: 'End 1st Half' })).toBeVisible();
 
-  // the football rows, top to bottom, the same events on both halves
+  // the football sections and their tiles, top to bottom, the same events for both teams
+  const pad = page.getByRole('region', { name: 'Teams' });
+  await expect(pad.getByRole('group')).toHaveCount(6);
+  for (const [i, name] of ['Score', 'Possession', 'Attack', 'Defence', 'Discipline', 'Team'].entries()) await expect(pad.getByRole('group').nth(i)).toHaveAccessibleName(name);
   const order = async (side: 'home' | 'away') => page.locator(`[data-side="${side}"]`).evaluateAll((els) => els.map((e) => e.getAttribute('data-event')));
   const homeOrder = await order('home');
-  expect(homeOrder).toEqual(['goal', 'possession_change', 'shot_off_target', 'shot_on_target', 'save', 'corner', 'foul', 'penalty_scored', 'penalty_missed', 'yellow_card', 'red_card', 'offside', 'substitution', 'own_goal']);
-  expect([...(await order('away'))].sort()).toEqual([...homeOrder].sort());
+  expect(homeOrder).toEqual(['goal', 'own_goal', 'penalty_scored', 'penalty_missed', 'possession_change', 'shot_on_target', 'shot_off_target', 'corner', 'offside', 'save', 'foul', 'yellow_card', 'red_card', 'substitution']);
+  expect(await order('away')).toEqual(homeOrder);
 
   // one tap each, no questions asked; the count changes on that team's half only
   const tap = async (side: 'home' | 'away', ev: string, expectCount: number) => {
@@ -49,7 +53,7 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await expect(sheetCell(page, 'away', 'possession_change')).toHaveAttribute('aria-pressed', 'true');
   await expect(sheetCell(page, 'home', 'possession_change')).toHaveAttribute('aria-pressed', 'false');
   await page.waitForTimeout(1500);
-  // both halves read from the same moment: the shares move with the running clock
+  // both buttons read from the same moment: the shares move with the running clock
   const [h, a] = await page.evaluate(() => (['home', 'away'] as const).map((s) => Number(/(\d+)%/.exec(document.querySelector(`[data-side="${s}"][data-event="possession_change"]`)?.getAttribute('aria-label') ?? '')?.[1] ?? NaN)));
   expect(h + a).toBe(100);
   expect(h).toBeGreaterThan(a);
@@ -68,7 +72,7 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await sheetCell(page, 'away', 'yellow_card').click();
   await page.getByRole('dialog', { name: /Yellow card: which player/ }).getByRole('button', { name: 'Skip player' }).click();
   await expect.poll(() => cellCount(page, 'away', 'yellow_card')).toBe('1');
-  // the header's undo takes back the last action at once while its undo button is still up
+  // the bar's undo takes back the last action at once while the floating undo is still up
   await tap('away', 'corner', 1);
   await page.getByRole('navigation', { name: 'Match controls' }).getByRole('button', { name: 'Undo the last action' }).click();
   await expect.poll(() => cellCount(page, 'away', 'corner')).toBe('0');
@@ -84,13 +88,15 @@ test('the scorer sheet: pregame steps, mirrored rows with counts, timed possessi
   await expect.poll(() => cellCount(page, 'away', 'corner'), { timeout: 15_000 }).toBe('0');
   await page.unroute('**/commands');
   await expect(page.getByText('All changes saved')).toBeVisible({ timeout: 15_000 });
+  // the whole pad in one picture: a viewport as tall as the page, so the bar fixed to the bottom is drawn there
+  await page.setViewportSize({ width: 430, height: await page.evaluate(() => document.documentElement.scrollHeight) });
   await page.waitForTimeout(500);
-  await page.screenshot({ path: `${EVIDENCE}/scorer-two-sides.png`, fullPage: true });
+  await page.screenshot({ path: `${EVIDENCE}/scorer-two-sides.png` });
+  await page.setViewportSize({ width: 430, height: 932 });
   const st = await api<{ projection: { stats: Record<'home' | 'away', Record<string, number>> } }>(page, `/api/v1/matches/${id}/state`);
   expect(st.projection.stats.home).toMatchObject({ shots_on_target: 2, fouls: 1, corners: 1, goals: 1 });
   expect(st.projection.stats.away).toMatchObject({ shots_off_target: 1, offsides: 1, yellow_cards: 1 });
   expect(st.projection.stats.away.corners ?? 0).toBe(0); // both corners undone, the second while it was being sent
-  expect(st.projection.stats.away.corners ?? 0).toBe(0); // the undone corner
   await ctx.close();
 });
 
@@ -125,7 +131,7 @@ test('a level league match offers extra time and penalties; finals rules make th
   await page.keyboard.press('Escape');
   const d = await api<{ rules: { knockout: { on: boolean } }; rulesConfig: { extraTime: { enabled: boolean } } }>(page, `/api/v1/matches/${m.id}`);
   expect(d).toMatchObject({ rules: { knockout: { on: true } }, rulesConfig: { extraTime: { enabled: true } } });
-  // extra time, then penalties are the next steps; the shoot-out has rows for scored and missed
+  // extra time, then penalties are the next steps; the shoot-out has scored and missed for each team
   await endPeriod(page, 'Before Extra Time');
   await startNextPeriod(page, 'Extra Time 1st');
   await endPeriod(page, 'Extra Time Break');
@@ -143,37 +149,39 @@ test('a level league match offers extra time and penalties; finals rules make th
   await ctx.close();
 });
 
-test('the match list: three tabs, a card per match, filters and the compact list', async ({ browser }) => {
+test('the match list: a search, three tabs, the matches by day, the options menu', async ({ browser }) => {
   const { ctx, page } = await login(browser, { viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
   const id = await freshMatch(page);
-  const { round, teams } = await api<{ round: string; teams: Record<'home' | 'away', { name: string }> }>(page, `/api/v1/matches/${id}`);
+  const { round, teams, competition } = await api<{ round: string; teams: Record<'home' | 'away', { name: string }>; competition: { name: string } }>(page, `/api/v1/matches/${id}`);
   const m = { round, home: teams.home, away: teams.away };
   await page.goto('/score');
-  await expect(page.getByText('Welcome back')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scoring' })).toBeVisible();
   const tabs = page.getByRole('tablist', { name: 'Matches' });
-  await expect(tabs.getByRole('tab')).toHaveText([/^Live & upcoming/, /^Not started/, /^Completed/]);
-  await expect(tabs.getByRole('tab', { name: /^Live & upcoming/ })).toHaveAttribute('aria-selected', 'true');
-  // the filter sheet narrows the list to the new match (its round is unique)
-  await page.getByRole('button', { name: 'Filters' }).click();
-  await page.getByLabel('Team, round or venue').fill(m.round);
-  await page.getByRole('dialog').getByRole('button', { name: 'Show 1 match' }).click();
-  const card = page.getByRole('link', { name: `${m.home.name} v ${m.away.name}` });
-  await expect(card).toHaveCount(1);
-  await expect(card).toContainText('vs');
-  await expect(card).toContainText('Not started');
+  await expect(tabs.getByRole('tab')).toHaveText([/^Now & next/, /^Not played/, /^Results/]);
+  await expect(tabs.getByRole('tab', { name: /^Now & next/ })).toHaveAttribute('aria-selected', 'true');
+  // the search narrows the list to the new match (its round is unique)
+  await page.getByLabel('Search matches').fill(m.round);
+  const ticker = page.getByRole('link', { name: `${m.home.name} v ${m.away.name}` });
+  await expect(ticker).toHaveCount(1);
+  for (const text of [m.home.name, m.away.name, competition.name, m.round]) await expect(ticker).toContainText(text);
+  // it kicks off in an hour: listed under its day with its kick-off time, no score yet
+  await expect(page.getByRole('tabpanel').getByRole('region')).toHaveCount(1);
+  await expect(page.getByRole('tabpanel').getByRole('region')).toHaveAccessibleName(/^(Today|Tomorrow)$/);
+  await expect(ticker).toContainText(/\d{1,2}:\d{2}/);
   await page.screenshot({ path: `${EVIDENCE}/scorer-list.png` });
-  // the ⋮ menu, the compact list (kept on the phone), and the card opens the scorer
+  // the ⋮ menu, the competition picker, the other tabs, and the ticker opens the scorer
   await page.getByRole('button', { name: `Options for ${m.home.name} v ${m.away.name}` }).click();
   await expect(page.getByRole('menuitem', { name: 'Line-ups' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'List', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'List', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'List', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Cards', exact: true }).click();
-  await tabs.getByRole('tab', { name: /^Completed/ }).click();
-  await expect(page.getByRole('tabpanel', { name: 'Completed' })).toBeVisible();
-  await tabs.getByRole('tab', { name: /^Live & upcoming/ }).click();
+  // the competition picker keeps it; the search for a team that is not playing finds nothing
+  await page.getByLabel('Competition').selectOption({ label: competition.name });
+  await expect(ticker).toHaveCount(1);
+  await page.getByLabel('Search matches').fill('no such team zz');
+  await expect(page.getByText('No matches fit the search.')).toBeVisible();
+  await page.getByLabel('Search matches').fill(m.round);
+  await tabs.getByRole('tab', { name: /^Results/ }).click();
+  await expect(page.getByRole('tabpanel', { name: 'Results' })).toBeVisible();
+  await tabs.getByRole('tab', { name: /^Now & next/ }).click();
   await page.locator(`main a[href="/score/${id}"]`).click();
   await page.waitForURL(`**/score/${id}`);
   await expect(page.getByRole('region', { name: 'Match phase' })).toBeVisible();

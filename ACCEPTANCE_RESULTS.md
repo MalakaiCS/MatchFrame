@@ -568,6 +568,41 @@ frames, so the last frame is clear.
 Not claimed: the MOV was checked with FFmpeg here, not opened in Premiere, Final Cut or DaVinci Resolve (none run in
 this environment).
 
+## Silent graphics and the scorer's own design (2026-10-24)
+
+Requested: "remove the sounds from when graphics is shown", and a redesign of the scorer because it was "very close
+to Ligr.lives". Same environment, production build through the single-port launcher, graphics-only mode.
+
+* **Sounds.** The browser source no longer plays anything: the WebAudio stings on goals and cards, and the look
+  option that turned them on, are gone (`packages/graphics/src/react/stage.tsx`, `data.ts`, the look editor). A
+  look saved with the option still loads; the setting is dropped when it is read. The scorer phone's own
+  confirmation sounds (its preferences) are separate and unchanged.
+* **Scorer.** Both screens are redrawn in MatchFrame's own console style, from the app's colour tokens and Inter
+  (the condensed italic face, the dark-header-over-white-sheet layout, the mirrored rows with a centre badge and
+  the welcome card list are gone). The match screen has a top bar (back, the match, the connection and
+  *All changes saved*), a scoreboard with a block per team (colour down the outside edge, crest, name, score) and
+  the period and clock between them, the clock's controls as a row of buttons, an event pad grouped into sections
+  per sport (football: Score, Possession, Attack, Defence, Discipline, Team) with one tile per team for each event
+  and the main scoring event filled in the team's colour, a possession bar with the split and a button per team,
+  numbered run-down steps before kick-off and in breaks, a card per team in the shoot-out, and a bar fixed to the
+  bottom (Undo, Events, Line-ups, Details, End …). The match list has a search box and competition picker in the
+  header, three tabs with counts (*Now & next*, *Not played*, *Results*) and the matches by day as tickers (time or
+  state, both teams with colour, crest, name and score, competition, round and ground). Every action, rule and
+  offline behaviour is the same code as before; only the drawing changed. Sunlight mode follows from the tokens.
+  This is a design change, not a legal review.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `scorer-board.test.ts` now checks each sport's pad sections (no event twice, no empty section) as well as the counts | 212 tests, 39 files, all pass |
+| `pnpm test:db` (the look's settings schema without the sound option) | 82 tests, 12 files, all pass |
+| `tests/e2e/specs/scorer-board.spec.ts` rewritten for the new screens: the six football sections in order and the same tiles in the same order for both teams; counts, timed possession, a goal and a card, both undos (one with the request held in flight); the knock-out offer and shoot-out; the list's search, tabs, day heading, kick-off time, ⋮ menu and competition picker (`scorer-pregame.png`, `scorer-two-sides.png`, `scorer-list.png`, `scorer-shootout.png`, `scorer-knockout-offer.png`) | 3 tests, pass (twice in a row) |
+| The other specs that drive the scorer: `scorer.spec.ts` (A13–A15), `futsal`, `officials`, `features`, `finals`, `shootout` | 18 tests with `scorer-board`: 17 passed in one run; `features` *producer board … and the status page* failed at *All systems working*, run within a minute of restarting the stack (the status endpoint read all checks *ok* moments later) and passed run alone straight after. Their screenshots in `docs/evidence/e2e/` now show the new screens |
+| Full `pnpm test:e2e` | not run for this change |
+
+Not claimed: sunlight mode was looked at on one screenshot of the live pad, not tested; basketball's court controls
+were restyled but no browser test drives them on a phone.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

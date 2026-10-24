@@ -1,8 +1,9 @@
 'use client';
-// Pieces of the scorer's match screen: a team's crest, the icon of each event, the round badge in the middle of a
-// row (half in each team's colour) and the mirrored rows of the sheet (the home team's half on the left, the away
-// team's on the right, each with its count).
-import type { ComponentType } from 'react';
+// Pieces of the scorer's match screen, in MatchFrame's console style: the scoreboard (each team in its own block
+// with its colour down the outside edge and the period and clock between them), a team's crest, the icon of each
+// event, the event pad's tiles (one per team and event: the event, its count, the team's colour down the edge) and
+// the possession bar (the split so far, and a button for each team).
+import type { ComponentType, ReactNode } from 'react';
 import {
   ArrowLeftRight,
   Ban,
@@ -29,11 +30,11 @@ import { cx } from '@bs/ui';
 export interface SheetTeam { name: string; shortName: string; abbreviation: string; primaryColor: string; logoAssetId?: string | null }
 type Side = 'home' | 'away';
 
-/** The team's logo, or its initials on its colour when it has none. */
-export function TeamCrest({ team, size = 44, className }: { team: SheetTeam; size?: number; className?: string }) {
+/** The team's logo, or its letters on its colour when it has none. */
+export function TeamCrest({ team, size = 36, className }: { team: SheetTeam; size?: number; className?: string }) {
   if (team.logoAssetId) return <img src={`/api/v1/assets/${team.logoAssetId}/preview`} alt={`${team.name} logo`} width={size} height={size} className={cx('shrink-0 object-contain', className)} style={{ width: size, height: size }} />;
   return (
-    <span aria-hidden className={cx('scorer-display grid shrink-0 place-items-center rounded-full font-bold text-white', className)} style={{ width: size, height: size, background: team.primaryColor, fontSize: size * 0.34 }}>
+    <span aria-hidden className={cx('grid shrink-0 place-items-center rounded-md font-bold text-white', className)} style={{ width: size, height: size, background: team.primaryColor, fontSize: size * 0.32 }}>
       {team.abbreviation.slice(0, 3)}
     </span>
   );
@@ -93,20 +94,17 @@ export function EventIcon({ type, className }: { type: string; className?: strin
 
 export const CARD_COLOUR: Record<string, string> = { yellow_card: '#F5C518', second_yellow: '#F5C518', green_card: '#2EA043', red_card: '#E5484D', sin_bin: '#F5C518', send_off: '#E5484D' };
 
-/** The round badge between the two halves of a row: the left half in the home colour, the right in the away. */
-export function CentreBadge({ home, away, children }: { home: string; away: string; children: React.ReactNode }) {
-  return (
-    <span aria-hidden className="relative grid size-[52px] shrink-0 place-items-center rounded-full p-[3px]" style={{ background: `linear-gradient(90deg, ${home} 50%, ${away} 50%)` }}>
-      <span className="grid size-full place-items-center rounded-full text-[var(--sc-ink)]" style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${home} 18%, white) 50%, color-mix(in srgb, ${away} 18%, white) 50%)` }}>
-        {children}
-      </span>
-    </span>
-  );
+/** A card's shape in its colour, for the discipline tiles. */
+export function CardGlyph({ type }: { type: string }) {
+  return <span aria-hidden className="inline-block h-4 w-3 shrink-0 rounded-[2px] shadow-sm" style={{ background: CARD_COLOUR[type] ?? '#888' }} />;
 }
 
-/** One half of a row: the label at the outside edge, the count next to the badge. */
-export function HalfCell({ side, label, count, team, disabled, onTap, active, eventType, testLabel, compact }: { side: Side; label: string; count: string | number; team: SheetTeam; disabled?: boolean; onTap: () => void; active?: boolean; eventType: string; testLabel: string; compact?: boolean }) {
-  const zero = count === 0 || count === '–' || count === '0%';
+/**
+ * One team's tile for an event: the team's colour down its left edge, the event's icon and name, and the count.
+ * Scoring tiles are filled with the team's colour. Its name reads "Corner, Harbour: 2" (the tests read the count from it).
+ */
+export function PadTile({ side, eventType, team, label, count, icon, active, disabled, onTap, testLabel, strong }: { side: Side; eventType: string; team: SheetTeam; label: string; count: string | number; icon?: ReactNode; active?: boolean; disabled?: boolean; onTap: () => void; testLabel: string; strong?: boolean }) {
+  const zero = count === 0 || count === '–';
   return (
     <button
       type="button"
@@ -117,24 +115,85 @@ export function HalfCell({ side, label, count, team, disabled, onTap, active, ev
       disabled={disabled}
       onClick={onTap}
       className={cx(
-        'relative flex min-h-[68px] min-w-0 flex-1 items-center gap-2 px-3 transition-colors enabled:active:bg-[var(--sc-press)] disabled:opacity-40',
-        side === 'home' ? 'flex-row justify-between pl-4 text-left' : 'flex-row-reverse justify-between pr-4 text-right',
+        'relative flex min-h-[58px] min-w-0 items-center gap-2.5 overflow-hidden rounded-xl border pl-4 pr-3 text-left transition-[background-color,transform] enabled:active:scale-[0.98] disabled:opacity-40',
+        strong ? 'min-h-[68px] border-transparent text-white' : 'border-border bg-panel enabled:active:bg-elevated',
+        active && 'ring-2 ring-primary',
       )}
-      style={active ? { background: `color-mix(in srgb, ${team.primaryColor} 16%, white)` } : undefined}
+      style={strong ? { background: `linear-gradient(135deg, ${team.primaryColor}, color-mix(in srgb, ${team.primaryColor} 70%, black))` } : undefined}
     >
-      <span className={cx('scorer-display min-w-0 font-semibold leading-tight text-[var(--sc-ink)]', compact ? 'text-[13px]' : 'text-[15px]')}>{label}</span>
-      <span className={cx('scorer-display shrink-0 font-bold italic leading-none tabular', compact ? 'text-[30px]' : 'text-[42px]', zero ? 'text-[var(--sc-faint)]' : 'text-[var(--sc-ink)]')}>{count}</span>
+      {strong ? null : <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: team.primaryColor }} />}
+      {icon ? <span aria-hidden className={cx('shrink-0', strong ? 'text-white/85' : 'text-muted')}>{icon}</span> : null}
+      <span className={cx('min-w-0 flex-1 font-semibold leading-tight', strong ? 'text-[15px]' : 'text-[14px]')}>{label}</span>
+      <span className={cx('shrink-0 font-bold leading-none tabular', strong ? 'text-[30px]' : 'text-[24px]', !strong && zero && 'text-muted/40')}>{count}</span>
     </button>
   );
 }
 
-/** A row of the sheet: a home half, the badge, an away half. */
-export function MirrorRow({ children, centre }: { children: [React.ReactNode, React.ReactNode]; centre: React.ReactNode }) {
+/** A section of the pad: its name, then a tile for each team side by side, row by row (a group, so its name never
+ * clashes with the screen's regions: the pad's Score is not the scoreboard). */
+export function PadSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div role="group" className="flex items-stretch border-b border-[var(--sc-line)]">
-      {children[0]}
-      <span className="flex items-center">{centre}</span>
-      {children[1]}
+    <div role="group" aria-label={title} className="px-3 pt-4">
+      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+        {title}
+        <span aria-hidden className="h-px flex-1 bg-border" />
+      </h3>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Who has had the ball: the split so far as one bar in the teams' colours, and a button for each team underneath
+ * (the team with the ball is marked). Each button's name reads "Possession, Harbour: 31%".
+ */
+export function PossessionBar({ teams, share, has, disabled, onTap, testLabel }: { teams: Record<Side, SheetTeam>; share: Record<Side, number> | null; has: Side | null; disabled: boolean; onTap: (side: Side) => void; testLabel: (side: Side) => string }) {
+  const home = share ? share.home : 50;
+  return (
+    <div className="col-span-2 grid gap-2 rounded-xl border border-border bg-panel p-3">
+      <div aria-hidden className="flex h-7 overflow-hidden rounded-md text-[13px] font-bold tabular text-white">
+        {share ? (
+          <>
+            <span className="flex items-center pl-2 transition-[width]" style={{ width: `${home}%`, minWidth: '3rem', background: teams.home.primaryColor }}>{share.home}%</span>
+            <span className="flex flex-1 items-center justify-end pr-2" style={{ minWidth: '3rem', background: teams.away.primaryColor }}>{share.away}%</span>
+          </>
+        ) : <span className="flex flex-1 items-center justify-center bg-elevated text-[12px] font-medium text-muted">No possession recorded yet</span>}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {(['home', 'away'] as const).map((side) => (
+          <button key={side} type="button" data-side={side} data-event="possession_change" aria-label={testLabel(side)} aria-pressed={has === side} disabled={disabled} onClick={() => onTap(side)}
+            className={cx('flex min-h-11 items-center justify-center gap-2 rounded-lg border text-[14px] font-semibold enabled:active:scale-[0.98] disabled:opacity-40', has === side ? 'border-transparent text-white' : 'border-border bg-elevated')}
+            style={has === side ? { background: teams[side].primaryColor } : undefined}>
+            {has === side ? <span aria-hidden className="size-2 animate-pulse rounded-full bg-white" /> : null}
+            {teams[side].abbreviation} ball
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One team's block of the scoreboard: the team's colour down the outside edge, its crest and name on top, and its
+ * score underneath at the edge nearest the clock, with the team's details (fouls, sin bin) beside it.
+ */
+export function ScoreBlock({ side, team, score, detail, provisional, children }: { side: Side; team: SheetTeam; score: number | null; detail?: ReactNode; provisional?: boolean; children?: ReactNode }) {
+  const away = side === 'away';
+  return (
+    <div className={cx('relative grid min-w-0 content-center gap-1 py-2.5', away ? 'pl-2 pr-4 text-right' : 'pl-4 pr-2')}
+      style={{ background: `linear-gradient(${away ? 270 : 90}deg, color-mix(in srgb, ${team.primaryColor} 32%, transparent), transparent 85%)` }}>
+      <span aria-hidden className={cx('absolute inset-y-0 w-1.5', away ? 'right-0' : 'left-0')} style={{ background: team.primaryColor }} />
+      <span className={cx('flex min-w-0 items-center gap-2', away && 'flex-row-reverse')}>
+        <TeamCrest team={team} size={28} />
+        <span className="min-w-0 truncate text-[15px] font-bold leading-tight">{team.shortName}</span>
+      </span>
+      {score != null || detail ? (
+        <span className={cx('flex min-w-0 items-end gap-2', away ? 'flex-row' : 'flex-row-reverse')}>
+          {score != null ? <span data-score-side={side} className={cx('shrink-0 text-[40px] font-bold leading-none tabular', provisional && 'text-warning')}>{score}</span> : null}
+          <span className="min-w-0 flex-1 pb-0.5">{detail}</span>
+        </span>
+      ) : null}
+      {children}
     </div>
   );
 }

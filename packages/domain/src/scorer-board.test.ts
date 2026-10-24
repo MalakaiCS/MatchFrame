@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand, getAdapter, tallyOf, type EngineState, type StoredFact } from './engine';
 import { possessionShare, POSSESSION_EVENT } from './possession';
-import { SCORER_SHEETS, sheetCount, sheetEvents, type SheetRow } from './scorer-board';
+import { SCORER_SHEETS, sheetCount, sheetEvents, sheetRows, type SheetSection } from './scorer-board';
 import type { Sport } from './types';
 
 describe('scorer sheet', () => {
   it('names only events the sport has, and every row with a statistic reads one the event moves', () => {
-    for (const [sport, rows] of Object.entries(SCORER_SHEETS) as [Sport, SheetRow[]][]) {
+    for (const [sport, sections] of Object.entries(SCORER_SHEETS) as [Sport, SheetSection[]][]) {
+      const rows = sheetRows(sections);
+      // every event once, every section with something in it
+      expect(new Set(sheetEvents(rows)).size, sport).toBe(sheetEvents(rows).length);
+      expect(sections.every((x) => x.rows.length), sport).toBe(true);
       const a = getAdapter(sport);
       const cfg = a.defaultConfig;
       const types = a.eventTypes(cfg).map((e) => e.type);

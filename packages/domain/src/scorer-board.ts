@@ -1,104 +1,77 @@
-// The scorer's sheet: for each sport, the rows of the live screen from top to bottom. Each row records one event
-// for either team (home on the left half, away on the right) and shows how many each has: the team statistic the
-// event counts towards when there is one, otherwise how many times it was recorded. Cards share one row; possession
-// is a row that marks who has the ball. Labels come from the sport's events.
+// The scorer's event pad: for each sport, its sections from top to bottom (scoring first, then the run of play, the
+// officials, discipline and the team's own changes). Each row records one event for either team and shows how many
+// each has: the team statistic the event counts towards when there is one, otherwise how many times it was
+// recorded. Cards are a row of their own kinds; possession is a row that marks who has the ball. Labels come from
+// the sport's events.
 import type { Sport } from './types';
 
 export type SheetRow =
   /** one event; `stat` is the team statistic its count reads (none: the times it was recorded) */
   | { kind: 'event'; type: string; stat?: string }
-  /** the cards, side by side in one row (yellow and red; hockey also green) */
+  /** the cards (yellow and red; hockey also green; rugby league's sin bin and send-off) */
   | { kind: 'cards'; cards: { type: string; stat?: string }[] }
   /** who has the ball, timed by the match clock (see possession.ts) */
   | { kind: 'possession' };
 
-const ev = (type: string, stat?: string): SheetRow => ({ kind: 'event', type, stat });
-const POSSESSION: SheetRow = { kind: 'possession' };
+/** A titled group of rows on the pad. */
+export interface SheetSection {
+  title: string;
+  rows: SheetRow[];
+}
 
-export const SCORER_SHEETS: Partial<Record<Sport, SheetRow[]>> = {
+const ev = (type: string, stat?: string): SheetRow => ({ kind: 'event', type, stat });
+const POSSESSION: SheetSection = { title: 'Possession', rows: [{ kind: 'possession' }] };
+const section = (title: string, ...rows: SheetRow[]): SheetSection => ({ title, rows });
+
+export const SCORER_SHEETS: Partial<Record<Sport, SheetSection[]>> = {
   football: [
-    ev('goal'),
+    section('Score', ev('goal'), ev('own_goal'), ev('penalty_scored'), ev('penalty_missed')),
     POSSESSION,
-    ev('shot_off_target', 'shots_off_target'),
-    ev('shot_on_target', 'shots_on_target'),
-    ev('save', 'saves'),
-    ev('corner', 'corners'),
-    ev('foul', 'fouls'),
-    ev('penalty_scored'),
-    ev('penalty_missed'),
-    { kind: 'cards', cards: [{ type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] },
-    ev('offside', 'offsides'),
-    ev('substitution'),
-    ev('own_goal'),
+    section('Attack', ev('shot_on_target', 'shots_on_target'), ev('shot_off_target', 'shots_off_target'), ev('corner', 'corners'), ev('offside', 'offsides')),
+    section('Defence', ev('save', 'saves'), ev('foul', 'fouls')),
+    section('Discipline', { kind: 'cards', cards: [{ type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] }),
+    section('Team', ev('substitution')),
   ],
   futsal: [
-    ev('goal'),
+    section('Score', ev('goal'), ev('own_goal'), ev('penalty_scored'), ev('penalty_missed'), ev('ten_metre_scored'), ev('ten_metre_missed')),
     POSSESSION,
-    ev('shot_off_target', 'shots_off_target'),
-    ev('shot_on_target', 'shots_on_target'),
-    ev('save', 'saves'),
-    ev('corner', 'corners'),
-    ev('foul', 'fouls'),
-    ev('penalty_scored'),
-    ev('penalty_missed'),
-    ev('ten_metre_scored'),
-    ev('ten_metre_missed'),
-    { kind: 'cards', cards: [{ type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] },
-    ev('timeout'),
-    ev('substitution'),
-    ev('own_goal'),
+    section('Attack', ev('shot_on_target', 'shots_on_target'), ev('shot_off_target', 'shots_off_target'), ev('corner', 'corners')),
+    section('Defence', ev('save', 'saves'), ev('foul', 'fouls')),
+    section('Discipline', { kind: 'cards', cards: [{ type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] }),
+    section('Team', ev('timeout'), ev('substitution')),
   ],
   hockey: [
-    ev('goal', 'goals'),
+    section('Score', ev('goal', 'goals'), ev('penalty_stroke_missed')),
     POSSESSION,
-    ev('shot', 'shots'),
-    ev('penalty_corner', 'penalty_corners'),
-    ev('circle_entry', 'circle_entries'),
-    ev('penalty_stroke_missed'),
-    { kind: 'cards', cards: [{ type: 'green_card', stat: 'green_cards' }, { type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] },
-    ev('substitution'),
+    section('Attack', ev('shot', 'shots'), ev('penalty_corner', 'penalty_corners'), ev('circle_entry', 'circle_entries')),
+    section('Discipline', { kind: 'cards', cards: [{ type: 'green_card', stat: 'green_cards' }, { type: 'yellow_card', stat: 'yellow_cards' }, { type: 'red_card', stat: 'red_cards' }] }),
+    section('Team', ev('substitution')),
   ],
   rugby_league: [
-    ev('try'),
-    ev('conversion'),
-    ev('conversion_missed'),
-    ev('penalty_goal'),
-    ev('field_goal'),
+    section('Score', ev('try'), ev('penalty_try'), ev('conversion'), ev('conversion_missed'), ev('penalty_goal'), ev('field_goal')),
     POSSESSION,
-    ev('line_break', 'line_breaks'),
-    ev('error', 'errors'),
-    ev('penalty_conceded', 'penalties'),
-    ev('six_again', 'six_agains'),
-    { kind: 'cards', cards: [{ type: 'sin_bin', stat: 'sin_bins' }, { type: 'send_off', stat: 'send_offs' }] },
-    ev('video_review'),
-    ev('interchange'),
-    ev('penalty_try'),
+    section('Play', ev('line_break', 'line_breaks'), ev('error', 'errors'), ev('penalty_conceded', 'penalties'), ev('six_again', 'six_agains')),
+    section('Officials', ev('video_review')),
+    section('Discipline', { kind: 'cards', cards: [{ type: 'sin_bin', stat: 'sin_bins' }, { type: 'send_off', stat: 'send_offs' }] }),
+    section('Team', ev('interchange')),
   ],
   afl: [
-    ev('goal'),
-    ev('behind'),
-    ev('rushed_behind'),
-    ev('mark', 'marks'),
-    ev('tackle', 'tackles'),
-    ev('inside_50', 'inside_50s'),
-    ev('clearance', 'clearances'),
-    ev('free_kick', 'free_kicks'),
-    ev('interchange'),
+    section('Score', ev('goal'), ev('behind'), ev('rushed_behind')),
+    section('Play', ev('mark', 'marks'), ev('tackle', 'tackles'), ev('inside_50', 'inside_50s'), ev('clearance', 'clearances'), ev('free_kick', 'free_kicks')),
+    section('Team', ev('interchange')),
   ],
   netball: [
-    ev('goal'),
-    ev('goal_missed'),
-    ev('intercept', 'intercepts'),
-    ev('rebound', 'rebounds'),
-    ev('turnover', 'turnovers'),
-    ev('penalty', 'penalties'),
-    ev('centre_pass'),
-    ev('substitution'),
+    section('Score', ev('goal'), ev('goal_missed')),
+    section('Play', ev('centre_pass'), ev('intercept', 'intercepts'), ev('rebound', 'rebounds'), ev('turnover', 'turnovers'), ev('penalty', 'penalties')),
+    section('Team', ev('substitution')),
   ],
 };
 
-/** The sheet for a sport; basketball keeps its court layout (points buttons, fouls by type, the arrow). */
-export const scorerSheet = (sport: string): SheetRow[] | null => SCORER_SHEETS[sport as Sport] ?? null;
+/** The pad for a sport; basketball keeps its court layout (points buttons, fouls by type, the arrow). */
+export const scorerSheet = (sport: string): SheetSection[] | null => SCORER_SHEETS[sport as Sport] ?? null;
+
+/** Every row of a pad, in order. */
+export const sheetRows = (sections: SheetSection[]): SheetRow[] => sections.flatMap((x) => x.rows);
 
 /** The events a sheet records, in order. */
 export const sheetEvents = (rows: SheetRow[]): string[] => rows.flatMap((r) => (r.kind === 'event' ? [r.type] : r.kind === 'cards' ? r.cards.map((c) => c.type) : []));
