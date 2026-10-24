@@ -6,14 +6,15 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 
 const MAILPIT = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025';
 
-/** The newest sign-in code mailed to an address (the subject starts with it). */
-async function codeFor(request: APIRequestContext, email: string, after: number) {
+/** The newest sign-in code mailed to an address (the subject starts with it), never one already used: the whole
+ * sign-up, onboarding and sign-out can take under the two seconds allowed for clock differences. */
+async function codeFor(request: APIRequestContext, email: string, after: number, used: string[] = []) {
   let code = '';
   await expect.poll(async () => {
     const r = await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
     if (!r.ok()) return '';
     const found = (await r.json()) as { messages: { Subject: string; Created: string }[] };
-    const m = found.messages.find((x) => /^\d{6} is your MatchFrame code$/.test(x.Subject) && new Date(x.Created).getTime() >= after - 2000);
+    const m = found.messages.find((x) => /^\d{6} is your MatchFrame code$/.test(x.Subject) && new Date(x.Created).getTime() >= after - 2000 && !used.includes(x.Subject.slice(0, 6)));
     code = m ? m.Subject.slice(0, 6) : '';
     return code;
   }, { timeout: 20_000 }).toMatch(/^\d{6}$/);
@@ -37,7 +38,8 @@ test('a plan from pricing, sign-up with an email code, onboarding, the plan offe
   const t0 = Date.now();
   await page.getByRole('button', { name: 'Email me a code' }).click();
   await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible();
-  await page.getByLabel('6-digit code').fill(await codeFor(request, email, t0));
+  const first = await codeFor(request, email, t0);
+  await page.getByLabel('6-digit code').fill(first);
   await page.getByRole('button', { name: 'Create my account' }).click();
   await page.waitForURL('**/onboarding');
 
@@ -63,7 +65,7 @@ test('a plan from pricing, sign-up with an email code, onboarding, the plan offe
   await page.getByRole('textbox', { name: 'Email' }).fill(email);
   const t1 = Date.now();
   await page.getByRole('button', { name: 'Email me a code' }).click();
-  await page.getByLabel('6-digit code').fill(await codeFor(request, email, t1));
+  await page.getByLabel('6-digit code').fill(await codeFor(request, email, t1, [first]));
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/app');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome back, Riley');

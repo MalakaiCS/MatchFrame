@@ -950,7 +950,17 @@ now" for the recommendations given (21 screens reviewed on desktop and phone).
 | `pnpm typecheck`, `pnpm lint` | clean |
 | `pnpm test` | 232 tests, 41 files, all pass |
 | `pnpm test:db` (adds to `tenant-scoring.test.ts`: the `ready` summary on list rows and `nextMatchAt` on the competitions list; `automation.test.ts` checks the report's match and output names) | 104 tests, 15 files, all pass |
-| Browser suite on the rebuilt app (specs updated for the new names, tabs, More menu, Fine-tune, Live, quick ranges and the Kick-off sort) | Running when this was written; not claimed yet |
+| Full browser suite (76 tests) on the rebuilt app, with the specs updated for the new names, tabs, More menu, Fine-tune, Live, quick ranges and the Kick-off sort | 71 passed, 5 failed (24.6 min); the five below |
+| `automation-flow.spec.ts` (football starter flow, real timings) | Failed: the line-up timing check, which was failing before this change too; not fixed here |
+| `features.spec.ts` live page and competition test | Failed: the spec switched the fixtures view before opening the Fixtures and results tab (a mistake in the updated spec); spec fixed |
+| `rules-presets.spec.ts` futsal 2×18 | Failed: the new Rules card left out the first rule line ("2×18-minute halves (count-down clock)…"), which names the clock as well as the timing; the card now shows the whole rules line under the timeline |
+| `shootout.spec.ts` | Failed in the suite (tracker not on the OBS page within 30 s); passed when run again (below) without any change to the code it drives |
+| `sign-in.spec.ts` email code | Failed twice: its helper took the newest code sent up to 2 s before asking, and the flow from sign-up to the second code now takes under 2 s, so it picked the sign-up code again. The helper now skips a code already used |
+| Re-run on the app rebuilt with those fixes and the review fixes (phone checklist actions wrap under their text, the stale-match count from the API total, internal processing jobs left out of Videos, the desk's *On air now* line): `features`, `rules-presets`, `shootout`, `look-choice`, `matches-order`, `graphics-only`, then `sign-in` with its fixed helper | 12 passed (sign-in failing as above), then sign-in 1 passed |
+
+Not done, on purpose: a *Close all at full time* button for matches left live (ending a match goes through the
+scorer's phases, which would put half-time and full-time graphics on air for each; *Needs closing* lists them with
+their scorer instead). Not claimed: the automation-flow line-up timing failure, which predates this change.
 
 ## A51 and measured capacity
 
