@@ -1,4 +1,4 @@
-// Choosing a look for a tournament and for a match, from all ten built-in looks: upcoming matches follow the
+// Choosing a look for a tournament and for a match, from all eleven built-in looks: upcoming matches follow the
 // tournament, a match can have its own, and "Same as the tournament" puts it back.
 import { expect, test } from '@playwright/test';
 import { api, login } from './helpers';

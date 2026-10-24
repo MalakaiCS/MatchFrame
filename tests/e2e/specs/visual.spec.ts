@@ -10,7 +10,7 @@ test.afterEach(async () => {
   for (const c of opened.splice(0)) await c.close();
 });
 
-const LOOKS = ['broadcast', 'minimal', 'club', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister'] as const;
+const LOOKS = ['broadcast', 'minimal', 'club', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister', 'derby'] as const;
 const OTHER_SPORTS = ['basketball', 'netball', 'rugby_league', 'afl', 'hockey', 'futsal'] as const;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 

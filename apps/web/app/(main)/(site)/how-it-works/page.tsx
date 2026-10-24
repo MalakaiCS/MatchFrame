@@ -12,7 +12,7 @@ export const metadata = siteMetadata({
 const PREPARE = [
   ['Fixture, teams and players', 'Create the competition and season, add teams and their season rosters, and create the fixture (or import a round from a CSV file).'],
   ['Line-ups', 'Mark each player Start, Bench or Out, from a laptop or the scorer\'s phone. Use last line-up and Use team default fill a side in one tap.'],
-  ['Look', 'Choose one of ten looks and put your logo, colours and team colours on it. The match keeps the version it started with.'],
+  ['Look', 'Choose one of eleven looks and put your logo, colours and team colours on it. The match keeps the version it started with.'],
   ['Automation', 'Start from your sport\'s starter plan, change what you like in plain language, and rehearse it against a made-up match.'],
   ['OBS link', 'Every match has a graphics link from the moment it is created. Add it to OBS once as a Browser Source.'],
 ];

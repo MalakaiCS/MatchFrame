@@ -5,7 +5,7 @@ import { THEMES } from './index';
 
 describe('built-in looks', () => {
   it('every look has defaults, a name and description, and draws every built-in graphic', () => {
-    expect(THEME_KEYS).toHaveLength(10);
+    expect(THEME_KEYS).toHaveLength(11);
     for (const key of THEME_KEYS) {
       expect(DEFAULT_THEMES[key].themeKey).toBe(key);
       for (const c of ['primary', 'secondary', 'accent', 'text', 'panel'] as const) expect(DEFAULT_THEMES[key][c]).toMatch(/^#[0-9A-F]{6}$/i);

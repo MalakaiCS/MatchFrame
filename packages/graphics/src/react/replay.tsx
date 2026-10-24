@@ -42,6 +42,7 @@ const STYLES: Record<string, ReplayStyle> = {
   continental: { angle: 0, bands: 3, plate: 'none', italic: false, weight: 300, tracking: 0.45, rule: 'silver', texture: 'stars', shine: true },
   primetime: { angle: -18, bands: 5, plate: 'metal', italic: true, weight: 900, tracking: 0.04, rule: 'hot', texture: 'brushed', shine: true },
   meister: { angle: -12, bands: 4, plate: 'paper', italic: true, weight: 800, tracking: 0.06, rule: 'hot', texture: 'none', shine: false },
+  derby: { angle: -20, bands: 3, plate: 'square', italic: false, weight: 900, tracking: 0.05, rule: 'hot', texture: 'none', shine: false },
 };
 
 function rgb(hex: string): [number, number, number] | null {

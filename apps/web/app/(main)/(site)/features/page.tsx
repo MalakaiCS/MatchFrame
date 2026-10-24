@@ -6,7 +6,7 @@ import { siteMetadata } from '@/lib/site-meta';
 
 export const metadata = siteMetadata({
   title: 'Features',
-  description: 'Live scoring, 29 broadcast graphics in ten looks, automation, sponsor placements, cloud production and highlights, with what is available on each edition.',
+  description: 'Live scoring, 29 broadcast graphics in eleven looks, automation, sponsor placements, cloud production and highlights, with what is available on each edition.',
   path: '/features',
 });
 

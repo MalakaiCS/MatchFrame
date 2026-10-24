@@ -9,6 +9,7 @@ import '@fontsource-variable/saira/wght-italic.css';
 import '@fontsource-variable/exo-2';
 import '@fontsource-variable/exo-2/wght-italic.css';
 import '@fontsource-variable/outfit';
+import '@fontsource-variable/red-hat-display';
 import '../globals.css';
 import { Providers } from '@/lib/providers';
 import { publicBase } from '@/lib/site-meta';

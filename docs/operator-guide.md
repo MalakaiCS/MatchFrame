@@ -93,18 +93,21 @@ records.
 
 ## Looks
 
-Themes → a look is one of ten styles (broadcast, premier, liga, major, southern, continental, primetime, meister, club, minimal) with the organisation's colours, logo and
+Themes → a look is one of eleven styles (broadcast, premier, liga, major, southern, continental, primetime, meister, derby, club, minimal) with the organisation's colours, logo and
 team colours, previewed on real graphics. **Premier** is the top-flight football broadcast look, in the style of a
 motion graphics pack: deep purple glass panels cut with angular facets, hot magenta kickers, electric teal accents, a
 cyan-to-magenta rule, scores on white plates, crests on a glow of the team's colour and a geometric typeface (Outfit);
 each graphic wipes in and a light sweep crosses it as it lands. It is an original design in that spirit and carries
 no league marks; a club can retint it like any look. A Premier look published before 20 October 2026 keeps its old
-typeface until it is published again. Six more looks follow other broadcasts in the same way: **Liga** (Spanish top
+typeface until it is published again. Seven more looks follow other broadcasts in the same way: **Liga** (Spanish top
 flight: white rounded cards, coral red, wide geometric type, a pill scorebug), **Major** (North American streaming:
 smoked glass, event words in the scoring team's colour), **Southern** (Australian league: flat black, chunky capitals,
 square blocks and a four-colour band), **Continental** (European club nights: navy, a starfield, silver hairlines,
 light wide-tracked capitals), **Primetime** (US network: brushed metal, red, condensed italic capitals, a stacked
-scorebug) and **Meister** (German top flight: white panels, red, slanted cuts and italic capitals). Each has its own
+scorebug), **Meister** (German top flight: white panels, red, slanted cuts and italic capitals) and **Derby** (Australian club
+football: each team's block in its own colour with the crest breaking out of the end, a white score plate with the
+clock in a grey tab under it, event straps with the player in a light row underneath, a break board listing each
+team's scorers, and a full-screen half-time statistics board between the two teams' colour panels). Each has its own
 animated background. None carries a league's or broadcaster's marks, names or typefaces. A look also sets the **scorebug variant and position**, the **clock
 style** (hide seconds; added time as "+3" or a label), **wording** overrides for on-air labels (bilingual
 competitions) and a **custom font** uploaded through the asset library. Graphics make no sound: the OBS browser

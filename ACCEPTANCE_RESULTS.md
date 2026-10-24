@@ -603,6 +603,38 @@ to Ligr.lives". Same environment, production build through the single-port launc
 Not claimed: sunlight mode was looked at on one screenshot of the live pad, not tested; basketball's court controls
 were restyled but no browser test drives them on a phone.
 
+## Derby: a look where each team plays in its own colour (2026-10-24)
+
+Requested with six frames of an Australian club football broadcast (scorebug, yellow card strap, goal strap, scorebug
+with added time, half-time score board with scorers, half-time statistics board): "similar to this but obviously
+don't make it exact". Built as an eleventh built-in look, **Derby** (`packages/graphics/src/react/theme-derby.tsx`),
+an original design in that style with no league or broadcaster marks, names or typefaces (Red Hat Display, added as
+a font package). Its own graphics: the scorebug (each team's block in its colour with the crest breaking out of the
+end, two slashes of light at the inner end, a white score plate, the clock in a grey tab under it with added time
+in a tab of the look's colour; the strip variant puts the clock beside it), the goal and points straps (the team's
+colour with the word and a faint crest, the scorer, minute and score in a light row), the card strap (the card word
+on a block of the card's colour, the number and *N. SURNAME*), the substitution strap, the match header, the
+kick-off banner, the break board (the period in a slanted tab, the names over two lines, each team's scorers under
+its block: an own goal under the team it counted for, penalties marked; tries for rugby league; none for basketball,
+netball and AFL) and the full-screen statistics board (each team's panel in its colour with its crest, score, scorers
+and name running up the edge; *HALF TIME STATS* and up to eight rows with a bar split in the teams' colours between).
+A long club name falls back to its short name rather than being cut. The rest (line-ups, tables, the ticker…) comes
+from the broadcast pack engine as white panels with title bars in the look's colour. Migration `0018` adds an
+immutable version 1.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `derby.test.ts` (scorers on the break board, own goal and penalty marks, rugby league tries only, no list for basketball, the short-name fallback, the statistics title by period, the card strap's colour and name, the goal strap's score, name colours on light, mid and dark club colours); `looks.test.ts` (eleven looks, every built-in graphic drawn); `officials.test.ts` (the tabs under the scorebug and the red cards in every look, now including Derby) | 218 tests, 40 files, all pass |
+| `pnpm test:db` (migration `0018` applied with the rest) | 82 tests, 12 files, all pass |
+| Visual baselines: Derby's 29 football graphics and the rugby league sin bin and video review (31 new, rewritten in full after the last change); the other looks unchanged and not rerun | 2 tests, pass |
+| `look-choice.spec.ts` (the pickers list every look) and `replay-transition.spec.ts` | 3 tests, pass |
+| Full `pnpm test:e2e` | not run for this change |
+
+Not claimed: the previews with crests were drawn from the same components with sample shields outside the app; the
+committed baselines use the look page's sample teams, which have no crests. Not checked in OBS or on the hosted
+deployment.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

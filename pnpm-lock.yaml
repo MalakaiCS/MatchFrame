@@ -181,6 +181,9 @@ importers:
       '@fontsource-variable/outfit':
         specifier: 5.3.0
         version: 5.3.0
+      '@fontsource-variable/red-hat-display':
+        specifier: 5.3.0
+        version: 5.3.0
       '@fontsource-variable/saira':
         specifier: 5.3.0
         version: 5.3.0
@@ -1323,6 +1326,9 @@ packages:
 
   '@fontsource-variable/outfit@5.3.0':
     resolution: {integrity: sha512-fPb5XnYK0k7SbR++HEmm4+ZqDszmLKQ+sPRUr8oQ/KNC0vy6r6hazJFe8iYozv4cqlHbvJ/JECkJWrfDodUMVQ==}
+
+  '@fontsource-variable/red-hat-display@5.3.0':
+    resolution: {integrity: sha512-8u4FI+i3fkB8erlN9lMGa7Hm7aBCRP34y/aPwriBUiDYoxmS/N1QvBrd/hghUBnHJKrVKRg3h4Oubpyl2H8smw==}
 
   '@fontsource-variable/saira@5.3.0':
     resolution: {integrity: sha512-C1rm7n1OuEx4Se/SAB/5EeUuCviGFFnYTr5vxuQQm2YIOfgbQWx/P6qqhdXlVCBRm/1UzNWCtDK5jNbVmO6W2w==}
@@ -4740,6 +4746,8 @@ snapshots:
   '@fontsource-variable/oswald@5.2.8': {}
 
   '@fontsource-variable/outfit@5.3.0': {}
+
+  '@fontsource-variable/red-hat-display@5.3.0': {}
 
   '@fontsource-variable/saira@5.3.0': {}
 

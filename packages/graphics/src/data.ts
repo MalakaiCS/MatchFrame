@@ -35,7 +35,7 @@ export interface RenderPlayer {
 }
 
 /** Every built-in look, in the order the app lists them. */
-export const THEME_KEYS = ['broadcast', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister', 'club', 'minimal'] as const;
+export const THEME_KEYS = ['broadcast', 'premier', 'liga', 'major', 'southern', 'continental', 'primetime', 'meister', 'derby', 'club', 'minimal'] as const;
 export type ThemeKey = (typeof THEME_KEYS)[number];
 
 /** Name and one-line description of each look, for pickers and the public showcase. */
@@ -48,6 +48,7 @@ export const LOOKS: { key: ThemeKey; name: string; description: string }[] = [
   { key: 'continental', name: 'Continental', description: 'European club-night style: deep navy, starfield and silver hairlines' },
   { key: 'primetime', name: 'Primetime', description: 'US network style: brushed metal, red and condensed italic type' },
   { key: 'meister', name: 'Meister', description: 'German top-flight style: white panels, red and slanted italic cuts' },
+  { key: 'derby', name: 'Derby', description: 'Australian club football style: each team in its own colour, crests breaking out and a white score plate' },
   { key: 'club', name: 'Club', description: 'Rounded pills with lively motion' },
   { key: 'minimal', name: 'Minimal', description: 'Light cards and restrained type' },
 ];
@@ -228,6 +229,8 @@ export const DEFAULT_THEMES: Record<ThemeConfig['themeKey'], ThemeConfig> = {
   southern: { themeKey: 'southern', primary: '#FF3D7F', secondary: '#0A0A0A', accent: '#00E0FF', text: '#0A0A0A', panel: '#FFFFFF', font: "'Archivo Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
   continental: { themeKey: 'continental', primary: '#2F6BFF', secondary: '#07103A', accent: '#8FB7FF', text: '#07103A', panel: '#FFFFFF', font: "'Jost Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 4, motion: 'full', entranceMs: 420, exitMs: 300, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
   primetime: { themeKey: 'primetime', primary: '#E10600', secondary: '#17191E', accent: '#FFC400', text: '#17191E', panel: '#FFFFFF', font: "'Saira Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  // Derby (theme-derby.tsx): each team's block in its own colour, crests breaking out, white score plates
+  derby: { themeKey: 'derby', primary: '#2443E0', secondary: '#15171C', accent: '#FFC629', text: '#15171C', panel: '#FFFFFF', font: "'Red Hat Display Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
   meister: { themeKey: 'meister', primary: '#D20515', secondary: '#16161A', accent: '#16161A', text: '#16161A', panel: '#FFFFFF', font: "'Exo 2 Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
 };
 

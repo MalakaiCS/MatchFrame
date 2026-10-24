@@ -117,7 +117,7 @@ export const FAQS: Faq[] = [
     category: 'graphics-scoring',
     q: 'What graphics are available?',
     a: [
-      'Twenty-nine built-in graphics, in ten looks: the scorebug (the on-screen score and clock), match header, animated background, team line-ups and formations, goal and score events, cards, substitutions, kick-off and period banners, lower thirds (name captions near the bottom of the picture), player cards, match statistics and live statistic comparisons, break and final scores, match summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match information, shoot-out tracker, timeouts, sponsor graphics, stinger wipe, holding slate, full-frame media and a ticker.',
+      'Twenty-nine built-in graphics, in eleven looks: the scorebug (the on-screen score and clock), match header, animated background, team line-ups and formations, goal and score events, cards, substitutions, kick-off and period banners, lower thirds (name captions near the bottom of the picture), player cards, match statistics and live statistic comparisons, break and final scores, match summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match information, shoot-out tracker, timeouts, sponsor graphics, stinger wipe, holding slate, full-frame media and a ticker.',
       'See them all, live, in the [showcase](/showcase).',
     ],
     home: true,
