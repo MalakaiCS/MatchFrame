@@ -58,7 +58,7 @@ visual and unit suites behind each group are listed in `ACCEPTANCE_RESULTS.md`.
 | 31 | Around-the-grounds ticker | Done | The ticker carries the other live scores of the same competition and round. |
 | 32 | Moment sponsorship | Done | "Presented by" on goal, card and substitution graphics; counted in sponsor delivery. |
 | 33 | Stinger wipe | Done | *Stinger wipe* full-frame graphic with sponsor, from the control room or a hotkey. |
-| 34 | Audio stings | Done | Look option: short WebAudio stings on goals and cards from the browser source. |
+| 34 | Audio stings | Removed (2026-10-24) | Built as a look option (short WebAudio stings on goals and cards from the browser source), then taken out on request: graphics are silent. Looks saved with the option keep working; the setting is ignored. |
 | 35 | Player headshots | Partial | Photos on goal cards, line-ups and player cards from the asset library; the top-scorers board shows photos only for players in the match line-up. |
 | 36 | Scorebug variants and position | Partial | Box or strip, left/centre/right per look; the club look keeps its pill shape for the strip variant. |
 | 37 | Colour clash handling | Done | Close primary colours switch the away side to its alternate colours automatically. |

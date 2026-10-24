@@ -30,7 +30,7 @@ const PREVIEWS: { title: string; keys: string[]; scorebug: boolean }[] = [
   { title: 'Half-time board', keys: ['builtin:break_score'], scorebug: false },
   { title: 'Lower third and kick-off banner', keys: ['builtin:period_banner'], scorebug: true },
 ];
-const SAVED_KEYS = ['primary', 'secondary', 'accent', 'text', 'panel', 'motion', 'entranceMs', 'exitMs', 'safeArea', 'logoAssetId', 'fontAssetId', 'scorebug', 'clock', 'wording', 'stings', 'sponsorSlots', 'controlRoomLayoutId'] as const;
+const SAVED_KEYS = ['primary', 'secondary', 'accent', 'text', 'panel', 'motion', 'entranceMs', 'exitMs', 'safeArea', 'logoAssetId', 'fontAssetId', 'scorebug', 'clock', 'wording', 'sponsorSlots', 'controlRoomLayoutId'] as const;
 /** On-air words a look may change (translations, house style). Keys are the default wording. */
 const WORDING_KEYS = ['GOAL', 'PENALTY', 'OWN GOAL', 'YELLOW CARD', 'RED CARD', 'HALF TIME', 'FULL TIME', 'KICK-OFF', 'ABOUT TO START', 'MATCH STATS', 'TABLE', 'LADDER', 'PRESENTED BY', 'TRY', 'TIMEOUT'];
 const PITCH = 'linear-gradient(180deg, #24476b 0%, #1d3b2a 55%, #2f6b3c 100%)';
@@ -169,7 +169,7 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
           <Field label="Motion" htmlFor="mo"><NativeSelect id="mo" value={cfg.motion ?? base.motion} onChange={(e) => setCfg({ ...cfg, motion: e.target.value as ThemeConfig['motion'] })}><option value="full">Full (slides, zooms, pops)</option><option value="subtle">Subtle (fades and small moves)</option><option value="none">None (graphics cut in)</option></NativeSelect></Field>
           <Field label={`Entrance speed: ${cfg.entranceMs ?? base.entranceMs} ms`} htmlFor="en"><input id="en" type="range" min={150} max={600} step={10} value={cfg.entranceMs ?? base.entranceMs} onChange={(e) => setCfg({ ...cfg, entranceMs: Number(e.target.value) })} /></Field>
           <details className="rounded-md border border-border p-2">
-            <summary className="cursor-pointer text-sm font-medium">Scorebug, clock and sounds</summary>
+            <summary className="cursor-pointer text-sm font-medium">Scorebug and clock</summary>
             <div className="mt-2 grid gap-3">
               <Field label="Scorebug style" htmlFor="sbv" hint="Box stacks the teams; strip is one slim row. Club keeps its pill in both.">
                 <NativeSelect id="sbv" value={cfg.scorebug?.variant ?? 'box'} onChange={(e) => setNested('scorebug', { variant: e.target.value as 'box' | 'strip' })}><option value="box">Box</option><option value="strip">Strip</option></NativeSelect>
@@ -181,7 +181,6 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
               <Field label="Added time" htmlFor="ast">
                 <NativeSelect id="ast" value={cfg.clock?.stoppage ?? 'plus'} onChange={(e) => setNested('clock', { stoppage: e.target.value as 'plus' | 'label' })}><option value="plus">+2:14</option><option value="label">ADDED TIME 2:14</option></NativeSelect>
               </Field>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={!!cfg.stings} onChange={(e) => setCfg({ ...cfg, stings: e.target.checked })} /> Play a short sting on goals and cards (OBS captures it when audio is on)</label>
             </div>
           </details>
           <details className="rounded-md border border-border p-2">

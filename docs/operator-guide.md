@@ -107,8 +107,8 @@ light wide-tracked capitals), **Primetime** (US network: brushed metal, red, con
 scorebug) and **Meister** (German top flight: white panels, red, slanted cuts and italic capitals). Each has its own
 animated background. None carries a league's or broadcaster's marks, names or typefaces. A look also sets the **scorebug variant and position**, the **clock
 style** (hide seconds; added time as "+3" or a label), **wording** overrides for on-air labels (bilingual
-competitions), **audio stings** on goals and cards (the OBS browser source captures them) and a **custom font**
-uploaded through the asset library. When two kits are too close in colour the away side switches to its
+competitions) and a **custom font** uploaded through the asset library. Graphics make no sound: the OBS browser
+source carries pictures only, so goals and cards come in silently and any sound is yours to add in OBS. When two kits are too close in colour the away side switches to its
 alternate colours automatically. Published versions are immutable: a match keeps the version it started with
 until you apply the newer one on its OBS link tab.
 

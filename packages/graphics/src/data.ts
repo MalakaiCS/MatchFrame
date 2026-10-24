@@ -72,8 +72,6 @@ export interface ThemeConfig {
   clock?: { hideSeconds?: boolean; stoppage?: 'plus' | 'label' };
   /** wording overrides for on-air labels, keyed by the default wording (e.g. { 'HALF TIME': 'MI-TEMPS' }) */
   wording?: Record<string, string>;
-  /** short audio stings on goals and cards (the OBS browser source captures them) */
-  stings?: boolean;
 }
 
 /** League table row as the renderer sees it. */
@@ -223,14 +221,14 @@ export const DEFAULT_THEMES: Record<ThemeConfig['themeKey'], ThemeConfig> = {
   broadcast: { themeKey: 'broadcast', primary: '#3EA6FF', secondary: '#0B1220', accent: '#FFCE66', text: '#F3F6FB', panel: '#131F32', font: 'Inter Variable', radius: 4, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05 },
   club: { themeKey: 'club', primary: '#55D99D', secondary: '#0B1220', accent: '#FFFFFF', text: '#FFFFFF', panel: '#1C2C43', font: 'Inter Variable', radius: 18, motion: 'subtle', entranceMs: 280, exitMs: 240, safeArea: 0.05 },
   // top-flight football broadcast look: deep purple glass, hot magenta, electric teal, white score plates, Outfit type
-  premier: { themeKey: 'premier', primary: '#E90052', secondary: '#37003C', accent: '#04F5FF', text: '#37003C', panel: '#FFFFFF', font: "'Outfit Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 10, motion: 'full', entranceMs: 360, exitMs: 280, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  premier: { themeKey: 'premier', primary: '#E90052', secondary: '#37003C', accent: '#04F5FF', text: '#37003C', panel: '#FFFFFF', font: "'Outfit Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 10, motion: 'full', entranceMs: 360, exitMs: 280, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
   // the broadcast packs (theme-pack.tsx): original designs in the style of other leagues' and networks' graphics
-  liga: { themeKey: 'liga', primary: '#FF4B44', secondary: '#141418', accent: '#FFB400', text: '#141418', panel: '#FFFFFF', font: "'Montserrat Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 18, motion: 'full', entranceMs: 340, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
-  major: { themeKey: 'major', primary: '#F5F5F7', secondary: '#0B0B0D', accent: '#B7FF3C', text: '#0B0B0D', panel: '#FFFFFF', font: "'Inter Variable', ui-sans-serif, sans-serif", radius: 14, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
-  southern: { themeKey: 'southern', primary: '#FF3D7F', secondary: '#0A0A0A', accent: '#00E0FF', text: '#0A0A0A', panel: '#FFFFFF', font: "'Archivo Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
-  continental: { themeKey: 'continental', primary: '#2F6BFF', secondary: '#07103A', accent: '#8FB7FF', text: '#07103A', panel: '#FFFFFF', font: "'Jost Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 4, motion: 'full', entranceMs: 420, exitMs: 300, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
-  primetime: { themeKey: 'primetime', primary: '#E10600', secondary: '#17191E', accent: '#FFC400', text: '#17191E', panel: '#FFFFFF', font: "'Saira Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
-  meister: { themeKey: 'meister', primary: '#D20515', secondary: '#16161A', accent: '#16161A', text: '#16161A', panel: '#FFFFFF', font: "'Exo 2 Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' }, stings: true },
+  liga: { themeKey: 'liga', primary: '#FF4B44', secondary: '#141418', accent: '#FFB400', text: '#141418', panel: '#FFFFFF', font: "'Montserrat Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 18, motion: 'full', entranceMs: 340, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  major: { themeKey: 'major', primary: '#F5F5F7', secondary: '#0B0B0D', accent: '#B7FF3C', text: '#0B0B0D', panel: '#FFFFFF', font: "'Inter Variable', ui-sans-serif, sans-serif", radius: 14, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  southern: { themeKey: 'southern', primary: '#FF3D7F', secondary: '#0A0A0A', accent: '#00E0FF', text: '#0A0A0A', panel: '#FFFFFF', font: "'Archivo Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  continental: { themeKey: 'continental', primary: '#2F6BFF', secondary: '#07103A', accent: '#8FB7FF', text: '#07103A', panel: '#FFFFFF', font: "'Jost Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 4, motion: 'full', entranceMs: 420, exitMs: 300, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  primetime: { themeKey: 'primetime', primary: '#E10600', secondary: '#17191E', accent: '#FFC400', text: '#17191E', panel: '#FFFFFF', font: "'Saira Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 300, exitMs: 240, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
+  meister: { themeKey: 'meister', primary: '#D20515', secondary: '#16161A', accent: '#16161A', text: '#16161A', panel: '#FFFFFF', font: "'Exo 2 Variable', 'Inter Variable', ui-sans-serif, sans-serif", radius: 0, motion: 'full', entranceMs: 320, exitMs: 260, safeArea: 0.05, scorebug: { variant: 'box', position: 'left' } },
 };
 
 export function playerIndex(lineup: LineupSnapshot, photo: (assetId: string | null | undefined) => string | null): Record<string, RenderPlayer> {

@@ -124,31 +124,6 @@ export function layerBox(layer: Layer, format: OutputFormat): CSSProperties {
   return { position: 'absolute', inset: 0 };
 }
 
-const STING_KEYS: Record<string, 'score' | 'card' | 'tick'> = { 'builtin:goal': 'score', 'builtin:score': 'tick', 'builtin:card': 'card', 'builtin:player_of_match': 'tick', 'builtin:timeout': 'tick' };
-let audioCtx: AudioContext | null = null;
-/** Short synthesised sting (no asset needed); the OBS browser source captures it when audio is enabled. */
-export function playSting(kind: 'score' | 'card' | 'tick') {
-  try {
-    if (typeof window === 'undefined' || !('AudioContext' in window)) return;
-    audioCtx ??= new AudioContext();
-    const ctx = audioCtx;
-    const notes = kind === 'score' ? [[523, 0, 0.16], [659, 0.14, 0.16], [784, 0.28, 0.3]] : kind === 'card' ? [[330, 0, 0.26], [262, 0.2, 0.3]] : [[880, 0, 0.1]];
-    for (const [freq, at, dur] of notes as [number, number, number][]) {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = kind === 'card' ? 'triangle' : 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + at);
-      o.stop(ctx.currentTime + at + dur + 0.05);
-    }
-  } catch {
-    // audio is best-effort: never let a sting break the output
-  }
-}
 
 /** Renders the on-air state from an explicit snapshot. Shared by overlay, preview, rehearsal and programme. */
 export function Renderer({ state, data: rawData, themes, serverNow, customDefs = [], renderCustom, onVisible, slots, monitor, still }: RendererProps) {
@@ -193,20 +168,8 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
   const visKey = visible.map((c) => c.cueId).join(',');
   const cb = useRef(onVisible);
   cb.current = onVisible;
-  const seen = useRef<Set<string>>(new Set());
-  const stings = data.theme.stings === true;
   useEffect(() => {
     cb.current?.(visible, now);
-    if (stings) {
-      for (const c of visible) {
-        const key = `${c.cueId}:${c.startedAt}`;
-        if (seen.current.has(key)) continue;
-        seen.current.add(key);
-        const kind = STING_KEYS[c.templateKey];
-        if (kind && now - c.startedAt < 2000) playSting(kind);
-      }
-      if (seen.current.size > 500) seen.current.clear();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visKey]);
   return (

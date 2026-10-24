@@ -26,7 +26,6 @@ export const profileConfigSchema = z.object({
   scorebug: z.object({ variant: z.enum(['box', 'strip']).optional(), position: z.enum(['left', 'centre', 'right']).optional() }).optional(),
   clock: z.object({ hideSeconds: z.boolean().optional(), stoppage: z.enum(['plus', 'label']).optional() }).optional(),
   wording: z.record(z.string().max(40), z.string().max(60)).optional(),
-  stings: z.boolean().optional(),
   sponsorSlots: z.record(z.string(), z.boolean()).optional(),
   controlRoomLayoutId: z.string().uuid().nullable().optional(),
 });
