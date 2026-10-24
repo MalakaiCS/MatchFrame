@@ -10,8 +10,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
 import { occasionLine, type RenderPlayer, type RenderTeam } from '../data';
-import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { Fitted, Logo, RED_CARD_BOX, RedCardTab, ScorebugTabs, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, periodBanner, player, scorebugPosition, stoppageLabel, t, team } from './common';
+import { animStyle, changeStyle, partAnim, stagger, type GraphicProps, type ThemeComponents } from './stage';
+import { Fitted, Logo, RED_CARD_BOX, RedCardTab, ScorebugTabs, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, player, scorebugPosition, side, stoppageLabel, t, team } from './common';
 import { packTheme, type Pack } from './theme-pack';
 
 const SX = 96; // 5% title-safe
@@ -170,11 +170,11 @@ function detail(p: GraphicProps, s: Side): string | null {
 }
 const digits = (p: GraphicProps, s: Side, min: number) => (
   <span style={{ minWidth: min, textAlign: 'center' }}>
-    <span style={changeStyle(p, `score-${s}`, p.display.score[s])}>{p.display.score[s]}</span>
+    <span style={changeStyle(p, `score-${s}`, p.display.score[s], 'flip')}>{p.display.score[s]}</span>
   </span>
 );
 
-// ------------------------------------------------------------------ scorebug, and events through it
+// ------------------------------------------------------------------ scorebug, and the events that are part of it
 
 /** The clock's words at a break and after the match ("HALF TIME", "FULL TIME"); null while the clock is the clock. */
 function breakWord(p: GraphicProps): string | null {
@@ -207,135 +207,179 @@ function ClockText({ p, px }: { p: GraphicProps; px: number }) {
   );
 }
 
-/** The events that come up through the scorebug rather than as a strap of their own. */
-const THROUGH_BUG = ['builtin:goal', 'builtin:score', 'builtin:card', 'builtin:substitution'];
-/** The goal, card or substitution on air, as its own props, when the scorebug is to draw it. */
-function eventOnAir(p: GraphicProps): GraphicProps | null {
-  const e = p.layers?.event;
-  if (!e || !THROUGH_BUG.includes(e.cue.templateKey)) return null;
-  return { ...p, cue: e.cue, t: e.t, phase: e.phase, offsetMs: e.offsetMs };
-}
-
-/** Sizes shared by the scorebug and the events drawn in its place. */
+/** Sizes shared by the scorebug and the events that are part of it. */
 function bugSize(p: GraphicProps) {
   const slim = p.data.theme.scorebug?.variant === 'strip';
   const H = slim ? 42 : 50;
   const CREST = slim ? 52 : 64;
   const hang = Math.round(CREST * 0.38); // how far a crest hangs past its block
-  return { slim, H, CREST, hang, inset: CREST - hang + 10 };
+  const box = slim ? 62 : 74; // the letters' box
+  return { slim, H, CREST, hang, inset: CREST - hang + 10, box, R: slim ? 34 : 38 };
+}
+/** A team block's width and the scorebug's (the blocks and the plate, crests aside), as the browser will lay them out. */
+function bugWidths(p: GraphicProps) {
+  const { slim, inset, box } = bugSize(p);
+  const block = (s: Side) => inset + Math.max(box, p.measure(team(p, s).abbreviation, slim ? 26 : 32)) + 16 + (p.display.possession === s ? 24 : 0);
+  const digit = (s: Side) => Math.max(slim ? 24 : 28, p.measure(String(p.display.score[s]), slim ? 30 : 36));
+  const blocks = { home: block('home'), away: block('away') };
+  return { blocks, bug: blocks.home + blocks.away + 28 + 20 + 2 + digit('home') + digit('away') };
+}
+
+/** The events that are part of the scorebug rather than a graphic of their own. */
+const IN_BUG = ['builtin:goal', 'builtin:score', 'builtin:card', 'builtin:substitution'];
+/** When the team's block starts across the scorebug: for a score, once the new score has been seen. */
+const ACROSS_AT: Record<string, number> = { goal: 600, score: 600, card: 200, substitution: 200 };
+const ACROSS_MS = 420;
+/** For a goal with a scorer: the bar turns from the word to the scorer this long in. */
+const SCORER_AT = 3600;
+/** The O's of GOOOOAL take turns to jump. */
+const O_KEYFRAMES = '@keyframes bs-derby-o{0%,50%,100%{transform:none}22%{transform:translateY(-3px) scale(1.26)}}';
+
+/** The goal, card or substitution on air, as its own props, when the scorebug is to show it. */
+function eventOnAir(p: GraphicProps): GraphicProps | null {
+  const e = p.layers?.event;
+  if (!e || !IN_BUG.includes(e.cue.templateKey)) return null;
+  return { ...p, cue: e.cue, t: e.t, phase: e.phase, offsetMs: e.offsetMs };
+}
+/** How far across the scorebug the event has gone (0..1, by time): what it covers is out of sight from 1. */
+function acrossBy(ep: GraphicProps): number {
+  if (ep.phase === 'out') return 0;
+  if (ep.data.theme.motion === 'none') return 1;
+  return Math.min(1, Math.max(0, (ep.offsetMs - (ACROSS_AT[ep.cue.templateKey.replace('builtin:', '')] ?? 0)) / ACROSS_MS));
 }
 
 /**
- * A goal, card or substitution in the scorebug's place: the team's crest breaking out of the end of its block, the
- * event beside it, and the player in light rows underneath with the clock beside the first. The scorebug draws it
- * over its own score (it wipes across and back); with the scorebug off it stands alone in the same place.
+ * A goal, card or substitution as part of the scorebug: for a score, the scoring team's block runs across the whole
+ * scorebug (over the score and the other team) with GOOOOAL! sliding in, the clock staying in its tab underneath;
+ * for a card or substitution the team's block stays where it is and the card (or SUBSTITUTION) runs across the rest,
+ * with the player in a light row underneath. On the way out it all runs back to the team's end. `bar` fills the
+ * scorebug's row; `rows` hang from the top of the row under it.
  */
-function EventBody({ ep, host }: { ep: GraphicProps; host: GraphicProps | null }) {
+function eventParts(ep: GraphicProps, host: GraphicProps | null): { bar: ReactNode; rows: ReactNode; rowsH: number; covers: 'all' | 'other' } {
   const key = ep.cue.templateKey.replace('builtin:', '');
+  const s = side(ep);
+  const away = s === 'away';
   const tm = team(ep);
-  const { slim, H, CREST, hang, inset } = bugSize(ep);
-  const R = slim ? 34 : 38;
-  const px = slim ? 19 : 22;
-  const abbr = (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingLeft: inset, paddingRight: 18, background: blockBg(tm, 'left'), color: inkOn(tm.primaryColor), ...animStyle(ep, 'wipe', 0, 340) }}>
-      <span style={{ fontSize: slim ? 26 : 32, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
-      <Glint at="right" h={slim ? 0.8 : 1} />
-    </div>
-  );
-  const wordBlock = (bg: string, ink: string, word: ReactNode) => (
-    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', padding: '0 26px 0 20px', minWidth: slim ? 220 : 260, background: bg, color: ink, fontSize: slim ? 22 : 27, fontWeight: 900, letterSpacing: 1.5, whiteSpace: 'nowrap', ...animStyle(ep, 'wipe', 120, 360) }}>
-      <span style={animStyle(ep, 'rise', 260, 300)}>{word}</span>
-    </div>
-  );
-  const number = (pl: RenderPlayer | null) => (pl?.number != null ? <span style={{ minWidth: 26, fontWeight: 900, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pl.number}</span> : null);
-  let head: ReactNode;
-  let rows: ReactNode[];
+  const { slim, H, CREST, hang, inset, R } = bugSize(ep);
+  const widths = bugWidths(host ?? ep);
+  const at = ACROSS_AT[key] ?? 0;
+  const still = ep.still || ep.data.theme.motion === 'none';
+  // across from the team's end, back to it on the way out (the words leave first)
+  const sweep = partAnim(ep, away ? 'wipe-rtl' : 'wipe', at, ACROSS_MS, 90, Math.max(60, ep.t.exitMs - 90));
+  const words = partAnim(ep, away ? 'slide-left' : 'slide-right', at + 160, 380, 0, 120);
+  const end = away ? 'right' : 'left';
+  const far = away ? 'left' : 'right';
+  const crest = <span style={{ position: 'absolute', top: (H - CREST) / 2, [end]: -hang, zIndex: 1 }}><Crest tm={tm} size={CREST} /></span>;
+  const pl = player(ep);
+  const name = (who: RenderPlayer | null, width: number, px: number, colour = INK) => <PlayerName p={ep} pl={who} fallback={tm.name} width={width} px={px} colour={colour} />;
+
   if (key === 'goal' || key === 'score') {
+    const word = eventWord(ep);
     const pts = ep.cue.variables.points;
-    const word = key === 'goal' ? `${eventWord(ep)}!` : `+${typeof pts === 'number' ? pts : ''}`;
-    const sc = ep.data.match.projection.score;
-    head = (
-      <div style={{ position: 'relative', overflow: 'hidden', flex: 1, display: 'flex', alignItems: 'center', gap: 14, paddingLeft: inset, paddingRight: 34, minWidth: slim ? 360 : 430, background: blockBg(tm, 'left'), color: nameInk(tm), ...animStyle(ep, 'wipe', 0, 400) }}>
-        <Watermark tm={tm} size={H * 2.4} style={{ right: -H * 0.3, top: '50%', transform: 'translateY(-50%)' }} />
-        <span style={{ position: 'relative', fontSize: slim ? 30 : 38, fontWeight: 900, fontStyle: key === 'goal' ? 'italic' : undefined, letterSpacing: 1, lineHeight: 1, ...animStyle(ep, 'zoom', 200, 380) }}>{word}</span>
-        <span style={{ position: 'relative', fontSize: slim ? 12 : 14, fontWeight: 800, letterSpacing: 4, opacity: 0.9, ...animStyle(ep, 'rise', 300, 320) }}>{(tm.shortName || tm.name).toUpperCase()}</span>
-        <Glint at="right" h={slim ? 0.8 : 1} />
-      </div>
-    );
-    rows = [
-      <>
-        {key === 'goal' ? <Ball size={px + 2} sport={ep.data.match.sport} /> : null}
-        <PlayerName p={ep} pl={player(ep)} fallback={tm.name} width={300} px={px + 1} />
-        {key === 'goal' ? (
-          <span style={{ marginLeft: 'auto', paddingLeft: 18, display: 'flex', alignItems: 'center', gap: 6, fontSize: px - 4, fontWeight: 900 }}>
-            {team(ep, 'home').abbreviation}
-            <span style={{ padding: '2px 8px', background: INK, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{sc.home}–{sc.away}</span>
-            {team(ep, 'away').abbreviation}
-          </span>
-        ) : null}
-      </>,
-    ];
-  } else if (key === 'card') {
-    const cs = cardStyle(ep);
-    const fill = CARD_FILL[String(ep.cue.variables.cardType ?? 'yellow')] ?? cs.colour;
-    const pl = player(ep);
-    head = <>{abbr}{wordBlock(fill, inkOn(fill), cs.word)}</>;
-    rows = [
-      <>
-        <span aria-hidden style={{ width: 15, height: 21, flex: 'none', borderRadius: 2, background: fill, boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
-        {number(pl)}
-        <PlayerName p={ep} pl={pl} fallback={tm.name} width={300} px={px + 1} />
-      </>,
-    ];
-  } else {
-    const line = (arrow: string, colour: string, pl: RenderPlayer | null) => (
-      <>
-        <span style={{ width: 18, color: colour, fontSize: px - 4, fontWeight: 900 }}>{arrow}</span>
-        {number(pl)}
-        <PlayerName p={ep} pl={pl} fallback={tm.name} width={300} px={px + 1} />
-      </>
-    );
-    head = <>{abbr}{wordBlock(PLATE, INK, t(ep, 'SUBSTITUTION'))}</>;
-    rows = [line('▲', ON_GREEN, player(ep, 'playerIn')), line('▼', OFF_RED, player(ep, 'playerOut'))];
+    const big = slim ? 30 : 36;
+    const text = key === 'score' ? `+${typeof pts === 'number' ? pts : ''}` : word === t(ep, 'GOAL') ? 'GOOOOAL!' : `${word}!`;
+    const room = widths.bug - inset - 30;
+    const fit = fitLabel({ full: text, maxWidth: room * 0.62, fontPx: big, minFontPx: Math.round(big * 0.6), measure: ep.measure });
+    // the O's take turns to jump while it holds
+    const letters = [...fit.text].map((ch, i) => (ch === 'O' && !still && ep.phase === 'hold' ? <span key={i} style={{ display: 'inline-block', animation: `bs-derby-o 1.5s ease-in-out ${(i - 1) * 0.16}s infinite` }}>{ch}</span> : ch));
+    const scorer = key === 'goal' && pl && ep.offsetMs >= SCORER_AT && ep.phase !== 'out';
+    const ink = nameInk(tm);
+    return {
+      covers: 'all',
+      rows: null,
+      rowsH: 0,
+      bar: (
+        <>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, [end]: 0, [far]: -hang, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: away ? 'flex-end' : 'flex-start', [away ? 'paddingRight' : 'paddingLeft']: inset, [away ? 'paddingLeft' : 'paddingRight']: hang + 18, background: blockBg(tm, end), color: ink, ...sweep }}>
+            <Watermark tm={tm} size={H * 2.4} style={{ [far]: -H * 0.2, top: '50%', transform: 'translateY(-50%)' }} />
+            <Glint at={far} h={slim ? 0.8 : 1} />
+            {scorer ? (
+              <span key="scorer" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap', ...animStyle(ep, away ? 'slide-left' : 'slide-right', SCORER_AT, 360) }}>
+                <Ball size={slim ? 20 : 24} sport={ep.data.match.sport} />
+                {name(pl, room - 90, slim ? 21 : 25, ink)}
+                {minute(ep) ? <span style={{ fontSize: slim ? 16 : 19, fontWeight: 700, opacity: 0.85, fontVariantNumeric: 'tabular-nums' }}>{minute(ep)}</span> : null}
+              </span>
+            ) : (
+              <span key="word" style={{ position: 'relative', display: 'flex', alignItems: 'baseline', gap: 12, whiteSpace: 'nowrap', ...words }}>
+                {still ? null : <style>{O_KEYFRAMES}</style>}
+                <span style={{ fontSize: fit.fontPx, fontWeight: 900, letterSpacing: 1, lineHeight: 1 }}>{letters}</span>
+                <span style={{ fontSize: slim ? 11 : 13, fontWeight: 800, letterSpacing: 4, opacity: 0.9 }}>{(tm.shortName || tm.name).toUpperCase()}</span>
+              </span>
+            )}
+          </div>
+          {crest}
+        </>
+      ),
+    };
   }
-  return (
-    <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column' }} data-scorebug-event={key}>
-      <div style={{ display: 'flex', alignItems: 'stretch', height: H }}>{head}</div>
-      {rows.map((r, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'stretch', minHeight: R, background: i % 2 ? TAB : ROW, color: INK, ...animStyle(ep, 'drop', 240 + i * 80, 320) }}>
-          <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: `0 18px 0 ${inset}px`, fontSize: px }}>{r}</span>
-          {i === 0 && host ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: TAB, whiteSpace: 'nowrap' }}><ClockText p={host} px={px} /></span> : null}
-        </div>
-      ))}
-      <span style={{ position: 'absolute', left: -hang, top: (H - CREST) / 2, ...animStyle(ep, 'zoom', 160, 380) }}><Crest tm={tm} size={CREST} /></span>
+
+  // a card or a substitution: the team's own block stays, the rest of the scorebug turns into the event
+  const card = key === 'card';
+  const cs = cardStyle(ep);
+  const fill = card ? (CARD_FILL[String(ep.cue.variables.cardType ?? 'yellow')] ?? cs.colour) : PLATE;
+  const label = card ? cs.word : t(ep, 'SUBSTITUTION');
+  const own = widths.blocks[s];
+  const room = widths.bug - own - 40;
+  const fit = fitLabel({ full: label, maxWidth: room, fontPx: slim ? 21 : 25, minFontPx: slim ? 14 : 16, measure: ep.measure });
+  const rowPx = slim ? 19 : 22;
+  const line = (lead: ReactNode, who: RenderPlayer | null, i: number) => (
+    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, height: R, padding: away ? `0 ${inset}px 0 ${hang + 18}px` : `0 ${hang + 18}px 0 ${inset}px`, justifyContent: away ? 'flex-end' : 'flex-start', background: i % 2 ? TAB : ROW, color: INK, fontSize: rowPx, whiteSpace: 'nowrap', overflow: 'hidden', ...partAnim(ep, away ? 'wipe-rtl' : 'wipe', at + 240 + i * 90, 340, 0, 120) }}>
+      {lead}
+      {who?.number != null ? <span style={{ fontWeight: 900, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{who.number}</span> : null}
+      {name(who, widths.bug - inset - 90, rowPx + 1)}
     </div>
   );
+  const rows = card
+    ? [line(<span aria-hidden style={{ width: 14, height: 20, flex: 'none', borderRadius: 2, background: fill, boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />, pl, 0)]
+    : [line(<span style={{ color: ON_GREEN, fontSize: rowPx - 6, fontWeight: 900 }}>▲</span>, player(ep, 'playerIn'), 0), line(<span style={{ color: OFF_RED, fontSize: rowPx - 6, fontWeight: 900 }}>▼</span>, player(ep, 'playerOut'), 1)];
+  return {
+    covers: 'other',
+    rowsH: rows.length * R,
+    // as far as the bar: over the other team's crest
+    rows: <div style={{ position: 'absolute', top: 0, [end]: 0, [far]: -hang }}>{rows}</div>,
+    bar: (
+      <>
+        {/* the team's block, where the scorebug has it */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, [end]: 0, width: own, display: 'flex', alignItems: 'center', justifyContent: away ? 'flex-end' : 'flex-start', [away ? 'paddingRight' : 'paddingLeft']: inset, background: blockBg(tm, end), color: inkOn(tm.primaryColor) }}>
+          <span style={{ fontSize: slim ? 26 : 32, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
+        </div>
+        {/* the event, across the rest of the scorebug and over the other team's crest */}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, [end]: own, [far]: -hang, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: away ? 'flex-end' : 'flex-start', padding: away ? `0 20px 0 ${hang + 14}px` : `0 ${hang + 14}px 0 20px`, background: fill, color: inkOn(fill), ...sweep }}>
+          <span style={{ fontSize: fit.fontPx, fontWeight: 900, letterSpacing: 1.5, whiteSpace: 'nowrap', ...words }}>{fit.text}</span>
+        </div>
+        {crest}
+      </>
+    ),
+  };
 }
 
 /**
  * [crest|HOME] [2 | 1] [AWAY|crest], each team's block in its colour with the crest breaking out of the end, the
  * clock in a grey tab under the score plate (the strip variant: beside the bug); added time runs in a tab in the
- * look's colour beside the clock, and at a break and after the match the tab says HALF TIME or FULL TIME. A goal,
- * card or substitution comes up through the scorebug: it wipes across the score and the bug comes back after it.
+ * look's colour beside the clock, and at a break and after the match the tab says HALF TIME or FULL TIME. Goals,
+ * cards and substitutions are part of the scorebug (see eventParts).
  */
 function Scorebug(p: GraphicProps) {
   const d = p.display;
-  const { slim, H, CREST, hang, inset } = bugSize(p);
+  const { slim, H, CREST, hang, inset, box } = bugSize(p);
   const ev = eventOnAir(p);
-  // while an event holds the bug's place the bug stays underneath, out of sight; it shows through as the event wipes
-  // in and is uncovered as it wipes out
-  const covered = ev?.phase === 'hold';
-  const box = slim ? 62 : 74; // the letters' box
+  const parts = ev ? eventParts(ev, p) : null;
+  // once the event is all the way across, what it covers is out of sight; it shows again as the event runs back. The
+  // other team's crest stands taller than the bar, so it goes as the bar's leading edge reaches it.
+  const by = ev ? acrossBy(ev) : 0;
+  const hidden = by >= 1 ? parts!.covers : null;
+  const gone = (s: Side | 'plate'): CSSProperties => (hidden === 'all' || (hidden === 'other' && s !== side(ev!)) ? { visibility: 'hidden' } : {});
+  const crestGone = (s: Side): CSSProperties => (by >= 0.7 && (parts!.covers === 'all' || s !== side(ev!)) ? { visibility: 'hidden' } : {});
   const block = (s: Side, i: number) => {
     const tm = team(p, s);
     const away = s === 'away';
     const det = detail(p, s);
     const ink = inkOn(tm.primaryColor);
     return (
-      <div style={{ ...RED_CARD_BOX, ...animStyle(p, away ? 'slide-right' : 'slide-left', 120 + i * 60, 360) }}>
+      <div style={{ ...RED_CARD_BOX, gridColumn: i * 2 + 1, gridRow: 1, ...gone(s), ...animStyle(p, away ? 'slide-right' : 'slide-left', 120 + i * 60, 360) }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexDirection: away ? 'row-reverse' : 'row', height: H, [away ? 'paddingRight' : 'paddingLeft']: inset, [away ? 'paddingLeft' : 'paddingRight']: 16, background: blockBg(tm, away ? 'right' : 'left'), color: ink }}>
           <Glint at={away ? 'left' : 'right'} h={slim ? 0.8 : 1} />
-          <span style={{ position: 'absolute', top: (H - CREST) / 2, [away ? 'right' : 'left']: -hang, ...animStyle(p, 'zoom', 220 + i * 60, 380) }}><Crest tm={tm} size={CREST} /></span>
+          <span style={{ position: 'absolute', top: (H - CREST) / 2, [away ? 'right' : 'left']: -hang, ...crestGone(s), ...animStyle(p, 'zoom', 220 + i * 60, 380) }}><Crest tm={tm} size={CREST} /></span>
           <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: away ? 'flex-end' : 'flex-start', minWidth: box }}>
             <span style={{ fontSize: slim ? 26 : 32, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
             {det ? <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.82, lineHeight: 1.25, letterSpacing: 0.5 }}>{det}</span> : null}
@@ -343,12 +387,12 @@ function Scorebug(p: GraphicProps) {
           {d.possession === s ? <span style={{ position: 'relative', width: 8, height: 8, borderRadius: 4, background: ink, margin: '0 8px' }} /> : null}
         </div>
         {/* above the team's letters */}
-        {covered ? null : <RedCardTab p={p} side={s} from={away ? 'right' : 'left'} x={inset + box / 2} size={slim ? 24 : 28} />}
+        {ev ? null : <RedCardTab p={p} side={s} from={away ? 'right' : 'left'} x={inset + box / 2} size={slim ? 24 : 28} />}
       </div>
     );
   };
   const plate = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px', height: H, background: PLATE, color: INK, fontSize: slim ? 30 : 36, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1, ...animStyle(p, 'drop', 200, 360) }}>
+    <div style={{ gridColumn: 2, gridRow: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px', height: H, background: PLATE, color: INK, fontSize: slim ? 30 : 36, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1, ...gone('plate'), ...animStyle(p, 'drop', 200, 360) }}>
       {digits(p, 'home', slim ? 24 : 28)}
       <span style={{ width: 2, height: '52%', background: '#C7CAD1' }} />
       {digits(p, 'away', slim ? 24 : 28)}
@@ -361,7 +405,7 @@ function Scorebug(p: GraphicProps) {
   );
   const tab: CSSProperties = { display: 'grid', placeItems: 'center', height: H, padding: '0 12px', fontWeight: 900, ...animStyle(p, 'zoom', 320, 360) };
   const extras = (
-    <div style={{ display: 'flex', gap: 6, marginLeft: hang + 8 }}>
+    <div style={{ gridColumn: 4, gridRow: 1, display: 'flex', gap: 6, marginLeft: hang + 8 }}>
       {slim ? clock : null}
       {d.shotClockText ? <div style={{ ...tab, minWidth: 62, background: INK, color: '#FFFFFF', fontSize: 30, fontVariantNumeric: 'tabular-nums' }}>{d.shotClockText}</div> : null}
       {d.shootout ? (
@@ -373,32 +417,39 @@ function Scorebug(p: GraphicProps) {
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ ...tab, background: 'rgba(255,255,255,.96)' }}><SponsorMark p={p} placement="scorebug_logo" height={slim ? 28 : 36} /></div> : null}
     </div>
   );
-  const pos = p.data.theme.scorebug?.position ?? 'left';
   return (
     <div style={{ top: SY + (CREST - H) / 2, ...font(p), ...scorebugPosition(p, SX + hang), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
-      <div style={{ display: 'grid' }}>
-        <div style={{ gridArea: '1 / 1', display: 'grid', gridTemplateColumns: 'auto auto auto auto', alignItems: 'start', filter: SHADOW, visibility: covered ? 'hidden' : undefined }}>
-          {block('home', 0)}
-          {plate}
-          {block('away', 1)}
-          {extras}
-          {/* centred under the plate, as wide as it needs (a zero-width cell, so the plate keeps its own width) */}
-          {!slim ? <div style={{ gridColumn: 2, justifySelf: 'center', width: 0, display: 'flex', justifyContent: 'center' }}>{clock}</div> : null}
-        </div>
-        {ev ? <div style={{ gridArea: '1 / 1', justifySelf: pos === 'right' ? 'end' : pos === 'centre' ? 'center' : 'start', zIndex: 1, filter: SHADOW }}><EventBody ep={ev} host={p} /></div> : null}
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto auto', alignItems: 'start', filter: SHADOW }}>
+        {block('home', 0)}
+        {plate}
+        {block('away', 1)}
+        {extras}
+        {/* centred under the plate, as wide as it needs (a zero-width cell, so the plate keeps its own width); tall
+            enough for the rows of a card or substitution */}
+        <div style={{ gridColumn: 2, gridRow: 2, justifySelf: 'center', width: 0, minHeight: parts?.rowsH ?? 0, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>{slim ? null : clock}</div>
+        {parts ? (
+          <>
+            <div style={{ gridColumn: '1 / 4', gridRow: 1, alignSelf: 'stretch', position: 'relative', zIndex: 2 }} data-scorebug-event={ev!.cue.templateKey.replace('builtin:', '')}>{parts.bar}</div>
+            {parts.rows ? <div style={{ gridColumn: '1 / 4', gridRow: 2, position: 'relative', zIndex: 2 }}>{parts.rows}</div> : null}
+          </>
+        ) : null}
       </div>
       <ScorebugTabs p={p} />
     </div>
   );
 }
 
-/** A goal, card or substitution: drawn by the scorebug when it is up; on its own in the scorebug's place when not. */
+/** A goal, card or substitution: part of the scorebug when it is up; on its own in the scorebug's place when not. */
 function EventInBugPlace(p: GraphicProps) {
   if (p.layers?.scoreboard) return null;
   const { CREST, H, hang } = bugSize(p);
+  const parts = eventParts(p, null);
   return (
     <div style={{ top: SY + (CREST - H) / 2, ...font(p), ...scorebugPosition(p, SX + hang) }} data-graphic={p.t.key.replace('builtin:', '')}>
-      <div style={{ filter: SHADOW }}><EventBody ep={p} host={null} /></div>
+      <div style={{ position: 'relative', width: bugWidths(p).bug, filter: SHADOW }} data-scorebug-event={p.t.key.replace('builtin:', '')}>
+        <div style={{ position: 'relative', height: H }}>{parts.bar}</div>
+        {parts.rows ? <div style={{ position: 'relative', height: parts.rowsH }}>{parts.rows}</div> : null}
+      </div>
     </div>
   );
 }

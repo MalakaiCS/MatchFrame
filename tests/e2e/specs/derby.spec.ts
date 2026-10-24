@@ -1,5 +1,6 @@
-// The Derby look on a real output with the football starter flow: a yellow card and a goal come up through the
-// scorebug (over the score, the player and the clock underneath) and the scorebug comes back after them; at half time
+// The Derby look on a real output with the football starter flow: a yellow card and a goal are part of the scorebug
+// (the card runs across the score from the team's block with the player underneath; for the goal the scoring team's
+// block takes over the whole scorebug, GOOOOAL!, with the clock staying) and the scorebug comes back after them; at half time
 // the half-time banner (the kick-off banner headed HALF TIME) is up for 10 s with HALF TIME on the scorebug's clock,
 // then the break scene (the animated background and the match header); after the match the clock reads FULL TIME.
 // Captures of the OBS page are kept as evidence in docs/evidence/e2e/.
@@ -75,12 +76,12 @@ test('Derby: events through the scorebug, the half-time banner then the break sc
   await expect(bug).toBeVisible({ timeout: 15_000 });
   await waitFor('kick-off banner gone', (s) => !on(s, 'lower'), 15_000);
 
-  // a yellow card: through the scorebug, the player and the clock underneath; the score out of sight meanwhile
+  // a yellow card: across the scorebug from the team's block, the player underneath; the score out of sight meanwhile
   await command('ADD_FACT', { type: 'yellow_card', side: 'home', playerId: scorer.playerId, payload: {}, occurredAt: Date.now() });
   await waitFor('card on air', (s) => on(s, 'event')?.templateKey === 'builtin:card', 10_000);
   const card = bug.locator('[data-scorebug-event="card"]');
   await expect(card).toContainText('YELLOW CARD');
-  await expect(card).toContainText(surname);
+  await expect(bug).toContainText(surname); // the player's row under the bar
   await expect(obs.locator('[data-graphic="card"]')).toHaveCount(0); // no strap of its own
   await capture('card-through-scorebug', topLeft);
   // after it, the scorebug's score is back
@@ -90,10 +91,10 @@ test('Derby: events through the scorebug, the half-time banner then the break sc
   // a goal: the same way, with the new score
   await command('ADD_FACT', { type: 'goal', side: 'home', playerId: scorer.playerId, payload: {}, occurredAt: Date.now() });
   const goal = bug.locator('[data-scorebug-event="goal"]');
-  await expect(goal).toContainText('GOAL!', { timeout: 10_000 });
-  await expect(goal).toContainText(/1–0/);
+  await expect(goal).toContainText('GOOOOAL!', { timeout: 10_000 });
   await capture('goal-through-scorebug', topLeft);
   await expect(goal).toHaveCount(0, { timeout: 15_000 });
+  await expect(bug).toContainText(/1\s*0/);
 
   // half time: the half-time banner with HALF TIME on the scorebug's clock, then 10 s later the break scene
   const t1 = await phase('half_time');

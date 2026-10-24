@@ -198,7 +198,7 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
   );
 }
 
-export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine' | 'sweep';
+export type AnimKind = 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'scale' | 'wipe' | 'wipe-rtl' | 'wipe-up' | 'grow-x' | 'grow-y' | 'rise' | 'drop' | 'flip' | 'zoom' | 'shine' | 'sweep';
 
 let table: KeyframeTable | undefined;
 /** Keyframe animation `name` `localMs` into it (fill both), as plain styles: a still frame for an export. */
@@ -303,6 +303,7 @@ export const KEYFRAMES = [
   kf('drop', 'opacity:0;transform:translateY(-24px) scale(1.15)'),
   kf('flip', 'opacity:0;transform:perspective(600px) rotateX(90deg)'),
   kf('wipe', 'clip-path:inset(0 100% 0 0)', 'clip-path:inset(0 0 0 0)'),
+  kf('wipe-rtl', 'clip-path:inset(0 0 0 100%)', 'clip-path:inset(0 0 0 0)'),
   kf('wipe-up', 'clip-path:inset(100% 0 0 0)', 'clip-path:inset(0 0 0 0)'),
   kf('grow-x', 'transform:scaleX(0)', 'transform:none'),
   kf('grow-y', 'transform:scaleY(0)', 'transform:none'),

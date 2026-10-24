@@ -107,8 +107,10 @@ light wide-tracked capitals), **Primetime** (US network: brushed metal, red, con
 scorebug), **Meister** (German top flight: white panels, red, slanted cuts and italic capitals) and **Derby** (Australian club
 football: each team's block in its own colour with the crest breaking out of the end, a white score plate with the
 clock in a grey tab under it that reads HALF TIME at half time and FULL TIME after the match; goals, cards and
-substitutions come up through the scorebug itself, wiping across the score with the player in a light row
-underneath, and the scorebug comes back after them; the half-time and full-time board is the kick-off banner headed
+substitutions are part of the scorebug: for a goal the new score shows first, then the scoring team's block runs
+across the whole scorebug with GOOOOAL! (the clock stays underneath; a few seconds in, the scorer), and for a card
+or substitution the team's block stays while the card (or SUBSTITUTION) runs across the rest with the player in a
+row underneath; each runs back to the team's end and the scorebug is as before; the half-time and full-time board is the kick-off banner headed
 by the break; and a full-screen half-time statistics board between the two teams' colour panels lists each team's
 scorers). Each has its own
 animated background. None carries a league's or broadcaster's marks, names or typefaces. A look also sets the **scorebug variant and position**, the **clock

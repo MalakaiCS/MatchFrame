@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getAdapter, type DisplayModel, type Sport } from '@bs/domain';
 import { findTemplate } from '../catalog';
-import { DEFAULT_THEMES, type RenderData } from '../data';
+import { DEFAULT_THEMES, type RenderData, type ThemeConfig } from '../data';
 import { approxMeasure } from '../fit';
 import { THEMES } from './index';
 import type { GraphicProps } from './stage';
@@ -20,13 +20,13 @@ const players = {
 type Ev = NonNullable<RenderData['match']['events']>[number];
 const ev = (id: string, type: string, side: 'home' | 'away', playerId: string | null, minute: string, group: Ev['group'] = 'score'): Ev => ({ id, type, group, side, playerId, minute, periodId: 'first_half', payload: {} });
 
-function props(sport: Sport, templateKey: string, o: { display?: Partial<DisplayModel>; variables?: Record<string, unknown>; events?: Ev[]; teams?: typeof teams; projection?: Record<string, unknown>; layers?: GraphicProps['layers'] } = {}): GraphicProps {
+function props(sport: Sport, templateKey: string, o: { display?: Partial<DisplayModel>; variables?: Record<string, unknown>; events?: Ev[]; teams?: typeof teams; projection?: Record<string, unknown>; layers?: GraphicProps['layers']; theme?: Partial<ThemeConfig> } = {}): GraphicProps {
   const a = getAdapter(sport);
   return {
     cue: { cueId: 'c1', templateKey, variables: o.variables ?? {} },
     t: findTemplate(templateKey)!,
     data: {
-      theme: { ...DEFAULT_THEMES.derby, motion: 'none' },
+      theme: { ...DEFAULT_THEMES.derby, motion: 'none', ...o.theme },
       match: { sport, teams: o.teams ?? teams, rulesConfig: a.defaultConfig, projection: { ...a.initialProjection(a.defaultConfig), score: { home: 2, away: 1 }, ...o.projection }, competition: { name: 'Coastal League', shortName: null, logoUrl: null }, lineup: { home: [], away: [] }, events: o.events ?? [], statRows: [{ key: 'shots', label: 'Shots' }] },
       players, creatives: {}, assets: {},
     },
@@ -41,6 +41,8 @@ function props(sport: Sport, templateKey: string, o: { display?: Partial<Display
   } as unknown as GraphicProps;
 }
 const draw = (graphic: string, p: GraphicProps) => renderToStaticMarkup(createElement(() => THEMES.derby[graphic]!(p) as never));
+/** The markup of the event drawn in the scorebug. */
+const eventPart = (html: string) => html.slice(html.indexOf('>', html.indexOf('data-scorebug-event')) + 1);
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ');
 
 /** A cue on air on the event or scoreboard layer, where it is in its own timeline. */
@@ -49,30 +51,41 @@ const bugOn = onAir('builtin:scorebug', {}, 'hold', 60_000);
 const yellow = { team: 'home', player: 'p3', minute: '33', cardType: 'yellow' };
 
 describe('the Derby look', () => {
-  it('a goal, card or substitution comes up through the scorebug: over the score, with the clock beside the player', () => {
-    const hold = draw('scorebug', props('football', 'builtin:scorebug', { display: { periodLabel: '1st Half', periodShort: '1H', clockText: '33:12' }, layers: { scoreboard: bugOn, event: onAir('builtin:card', yellow, 'hold', 2000) } }));
-    expect(hold).toContain('data-scorebug-event="card"');
-    expect(text(hold)).toMatch(/HAR YELLOW CARD 6 N\. MAIERONI 1H 33:12/);
-    // the score is out of sight under the card while it holds, and shows through as it wipes in and out
-    expect(hold).toMatch(/visibility:hidden[^>]*>[^]*data-scorebug-event/);
-    const wiping = draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:card', yellow, 'in', 100) } }));
-    expect(wiping).toContain('data-scorebug-event="card"');
-    expect(wiping).not.toContain('visibility:hidden');
-    // the event's own graphic draws nothing while the scorebug is up
-    expect(draw('card', props('football', 'builtin:card', { variables: yellow, layers: { scoreboard: bugOn, event: onAir('builtin:card', yellow, 'hold', 2000) } }))).toBe('');
-    // gone once it has finished; other events (the added-time board) keep their own graphic
-    expect(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn } }))).not.toContain('data-scorebug-event');
+  it('a goal is the scorebug itself: the scoring team takes over the bar, the clock stays; the scorer follows', () => {
+    const goal = { team: 'home', player: 'p1', minute: '28', eventType: 'goal' };
+    const at = (phase: 'in' | 'hold' | 'out', offsetMs: number, motion: 'none' | 'full' = 'none') => draw('scorebug', props('football', 'builtin:scorebug', { display: { periodLabel: '1st Half', periodShort: '1H', clockText: '27:52' }, theme: { motion }, layers: { scoreboard: bugOn, event: onAir('builtin:goal', goal, phase, offsetMs) } }));
+    const hold = at('hold', 2000);
+    expect(text(eventPart(hold))).toMatch(/^ GOOOOAL! HARBOUR /);
+    // under it the score, both teams and their crests are out of sight; the clock stays where it is
+    const body = hold.slice(0, hold.indexOf('data-scorebug-event'));
+    expect(body.match(/visibility:hidden/g)).toHaveLength(5);
+    expect(body).toMatch(/grid-column:2;grid-row:2;(?![^"]*visibility)[^"]*"[^]*1H[^]*27:52/);
+    // while it comes across the score shows through (the new score first), and again as it goes back
+    expect(at('in', 300, 'full')).not.toContain('visibility:hidden');
+    expect(at('out', 100, 'full')).not.toContain('visibility:hidden');
+    // later on, the scorer in the bar
+    expect(text(eventPart(at('hold', 4000)))).toMatch(/^ J\. VIDIC 28' /);
+    // the event's own graphic draws nothing while the scorebug is up; other events (the added-time board) keep theirs
+    expect(draw('goal', props('football', 'builtin:goal', { variables: goal, layers: { scoreboard: bugOn, event: onAir('builtin:goal', goal, 'hold', 2000) } }))).toBe('');
     expect(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:added_time', {}, 'hold', 2000) } }))).not.toContain('data-scorebug-event');
-    const goal = text(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:goal', { team: 'home', player: 'p1', minute: '28', eventType: 'goal' }, 'hold', 2000) } })));
-    expect(goal).toMatch(/GOAL! HARBOUR.*J\. VIDIC HAR 2–1 WPG/);
-    const sub = text(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:substitution', { team: 'away', playerIn: 'p2', playerOut: null }, 'hold', 2000) } })));
-    expect(sub).toMatch(/WPG SUBSTITUTION ▲ 4 S\. OKAFOR .*▼ WESTPORT GLORY/);
+    expect(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn } }))).not.toContain('data-scorebug-event');
+  });
+
+  it("a card or substitution keeps the team's block and runs across the rest of the scorebug, the player underneath", () => {
+    const hold = draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:card', yellow, 'hold', 2000) } }));
+    expect(text(eventPart(hold))).toMatch(/^ HAR YELLOW CARD HAR 6 N\. MAIERONI $/);
+    const body = hold.slice(0, hold.indexOf('data-scorebug-event'));
+    // the team's own block (letters and crest) stays; the score and the other team go under the card
+    expect(body.slice(0, body.indexOf('>HAR</span></span>'))).not.toContain('visibility:hidden');
+    expect(body.match(/visibility:hidden/g)).toHaveLength(3);
+    const sub = text(eventPart(draw('scorebug', props('football', 'builtin:scorebug', { layers: { scoreboard: bugOn, event: onAir('builtin:substitution', { team: 'away', playerIn: 'p2', playerOut: null }, 'hold', 2000) } }))));
+    expect(sub).toMatch(/^ WPG SUBSTITUTION WPG ▲ 4 S\. OKAFOR ▼ WESTPORT GLORY $/);
   });
 
   it('with the scorebug off, the event stands alone in its place at the top', () => {
     const html = draw('card', props('football', 'builtin:card', { variables: yellow, layers: {} }));
     expect(html).toMatch(/^<div style="top:[0-9.]+px;font-family:[^"]*;position:absolute;left:[0-9.]+px" data-graphic="card">/);
-    expect(text(html)).toMatch(/YELLOW CARD 6 N\. MAIERONI/);
+    expect(text(html)).toMatch(/HAR YELLOW CARD HAR 6 N\. MAIERONI/);
   });
 
   it('the clock says HALF TIME at the break (the walk-out too) and FULL TIME after the match', () => {

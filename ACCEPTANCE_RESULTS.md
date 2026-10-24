@@ -670,6 +670,38 @@ time that half time graphic should pop up then 10 seconds later switch to the ha
 Not claimed: checked in Chromium through the OBS page URL, not inside OBS; the substitution through the scorebug
 is covered by the render test only (the browser test records a card and a goal).
 
+## Derby: goals and cards as part of the scorebug, as in the reference video (2026-10-24)
+
+Requested: "you missed the point. All the graphics goals, Yellow Cards and so on are in the scorebug", with a 7 s
+video of the reference broadcast: the score changes, then the scoring team's block takes over the whole scorebug
+(same place and size, the crest where it was, the other team and the score covered) with "GOOOOAL!" sliding in and
+its O's jumping in turn, the clock staying in its tab underneath; then it runs back and the scorebug returns.
+
+The previous version (same day) drew a differently shaped strap with its own rows in the scorebug's place. Now:
+
+* **Goal / points**: the new score turns over first; 0.6 s later the scoring team's block runs across the scorebug
+  from its end (over the plate, the other team's block and crest) with *GOOOOAL!* (the sport's word otherwise) and
+  the team name sliding in, the O's jumping in turn; the clock stays visible underneath. With a scorer recorded, the
+  bar turns to the scorer and minute after 3.6 s. On the way out it runs back to the team's end. An away goal runs
+  the other way, from the away end (a right-to-left wipe was added to the animation set).
+* **Card / substitution**: the team's own block stays where it is; the card's colour (*YELLOW CARD*, *RED CARD*) or
+  *SUBSTITUTION* runs across the rest of the scorebug, and the player's row (the card, number and *N. SURNAME*; for a
+  substitution, on and off) runs out underneath over the clock. All of it runs back on the way out.
+* What is covered goes out of sight only once the event is all the way across, and comes back as it runs back; the
+  other team's crest (taller than the bar) goes as the bar's leading edge reaches it.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `derby.test.ts` (a goal: GOOOOAL! and the team name in the bar, both blocks, the plate and both crests out of sight while it holds and none while it comes across or goes back, the clock's cell untouched, the scorer after 3.6 s; a card and an away substitution: the team's block and crest kept, the plate and the other team covered, the player rows; the event's own graphic empty while the scorebug is up and standing alone when it is off) | 221 tests, 40 files, all pass |
+| `derby.spec.ts` on a real output (a yellow card across the scorebug with the player underneath, a goal with *GOOOOAL!*, the score back after each; the half-time banner, HALF TIME and FULL TIME) | 1 test, passes |
+| Frames captured from a real output every ~50 ms (scratch runs, not kept): a home goal (score turns over, the block runs across at 0.6 s, the words slide in), an away goal (mirrored, and back out), a home yellow card in and out; and a 23 s recording of a goal and an away card, sent to the requester | checked by eye |
+| Visual baselines: Derby's rewritten in full; Broadcast and Premier rerun | 4 tests, pass |
+| `pnpm test:db` | 82 tests, 12 files, all pass |
+| Full `pnpm test:e2e` | not run for this change |
+
+Not claimed: checked in Chromium through the OBS page URL, not inside OBS.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
