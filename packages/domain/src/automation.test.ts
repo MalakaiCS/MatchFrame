@@ -173,11 +173,13 @@ describe('rehearsal (A29: pure, explained)', () => {
     const enter = r.cues.find((c) => c.playlistId === 'players_entering' && c.action === 'clear_layers')!;
     expect(lineups[0]!.t - enter.t).toBe(15_000);
     expect(r.decisions.find((d) => d.playlistId === 'half_time_boards' && d.outcome === 'cancelled')?.reason).toMatch(/second_half_entering/);
-    // half time: 10 s after the whistle the background comes up and the scorebug goes, then the header and the
-    // stats take turns, 30 s each, with no 10 s wait between passes
+    // half time: the half-time banner (the kick-off banner, headed by the break) until 10 s after the whistle, then
+    // the background comes up and the scorebug goes; then the header and the stats take turns, 30 s each, with no
+    // 10 s wait between passes
     const ht = r.cues.filter((c) => c.playlistId === 'half_time');
-    const htAt = ht[0]!.t - 10_000;
-    expect(ht.map((c) => [c.action, c.templateKey ?? null, c.t - htAt])).toEqual([['show', 'builtin:backdrop', 10_000], ['scorebug_hide', null, 10_600]]);
+    const htAt = ht[0]!.t - 400;
+    expect(ht.map((c) => [c.action, c.templateKey ?? null, c.t - htAt])).toEqual([['show', 'builtin:period_banner', 400], ['show', 'builtin:backdrop', 10_000], ['scorebug_hide', null, 10_600]]);
+    expect(ht[0]).toMatchObject({ durationMs: 9400, variables: { heading: 'Half Time' } });
     const boards = r.cues.filter((c) => c.playlistId === 'half_time_boards' && c.action.startsWith('show'));
     expect(boards.map((c) => [c.templateKey, c.t - htAt, c.durationMs]).slice(0, 4)).toEqual([
       ['builtin:ident', 10_600, 30_000],

@@ -106,8 +106,11 @@ square blocks and a four-colour band), **Continental** (European club nights: na
 light wide-tracked capitals), **Primetime** (US network: brushed metal, red, condensed italic capitals, a stacked
 scorebug), **Meister** (German top flight: white panels, red, slanted cuts and italic capitals) and **Derby** (Australian club
 football: each team's block in its own colour with the crest breaking out of the end, a white score plate with the
-clock in a grey tab under it, event straps with the player in a light row underneath, a break board listing each
-team's scorers, and a full-screen half-time statistics board between the two teams' colour panels). Each has its own
+clock in a grey tab under it that reads HALF TIME at half time and FULL TIME after the match; goals, cards and
+substitutions come up through the scorebug itself, wiping across the score with the player in a light row
+underneath, and the scorebug comes back after them; the half-time and full-time board is the kick-off banner headed
+by the break; and a full-screen half-time statistics board between the two teams' colour panels lists each team's
+scorers). Each has its own
 animated background. None carries a league's or broadcaster's marks, names or typefaces. A look also sets the **scorebug variant and position**, the **clock
 style** (hide seconds; added time as "+3" or a label), **wording** overrides for on-air labels (bilingual
 competitions) and a **custom font** uploaded through the asset library. Graphics make no sound: the OBS browser
@@ -247,7 +250,7 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 | *Players entering* | the header animates out, then the background 0.4 s later (each plays its exit animation, no hard cut); 15 s later the home line-up for 8 s, then the away line-up for 8 s, once each. *About to start* does not cut them short |
 | *About to start* | the scorebug comes up, its clock at 0:00 |
 | *1st Half* | the "Kick-off" banner, and the clock starts |
-| *Half Time* | nothing changes for 10 s (the scorebug shows the half-time score); then the animated background animates in over everything, the scorebug goes, and the match header (score, HALF TIME, "2nd Half in 14:08") and the match stats take turns, 30 s each, header first, until the players come back out |
+| *Half Time* | the half-time banner for 10 s (the kick-off banner's design, headed HALF TIME, over the scorebug with the half-time score); then the animated background animates in over everything, the scorebug goes, and the match header (score, HALF TIME, "2nd Half in 14:08") and the match stats take turns, 30 s each, header first, until the players come back out |
 | *Players entering (2nd half)* | the board on air animates out, then the background 0.4 s later; the scorebug comes back 7 s later. No line-ups the second time |
 | *2nd Half* | scorebug (already in) and the "Kick-off" banner |
 | *Penalty Shootout* | the shoot-out tracker comes up under the scorebug and stays, updating with every kick, until full time (also in the futsal and hockey starter flows) |

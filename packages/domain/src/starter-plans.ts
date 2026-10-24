@@ -12,9 +12,9 @@ import type { GamePlan } from './automation';
  * - Kick-off of each half: the kick-off banner (and the scorebug, if it is not already up).
  * - Goals, cards and substitutions put their graphic on air during play.
  * - Added time: when the scorer enters the minutes, the fourth official's board for 8 s (the scorebug keeps "+N").
- * - Half time: 10 s after the whistle the animated background comes up over everything and the scorebug goes; the
- *   match header (with the countdown to the second half) and the match stats then take turns, 30 s each, until
- *   the players walk back out.
+ * - Half time: the half-time banner (the kick-off banner's design, headed HALF TIME) for 10 s; then the animated
+ *   background comes up over everything and the scorebug goes; the match header (with the countdown to the second
+ *   half) and the match stats then take turns, 30 s each, until the players walk back out.
  * - Players entering (2nd half): the board animates out, then the background; the scorebug returns 7 s later.
  * - Penalty shoot-out: the shoot-out tracker (kicks, where it stands, the winner), on air until full time.
  * - Full time: 30 s after the whistle, the animated background with the final score on the match header and
@@ -110,11 +110,13 @@ export const FOOTBALL_STARTER: GamePlan = {
       items: [{ id: 'sub_gfx', action: 'show', templateKey: 'builtin:substitution', variables: { team: { from: 'event.side' }, playerOut: { from: 'event.playerOutId' }, playerIn: { from: 'event.playerInId' }, minute: { from: 'event.minute' } }, offsetMs: 0, durationMs: 7000 }],
     },
     {
-      id: 'half_time', name: 'Half time: after 10 s, the animated background over everything', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
+      id: 'half_time', name: 'Half time: the half-time banner for 10 s, then the animated background', kind: 'break', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ht', type: 'phase', phaseTags: ['half_time', 'extra_time_interval'], phaseIds: [] }],
       guards: [],
       repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
       items: [
+        // the kick-off banner's design, headed by the break ("HALF TIME"), out as the break scene comes in
+        { id: 'ht_banner', action: 'show', templateKey: 'builtin:period_banner', variables: { heading: { from: 'phase.label' } }, offsetMs: 400, durationMs: 9400 },
         { id: 'ht_backdrop', action: 'show', templateKey: 'builtin:backdrop', offsetMs: 10_000, durationMs: null },
         { id: 'ht_bug_off', action: 'scorebug_hide', offsetMs: 10_600 },
       ],

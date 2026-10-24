@@ -7,10 +7,11 @@
 // does not draw itself (the match header, line-ups, tables, the ticker…) come from the broadcast pack engine as a
 // matching set of white panels with title bars in the look's colour.
 import type { CSSProperties, ReactNode } from 'react';
+import { getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
 import { occasionLine, type RenderPlayer, type RenderTeam } from '../data';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { Fitted, Logo, RED_CARD_BOX, RedCardTab, ScorebugTabs, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, minute, periodBanner, player, scorebugPosition, stoppageLabel, t, team } from './common';
+import { Fitted, Logo, RED_CARD_BOX, RedCardTab, ScorebugTabs, SponsorMark, ThemeBadge, badgeUrl, cardStyle, clockLabel, eventWord, identInfo, periodBanner, player, scorebugPosition, stoppageLabel, t, team } from './common';
 import { packTheme, type Pack } from './theme-pack';
 
 const SX = 96; // 5% title-safe
@@ -173,21 +174,157 @@ const digits = (p: GraphicProps, s: Side, min: number) => (
   </span>
 );
 
-// ------------------------------------------------------------------ scorebug
+// ------------------------------------------------------------------ scorebug, and events through it
 
-/**
- * [crest|HOME] [2 | 1] [AWAY|crest], each team's block in its colour with the crest breaking out of the end, the
- * clock in a grey tab under the score plate (the strip variant: beside the bug). Added time runs in a tab in the
- * look's colour beside the clock.
- */
-function Scorebug(p: GraphicProps) {
+/** The clock's words at a break and after the match ("HALF TIME", "FULL TIME"); null while the clock is the clock. */
+function breakWord(p: GraphicProps): string | null {
+  const m = p.data.match;
+  const a = getAdapter(m.sport);
+  const cfg = m.rulesConfig as never;
+  const kind = a.phase(cfg, m.projection.phase)?.kind;
+  // a walk-out step during the break still reads as the break itself
+  if (kind === 'break') return t(p, (a.phase(cfg, m.projection.breakPhase ?? m.projection.phase)?.label ?? p.display.periodLabel).toUpperCase());
+  if (kind === 'final') return t(p, m.sport === 'basketball' ? 'FINAL' : 'FULL TIME');
+  return null;
+}
+
+/** What the clock tab says: the period, the clock and any added time; at a break or after the match, the words. */
+function ClockText({ p, px }: { p: GraphicProps; px: number }) {
   const d = p.display;
   const th = p.data.theme;
-  const slim = th.scorebug?.variant === 'strip';
+  const word = breakWord(p);
+  const stop = stoppageLabel(p);
+  // evaluated every render so a change itself animates
+  const stoppage = changeStyle(p, 'stoppage', !!d.stoppageText, 'flip');
+  const flip = changeStyle(p, 'clock-word', word ?? '', 'flip');
+  if (word) return <span data-clock-word style={{ ...flip, fontSize: Math.round(px * 0.82), fontWeight: 900, letterSpacing: 2, lineHeight: 1 }}>{word}</span>;
+  return (
+    <>
+      <span style={{ fontSize: 11, fontWeight: 800, color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
+      <span style={{ ...flip, fontSize: px, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
+      {stop ? <span style={{ ...stoppage, padding: '3px 7px', background: th.primary, color: inkOn(th.primary), fontSize: Math.round(px * 0.7), fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{stop}</span> : null}
+    </>
+  );
+}
+
+/** The events that come up through the scorebug rather than as a strap of their own. */
+const THROUGH_BUG = ['builtin:goal', 'builtin:score', 'builtin:card', 'builtin:substitution'];
+/** The goal, card or substitution on air, as its own props, when the scorebug is to draw it. */
+function eventOnAir(p: GraphicProps): GraphicProps | null {
+  const e = p.layers?.event;
+  if (!e || !THROUGH_BUG.includes(e.cue.templateKey)) return null;
+  return { ...p, cue: e.cue, t: e.t, phase: e.phase, offsetMs: e.offsetMs };
+}
+
+/** Sizes shared by the scorebug and the events drawn in its place. */
+function bugSize(p: GraphicProps) {
+  const slim = p.data.theme.scorebug?.variant === 'strip';
   const H = slim ? 42 : 50;
   const CREST = slim ? 52 : 64;
   const hang = Math.round(CREST * 0.38); // how far a crest hangs past its block
-  const inset = CREST - hang + 10;
+  return { slim, H, CREST, hang, inset: CREST - hang + 10 };
+}
+
+/**
+ * A goal, card or substitution in the scorebug's place: the team's crest breaking out of the end of its block, the
+ * event beside it, and the player in light rows underneath with the clock beside the first. The scorebug draws it
+ * over its own score (it wipes across and back); with the scorebug off it stands alone in the same place.
+ */
+function EventBody({ ep, host }: { ep: GraphicProps; host: GraphicProps | null }) {
+  const key = ep.cue.templateKey.replace('builtin:', '');
+  const tm = team(ep);
+  const { slim, H, CREST, hang, inset } = bugSize(ep);
+  const R = slim ? 34 : 38;
+  const px = slim ? 19 : 22;
+  const abbr = (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingLeft: inset, paddingRight: 18, background: blockBg(tm, 'left'), color: inkOn(tm.primaryColor), ...animStyle(ep, 'wipe', 0, 340) }}>
+      <span style={{ fontSize: slim ? 26 : 32, fontWeight: 900, lineHeight: 1, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
+      <Glint at="right" h={slim ? 0.8 : 1} />
+    </div>
+  );
+  const wordBlock = (bg: string, ink: string, word: ReactNode) => (
+    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', padding: '0 26px 0 20px', minWidth: slim ? 220 : 260, background: bg, color: ink, fontSize: slim ? 22 : 27, fontWeight: 900, letterSpacing: 1.5, whiteSpace: 'nowrap', ...animStyle(ep, 'wipe', 120, 360) }}>
+      <span style={animStyle(ep, 'rise', 260, 300)}>{word}</span>
+    </div>
+  );
+  const number = (pl: RenderPlayer | null) => (pl?.number != null ? <span style={{ minWidth: 26, fontWeight: 900, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pl.number}</span> : null);
+  let head: ReactNode;
+  let rows: ReactNode[];
+  if (key === 'goal' || key === 'score') {
+    const pts = ep.cue.variables.points;
+    const word = key === 'goal' ? `${eventWord(ep)}!` : `+${typeof pts === 'number' ? pts : ''}`;
+    const sc = ep.data.match.projection.score;
+    head = (
+      <div style={{ position: 'relative', overflow: 'hidden', flex: 1, display: 'flex', alignItems: 'center', gap: 14, paddingLeft: inset, paddingRight: 34, minWidth: slim ? 360 : 430, background: blockBg(tm, 'left'), color: nameInk(tm), ...animStyle(ep, 'wipe', 0, 400) }}>
+        <Watermark tm={tm} size={H * 2.4} style={{ right: -H * 0.3, top: '50%', transform: 'translateY(-50%)' }} />
+        <span style={{ position: 'relative', fontSize: slim ? 30 : 38, fontWeight: 900, fontStyle: key === 'goal' ? 'italic' : undefined, letterSpacing: 1, lineHeight: 1, ...animStyle(ep, 'zoom', 200, 380) }}>{word}</span>
+        <span style={{ position: 'relative', fontSize: slim ? 12 : 14, fontWeight: 800, letterSpacing: 4, opacity: 0.9, ...animStyle(ep, 'rise', 300, 320) }}>{(tm.shortName || tm.name).toUpperCase()}</span>
+        <Glint at="right" h={slim ? 0.8 : 1} />
+      </div>
+    );
+    rows = [
+      <>
+        {key === 'goal' ? <Ball size={px + 2} sport={ep.data.match.sport} /> : null}
+        <PlayerName p={ep} pl={player(ep)} fallback={tm.name} width={300} px={px + 1} />
+        {key === 'goal' ? (
+          <span style={{ marginLeft: 'auto', paddingLeft: 18, display: 'flex', alignItems: 'center', gap: 6, fontSize: px - 4, fontWeight: 900 }}>
+            {team(ep, 'home').abbreviation}
+            <span style={{ padding: '2px 8px', background: INK, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{sc.home}–{sc.away}</span>
+            {team(ep, 'away').abbreviation}
+          </span>
+        ) : null}
+      </>,
+    ];
+  } else if (key === 'card') {
+    const cs = cardStyle(ep);
+    const fill = CARD_FILL[String(ep.cue.variables.cardType ?? 'yellow')] ?? cs.colour;
+    const pl = player(ep);
+    head = <>{abbr}{wordBlock(fill, inkOn(fill), cs.word)}</>;
+    rows = [
+      <>
+        <span aria-hidden style={{ width: 15, height: 21, flex: 'none', borderRadius: 2, background: fill, boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
+        {number(pl)}
+        <PlayerName p={ep} pl={pl} fallback={tm.name} width={300} px={px + 1} />
+      </>,
+    ];
+  } else {
+    const line = (arrow: string, colour: string, pl: RenderPlayer | null) => (
+      <>
+        <span style={{ width: 18, color: colour, fontSize: px - 4, fontWeight: 900 }}>{arrow}</span>
+        {number(pl)}
+        <PlayerName p={ep} pl={pl} fallback={tm.name} width={300} px={px + 1} />
+      </>
+    );
+    head = <>{abbr}{wordBlock(PLATE, INK, t(ep, 'SUBSTITUTION'))}</>;
+    rows = [line('▲', ON_GREEN, player(ep, 'playerIn')), line('▼', OFF_RED, player(ep, 'playerOut'))];
+  }
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column' }} data-scorebug-event={key}>
+      <div style={{ display: 'flex', alignItems: 'stretch', height: H }}>{head}</div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'stretch', minHeight: R, background: i % 2 ? TAB : ROW, color: INK, ...animStyle(ep, 'drop', 240 + i * 80, 320) }}>
+          <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: `0 18px 0 ${inset}px`, fontSize: px }}>{r}</span>
+          {i === 0 && host ? <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', background: TAB, whiteSpace: 'nowrap' }}><ClockText p={host} px={px} /></span> : null}
+        </div>
+      ))}
+      <span style={{ position: 'absolute', left: -hang, top: (H - CREST) / 2, ...animStyle(ep, 'zoom', 160, 380) }}><Crest tm={tm} size={CREST} /></span>
+    </div>
+  );
+}
+
+/**
+ * [crest|HOME] [2 | 1] [AWAY|crest], each team's block in its colour with the crest breaking out of the end, the
+ * clock in a grey tab under the score plate (the strip variant: beside the bug); added time runs in a tab in the
+ * look's colour beside the clock, and at a break and after the match the tab says HALF TIME or FULL TIME. A goal,
+ * card or substitution comes up through the scorebug: it wipes across the score and the bug comes back after it.
+ */
+function Scorebug(p: GraphicProps) {
+  const d = p.display;
+  const { slim, H, CREST, hang, inset } = bugSize(p);
+  const ev = eventOnAir(p);
+  // while an event holds the bug's place the bug stays underneath, out of sight; it shows through as the event wipes
+  // in and is uncovered as it wipes out
+  const covered = ev?.phase === 'hold';
   const box = slim ? 62 : 74; // the letters' box
   const block = (s: Side, i: number) => {
     const tm = team(p, s);
@@ -206,7 +343,7 @@ function Scorebug(p: GraphicProps) {
           {d.possession === s ? <span style={{ position: 'relative', width: 8, height: 8, borderRadius: 4, background: ink, margin: '0 8px' }} /> : null}
         </div>
         {/* above the team's letters */}
-        <RedCardTab p={p} side={s} from={away ? 'right' : 'left'} x={inset + box / 2} size={slim ? 24 : 28} />
+        {covered ? null : <RedCardTab p={p} side={s} from={away ? 'right' : 'left'} x={inset + box / 2} size={slim ? 24 : 28} />}
       </div>
     );
   };
@@ -217,13 +354,9 @@ function Scorebug(p: GraphicProps) {
       {digits(p, 'away', slim ? 24 : 28)}
     </div>
   );
-  const stop = stoppageLabel(p);
-  const stoppage = changeStyle(p, 'stoppage', !!d.stoppageText, 'flip'); // evaluated every render so the appearance itself animates
   const clock = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: slim ? H : 32, padding: '0 12px', background: TAB, color: INK, whiteSpace: 'nowrap', ...animStyle(p, 'drop', 300, 340) }}>
-      <span style={{ fontSize: 11, fontWeight: 800, color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', ...changeStyle(p, 'period', d.periodShort, 'flip') }}>{d.periodShort}</span>
-      <span style={{ fontSize: slim ? 22 : 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{clockLabel(p)}</span>
-      {stop ? <span style={{ ...stoppage, padding: '3px 7px', background: th.primary, color: inkOn(th.primary), fontSize: 15, fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{stop}</span> : null}
+      <ClockText p={p} px={22} />
     </div>
   );
   const tab: CSSProperties = { display: 'grid', placeItems: 'center', height: H, padding: '0 12px', fontWeight: 900, ...animStyle(p, 'zoom', 320, 360) };
@@ -240,142 +373,34 @@ function Scorebug(p: GraphicProps) {
       {p.cue.variables.showSponsor !== false && p.creative('scorebug_logo', p.cue) ? <div style={{ ...tab, background: 'rgba(255,255,255,.96)' }}><SponsorMark p={p} placement="scorebug_logo" height={slim ? 28 : 36} /></div> : null}
     </div>
   );
+  const pos = p.data.theme.scorebug?.position ?? 'left';
   return (
     <div style={{ top: SY + (CREST - H) / 2, ...font(p), ...scorebugPosition(p, SX + hang), ...animStyle(p, 'wipe') }} data-graphic="scorebug">
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto auto', alignItems: 'start', filter: SHADOW }}>
-        {block('home', 0)}
-        {plate}
-        {block('away', 1)}
-        {extras}
-        {/* centred under the plate, as wide as it needs (a zero-width cell, so the plate keeps its own width) */}
-        {!slim ? <div style={{ gridColumn: 2, justifySelf: 'center', width: 0, display: 'flex', justifyContent: 'center' }}>{clock}</div> : null}
+      <div style={{ display: 'grid' }}>
+        <div style={{ gridArea: '1 / 1', display: 'grid', gridTemplateColumns: 'auto auto auto auto', alignItems: 'start', filter: SHADOW, visibility: covered ? 'hidden' : undefined }}>
+          {block('home', 0)}
+          {plate}
+          {block('away', 1)}
+          {extras}
+          {/* centred under the plate, as wide as it needs (a zero-width cell, so the plate keeps its own width) */}
+          {!slim ? <div style={{ gridColumn: 2, justifySelf: 'center', width: 0, display: 'flex', justifyContent: 'center' }}>{clock}</div> : null}
+        </div>
+        {ev ? <div style={{ gridArea: '1 / 1', justifySelf: pos === 'right' ? 'end' : pos === 'centre' ? 'center' : 'start', zIndex: 1, filter: SHADOW }}><EventBody ep={ev} host={p} /></div> : null}
       </div>
       <ScorebugTabs p={p} />
     </div>
   );
 }
 
-// ------------------------------------------------------------------ event straps
-
-/**
- * A team event at the bottom left: the crest breaking out of the team's block, then the event (on its own block, or
- * along the team's block for a goal), and the detail in light rows underneath.
- */
-function Strap(p: GraphicProps, o: { word: ReactNode; wordBg?: string; wordInk?: string; rows: ReactNode[]; big?: boolean }) {
-  const tm = team(p);
-  const H = o.big ? 78 : 62;
-  const CREST = o.big ? 108 : 86;
-  const hang = Math.round(CREST * 0.4);
-  const inset = CREST - hang + 14;
-  const head = o.wordBg ? (
-    <>
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingLeft: inset, paddingRight: 24, background: blockBg(tm, 'left'), color: inkOn(tm.primaryColor), ...animStyle(p, 'wipe', 60, 380) }}>
-        <span style={{ fontSize: 38, fontWeight: 900, letterSpacing: 0.5 }}>{tm.abbreviation}</span>
-        <Glint at="right" />
-      </div>
-      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 14, padding: '0 34px 0 24px', minWidth: 320, background: o.wordBg, color: o.wordInk, ...animStyle(p, 'wipe', 160, 400) }}>{o.word}</div>
-    </>
-  ) : (
-    <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 18, paddingLeft: inset, paddingRight: 40, minWidth: 560, background: blockBg(tm, 'left'), color: nameInk(tm), ...animStyle(p, 'wipe', 60, 420) }}>
-      <Watermark tm={tm} size={H * 2.2} style={{ right: -H * 0.35, top: '50%', transform: 'translateY(-50%)' }} />
-      {o.word}
-      <Glint at="right" />
-    </div>
-  );
+/** A goal, card or substitution: drawn by the scorebug when it is up; on its own in the scorebug's place when not. */
+function EventInBugPlace(p: GraphicProps) {
+  if (p.layers?.scoreboard) return null;
+  const { CREST, H, hang } = bugSize(p);
   return (
-    <div style={{ position: 'absolute', left: SX + hang, bottom: SY + 60, ...font(p), ...animStyle(p, 'slide-left') }} data-graphic={p.t.key}>
-      <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', filter: SHADOW }}>
-        <div style={{ display: 'flex', alignItems: 'stretch', height: H }}>{head}</div>
-        {o.rows.map((r, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, minHeight: 46, padding: `0 26px 0 ${inset}px`, background: i % 2 ? TAB : ROW, color: INK, fontSize: 24, ...animStyle(p, 'drop', 320 + i * 90, 340) }}>{r}</div>
-        ))}
-        <span style={{ position: 'absolute', left: -hang, top: (H - CREST) / 2, ...animStyle(p, 'zoom', 200, 420) }}><Crest tm={tm} size={CREST} /></span>
-      </div>
+    <div style={{ top: SY + (CREST - H) / 2, ...font(p), ...scorebugPosition(p, SX + hang) }} data-graphic={p.t.key.replace('builtin:', '')}>
+      <div style={{ filter: SHADOW }}><EventBody ep={p} host={null} /></div>
     </div>
   );
-}
-
-const minuteTag = (p: GraphicProps) => (minute(p) ? <span style={{ marginLeft: 'auto', paddingLeft: 18, fontSize: 24, fontWeight: 800, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{minute(p)}</span> : null);
-
-function Goal(p: GraphicProps) {
-  const tm = team(p);
-  const pl = player(p);
-  const sc = p.data.match.projection.score;
-  const h = team(p, 'home');
-  const a = team(p, 'away');
-  return Strap(p, {
-    big: true,
-    word: (
-      <>
-        <span style={{ position: 'relative', fontSize: 58, fontWeight: 900, fontStyle: 'italic', letterSpacing: 1, lineHeight: 1, ...animStyle(p, 'zoom', 240, 420) }}>{eventWord(p)}!</span>
-        <span style={{ position: 'relative', fontSize: 17, fontWeight: 800, letterSpacing: 5, opacity: 0.9, ...animStyle(p, 'rise', 340, 340) }}>{(tm.shortName || tm.name).toUpperCase()}</span>
-      </>
-    ),
-    rows: [
-      <>
-        <Ball size={24} sport={p.data.match.sport} />
-        <PlayerName p={p} pl={pl} fallback={tm.name} width={420} px={27} />
-        {minute(p) ? <span style={{ fontSize: 22, fontWeight: 700, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{minute(p)}</span> : null}
-        <span style={{ marginLeft: 'auto', paddingLeft: 24, display: 'flex', alignItems: 'center', gap: 8, fontSize: 20, fontWeight: 900, letterSpacing: 0.5 }}>
-          {h.abbreviation}
-          <span style={{ padding: '4px 10px', background: INK, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{sc.home}–{sc.away}</span>
-          {a.abbreviation}
-        </span>
-      </>,
-    ],
-  });
-}
-
-function Score(p: GraphicProps) {
-  const tm = team(p);
-  const pts = p.cue.variables.points;
-  return Strap(p, {
-    big: true,
-    word: (
-      <>
-        <span style={{ position: 'relative', fontSize: 58, fontWeight: 900, lineHeight: 1, ...animStyle(p, 'zoom', 240, 420) }}>+{typeof pts === 'number' ? pts : ''}</span>
-        <span style={{ position: 'relative', fontSize: 17, fontWeight: 800, letterSpacing: 5, opacity: 0.9, ...animStyle(p, 'rise', 340, 340) }}>{(tm.shortName || tm.name).toUpperCase()}</span>
-      </>
-    ),
-    rows: [<><PlayerName p={p} pl={player(p)} fallback={tm.name} width={460} px={27} />{minuteTag(p)}</>],
-  });
-}
-
-function Card(p: GraphicProps) {
-  const cs = cardStyle(p);
-  const fill = CARD_FILL[String(p.cue.variables.cardType ?? 'yellow')] ?? cs.colour;
-  const pl = player(p);
-  return Strap(p, {
-    word: <span style={{ fontSize: 34, fontWeight: 900, letterSpacing: 1.5, ...animStyle(p, 'rise', 260, 340) }}>{cs.word}</span>,
-    wordBg: fill,
-    wordInk: inkOn(fill),
-    rows: [
-      <>
-        <span aria-hidden style={{ width: 18, height: 25, flex: 'none', borderRadius: 2, background: fill, boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
-        {pl?.number != null ? <span style={{ minWidth: 30, fontSize: 24, fontWeight: 900, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pl.number}</span> : null}
-        <PlayerName p={p} pl={pl} fallback={team(p).name} width={400} px={27} />
-        {minuteTag(p)}
-      </>,
-    ],
-  });
-}
-
-function Substitution(p: GraphicProps) {
-  const tm = team(p);
-  const line = (arrow: string, colour: string, pl: RenderPlayer | null, last: boolean) => (
-    <>
-      <span style={{ width: 22, color: colour, fontSize: 20, fontWeight: 900 }}>{arrow}</span>
-      {pl?.number != null ? <span style={{ minWidth: 30, fontSize: 22, fontWeight: 900, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>{pl.number}</span> : null}
-      <PlayerName p={p} pl={pl} fallback={tm.name} width={400} px={26} />
-      {last ? minuteTag(p) : null}
-    </>
-  );
-  return Strap(p, {
-    word: <span style={{ fontSize: 32, fontWeight: 900, letterSpacing: 1.5, ...animStyle(p, 'rise', 260, 340) }}>{t(p, 'SUBSTITUTION')}</span>,
-    wordBg: PLATE,
-    wordInk: INK,
-    rows: [line('▲', ON_GREEN, player(p, 'playerIn'), true), line('▼', OFF_RED, player(p, 'playerOut'), false)],
-  });
 }
 
 // ------------------------------------------------------------------ boards
@@ -440,55 +465,14 @@ function TeamBlocks({ p, W, H, crest, plate, centre, namePx }: { p: GraphicProps
 }
 
 /**
- * Half time, full time and the other breaks: the period in a tab, the two team blocks with the score on the plate,
- * and each team's scorers under its block.
+ * Half time, full time and the other breaks: the same banner as the kick-off, headed by the break ("HALF TIME"), with
+ * the competition (or the shoot-out score) in the grey tab under the score.
  */
 function BreakScore(p: GraphicProps) {
   const d = p.display;
-  const label = t(p, ((p.cue.variables.label as string) || d.periodLabel).toUpperCase());
-  const W = 1480;
-  const CREST = 224;
-  const PW = 320;
-  const inset = CREST - Math.round(CREST * 0.29) + 26;
-  const shown = { home: scorersOf(p, 'home'), away: scorersOf(p, 'away') };
-  const scorers = (s: Side) => {
-    const xs = shown[s];
-    if (!xs.length) return <div style={{ flex: 1 }} />;
-    const away = s === 'away';
-    const max = 4;
-    return (
-      <div style={{ flex: 1, [away ? 'marginRight' : 'marginLeft']: inset - 30, padding: '6px 26px', background: PLATE, color: INK, ...animStyle(p, 'drop', 520, 380) }}>
-        {xs.slice(0, max).map((x, i) => (
-          <div key={x.id} style={{ display: 'flex', alignItems: 'center', height: 46, borderTop: i ? `1px solid ${TAB}` : undefined, justifyContent: away ? 'flex-end' : 'flex-start', ...stagger(p, i, 'rise', 600, 70) }}>
-            <ScorerLine p={p} x={x} s={s} colour={INK} muted={MUTED} px={27} width={330} />
-          </div>
-        ))}
-        {xs.length > max ? <div style={{ height: 34, display: 'flex', alignItems: 'center', justifyContent: away ? 'flex-end' : 'flex-start', fontSize: 18, fontWeight: 700, color: MUTED }}>+{xs.length - max} {t(p, 'more')}</div> : null}
-      </div>
-    );
-  };
-  return (
-    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: 140, width: W, ...font(p), ...animStyle(p, 'slide-up') }} data-graphic="break_score">
-      <TitleTab p={p} text={label} width={560} delayMs={60} />
-      <div style={{ filter: SHADOW }}>
-        <TeamBlocks p={p} W={W} H={168} crest={CREST} plate={PW} namePx={56} centre={<ScoreDigits p={p} px={112} rule={84} />} />
-        {shown.home.length || shown.away.length || d.shootout ? (
-          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-            {scorers('home')}
-            <div style={{ width: PW, display: 'flex', justifyContent: 'center' }}>
-              {d.shootout ? <span style={{ marginTop: 10, padding: '8px 18px', background: INK, color: '#FFFFFF', fontSize: 22, fontWeight: 900, letterSpacing: 2, ...animStyle(p, 'drop', 460, 340) }}>{t(p, 'PENALTIES')} {d.shootout.home}–{d.shootout.away}</span> : null}
-            </div>
-            {scorers('away')}
-          </div>
-        ) : null}
-      </div>
-      {p.cue.variables.showSponsor !== false && p.creative('detached_logo', p.cue) ? (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          <span style={{ background: 'rgba(255,255,255,.96)', padding: '8px 18px', ...animStyle(p, 'fade', 620, 300) }}><SponsorMark p={p} placement="detached_logo" height={46} /></span>
-        </div>
-      ) : null}
-    </div>
-  );
+  const heading = t(p, ((p.cue.variables.label as string) || d.periodLabel).toUpperCase());
+  const sub = d.shootout ? `${t(p, 'PENALTIES')} ${d.shootout.home}–${d.shootout.away}` : occasionLine(p.data.match);
+  return Banner(p, heading, sub, p.cue.variables.showSponsor !== false ? 'detached_logo' : null);
 }
 
 /**
@@ -523,6 +507,11 @@ function Ident(p: GraphicProps) {
 /** The kick-off and period banner: the heading in a tab over a small board of the two teams and the score. */
 function PeriodBanner(p: GraphicProps) {
   const { heading, period } = periodBanner(p);
+  return Banner(p, t(p, heading), period, 'lower_third_banner');
+}
+
+/** The banner the kick-off and the breaks share: the heading in a slanted tab, the two teams with the score, a grey tab. */
+function Banner(p: GraphicProps, heading: string, period: string, sponsor: string | null) {
   const H = 84;
   const CREST = 112;
   const hang = 40;
@@ -541,8 +530,8 @@ function PeriodBanner(p: GraphicProps) {
     );
   };
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: SY + 50, width: 1100, ...font(p), ...animStyle(p, 'slide-up') }} data-graphic="period_banner">
-      <TitleTab p={p} text={t(p, heading)} width={380} />
+    <div style={{ position: 'absolute', left: 0, right: 0, marginLeft: 'auto', marginRight: 'auto', bottom: SY + 50, width: 1100, ...font(p), ...animStyle(p, 'slide-up') }} data-graphic={p.t.key.replace('builtin:', '')}>
+      <TitleTab p={p} text={heading} width={380} />
       <div style={{ display: 'flex', alignItems: 'stretch', filter: SHADOW }}>
         {side('home', 0)}
         <div style={{ width: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: PLATE, color: INK, ...animStyle(p, 'zoom', 300, 420) }}>
@@ -553,7 +542,7 @@ function PeriodBanner(p: GraphicProps) {
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <span style={{ padding: '6px 22px', background: TAB, color: INK, fontSize: 16, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase', ...animStyle(p, 'drop', 380, 320) }}>{period}</span>
       </div>
-      {p.creative('lower_third_banner', p.cue) ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}><span style={{ background: 'rgba(255,255,255,.96)', padding: '6px 16px', ...animStyle(p, 'fade', 480, 300) }}><SponsorMark p={p} placement="lower_third_banner" height={36} /></span></div> : null}
+      {sponsor && p.creative(sponsor, p.cue) ? <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}><span style={{ background: 'rgba(255,255,255,.96)', padding: '6px 16px', ...animStyle(p, 'fade', 480, 300) }}><SponsorMark p={p} placement={sponsor} height={36} /></span></div> : null}
     </div>
   );
 }
@@ -660,10 +649,10 @@ const DERBY_PACK: Pack = { key: 'derby', surface: 'paper', texture: 'none', corn
 export const derbyTheme: ThemeComponents = {
   ...packTheme(DERBY_PACK),
   scorebug: Scorebug,
-  goal: Goal,
-  score: Score,
-  card: Card,
-  substitution: Substitution,
+  goal: EventInBugPlace,
+  score: EventInBugPlace,
+  card: EventInBugPlace,
+  substitution: EventInBugPlace,
   break_score: BreakScore,
   ident: Ident,
   period_banner: PeriodBanner,

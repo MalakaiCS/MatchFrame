@@ -2,7 +2,7 @@
 // the output has its plan (the match is still "Scheduled"), on air with no set time and left untouched at
 // "Pre-match", both taken out with their exit animation when the players walk out, line-ups 15 s later (8 s each,
 // once, only for a team with a line-up), the scorebug at "About to start" with its clock at 0:00, the kick-off
-// banner and a running clock at each half; at half time nothing for 10 s, then the background and the header with
+// banner and a running clock at each half; at half time the half-time banner for 10 s, then the background and the header with
 // the restart countdown, the stats 30 s later and the header again 30 s after that; both animated out at the
 // second-half walk-out and the scorebug back 7 s later; 30 s after full time the final score on the header with
 // "Thank you for watching". Captures of the OBS page are kept as evidence in docs/evidence/e2e/.
@@ -117,12 +117,14 @@ test('football starter flow on a real output, with the real timings', async ({ b
   await waitFor('scorebug and kick-off banner', (s) => s.scorebugVisible && on(s, 'lower')?.templateKey === 'builtin:period_banner', 8000);
   await expect(obs.locator('[data-graphic="scorebug"]')).toContainText(/0:0[2-9]|0:[1-5]\d/, { timeout: 10_000 });
 
-  // half time: the scorebug stays for 10 s with nothing over it; then the background and the header with the
-  // restart countdown, the stats 30 s later, and the header again 30 s after that
+  // half time: the scorebug stays for 10 s with the half-time banner (the kick-off banner headed HALF TIME); then the
+  // background and the header with the restart countdown, the stats 30 s later, and the header again 30 s after that
   const t1 = await phase('half_time');
   await obs.waitForTimeout(5000);
   const early = await st();
   expect(early.scorebugVisible).toBe(true);
+  expect(on(early, 'lower')).toMatchObject({ templateKey: 'builtin:period_banner', variables: { heading: 'Half Time' } });
+  await expect(obs.locator('[data-graphic="period_banner"]')).toContainText(/HALF TIME/i);
   expect(on(early, 'background') ?? on(early, 'fullframe')).toBeFalsy();
   await waitFor('half-time background and header after 10 s', (s) => on(s, 'background')?.templateKey === 'builtin:backdrop' && on(s, 'fullframe')?.templateKey === 'builtin:ident' && !s.scorebugVisible, 10_000);
   expect(Date.now() - t1).toBeGreaterThanOrEqual(9500);

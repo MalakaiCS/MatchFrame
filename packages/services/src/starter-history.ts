@@ -15,6 +15,7 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
     '6ae9e72701c533093f58f901328b2813', // graphics animate out at the walk-outs (board, then background); half time after 10 s, header and stats 30 s each
     'e40aabd9b1f0b452a9bb61e47dc37302', // the shoot-out tracker during a penalty shoot-out
     '7a94eda00f2898d86d3a784ed31f60d1', // the fourth official's board when added time is entered
+    'db5e49d9c94e64acd4081188ae7d2986', // the half-time banner for the first 10 s of half time
   ],
   basketball: ['2a72efc1183f22c928818f24e5c8a135'],
   netball: ['cf62a84825b609243d794e2884bc75ba'],
@@ -24,6 +25,7 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
   futsal: [
     '6e70168bff2b85bc0ae977c920d55720', // the football flow with 10 m kicks and timeouts, no substitution graphic
     '31094f4a8e3377c0f3fdd399fbbe74e7', // + the shoot-out tracker during kicks from the penalty mark
+    '55b0e4797e97d5e124ebeffa8bce3c5c', // + the half-time banner for the first 10 s of half time
   ],
 };
 

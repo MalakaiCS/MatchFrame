@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { getAdapter } from '@bs/domain';
 import { fitLabel } from '../fit';
-import type { RenderPlayer, RenderTeam } from '../data';
+import { occasionLine, type RenderPlayer, type RenderTeam } from '../data';
 import { animStyle, changeStyle, useAudioPolicy, type GraphicProps } from './stage';
 
 export function side(p: GraphicProps): 'home' | 'away' {
@@ -154,7 +154,8 @@ export function ThemeBadge({ p, height }: { p: GraphicProps; height: number }) {
 export function periodBanner(p: GraphicProps): { heading: string; period: string } {
   const heading = typeof p.cue.variables.heading === 'string' && p.cue.variables.heading ? p.cue.variables.heading : 'KICK-OFF';
   const period = typeof p.cue.variables.period === 'string' && p.cue.variables.period ? p.cue.variables.period : p.display.periodLabel;
-  return { heading: heading.toUpperCase(), period };
+  // a banner headed by the period itself ("HALF TIME") names the competition under the score instead of repeating it
+  return { heading: heading.toUpperCase(), period: period.toUpperCase() === heading.toUpperCase() ? occasionLine(p.data.match) : period };
 }
 
 // ---------------------------------------------------------------- wording, clock and score helpers shared by every theme

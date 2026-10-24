@@ -66,6 +66,16 @@ export interface GraphicProps {
   memo?: AnimMemo;
   /** a still frame at `now` (exports): entrances and exits are plain styles for that instant, not CSS animations */
   still?: boolean;
+  /** what is on air on each layer at this instant (a look can draw one graphic through another, e.g. an event in its scorebug) */
+  layers?: Partial<Record<Layer, OnAir>>;
+}
+
+/** A cue on air: its template and where it is in its own timeline. */
+export interface OnAir {
+  cue: Cue;
+  t: TemplateDef;
+  phase: 'in' | 'hold' | 'out';
+  offsetMs: number;
 }
 
 /** Remembers when each animation was first rendered, so its CSS delay stays constant across re-renders. */
@@ -150,13 +160,20 @@ export function Renderer({ state, data: rawData, themes, serverNow, customDefs =
     .filter(([layer]) => layer !== 'scoreboard' || state.scorebugVisible || state.layers.scoreboard?.outAt)
     .sort(([a], [b]) => LAYER_Z[a] - LAYER_Z[b]);
   const visible: Cue[] = [];
-  const nodes = cues.map(([layer, cue]) => {
+  const onAir: Partial<Record<Layer, OnAir>> = {};
+  for (const [layer, cue] of cues) {
     const t = findTemplate(cue.templateKey, customDefs);
-    if (!t) return null;
+    if (!t) continue;
     const { phase, offset } = phaseOf(cue, t, now);
-    if (phase === 'out' && offset > t.exitMs) return null;
+    if (phase === 'out' && offset > t.exitMs) continue;
+    onAir[layer] = { cue, t, phase, offsetMs: offset };
+  }
+  const nodes = cues.map(([layer, cue]) => {
+    const on = onAir[layer];
+    if (!on) return null;
+    const { t, phase, offsetMs: offset } = on;
     if (phase !== 'out') visible.push(cue);
-    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset, memo, still };
+    const props: GraphicProps = { cue, t, data, display, now, measure, creative, phase, offsetMs: offset, memo, still, layers: onAir };
     const Comp = cue.templateKey.startsWith('custom:') ? renderCustom : comps[cue.templateKey.replace('builtin:', '')];
     if (!Comp) return null;
     return (

@@ -635,6 +635,41 @@ Not claimed: the previews with crests were drawn from the same components with s
 committed baselines use the look page's sample teams, which have no crests. Not checked in OBS or on the hosted
 deployment.
 
+## Derby: events through the scorebug, the half-time banner, HALF TIME and FULL TIME (2026-10-24)
+
+Requested: "For Derby when a goal, yellow card, red card, sub happens its graphics is through the scoreboard instead
+of the lower third graphic"; "the half time graphic needs to be the same as the kick off graphic"; "when half time
+happens it should have the time switch to saying half-time and at full time full time on the scorebug"; and "at half
+time that half time graphic should pop up then 10 seconds later switch to the half time break scene".
+
+* **Through the scorebug.** The renderer now tells each graphic what else is on air (`GraphicProps.layers`). In
+  Derby, while a goal, points, card or substitution is on air the scorebug draws it in its own place: the team's crest
+  and block, the event (*GOAL!* on the team's colour, *YELLOW CARD* on yellow, *SUBSTITUTION*), and the player in a
+  light row underneath with the clock beside it. It wipes in over the score, the score is out of sight while it holds,
+  and it wipes out to uncover the score. The event's own graphic draws nothing while the scorebug is up; with the
+  scorebug off it stands alone in the scorebug's place. Other looks are unchanged.
+* **Half time.** Derby's break and final score board is the kick-off banner headed by the break, with the competition
+  (or the shoot-out score) under the score. The football starter flow (and futsal's, built from it) now puts the
+  half-time banner up for the first 10 s of half time (the kick-off banner headed by the phase, *Half Time*), out as
+  the break scene comes in; untouched copies of the earlier flows are upgraded by fingerprint. A banner headed by the
+  period itself names the competition under the score instead of repeating it, in every look.
+* **The clock.** Derby's scorebug clock reads *HALF TIME* through the break (the second-half walk-out included) and
+  *FULL TIME* after the match (*FINAL* for basketball).
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test`: `derby.test.ts` (a card, goal and substitution drawn in the scorebug with the player and clock, the score hidden while it holds and showing while it wipes, the event's own graphic empty while the scorebug is up, standing alone at the top when it is off, other events left alone; HALF TIME at the break and the walk-out, FULL TIME after; the half-time board identical to the kick-off banner headed *Half Time*; scorers on the statistics board), `automation.test.ts` (the half-time banner at 0.4 s for 9.4 s, then the background at 10 s), `starter-history.test.ts` (the new football and futsal fingerprints) | 220 tests, 40 files, all pass |
+| `pnpm test:db` | 82 tests, 12 files, all pass |
+| `tests/e2e/specs/derby.spec.ts` (new): the football starter flow on a real output in Derby: a yellow card and a goal come up inside the scorebug (no strap of their own) and the score comes back after each; at half time the half-time banner and *HALF TIME* on the clock, then the break scene no sooner than 9.5 s; *FULL TIME* on the clock after the match (`derby-card-through-scorebug.png`, `derby-goal-through-scorebug.png`, `derby-half-time-banner.png`, `derby-half-time-scene.png`, `derby-full-time-scorebug.png`) | 1 test, passes |
+| Visual baselines: every look (Derby's rewritten for the card, goal, substitution and break board) | 30 tests, all pass (10.0 min); no other look's baseline changed |
+| `obs-link`, `officials`, `shootout`, `highlights` specs (the starter flow and the renderer change) | 8 tests, pass |
+| `automation-flow.spec.ts` (updated for the half-time banner) | fails, as before this change, at *home line-up off after 8 s* (the sponsor rotation's growth described above), before it reaches half time; so the updated half-time step is checked by `derby.spec.ts` and the rehearsal test, not by this spec |
+| Full `pnpm test:e2e` | not run for this change |
+
+Not claimed: checked in Chromium through the OBS page URL, not inside OBS; the substitution through the scorebug
+is covered by the render test only (the browser test records a card and a goal).
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |
