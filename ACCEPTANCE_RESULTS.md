@@ -627,7 +627,7 @@ immutable version 1.
 | `pnpm typecheck`, `pnpm lint` | clean |
 | `pnpm test`: `derby.test.ts` (scorers on the break board, own goal and penalty marks, rugby league tries only, no list for basketball, the short-name fallback, the statistics title by period, the card strap's colour and name, the goal strap's score, name colours on light, mid and dark club colours); `looks.test.ts` (eleven looks, every built-in graphic drawn); `officials.test.ts` (the tabs under the scorebug and the red cards in every look, now including Derby) | 218 tests, 40 files, all pass |
 | `pnpm test:db` (migration `0018` applied with the rest) | 82 tests, 12 files, all pass |
-| Visual baselines: Derby's 29 football graphics and the rugby league sin bin and video review (31 new, rewritten in full after the last change); the other looks unchanged and not rerun | 2 tests, pass |
+| Visual baselines: Derby's 30 football captures and the rugby league sin bin and video review (32 new, rewritten in full after the last change); the other looks unchanged and not rerun | 2 tests, pass |
 | `look-choice.spec.ts` (the pickers list every look) and `replay-transition.spec.ts` | 3 tests, pass |
 | Full `pnpm test:e2e` | not run for this change |
 
