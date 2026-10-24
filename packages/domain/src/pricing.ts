@@ -122,6 +122,64 @@ export const OPTIONAL_SERVICES: OptionalService[] = [
   { key: 'custom-graphics', name: 'Custom graphics design', price: 'Quoted per project', covers: 'Bespoke graphics beyond the included standard themes' },
 ];
 
+/** Plan differences, row by row, for the comparison table (the same facts as each plan's feature list). */
+export interface PlanComparisonRow {
+  label: string;
+  /** per plan: true (included), false (not included) or the words to show */
+  values: Record<PaidPlanKey, boolean | string>;
+}
+export const PLAN_COMPARISON: { group: string; rows: PlanComparisonRow[] }[] = [
+  {
+    group: 'Allowances',
+    rows: [
+      { label: 'Simultaneous live matches', values: { starter: '1', club: '2', studio: '5', league: 'Agreed in quote' } },
+      { label: 'Staff accounts', values: { starter: '3', club: '10', studio: '25', league: 'Agreed in quote' } },
+      { label: 'All supported sports', values: { starter: true, club: true, studio: true, league: true } },
+      { label: 'Unlimited fixture preparation and rehearsals', values: { starter: true, club: true, studio: true, league: true } },
+    ],
+  },
+  {
+    group: 'Graphics and scoring',
+    rows: [
+      { label: 'Live scoreboard and match clock', values: { starter: true, club: true, studio: true, league: true } },
+      { label: 'Graphics package', values: { starter: 'Basic match graphics', club: 'Full standard package', studio: 'Full standard package', league: 'Full standard package' } },
+      { label: 'Custom team names, logos and colours', values: { starter: true, club: true, studio: true, league: true } },
+      { label: 'Several saved branding profiles', values: { starter: false, club: false, studio: true, league: 'Organisation-wide' } },
+      { label: 'Watermark-free output', values: { starter: true, club: true, studio: true, league: true } },
+    ],
+  },
+  {
+    group: 'Automation and production',
+    rows: [
+      { label: 'Manual graphics controls', values: { starter: true, club: true, studio: true, league: true } },
+      { label: 'Event-triggered automation', values: { starter: false, club: true, studio: true, league: true } },
+      { label: 'Reusable pre-match, half-time and post-match sequences', values: { starter: false, club: false, studio: true, league: true } },
+    ],
+  },
+  {
+    group: 'Sponsors',
+    rows: [
+      { label: 'Sponsor placements', values: { starter: 'One static placement', club: 'Several, rotating', studio: 'Several campaigns, rotating', league: 'Several campaigns, rotating' } },
+      { label: 'Delivery reports', values: { starter: false, club: true, studio: 'Expanded', league: 'Expanded' } },
+    ],
+  },
+  {
+    group: 'Help',
+    rows: [
+      { label: 'Documentation', values: { starter: true, club: true, studio: true, league: true } },
+      { label: 'Support', values: { starter: 'Standard email', club: 'Standard email', studio: 'Priority email', league: 'Agreed arrangement' } },
+      { label: 'Guided onboarding', values: { starter: 'Optional, $149', club: 'Optional, $149', studio: 'Optional, $149', league: 'Included' } },
+    ],
+  },
+];
+
+/**
+ * Currency and tax as the owner has confirmed them. null: not confirmed, so the site shows dollar amounts as
+ * published and says that checkout shows the currency, any tax and the total before payment. Set these (for
+ * example 'AUD' and 'Prices include GST') once the Stripe prices and tax settings are final.
+ */
+export const PRICE_TERMS: { currency: string | null; tax: string | null } = { currency: null, tax: null };
+
 export const pricePlan = (key: string) => PRICE_PLANS.find((p) => p.key === key);
 
 /** "$29/month or $290/year", "From $499/month". */

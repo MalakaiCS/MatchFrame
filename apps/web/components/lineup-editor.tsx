@@ -221,7 +221,7 @@ export function LineupEditor({ matchId, canEdit, canSaveDefault = false, compact
           <TabPanel value="away">{panel('away')}</TabPanel>
         </Tabs>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {(['home', 'away'] as const).map((side) => (
             <div key={side} className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
               <h3 className="mb-2 font-medium">{d.teams[side].name}</h3>

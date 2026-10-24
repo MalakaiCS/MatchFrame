@@ -93,7 +93,7 @@ export function StepDialog({ sport, playlist, item, onSave, onClose }: { sport: 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={item ? 'Edit step' : 'Add a step'} wide
       footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!valid} onClick={save}>{item ? 'Save' : 'Add step'}</Button></>}>
-      <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_16rem]">
         <div className="grid content-start gap-3">
           <Field label="What" htmlFor="sk">
             <NativeSelect id="sk" value={action} onChange={(e) => { const a = e.target.value as PlanItem['action']; setAction(a); if (DEFAULT_SECONDS[a]) setForSeconds(DEFAULT_SECONDS[a]!); if (a !== 'show') setUntilOut(false); }}>
@@ -186,5 +186,5 @@ function VariablesForm({ t, vars, onChange, fromEvent, assets }: { t: TemplateDe
     }
   };
   if (!t.variables.length) return <p className="text-xs text-muted">This graphic needs no details.</p>;
-  return <div className="grid gap-2 sm:grid-cols-2">{t.variables.map(field)}</div>;
+  return <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{t.variables.map(field)}</div>;
 }

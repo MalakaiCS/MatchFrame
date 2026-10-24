@@ -1,6 +1,6 @@
 // Identity, organisation, catalog, fixtures, matches and scoring routes (/api/v1).
 import { z } from 'zod';
-import { AppError, apiKeysSvc, catalog, finalsSvc, imports, matchesSvc, orgs, prefs, scoring, seasonData, staffSvc } from '@bs/services';
+import { AppError, apiKeysSvc, catalog, clearPhoneNumber, finalsSvc, imports, matchesSvc, orgs, prefs, scoring, seasonData, staffSvc } from '@bs/services';
 import { fixtureTemplateCsv, STAFF_LABELS } from '@bs/domain';
 import type { AppBundle } from '../app';
 
@@ -24,7 +24,7 @@ export function registerCoreRoutes(b: AppBundle) {
       grants = ctx?.actor.grants ?? [];
     }
     return {
-      user: { id: s.user.id, name: s.user.name, email: s.user.email, emailVerified: s.user.emailVerified, twoFactorEnabled: !!(s.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled },
+      user: { id: s.user.id, name: s.user.name, email: s.user.email, emailVerified: s.user.emailVerified, twoFactorEnabled: !!(s.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled, phoneNumber: (s.user as { phoneNumber?: string | null }).phoneNumber ?? null },
       organisations: mine,
       activeOrganisation: active,
       role: active ? mine.find((o) => o.id === active!.id)?.role : null,
@@ -33,6 +33,14 @@ export function registerCoreRoutes(b: AppBundle) {
       features: { streaming: deps.config.STREAMING_ENABLED },
       staff: staff ? { role: staff.role, label: STAFF_LABELS[staff.role] } : null,
     };
+  });
+
+  // the account's mobile number for text-message sign-in codes (added through Better Auth's phone-number verify)
+  app.delete('/api/v1/me/phone-number', async (req) => {
+    const s = await loadSession(req);
+    if (!s) throw new AppError('UNAUTHENTICATED', 401, 'Sign in to continue');
+    await clearPhoneNumber(deps.db, s.user.id);
+    return { ok: true };
   });
 
   app.get('/api/v1/me/preferences', async (req) => {

@@ -101,7 +101,7 @@ export function TriggerDialog({ sport, trigger, id, onSave, onClose }: { sport: 
         {d.kind === 'phase' ? (
           <fieldset>
             <legend className="mb-1 text-xs font-medium text-muted">Phases (the scorer's buttons)</legend>
-            <div className="grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
+            <div className="grid grid-cols-1 max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
               {SPECIAL_TAGS.map((s) => <label key={s.tag} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.phaseTags.includes(s.tag)} onChange={() => setD({ ...d, phaseTags: toggle(d.phaseTags, s.tag) })} /> {s.label}</label>)}
               {phases.filter((p) => p.tags.length).map((p) => <label key={p.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.phaseIds.includes(p.id)} onChange={() => setD({ ...d, phaseIds: toggle(d.phaseIds, p.id) })} /> {p.label}</label>)}
             </div>
@@ -111,7 +111,7 @@ export function TriggerDialog({ sport, trigger, id, onSave, onClose }: { sport: 
           <>
             <fieldset>
               <legend className="mb-1 text-xs font-medium text-muted">Events</legend>
-              <div className="grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
+              <div className="grid grid-cols-1 max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
                 {events.map((e) => <label key={e.type} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.eventTypes.includes(e.type)} onChange={() => setD({ ...d, eventTypes: toggle(d.eventTypes, e.type) })} /> {e.label}</label>)}
               </div>
             </fieldset>

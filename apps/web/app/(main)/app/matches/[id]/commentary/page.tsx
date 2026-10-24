@@ -146,7 +146,7 @@ export default function CommentaryPage({ params }: { params: Promise<{ id: strin
           <div className="mt-1 text-xs text-muted">{fmtDate(d.scheduledAt, tz, { dateStyle: 'medium', timeStyle: 'short' })}</div>
         </div>
       </Card>
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="space-y-3">{lineup('home')}{lineup('away')}</div>
         <div className="space-y-3">
           <Card className="p-3">

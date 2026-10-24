@@ -52,7 +52,7 @@ export default function AutomationPage() {
       <PageHeader title="Automation" subtitle="Plans decide which graphics run from the scorer's phases and events: lineups before kick-off, the goal strap on a goal, the half-time board, and so on." actions={full ? <Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New plan</Button> : null} />
       <ErrorNotice error={plans.error} />
       {plans.isLoading ? <Spinner /> : (
-        <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
           <Card className="p-2">
             <ul aria-label="Automation plans">
               {plans.data?.map((p) => (
@@ -187,7 +187,7 @@ function PlanEditor({ id, canEdit, tz }: { id: string; canEdit: boolean; tz: str
                 {pl.repeat.mode === 'loop' ? <label className="flex items-center gap-1 text-xs" title="Wait this long before the first pass; the repeats follow on without it">first after <Input type="number" aria-label="First pass after (seconds)" className="w-16" min={0} step={0.1} disabled={!canEdit} value={(pl.startDelayMs ?? 0) / 1000} onChange={(e) => update((d) => { const ms = Math.round(Math.max(0, Number(e.target.value) || 0) * 1000); if (ms) d.playlists[pi]!.startDelayMs = ms; else delete d.playlists[pi]!.startDelayMs; })} /> s</label> : null}
                 {canEdit ? <Button size="sm" variant="ghost" aria-label={`Remove playlist ${pl.name}`} onClick={() => confirm(`Remove “${pl.name}”?`) && update((d) => { d.playlists.splice(pi, 1); })}><Trash2 className="size-4" /></Button> : null}
               </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-[18rem_1fr]">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[18rem_minmax(0,1fr)]">
                 <div>
                   <h4 className="mb-1 text-xs font-medium text-muted">Runs</h4>
                   <ul className="space-y-1 text-sm">

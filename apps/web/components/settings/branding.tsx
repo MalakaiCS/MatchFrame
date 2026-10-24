@@ -24,7 +24,7 @@ export function BrandingPanel({ owner, admin }: { owner: boolean; admin: boolean
   if (org.isLoading) return <Spinner />;
   const canEdit = admin;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="p-4">
         <h2 className="mb-1 font-medium">Your brand</h2>
         <p className="mb-3 text-xs text-muted">Shown in the app header, on sign-in and on the public match centre for this organisation.</p>

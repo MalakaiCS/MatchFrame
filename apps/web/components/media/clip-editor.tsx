@@ -54,7 +54,7 @@ export function ClipEditor({ clip, onClose, onExported }: { clip: ClipRow; onClo
           {clip.mediaUrl ? <video ref={v} src={clip.mediaUrl} controls muted className="aspect-video w-full" /> : null}
           {aspect !== '16:9' ? <div aria-hidden className="pointer-events-none absolute inset-y-0 border-2 border-warning shadow-[0_0_0_9999px_rgba(0,0,0,.55)]" style={{ left: `${left}%`, width: `${boxW}%` }} /> : null}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={`Trim in · ${fmt(trim[0])}`} htmlFor="ti"><input id="ti" type="range" className="w-full" min={0} max={dur} step={100} value={trim[0]} onChange={(e) => setTrim([Math.min(Number(e.target.value), trim[1] - 1000), trim[1]])} /></Field>
           <Field label={`Trim out · ${fmt(trim[1])}`} htmlFor="to"><input id="to" type="range" className="w-full" min={0} max={dur} step={100} value={trim[1]} onChange={(e) => setTrim([trim[0], Math.max(Number(e.target.value), trim[0] + 1000)])} /></Field>
           <Field label="Aspect" htmlFor="as"><NativeSelect id="as" value={aspect} onChange={(e) => setAspect(e.target.value)}><option value="16:9">16:9 landscape (1920×1080)</option><option value="9:16">9:16 vertical (1080×1920)</option><option value="1:1">1:1 square (1080×1080)</option></NativeSelect></Field>

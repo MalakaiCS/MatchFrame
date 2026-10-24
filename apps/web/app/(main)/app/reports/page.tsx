@@ -52,13 +52,13 @@ function SponsorReport() {
       <ErrorNotice error={r.error} />
       {r.isLoading || !r.data ? <Spinner /> : (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Card className="p-3"><div className="text-xs text-muted">Times shown</div><div className="text-2xl font-semibold">{r.data.totals.occurrences}</div></Card>
             <Card className="p-3"><div className="text-xs text-muted">Seconds on air</div><div className="text-2xl font-semibold">{r.data.totals.confirmedSeconds}</div></Card>
             <Card className="p-3"><div className="text-xs text-muted">Skipped or empty</div><div className="text-2xl font-semibold">{r.data.totals.skippedOrEmpty}</div></Card>
           </div>
           <details className="rounded-[var(--radius-card)] border border-border p-3 text-xs text-muted"><summary className="cursor-pointer text-sm text-text">What these numbers mean</summary><ul className="mt-2 space-y-1">{Object.entries(r.data.definitions).map(([k, v]) => <li key={k}><span className="font-medium text-text">{k}:</span> {v}</li>)}</ul><p className="mt-2">Not audience numbers: this is proof a sponsor was on screen, not how many people saw it.</p></details>
-          <div className="grid gap-4 lg:grid-cols-2">{group('By campaign', r.data.byCampaign)}{group('By creative', r.data.byCreative)}{group('By match', r.data.byMatch)}{group('By output', r.data.byOutput)}</div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{group('By campaign', r.data.byCampaign)}{group('By creative', r.data.byCreative)}{group('By match', r.data.byMatch)}{group('By output', r.data.byOutput)}</div>
           <Card className="p-3">
             <h2 className="mb-2 text-sm font-medium">Occurrences</h2>
             <Table>

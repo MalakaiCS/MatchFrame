@@ -134,6 +134,13 @@
       "when": 1792900000000,
       "tag": "0018_derby_look",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792910000000,
+      "tag": "0019_contact_and_sign_in",
+      "breakpoints": true
     }
   ]
 }

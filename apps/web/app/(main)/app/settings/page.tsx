@@ -29,7 +29,7 @@ function SettingsInner() {
   const owner = me.data?.role === 'owner';
   const tz = me.data?.activeOrganisation?.timezone ?? 'UTC';
   const qs = useSearchParams();
-  const initial = qs.get('billing') ? 'plan' : (qs.get('tab') ?? 'org');
+  const initial = qs.get('billing') || qs.get('plan') ? 'plan' : (qs.get('tab') ?? 'org');
   return (
     <>
       <PageHeader title="Settings" subtitle="Organisation, members, plan, branding, integrations, notifications, security and audit." />
@@ -140,7 +140,7 @@ function Entitlements({ owner }: { owner: boolean }) {
   if (org.isLoading) return <Spinner />;
   const e = org.data?.entitlements;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="p-4">
         <h2 className="mb-1 font-medium">Features on this plan</h2>
         <p className="mb-3 text-xs text-muted">Installation ceilings (capacity, destinations) cannot be raised here.</p>

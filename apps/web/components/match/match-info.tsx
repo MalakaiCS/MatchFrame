@@ -44,7 +44,7 @@ export function MatchInfoEditor({ matchId, match, canEdit }: { matchId: string; 
             {!officials.length && !canEdit ? <p className="text-sm text-muted">Not entered.</p> : null}
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Attendance" htmlFor="mi-att"><Input id="mi-att" inputMode="numeric" disabled={!canEdit} value={attendance} onChange={(e) => { touch(); setAttendance(e.target.value.replace(/\D/g, '')); }} /></Field>
           <Field label="Weather" htmlFor="mi-w"><NativeSelect id="mi-w" disabled={!canEdit} value={weather.condition ?? ''} onChange={(e) => { touch(); setWeather({ ...weather, condition: e.target.value || null }); }}><option value="">Not set</option>{Object.entries(CONDITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect></Field>
           <Field label="Temperature (°C)" htmlFor="mi-t"><Input id="mi-t" inputMode="decimal" disabled={!canEdit} value={weather.tempC == null ? '' : String(weather.tempC)} onChange={(e) => { touch(); setWeather({ ...weather, tempC: e.target.value.trim() === '' ? null : Number(e.target.value) }); }} /></Field>

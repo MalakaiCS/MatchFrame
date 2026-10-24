@@ -14,7 +14,7 @@ export function registerPlatformRoutes(b: AppBundle) {
   const auto = { db: deps.db, config: deps.config, workerId: 'api' };
 
   // ---------------------------------------------------------------- sign-in options and white-label branding (public)
-  app.get('/api/v1/auth-options', async () => authOptions(deps.config));
+  app.get('/api/v1/auth-options', async () => authOptions(deps.config, deps.sms));
   app.get('/api/v1/public/branding', async (req, reply) => {
     const q = P(z.object({ host: z.string().max(253).optional() }), req.query ?? {});
     const b2 = await orgs.brandingForHost(deps.db, q.host ?? (req.headers['x-forwarded-host'] as string | undefined) ?? req.headers.host);
@@ -22,9 +22,9 @@ export function registerPlatformRoutes(b: AppBundle) {
     return b2 ? { ...b2, logoUrl: b2.logoAssetId ? overlaysSvc.signedAssetUrl(deps.config, b2.organisationId, b2.logoAssetId, 3600) : null, logoAssetId: undefined, organisationId: undefined } : { productName: deps.config.PRODUCT_NAME, logoUrl: null, primaryColor: null, accentColor: null, supportEmail: null, hideVendor: false };
   });
 
-  // ---------------------------------------------------------------- public contact form (emails CONTACT_EMAIL)
-  app.get('/api/v1/public/contact', async () => contact.contactStatus(deps.config));
-  app.post('/api/v1/public/contact', async (req) => contact.submitContact(deps.config, deps.mailer, req.body, { ip: req.ip }));
+  // ---------------------------------------------------------------- public contact form (stored; emailed to CONTACT_EMAIL when set)
+  app.get('/api/v1/public/contact', async () => contact.contactStatus({ db: deps.db, config: deps.config, mailer: deps.mailer }));
+  app.post('/api/v1/public/contact', async (req) => contact.submitContact({ db: deps.db, config: deps.config, mailer: deps.mailer }, req.body, { ip: req.ip }));
 
   // ---------------------------------------------------------------- outbound webhooks
   app.get('/api/v1/webhook-endpoints', async (req) => webhooksSvc.listWebhooks(await ctxFor(req)));

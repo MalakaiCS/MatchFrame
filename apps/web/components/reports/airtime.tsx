@@ -39,12 +39,12 @@ export function AirtimeReport() {
       <ErrorNotice error={r.error} />
       {r.isLoading || !r.data ? <Spinner /> : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Card className="p-3"><div className="text-xs text-muted">Graphics shown</div><div className="text-2xl font-semibold">{r.data.totals.graphics}</div></Card>
             <Card className="p-3"><div className="text-xs text-muted">Total time on air</div><div className="text-2xl font-semibold">{mins(r.data.totals.seconds)}</div></Card>
           </div>
           <p className="text-xs text-muted">Each row is a graphic that an output actually displayed, timed from when it appeared to when it went out. Demo matches are left out. For sponsor obligations use the Sponsor delivery tab; this report covers every graphic.</p>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {group('By graphic', 'Graphic', r.data.byTemplate)}
             {group('By match', 'Match', r.data.byMatch)}
             {group('By sponsor artwork', 'Creative', r.data.bySponsorCreative)}

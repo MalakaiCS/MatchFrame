@@ -35,7 +35,9 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
 * **Media provider** — `MEDIA_PROVIDER=livekit` (default). `fake` is for automated tests and labelled demo mode;
   the UI and session rows show `demo` when it is active.
 * **Optional integrations** (all off until their keys are set; the UI says so where each would appear):
-  `GOOGLE_CLIENT_ID/SECRET` and `MICROSOFT_CLIENT_ID/SECRET` (+`MICROSOFT_TENANT_ID`) add social sign-in buttons;
+  `GOOGLE_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` (+`MICROSOFT_TENANT_ID`) and
+  `FACEBOOK_CLIENT_ID/SECRET` add "Continue with …" buttons; `SMS_PROVIDER=twilio` with `TWILIO_*` adds text-message
+  sign-in codes (`mail` sends them to Mailpit in development and is refused in production);
   `VAPID_PUBLIC_KEY/PRIVATE_KEY` (+`VAPID_SUBJECT`) enable web push for reminders; `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` enable card billing (without them the owner
   sets the plan by hand; with them only site Admins can, in the staff console); `BACKUP_ENABLED`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` schedule database dumps;
@@ -43,9 +45,25 @@ execution keys, job rows), so losing Redis delays delivery but never loses or du
 * **White-label** — an organisation's `customDomain` (Settings → Branding, owners) resolves a host name to that
   organisation: point the host at the installation and let the reverse proxy accept it; sign-in and public pages
   then carry the organisation's name, logo and colours (`GET /api/v1/public/branding`).
-* **Security** — Settings → Security turns on TOTP two-step sign-in per account (backup codes included), lists and
-  revokes sessions, and lets an owner require two-step sign-in for the whole organisation: members without it are
-  held at an enrolment screen until they set it up (`TWO_FACTOR_REQUIRED`). API keys carry scopes.
+* **Sign-in** — a password, a 6-digit code by email (which also creates the account for a new address), a code by
+  text message to a number verified on the account, a passkey, or a configured provider. Codes: 10 minutes by
+  email, 5 by text, single use, rate-limited per connection; a text goes only to a number on an account (or to a
+  signed-in person adding theirs), so the endpoint reveals nothing and cannot be used to send texts elsewhere.
+  Google and Apple sign-ins with the same verified email join the existing account; other providers are connected
+  from Settings → Security once signed in. An account with two-step sign-in on is asked for its authenticator code
+  after an email code, a text code or a provider sign-in too (a passkey counts as the second step).
+* **Security** — Settings → Security lists the ways to sign in (password, passkeys, mobile number, connected
+  providers), turns on TOTP two-step sign-in per account (backup codes included; accounts without a password can
+  too), lists and revokes sessions, and lets an owner require two-step sign-in for the whole organisation: members
+  without it are held at an enrolment screen until they set it up (`TWO_FACTOR_REQUIRED`). API keys carry scopes.
+* **Contact enquiries** — messages from the public contact form are kept in `contact_enquiries` (no tenant) and
+  listed for site staff at `/staff/enquiries` (Support and above; Admins delete); with `CONTACT_EMAIL` each is also
+  emailed there, retried by the worker with backoff (1 min to 3 h, six attempts) when sending fails. They are
+  deleted 12 months after they arrive. The form is open when there is an inbox or at least one site staff member.
+* **Migrations** — the application roles' default grants are set before migrations run, so a brand-new database
+  gets every table's grants (and each migration's deliberate REVOKEs) in its first `pnpm db:migrate`. Before
+  24 October 2026 they were set afterwards, so a database created empty and migrated in one go lacked the grants on
+  tables added after `0001`; databases migrated step by step (every deployment so far) were not affected.
 * **Site staff** — the people who run the installation, across every organisation (not an organisation's own
   members). `PLATFORM_OWNER_EMAILS` (comma-separated) makes those verified accounts Owners; they add the rest in
   the staff console at `/staff` → *Staff team*. Four roles, each with everything below it:

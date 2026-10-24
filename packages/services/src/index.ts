@@ -4,6 +4,7 @@ export * from './authz';
 export * from './audit';
 export * from './outbox';
 export * from './mail';
+export * from './sms';
 export * from './auth';
 export * from './context';
 export * from './storage';

@@ -4,11 +4,11 @@ import { STAFF_ACTIONS, STAFF_ROLES, canActOnAccount, canManageStaff, staffCan, 
 describe('staff roles', () => {
   it('each role has everything the role below it has', () => {
     const allowed = (r: StaffRole) => (Object.keys(STAFF_ACTIONS) as StaffAction[]).filter((a) => staffCan(r, a));
-    expect(allowed('support')).toEqual(['directory.read', 'organisation.view', 'user.view', 'user.resend_verification']);
+    expect(allowed('support')).toEqual(['directory.read', 'organisation.view', 'user.view', 'user.resend_verification', 'enquiries.read', 'enquiries.manage']);
     expect(allowed('moderator')).toEqual([...allowed('support'), 'content.takedown']);
-    expect(allowed('admin')).toEqual([...allowed('moderator'), 'organisation.suspend', 'organisation.plan', 'user.disable', 'user.sign_out', 'staff.manage', 'activity.read']);
+    expect(allowed('admin')).toEqual([...allowed('moderator'), 'organisation.suspend', 'organisation.plan', 'user.disable', 'user.sign_out', 'staff.manage', 'activity.read', 'enquiries.delete']);
     expect(allowed('owner')).toEqual(allowed('admin'));
-    expect(STAFF_ROLES.map((r) => allowed(r).length)).toEqual([11, 11, 5, 4]);
+    expect(STAFF_ROLES.map((r) => allowed(r).length)).toEqual([14, 14, 7, 6]);
     expect(staffCan(null, 'directory.read')).toBe(false);
   });
 

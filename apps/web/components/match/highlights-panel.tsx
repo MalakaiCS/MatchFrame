@@ -225,7 +225,7 @@ function Maker({ matchId, canEdit, video, facts, adapter, cfg, renderData, rende
   return (
     <Card className="grid gap-4 p-4">
       {drawing.node}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid content-start gap-2">
           {video.previewUrl ? <video ref={player} src={video.previewUrl} controls preload="metadata" className="aspect-video w-full rounded-md bg-black" aria-label="Match video" /> : null}
           <p className="text-xs text-muted">A small copy of your video for finding the moments; the package is made from the original.</p>
@@ -297,7 +297,7 @@ function Maker({ matchId, canEdit, video, facts, adapter, cfg, renderData, rende
 
       <section aria-label="Package" className="grid gap-3 rounded-md border border-border p-3">
         <h3 className="font-medium">The package</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="About how long" htmlFor="hl-length"><NativeSelect id="hl-length" value={String(options.targetMs)} disabled={!canEdit} onChange={(e) => setOpt('targetMs', Number(e.target.value))}>{LENGTHS.map((n) => <option key={n} value={n * 60_000}>{n} minutes</option>)}</NativeSelect></Field>
           <Field label="Title" htmlFor="hl-title"><Input id="hl-title" maxLength={30} value={options.title} disabled={!canEdit} onChange={(e) => setOpt('title', e.target.value)} /></Field>
           <Field label="End board message" htmlFor="hl-end"><Input id="hl-end" maxLength={60} value={options.endMessage} disabled={!canEdit} onChange={(e) => setOpt('endMessage', e.target.value)} /></Field>

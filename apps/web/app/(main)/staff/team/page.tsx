@@ -27,7 +27,7 @@ export default function StaffTeamPage() {
   return (
     <div>
       <PageHeader title="Staff team" subtitle="The people who run this installation, across every organisation. Not the same as an organisation's own members and roles." />
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
         <div>
           <ErrorNotice error={team.error ?? change.error ?? remove.error} />
           {team.isLoading ? <Spinner /> : (

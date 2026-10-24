@@ -34,7 +34,7 @@ export default function CompetitionsPage() {
       {list.isLoading ? <Spinner /> : !list.data?.length ? (
         <EmptyState icon={<Trophy className="size-6 text-muted" />} title={search || sport ? 'No competitions match these filters' : 'No competitions yet'} body="Create a competition to add seasons, teams and fixtures." action={isFull(me.data?.role) ? <Button variant="primary" onClick={() => setOpen(true)}>New competition</Button> : null} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {list.data.map((c) => (
             <Link key={c.id} href={`/app/competitions/${c.id}`}>
               <Card className="h-full p-4 hover:border-primary">

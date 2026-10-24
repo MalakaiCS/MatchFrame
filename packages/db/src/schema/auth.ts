@@ -9,6 +9,9 @@ export const users = pgTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false),
+  /** a verified mobile number signs in with a texted code (Better Auth phone-number plugin) */
+  phoneNumber: text('phone_number').unique(),
+  phoneNumberVerified: boolean('phone_number_verified').default(false),
   /** set by site staff: the account cannot sign in (its sessions are ended when it is set) */
   disabledAt: timestamp('disabled_at', { withTimezone: true }),
   disabledReason: text('disabled_reason'),
@@ -80,6 +83,65 @@ export const twoFactors = pgTable('two_factors', {
   failedVerificationCount: integer('failed_verification_count').default(0),
   lockedUntil: timestamp('locked_until', { withTimezone: true }),
 });
+
+/** Passkeys (WebAuthn credentials) registered by an account; sign in with the device's lock instead of a password. */
+export const passkeys = pgTable(
+  'passkeys',
+  {
+    id: text('id').primaryKey(),
+    name: text('name'),
+    publicKey: text('public_key').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    credentialID: text('credential_id').notNull().unique(),
+    counter: integer('counter').notNull(),
+    deviceType: text('device_type').notNull(),
+    backedUp: boolean('backed_up').notNull(),
+    transports: text('transports'),
+    aaguid: text('aaguid'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (t) => [index('passkeys_user_idx').on(t.userId)],
+);
+
+/**
+ * Messages from the public contact form. No tenant: written by the contact service (anyone, rate-limited) and read
+ * by site staff in the staff console. Emailed to CONTACT_EMAIL when it is set, with retries by the worker; deleted
+ * a year after they arrive.
+ */
+export const contactEnquiries = pgTable(
+  'contact_enquiries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** short reference given to the sender, e.g. MF-7K2Q9C */
+    reference: text('reference').notNull().unique(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    topic: text('topic').notNull(),
+    organisation: text('organisation'),
+    sport: text('sport'),
+    plan: text('plan'),
+    message: text('message').notNull(),
+    status: text('status').notNull().default('new'),
+    /** the email to the team inbox: pending | sent | failed | not_configured */
+    delivery: text('delivery').notNull().default('pending'),
+    deliveryAttempts: integer('delivery_attempts').notNull().default(0),
+    deliveryError: text('delivery_error'),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    handledBy: text('handled_by').references(() => users.id, { onDelete: 'set null' }),
+    handledAt: timestamp('handled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('contact_enquiries_created_idx').on(t.createdAt),
+    index('contact_enquiries_delivery_idx').on(t.delivery, t.nextAttemptAt),
+    check('contact_enquiries_status_chk', sql`${t.status} in ('new','replied','closed')`),
+    check('contact_enquiries_delivery_chk', sql`${t.delivery} in ('pending','sent','failed','not_configured')`),
+  ],
+);
 
 // Site-wide staff (not organisation members): owner | admin | moderator | support. No tenant: read and written only by
 // the staff service, which checks the acting staff member's role. Owners named in PLATFORM_OWNER_EMAILS are kept

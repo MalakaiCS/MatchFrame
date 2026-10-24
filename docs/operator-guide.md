@@ -1,5 +1,24 @@
 # Operator and producer guide
 
+## Getting around
+
+The sidebar has four groups: **Home**, **Matches** and **Competitions**; **On air** (Control rooms, Producer board,
+Streams); **Graphics** (Themes, Automation, Assets); and **Sponsors & media** (Sponsors, Reports, Media), with
+Settings, Help and guides and (for site staff) the Staff console at the bottom. **New match** is always at the top.
+*Collapse* folds the sidebar to icons; on a phone the menu button opens the same list. **Ctrl K** (⌘ K on a Mac),
+or the *Jump to or search* box, goes to any page, or searches matches by team or competition.
+
+The sun/moon button in the top bar switches between light and dark; the account menu (your initial) has
+*Appearance* (Light, Dark or System, which follows the device), *Account and sign-in*, Help and Sign out. The choice
+is kept on each device. The scorer's *Sunlight* mode is separate and stays as it was.
+
+**Signing in**: with a code by email (no password needed; a new address creates an account), a password, a passkey,
+a code by text message (once a mobile number is added under Settings → Security → *Ways to sign in*), or Google,
+Apple, Microsoft or Facebook where the installation has them set up. Settings → Security lists every way in,
+adds passkeys and a mobile number, connects or disconnects providers, and sets a password by email link for an
+account that has none. With two-step sign-in on, every way in except a passkey also asks for the authenticator
+code.
+
 ## Before the match
 
 0. **Rules** — a competition's rules come from a preset chosen when it is created. *Competition → Overview →
@@ -15,7 +34,7 @@
    netball). *Competition → Finals → Edit finals rules* gives the finals their own rules (for example extra time
    2×10); *Use the competition's rules* goes back. A single match can be made a **knockout** (Match → Overview →
    Rules → *Knockout*) before scoring starts, and from the scorer's phone once it has started.
-1. **Fixture** — Matches → open the fixture. *New fixture* has a **Stage**: *Regular season* (counts for the
+1. **Fixture** — Matches → open the fixture. *New match* has a **Stage**: *Regular season* (counts for the
    ladder) or *Finals* (knockout rules; never counts for the ladder; the round is a name such as Quarter-final,
    Semi-final or Grand Final). The stage of an upcoming match can be changed on its Overview tab. Check teams, venue, kickoff (shown in the organisation timezone,
    stored in UTC) and the lineup snapshot. Lineups lock at kickoff; later roster changes never rewrite them.
@@ -319,7 +338,7 @@ matches are still to be played); give each match a kick-off and venue and press 
 offered as soon as every match of the last one has a winner (a level score is decided by extra time and
 penalties), with the better-placed team at home. The matches are ordinary fixtures with an OBS link from the
 start, and their graphics show the round beside the competition (*Coastal League · Grand Final*). A finals match
-can also be added by hand (New fixture, Stage *Finals*). *Roll over* on an active season creates the next one, carries rosters forward and archives the old
+can also be added by hand (New match, Stage *Finals*). *Roll over* on an active season creates the next one, carries rosters forward and archives the old
 season with its results and tables intact. The same table, fixtures and top scorers are available as graphics.
 
 ## Sponsors and reports

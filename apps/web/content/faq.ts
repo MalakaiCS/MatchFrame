@@ -1,7 +1,9 @@
 // FAQ content. Answers are paragraphs with inline markup ([label](/href), **bold**). Each answer was written from
 // the product as it is today (code, guides and recorded tests); `basis` records where it came from so it can be
 // re-checked when the product changes. Questions that need an owner decision (prices, terms, ownership) say so
-// rather than guessing.
+// rather than guessing. Counts of graphics and looks come from the same registries the product uses.
+import { GRAPHIC_COUNT, LOOK_COUNT, countWord } from './site';
+
 export type FaqCategory = 'getting-started' | 'graphics-scoring' | 'production' | 'sponsors-highlights' | 'accounts-pricing' | 'support';
 
 export const FAQ_CATEGORIES: { key: FaqCategory; label: string }[] = [
@@ -52,8 +54,8 @@ export const FAQS: Faq[] = [
     category: 'getting-started',
     q: 'Which sports are supported?',
     a: [
-      '**Football and basketball** have been tested end to end: a full match, including the unusual cases such as extra time, penalty shoot-outs, overtime, fouls and timeouts, has been played through the scorer, graphics and automation.',
-      '**Futsal, netball, rugby league, AFL and hockey** are in beta. Their rules, events and graphics are built and covered by automated checks, but a full match has not yet been run end to end, so rehearse before relying on them. Futsal follows the Futsal Laws of the Game as Football Australia uses them: stopped clock, accumulated fouls, timeouts and the two-minute send-off. See [all sports](/sports).',
+      '**Football and basketball** are available: a full match, including the unusual cases such as extra time, penalty shoot-outs, overtime, fouls and timeouts, has been played end to end through the scorer, graphics and automation. See the [football](/sports/football) and [basketball](/sports/basketball) pages.',
+      '**Futsal, netball, rugby league, AFL and hockey** are in beta. Their rules, events and graphics are built and checked automatically, but a full match has not yet been played end to end, so rehearse before relying on them. Futsal follows the Futsal Laws of the Game as Football Australia uses them: stopped clock, accumulated fouls, timeouts and the two-minute send-off. See [all sports](/sports).',
     ],
     home: true,
     basis: 'Acceptance checks A07 (football) and A08 (basketball); sport adapter unit tests and visual baselines for the other five; futsal also has a scoring-service test and a scorer-phone browser test.',
@@ -117,18 +119,18 @@ export const FAQS: Faq[] = [
     category: 'graphics-scoring',
     q: 'What graphics are available?',
     a: [
-      'Twenty-nine built-in graphics, in eleven looks: the scorebug (the on-screen score and clock), match header, animated background, team line-ups and formations, goal and score events, cards, substitutions, kick-off and period banners, lower thirds (name captions near the bottom of the picture), player cards, match statistics and live statistic comparisons, break and final scores, match summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match information, shoot-out tracker, timeouts, sponsor graphics, stinger wipe, holding slate, full-frame media and a ticker.',
+      `${GRAPHIC_COUNT} built-in graphics, in ${countWord(LOOK_COUNT)} looks: the scorebug (the on-screen score and clock) with added time, match header, animated background, team line-ups and formations, goal and score events, cards, substitutions, kick-off and period banners, lower thirds (name captions near the bottom of the picture), player cards, match statistics and live statistic comparisons, break and final scores, match summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match information, shoot-out tracker, video review decisions, timeouts, sponsor graphics, a stinger wipe and a replay transition, a highlights title, holding slate, full-frame media and a ticker.`,
       'See them all, live, in the [showcase](/showcase).',
     ],
     home: true,
-    basis: 'Graphics catalogue (29 templates); visual regression baselines.',
+    basis: 'Graphics catalogue (BUILTIN_TEMPLATES) and looks (LOOKS); visual regression baselines.',
   },
   {
     id: 'club-branding',
     category: 'graphics-scoring',
     q: 'Can I use my club\'s branding?',
     a: [
-      'Yes. Each look takes your logo, colours and team colours, and lets you choose the scorebug style and position, how the clock shows (with or without seconds, how added time reads), your own wording for on-air labels (useful for bilingual competitions), sounds on goals and cards, and a custom font.',
+      'Yes. Each look takes your logo, colours and team colours, and lets you choose the scorebug style and position, how the clock shows (with or without seconds, how added time reads), your own wording for on-air labels (useful for bilingual competitions) and a custom font. [Looks and branding](/docs/graphics/themes-and-branding) goes through it.',
       'Logos and artwork upload to the asset library as PNG or JPEG images up to 25 megapixels; video as MP4 up to ten minutes. When two teams\' colours are too close, the away team switches to its alternate colours automatically.',
     ],
     basis: 'Look options (operator guide); upload limits (configuration).',
@@ -170,7 +172,7 @@ export const FAQS: Faq[] = [
     q: 'Can I run more than one match at once?',
     a: [
       'Yes. Each match has its own scorer, graphics outputs and automation, kept separate from the others, and the producer board shows every live match on one screen. Plans include 1 (Starter), 2 (Club) or 5 (Studio) simultaneous live matches; League / Enterprise allowances are agreed in the quote.',
-      'Graphics-only matches need little from the server. Cloud production is different: each programme uses real processing power, and how many can run together depends on the media server\'s hardware. Two 720p programmes overloaded our four-core test server, so measure on your own hardware first.',
+      'Graphics-only matches need little from the server. Cloud production is different: each programme uses real processing power, and how many can run together depends on the media server\'s hardware, so try the number you need on your own hardware before match day.',
     ],
     basis: 'Producer board; capacity check A51 (failed on a 4-core host).',
   },
@@ -181,7 +183,7 @@ export const FAQS: Faq[] = [
     q: 'Does MatchFrame work with OBS?',
     a: [
       'Yes, that is the main way to use the hosted edition. Each match has a graphics link: in OBS add a **Browser Source** with that link at 1920×1080 (1080×1920 for a vertical output), and the graphics appear over your camera with a transparent background. You can also download a ready-made OBS scene collection.',
-      'Our automated tests load the graphics page in Chromium, the engine OBS uses for browser sources, and check the transparency pixel by pixel. We have not yet certified particular OBS versions. Follow [Connect your graphics to OBS](/docs/graphics/first-output).',
+      'The graphics page is checked in Chromium, the browser engine OBS uses for browser sources, including its transparent background. Particular OBS versions are not certified yet. Follow [Connect your graphics to OBS](/docs/graphics/first-output).',
     ],
     home: true,
     basis: 'Transparent output check A36; OBS scene collection download.',
@@ -221,7 +223,7 @@ export const FAQS: Faq[] = [
     q: 'Can I run it from a phone or tablet?',
     a: [
       'The **scorer app** is built for phones and tablets: large buttons, a sunlight mode for outdoor screens, vibration and sounds on each action, and a low data mode. Add it to the home screen and it opens even without a connection.',
-      'The **control room** is designed for a laptop or desktop browser. The commentator view works well on a tablet. Our tests run in Chromium; other browsers are not yet formally tested.',
+      'The **control room** is designed for a laptop or desktop browser. The commentator view works well on a tablet. MatchFrame is checked in Chromium, the engine behind Chrome and Edge; other browsers are not yet formally tested.',
     ],
     basis: 'Scorer guide; phone-sized browser tests.',
   },
@@ -357,16 +359,16 @@ export const FAQS: Faq[] = [
     category: 'support',
     q: 'How do I get help on matchday?',
     a: [
-      'Start with the [troubleshooting guides](/docs#troubleshooting): they go through what to check in order, for missing graphics and dropped connections. You can also [contact us](/contact); we do not offer live matchday phone support.',
-      'Tell us the match, what you expected and what you saw, and a screenshot if you can. Never send passwords or stream keys.',
+      'Start with the [troubleshooting guides](/docs#troubleshooting): they go through what to check in order, for [missing graphics](/docs/troubleshooting/graphics-not-visible) and [dropped connections](/docs/troubleshooting/connection-loss). We do not offer live matchday support.',
+      'For anything else, use the [contact form](/contact) and choose **Help with an account or a match**. Tell us the match, what you expected and what you saw. Never send passwords or stream keys. Messages are stored so the team can read and answer them (and emailed to the team inbox when one is set up), and deleted 12 months after they arrive. We reply by email; no response time is promised.',
     ],
-    basis: 'Docs and contact route; no live support service.',
+    basis: 'Docs and contact route (contact_enquiries, staff console Enquiries, 365-day retention); no live support service.',
   },
   {
     id: 'feature-requests',
     category: 'support',
     q: 'Where can I request a feature?',
-    a: ['Use the [contact form](/contact) and choose "Product question". Every suggestion is read; we cannot promise when, or whether, a particular request will be built.'],
+    a: ['Use the [contact form](/contact) and choose **Product or setup question**. Suggestions reach the team; we cannot promise when, or whether, a particular request will be built.'],
     basis: 'Contact route.',
   },
 ];

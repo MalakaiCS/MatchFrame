@@ -1,35 +1,48 @@
 import Link from 'next/link';
+import { BookOpen, Clock, LifeBuoy, ShieldCheck } from 'lucide-react';
 import { ContactForm } from '@/components/site/contact-form';
-import { Card, Lead, PageIntro, Section } from '@/components/site/ui';
+import { Container, Eyebrow } from '@/components/site/ui';
 import { siteMetadata } from '@/lib/site-meta';
 
 export const metadata = siteMetadata({
   title: 'Contact',
-  description: 'Contact the MatchFrame team about the product, setup help, pricing or partnerships.',
+  description: 'Contact the MatchFrame team about the product, setup help, pricing for your season or a partnership. Matchday problems: start with the troubleshooting guides.',
   path: '/contact',
 });
 
 export default function ContactPage() {
   return (
-    <>
-      <PageIntro eyebrow="Contact" title="Talk to the MatchFrame team">
-        <Lead>Questions about the product, help with a setup, pricing for your season, or a partnership: send us a message and we will reply by email.</Lead>
-      </PageIntro>
-      <Section>
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
-          <ContactForm />
-          <div className="space-y-4">
-            <Card>
-              <h2 className="font-semibold text-white">Help on matchday</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">We do not offer live phone support. For a problem during a match, start with <Link href="/docs/troubleshooting/graphics-not-visible" className="text-brand-cyan hover:underline">missing graphics</Link> or <Link href="/docs/troubleshooting/connection-loss" className="text-brand-cyan hover:underline">a dropped connection</Link>.</p>
-            </Card>
-            <Card>
-              <h2 className="font-semibold text-white">What happens to your message</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">It is sent by email to the MatchFrame team so we can reply to you. This website does not store it, and we do not add you to a mailing list.</p>
-            </Card>
+    <Container className="py-10 sm:py-14">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-14">
+        <div>
+          <Eyebrow>Contact</Eyebrow>
+          <h1 className="mt-3 font-brand text-[34px] font-bold leading-[1.08] tracking-[-0.02em] text-text sm:text-5xl">Talk to the MatchFrame team</h1>
+          <p className="mt-3 max-w-xl text-muted sm:text-lg">Questions about the product, help with a setup, pricing for your season, or a partnership. We reply by email.</p>
+          <div className="mt-8">
+            <ContactForm />
           </div>
         </div>
-      </Section>
-    </>
+        <aside className="space-y-4 lg:pt-28">
+          <div className="rounded-2xl border border-border bg-panel p-5 shadow-card">
+            <h2 className="flex items-center gap-2 font-semibold text-text"><LifeBuoy className="size-5 text-primary" aria-hidden /> Problem during a match?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">We do not offer live matchday support. The troubleshooting guides go through what to check, in order:</p>
+            <ul className="mt-3 space-y-1.5 text-sm">
+              <li><Link href="/docs/troubleshooting/graphics-not-visible" className="font-medium text-primary hover:underline">Graphics are not showing</Link></li>
+              <li><Link href="/docs/troubleshooting/connection-loss" className="font-medium text-primary hover:underline">The connection dropped</Link></li>
+              <li><Link href="/docs/scoring/corrections" className="font-medium text-primary hover:underline">The score looks wrong</Link></li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-border bg-panel p-5 shadow-card">
+            <h2 className="flex items-center gap-2 font-semibold text-text"><BookOpen className="size-5 text-primary" aria-hidden /> Setting up?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">The <Link href="/docs/getting-started/first-match" className="font-medium text-primary hover:underline">first match guide</Link> takes you from a new account to graphics in OBS. The <Link href="/faq" className="font-medium text-primary hover:underline">FAQ</Link> answers equipment and pricing questions.</p>
+          </div>
+          <div className="rounded-2xl border border-border p-5">
+            <h2 className="flex items-center gap-2 font-semibold text-text"><ShieldCheck className="size-5 text-primary" aria-hidden /> What happens to your message</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">It is stored in MatchFrame so the team can read it and reply to you, and emailed to the team's inbox when one is set up. It is deleted automatically 12 months after it arrives. We do not add you to a mailing list.</p>
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted"><Clock className="size-4" aria-hidden /> We reply by email; no response time is promised.</p>
+          </div>
+        </aside>
+      </div>
+    </Container>
   );
 }

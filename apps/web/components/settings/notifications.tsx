@@ -64,7 +64,7 @@ export function NotificationsPanel({ tz }: { tz: string }) {
     await fetch('/api/v1/me/push-subscriptions', { method: 'DELETE', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint }) });
   };
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="p-4">
         <h2 className="mb-1 font-medium">What gets sent</h2>
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted">

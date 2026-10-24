@@ -127,7 +127,7 @@ export function HighlightsTitleExport({ data }: { data: RenderData }) {
         <h3 id="title-export-heading" className="font-medium">Title graphics for your edit</h3>
         <p className="text-sm text-muted">The title panel on its own, in this match&apos;s look, with the competition, both teams, the round, the ground, the date and the kick-off time. The rest of the frame is see-through, so it sits over your footage in an editing program. Change the ground or kick-off time on the match and the title follows.</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="File" htmlFor="tx-format"><NativeSelect id="tx-format" value={format} onChange={(e) => setFormat(e.target.value as Format)} disabled={busy}>{FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}</NativeSelect></Field>
         <Field label="Size" htmlFor="tx-size"><NativeSelect id="tx-size" value={size} onChange={(e) => setSize(e.target.value)} disabled={busy}>{SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</NativeSelect></Field>
         {format !== 'png' ? (
@@ -137,7 +137,7 @@ export function HighlightsTitleExport({ data }: { data: RenderData }) {
           </>
         ) : null}
       </div>
-      <ul aria-label="Title graphics" className="grid gap-4 md:grid-cols-2">
+      <ul aria-label="Title graphics" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {KINDS.map((k) => (
           <li key={k.key} data-title-export={k.key} className="grid gap-2">
             <Preview data={exportData} title={titles[k.key] || k.title} holdMs={holdMs} />

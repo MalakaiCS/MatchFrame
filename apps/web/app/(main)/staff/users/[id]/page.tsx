@@ -53,7 +53,7 @@ export default function StaffUserPage({ params }: { params: Promise<{ id: string
       />
       <ErrorNotice error={act.error ?? resend.error} />
       {a.disabledAt ? <p className="mb-4 rounded-md border border-live/40 bg-live/10 px-3 py-2 text-sm">Disabled {fmtDate(a.disabledAt, 'UTC')}: {a.disabledReason}</p> : null}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-4">
           <h2 className="mb-2 font-medium">Sign-in</h2>
           <dl className="grid grid-cols-2 gap-y-1 text-sm">

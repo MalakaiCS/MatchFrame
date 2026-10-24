@@ -79,7 +79,7 @@ export function ThumbnailsPanel({ matchId }: { matchId: string }) {
           </div>
           <Button variant="secondary" onClick={() => void save(THUMBNAIL_KINDS.map((k) => k.kind), 'all')} disabled={!!busy}><Images className="h-4 w-4" />{busy === 'all' ? 'Saving…' : 'Download all'}</Button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <Field label="Size" htmlFor="th-size"><NativeSelect id="th-size" value={size} onChange={(e) => setSize(e.target.value as typeof size)}>{THUMBNAIL_SIZES.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}</NativeSelect></Field>
           <Field label="Your own words" htmlFor="th-words" hint="On the last thumbnail, e.g. MATCH REPLAY or GRAND FINAL"><Input id="th-words" maxLength={28} value={words} onChange={(e) => setWords(e.target.value)} /></Field>
         </div>
@@ -89,7 +89,7 @@ export function ThumbnailsPanel({ matchId }: { matchId: string }) {
         </div>
         {err ? <p role="alert" className="text-sm text-live">{err}</p> : null}
       </Card>
-      <ul aria-label="Thumbnails" className="grid gap-4 md:grid-cols-2">
+      <ul aria-label="Thumbnails" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {THUMBNAIL_KINDS.map((k) => (
           <li key={k.kind} data-thumbnail-card={k.kind}>
             <Card className="grid gap-3 p-3">

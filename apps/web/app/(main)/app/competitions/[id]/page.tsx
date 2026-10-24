@@ -64,7 +64,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <Tab value="players">Players</Tab>
           <Tab value="production">Graphics & production</Tab>
         </TabList>
-        <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
+        <TabPanel value="overview" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between"><h2 className="font-medium">Seasons</h2>{full ? <Button size="sm" onClick={() => setSeasonOpen(true)}><Plus className="size-4" /> Add season</Button> : null}</div>
             {comp.seasons.length ? (
@@ -100,7 +100,7 @@ export default function CompetitionDetail({ params }: { params: Promise<{ id: st
           <div className="lg:col-span-2"><StandingsRulesCard competitionId={id} sport={comp.sport} rules={comp.standingsRules as never} canEdit={full} /></div>
         </TabPanel>
         <TabPanel value="fixtures">
-          <div className="mb-3 flex flex-wrap justify-end gap-2">{full ? <Button size="sm" onClick={() => setRoundOpen(true)}><Plus className="size-4" /> Create a round</Button> : null}<Button asChild size="sm"><Link href={`/app/matches?competitionId=${id}&import=1`}>Import fixtures</Link></Button><Button asChild size="sm" variant="primary"><Link href={`/app/matches?competitionId=${id}&new=1`}>New fixture</Link></Button></div>
+          <div className="mb-3 flex flex-wrap justify-end gap-2">{full ? <Button size="sm" onClick={() => setRoundOpen(true)}><Plus className="size-4" /> Create a round</Button> : null}<Button asChild size="sm"><Link href={`/app/matches?competitionId=${id}&import=1`}>Import fixtures</Link></Button><Button asChild size="sm" variant="primary"><Link href={`/app/matches?competitionId=${id}&new=1`}>New match</Link></Button></div>
           {fixtures.isLoading ? <Spinner /> : <MatchTable rows={fixtures.data?.items ?? []} tz={tz} />}
         </TabPanel>
         <TabPanel value="table"><SeasonStandings seasons={comp.seasons} /></TabPanel>

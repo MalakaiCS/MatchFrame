@@ -31,7 +31,7 @@ export function LooksReel({ src, poster, title, caption }: { src: string; poster
     };
   }, []);
   return (
-    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-panel/60">
+    <figure className="overflow-hidden rounded-2xl border border-border bg-panel shadow-card">
       <video ref={ref} className="block aspect-video w-full bg-black" src={src} poster={poster} muted loop playsInline controls preload="metadata" aria-label={title} />
       <figcaption className="px-4 py-3 text-xs text-muted">{caption}</figcaption>
     </figure>

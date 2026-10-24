@@ -24,6 +24,8 @@ export const STAFF_ACTIONS = {
   'organisation.view': 'support',
   'user.view': 'support',
   'user.resend_verification': 'support',
+  'enquiries.read': 'support',
+  'enquiries.manage': 'support',
   'content.takedown': 'moderator',
   'organisation.suspend': 'admin',
   'organisation.plan': 'admin',
@@ -31,6 +33,7 @@ export const STAFF_ACTIONS = {
   'user.sign_out': 'admin',
   'staff.manage': 'admin',
   'activity.read': 'admin',
+  'enquiries.delete': 'admin',
 } as const satisfies Record<string, StaffRole>;
 export type StaffAction = keyof typeof STAFF_ACTIONS;
 

@@ -41,7 +41,7 @@ export function SeasonStandings({ seasons }: { seasons: Season[] }) {
       <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} />
       <ErrorNotice error={q.error} />
       {q.isLoading || !q.data ? <Spinner /> : (
-        <Card className="overflow-x-auto p-0">
+        <Card className="relative overflow-x-auto p-0">
           <Table>
             <thead><tr><th>#</th><th>Team</th><th className="text-center">P</th><th className="text-center">W</th><th className="text-center">D</th><th className="text-center">L</th>{q.data.rows.some((r) => r.byes) ? <th className="text-center">B</th> : null}<th className="text-center">{unit}F</th><th className="text-center">{unit}A</th><th className="text-center">{pct || q.data.rules.unit === 'points' ? '%' : '+/−'}</th><th className="text-center">{pct ? 'Win %' : 'Pts'}</th></tr></thead>
             <tbody>
@@ -117,7 +117,7 @@ export function SeasonPlayers({ seasons, sport }: { seasons: Season[]; sport: st
       </div>
       <ErrorNotice error={q.error} />
       {q.isLoading ? <Spinner /> : !rows.length ? <p className="text-sm text-muted">Player totals appear once line-ups and events have been recorded.</p> : (
-        <Card className="overflow-x-auto p-0">
+        <Card className="relative overflow-x-auto p-0">
           <Table>
             <thead><tr><th>#</th><th>Player</th><th>Team</th><th className="text-center">Apps</th><th className="text-center">Starts</th><th className="text-center">Goals</th>{sport === 'football' || sport === 'basketball' || sport === 'futsal' ? <th className="text-center">Assists</th> : null}{sport !== 'football' && sport !== 'netball' && sport !== 'hockey' && sport !== 'futsal' ? <th className="text-center">Points</th> : null}{breakdownKeys.map((k) => <th key={k} className="text-center capitalize">{k.replace(/_/g, ' ')}</th>)}{cards ? <th className="text-center">Cards</th> : null}{sport === 'basketball' ? <th className="text-center">Fouls</th> : null}</tr></thead>
             <tbody>

@@ -81,7 +81,7 @@ export function WebhooksPanel({ tz, canEdit }: { tz: string; canEdit: boolean })
             <Field label="Address" htmlFor="wh-url" error={create.error?.fieldError('url')}><Input id="wh-url" type="url" placeholder="https://example.org/hooks/scores" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} /></Field>
             <fieldset>
               <legend className="mb-1 text-xs font-medium text-muted">Send these events</legend>
-              <div className="grid gap-1 sm:grid-cols-2">{(events.data ?? Object.keys(EVENT_LABELS)).map((ev) => <label key={ev} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.events.includes(ev)} onChange={() => flip(ev)} /> {EVENT_LABELS[ev] ?? ev}</label>)}</div>
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">{(events.data ?? Object.keys(EVENT_LABELS)).map((ev) => <label key={ev} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.events.includes(ev)} onChange={() => flip(ev)} /> {EVENT_LABELS[ev] ?? ev}</label>)}</div>
             </fieldset>
             <ErrorNotice error={create.error && !create.error.fields ? create.error : null} />
           </div>

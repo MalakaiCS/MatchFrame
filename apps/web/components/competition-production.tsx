@@ -22,7 +22,7 @@ export function CompetitionProduction({ competition: c, canEdit }: Props) {
   const od = c.outputDefaults as { preset?: string; postrollSeconds?: number };
   if (profiles.isLoading || plans.isLoading) return <Spinner />;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card className="p-4">
         <h2 className="mb-1 font-medium">Tournament look</h2>
         <p className="mb-3 text-sm">{current ? <>Every match uses <strong>{current}</strong> unless it has a look of its own.</> : 'No look chosen: matches use the Broadcast look unless they have one of their own.'}</p>

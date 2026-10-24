@@ -28,7 +28,7 @@ export function MatchFrameLogo({ size = 28, className = '' }: { size?: number; c
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <MatchFrameMark size={size * (755 / 698)} />
-      <span className="font-brand font-extrabold tracking-[-0.02em] text-white" style={{ fontSize: size * 0.82, lineHeight: 1 }}>
+      <span className="font-brand font-extrabold tracking-[-0.02em] text-text" style={{ fontSize: size * 0.82, lineHeight: 1 }}>
         MatchFrame
       </span>
     </span>

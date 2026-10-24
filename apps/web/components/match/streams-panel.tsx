@@ -50,7 +50,7 @@ export function StreamsPanel({ matchId, canEdit, tz }: { matchId: string; canEdi
         ) : null}
       </Card>
       <ErrorNotice error={err as never} />
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {s.data.outputs.map((o) => (
           <Card key={o.id} className="space-y-3 p-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -60,7 +60,7 @@ export function StreamsPanel({ matchId, canEdit, tz }: { matchId: string; canEdi
               {o.recording[0] ? <StatusPill tone={o.recording[0].state === 'RECORDING' ? 'live' : 'neutral'}>rec {o.recording[0].state}</StatusPill> : null}
             </div>
             {o.session?.error?.message ? <p className="text-xs text-warning">{o.session.error.message}</p> : null}
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Field label="Input" htmlFor={`in-${o.id}`}>
                 <NativeSelect id={`in-${o.id}`} disabled={!canEdit || !!live} value={o.inputId ?? ''} onChange={(e) => void run(() => put(`matches/${matchId}/outputs`, { ...pick(o), inputId: e.target.value || null }))}>
                   <option value="">Choose input…</option>

@@ -36,7 +36,7 @@ export default function ThemesPage() {
         <TabList className="mb-4"><Tab value="library">Theme library</Tab><Tab value="profiles">Profiles</Tab><Tab value="templates">Custom templates</Tab></TabList>
         <TabPanel value="library">
           {themes.isLoading ? <Spinner /> : (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {themes.data?.map((t) => (
                 <Link key={t.id} href={`/app/themes/${t.key}`} className="block rounded-lg transition hover:ring-2 hover:ring-primary/50">
                   <Card className="h-full p-3">
@@ -54,7 +54,7 @@ export default function ThemesPage() {
         <TabPanel value="profiles">
           {full ? <div className="mb-3 flex justify-end"><Button variant="primary" onClick={() => setOpen(true)}><Plus className="size-4" /> New look</Button></div> : null}
           <ErrorNotice error={profiles.error} />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {profiles.data?.map((p) => {
               const base = DEFAULT_THEMES[(p.draft.themeKey as ThemeConfig['themeKey']) ?? 'broadcast'];
               return (

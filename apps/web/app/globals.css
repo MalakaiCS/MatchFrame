@@ -4,7 +4,12 @@
 @source './';
 @source '../../../packages/graphics/src';
 
-/* MatchFrame brand: the wordmark's geometric face for public-site headings, and the logo's cyan and blue */
+/* dark: and light: follow the page's chosen theme (data-theme on <html>), not only the device setting */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+
+/* MatchFrame brand: the wordmark's geometric face for headings, and the logo's cyan and blue (the logo keeps its own
+   colours in both themes; text and controls use the theme tokens from @bs/ui). */
 @theme {
   --font-brand: 'Outfit Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --color-brand-cyan: #00d2ff;
@@ -36,6 +41,9 @@ body {
 
 /* Sunlight mode: the scorer's high-contrast palette for a phone used outdoors. Switched on from the match screen. */
 html.sunlight {
+  color-scheme: light;
+  --color-on-primary: #ffffff;
+  --color-border-strong: #000000;
   --color-bg: #ffffff;
   --color-panel: #ffffff;
   --color-elevated: #ececec;
@@ -56,8 +64,19 @@ html.sunlight body {
 
 /* Operating systems that ask for more contrast get stronger borders and secondary text. */
 @media (prefers-contrast: more) {
-  :root:not(.sunlight) {
+  :root:not(.sunlight):not([data-theme='light']) {
     --color-border: #8aa0c0;
     --color-muted: #c9d3e3;
   }
+  :root[data-theme='light']:not(.sunlight) {
+    --color-border: #6b7c95;
+    --color-muted: #2f3b4f;
+  }
+}
+
+/* Switching theme: no transition flash on the colours (the class is removed on the next frame). */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
 }

@@ -702,6 +702,59 @@ The previous version (same day) drew a differently shaped strap with its own row
 
 Not claimed: checked in Chromium through the OBS page URL, not inside OBS.
 
+## Website and app redesign, light and dark, sign-in methods, contact enquiries (2026-10-24)
+
+Requested: redesign the public website with light and dark versions and a switch, redesign and simplify the app,
+add Google and the other sign-in types including one-time codes; with a brief covering the contact path (P0), copy
+without test IDs, a nine-section homepage, page-by-page rules, honest pricing and availability words, the sample
+countdown, design tokens, responsive and accessibility rules, and verification.
+
+* **Light and dark** everywhere (site, sign-in, app): tokens in `packages/ui/src/tokens.css` (the brief's dark
+  colours; a light set with AA contrast), set before the first paint, switch in the header and app bar, Light / Dark
+  / System in the footer and account menu, remembered per browser.
+* **Public site**: new header (menus with keyboard support, mobile menu), footer without privacy/terms links (none
+  approved), the brief's homepage (hero copy as given, the real renderer as a labelled sample with four controls,
+  Reset and pause, nothing moving for reduced motion; fit strip, three steps with real product screens, gallery of
+  real renderer stills, matchday tools, sponsors, sports and audiences, pricing preview, five questions, final
+  call to action); features, how it works, showcase, sports, sport pages, pricing, FAQ, docs and contact rebuilt on
+  the same parts. No test IDs, reference counts or server-load wording on public pages; look and graphic counts come
+  from the graphics registry; availability words are Available, Beta, Coming soon, Requires media server.
+* **Sample countdown**: the sample match's kick-off is now 15 minutes after the page loads (`sampleData(…, { now })`),
+  so the preview no longer counts down 20,750 days.
+* **Pricing**: *Recommended for clubs*; yearly shows the yearly charge first and the monthly equivalent as billed
+  annually; the plan and period go to sign-up and preselect checkout; full comparison table; no currency code or
+  tax treatment is stated (`PRICE_TERMS` unset) and none is inferred.
+* **Contact (P0)**: every enquiry is stored first (`contact_enquiries`, migration `0019`) with a reference shown to
+  the sender, then emailed to `CONTACT_EMAIL` (reply-to the sender); a failed email is retried by the worker
+  (1, 5, 15 min, 1 h, 3 h) and shown as failed to staff; site staff read, mark and delete enquiries in the console
+  (*Enquiries*, logged); deleted after 365 days. The form keeps what was typed after a failure, offers a retry,
+  shows field errors, and with neither an inbox nor site staff says it is not connected and names the setting.
+* **Sign-in**: email code (and link) that also creates the account, password, passkeys, text-message code to a
+  verified mobile, Google, Apple, Microsoft and Facebook (each shown only when configured); two-step sign-in is
+  still asked after a code or a provider; the last method used is remembered; Settings → Security lists and manages
+  every way in. Provider and SMS credentials are environment settings (`docs/deploy-hosted.md`).
+* **App**: sidebar in four groups with *New match* on top, collapsible, a drawer on phones, *Jump to or search*
+  (Ctrl/⌘ K), account menu with appearance; dashboard greeting, plan reminder for owners, formatted usage; every
+  app page restyled on the tokens and checked in both themes. *New fixture* is now *New match*.
+* Found on the way: a database created empty and migrated in one go lacked the application roles' grants on tables
+  added after `0001` (default privileges were set after migrating); now set before. The DB test database is now
+  recreated each run, which exposed it.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` | 217 tests, 39 files, all pass |
+| `pnpm test:db` on a newly created database, including `tests/integration/contact.test.ts` (stored with a reference and emailed with the sender as reply-to; an email that failed kept and sent by the worker's retry; no inbox but staff to read it; field errors, bots ignored, five an hour per connection; deleted after a year; staff see and mark it, logged, and others cannot) and `tests/integration/sign-in.test.ts` (the options the login page is told about; an email code signing a new address up and an existing password account in; text-message codes to a number a signed-in person added and nothing to other numbers; two-step sign-in still asked after an email code; Google redirects to its sign-in page and Apple's form post is accepted; passkey options for anyone and registration only when signed in) | 95 tests, 14 files, all pass |
+| `public-site.spec.ts`, `sign-in.spec.ts`, `staff-console.spec.ts` on the production build: every header and footer link, light/dark remembered, 390 px with reduced motion (seven pages without sideways scroll, mobile menu, preview goal and Reset), FAQ and docs search, pricing, contact stored, emailed to Mailpit with the reference in the subject and marked replied in the staff console; pricing → sign-up with an email code → onboarding → plan reminder → sign back in with a code | 8 tests, pass |
+| Sideways scroll at 360, 390, 768, 1024, 1440 and 1920 px, dark and light, 14 public and sign-in pages and 13 app pages signed in (scratch script) | 324 page loads; 6 too wide (Sponsors at 360 and 390 px, Automation at 1024 px, both themes). Sponsors was already fixed in the source after that build; Automation fixed since. Not yet re-checked on a new build |
+| Screens reviewed by eye in both themes at desktop and phone widths: homepage, features, how it works, showcase, sports, pricing, FAQ, docs, contact, sign-in, sign-up, dashboard, matches, settings | checked by eye |
+| Full `pnpm test:e2e` | running at the time of this commit (two failures so far: the automation line-up step, already failing before this change, and the status page reading not-OK once while the API reported OK a minute later); result to follow |
+
+Not claimed: no real Google, Apple, Microsoft or Facebook account was used (the test stops at the provider's
+redirect and Apple's form post), so the two-step check after a provider sign-in is built but not exercised; text messages were checked with the test sender, not Twilio;
+passkeys were not registered with a real authenticator; Core Web Vitals (LCP, INP, CLS) were not measured; screen
+reader use was checked through the accessibility tree in the specs, not with a screen reader.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

@@ -1,7 +1,7 @@
 import type { AppConfig } from '@bs/config';
 import type { Db } from '@bs/db';
 import type { Redis } from 'ioredis';
-import { airtime, automationSvc, backups, createMailer, createStorage, demo, library, push as pushSvc, reminders, webhooksSvc, type Mailer, type RelayOptions, type Storage } from '@bs/services';
+import { airtime, automationSvc, backups, contact, createMailer, createStorage, demo, library, push as pushSvc, reminders, webhooksSvc, type Mailer, type RelayOptions, type Storage } from '@bs/services';
 import { startMedia } from './media';
 
 export interface WorkerCtx {
@@ -127,6 +127,7 @@ export async function startBackground(ctx: WorkerCtx) {
     loop('demo', 1000, () => demo.demoTick(d)),
     loop('airtime', 30_000, () => airtime.closeExpiredAirtime(ctx.db)),
     loop('backups', 5 * 60_000, () => backups.backupTick({ db: ctx.db, config: ctx.config, storage })),
+    loop('contact', 30_000, () => contact.contactTick({ db: ctx.db, config: ctx.config, mailer })),
   ];
   const media = ctx.config.STREAMING_ENABLED ? await startMedia(ctx) : { stop: async () => undefined };
   return {

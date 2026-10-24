@@ -84,7 +84,8 @@ PLATFORM_OWNER_EMAILS=you@yourdomain.com
 
 # optional: branding and defaults
 PRODUCT_NAME=MatchFrame
-# the inbox the public contact form sends to (the form says "not connected yet" until this is set)
+# the team inbox the public contact form emails (every message is also kept in the staff console, /staff →
+# Enquiries; with neither this nor any site staff the form says it is not connected)
 CONTACT_EMAIL=
 # let search engines index the public website (leave unset on a staging address); read when the image is built
 # SITE_INDEXING=true
@@ -158,7 +159,12 @@ Each of these is off until its variables are set; the matching screen says so un
 
 | Feature | Variables | Where to get them |
 | --- | --- | --- |
-| Sign in with Google / Microsoft | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | OAuth app in Google Cloud Console / Microsoft Entra; redirect URL `https://<your address>/api/auth/callback/google` (or `/microsoft`) |
+| Sign in with Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth client (Web application). Authorised JavaScript origin `https://<your address>`; redirect URI `https://<your address>/api/auth/callback/google`. Publish the OAuth consent screen. |
+| Sign in with Apple | `APPLE_CLIENT_ID` (the Services ID), `APPLE_CLIENT_SECRET` (a client secret JWT) | Apple Developer → Identifiers: an App ID with Sign in with Apple, then a Services ID with the domain `<your address>` and return URL `https://<your address>/api/auth/callback/apple`; a Sign in with Apple key signs the client secret JWT, which lasts at most 6 months, so diarise its renewal. |
+| Sign in with Microsoft | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | Microsoft Entra → App registrations; redirect URI (Web) `https://<your address>/api/auth/callback/microsoft`. `common` accepts work and personal accounts. |
+| Sign in with Facebook | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Meta for Developers → an app with Facebook Login; valid OAuth redirect URI `https://<your address>/api/auth/callback/facebook`. A Facebook sign-up with an email that already has an account is not joined to it automatically: the person signs in another way and connects Facebook under Settings → Account. |
+| Sign-in codes by text message | `SMS_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Twilio console: the account SID and auth token, and a number or Messaging Service SID allowed to send to your users' countries. Codes go only to a mobile number already verified on an account (added under Settings → Account). |
+| Passkeys | none (optional `PASSKEY_RP_ID`) | Work on the site's own address over HTTPS. Set `PASSKEY_RP_ID` only to share passkeys across subdomains (e.g. `matchframe.tv` for `app.matchframe.tv`). |
 | Push notifications for reminders | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`; subject is `mailto:` your ops address |
 | Card billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_CLUB`, `STRIPE_PRICE_LEAGUE` | Stripe dashboard: two recurring prices, a webhook to `https://<your address>/api/v1/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*` |
 | Scheduled database dumps to R2 | `BACKUP_ENABLED=true`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` | uses the media bucket; see Settings → Backups |

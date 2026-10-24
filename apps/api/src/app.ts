@@ -21,6 +21,7 @@ import {
   type JobQueues,
   type Mailer,
   type Storage,
+  type SmsSender,
 } from '@bs/services';
 import { resolveApiKey } from './api-keys';
 
@@ -33,6 +34,10 @@ export interface ApiDeps {
   media?: MediaProvider;
   redisPing?: () => Promise<boolean>;
   onEmailLink?: (kind: 'verify' | 'reset', email: string, url: string) => void;
+  /** test hook: every sign-in code sent by email or text */
+  onCode?: (kind: 'email' | 'sms', to: string, code: string) => void;
+  /** text-message sender for sign-in codes (defaults to SMS_PROVIDER) */
+  sms?: SmsSender | null;
 }
 
 export interface SessionInfo {
@@ -55,7 +60,7 @@ export function errorBody(code: string, message: string, requestId: string, extr
 
 export async function buildApp(deps: ApiDeps) {
   const { config } = deps;
-  const auth: Auth = createAuth({ db: deps.db, config, mailer: deps.mailer, onEmailLink: deps.onEmailLink });
+  const auth: Auth = createAuth({ db: deps.db, config, mailer: deps.mailer, onEmailLink: deps.onEmailLink, onCode: deps.onCode, sms: deps.sms });
   const trusted = new Set(config.TRUSTED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean));
   trusted.add(new URL(config.PUBLIC_WEB_URL).origin);
 
@@ -77,6 +82,8 @@ export async function buildApp(deps: ApiDeps) {
   await app.register(cookie);
   app.addContentTypeParser(['text/csv', 'text/plain'], { parseAs: 'string' }, (_req, body, done) => done(null, body));
   app.addContentTypeParser('application/webhook+json', { parseAs: 'string' }, (_req, body, done) => done(null, body));
+  // Sign in with Apple answers with a form post to the auth callback; it is passed to Better Auth as it arrived
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, body, done) => done(null, body));
   // JSON is parsed from the raw string so signed webhooks (Stripe) can verify the exact bytes they received.
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
     (req as FastifyRequest & { rawBody?: string }).rawBody = body as string;
@@ -103,6 +110,8 @@ export async function buildApp(deps: ApiDeps) {
   app.addHook('preHandler', async (req, reply) => {
     if (SAFE_METHODS.has(req.method)) return;
     if (req.url.startsWith('/api/v1/webhooks/') || req.url.startsWith('/api/v1/public/')) return;
+    // sign-in providers post back from their own origin; Better Auth checks the OAuth state and its trusted origins
+    if (req.url.startsWith('/api/auth/callback/')) return;
     if (req.headers.authorization?.startsWith('Bearer ')) return;
     if (!req.headers.cookie) return;
     const origin = (req.headers.origin as string | undefined) ?? (req.headers.referer ? new URL(req.headers.referer as string).origin : undefined);

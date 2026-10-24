@@ -57,7 +57,7 @@ export default function ProducerBoard() {
       {live.isLoading || today.isLoading ? <Spinner /> : !rows.length ? (
         <EmptyState title="Nothing on today" body="Live matches and today's fixtures appear here with their outputs." action={<Button asChild><Link href="/app/matches">Go to matches</Link></Button>} />
       ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {rows.map((m) => (
             <Card key={m.id} className={cx('p-3', m.status === 'live' && 'border-live/60')}>
               <div className="flex flex-wrap items-center gap-2">

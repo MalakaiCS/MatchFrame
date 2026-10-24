@@ -123,7 +123,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
       />
       <ReplayExportDialog open={replayOpen} onOpenChange={setReplayOpen} data={data} fileBase={`replay-${slugOf(profile?.name ?? meta?.name ?? themeKey)}`} lookName={profile ? `${profile.name} (${meta?.name ?? themeKey})` : (meta?.name ?? themeKey)} />
 
-      <div ref={previewRef} className="grid scroll-mt-4 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div ref={previewRef} className="grid grid-cols-1 scroll-mt-4 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           <div className={format === '9:16' ? 'relative mx-auto aspect-[9/16] max-h-[72vh] overflow-hidden rounded-md border border-border' : 'relative aspect-video overflow-hidden rounded-md border border-border'} data-testid="theme-preview-stage">
             <Stage background={BACKDROPS[backdrop]} format={format}>
@@ -164,7 +164,7 @@ function ThemeDetail({ themeKey }: { themeKey: string }) {
         {byCategory.map(([cat, list]) => (
           <section key={cat}>
             <h2 className="mb-2 text-sm font-medium text-muted">{cat}</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {list.map((t) => (
                 <GraphicThumb key={t.key} t={t} sport={sport} theme={theme} backdrop={BACKDROPS[backdrop]} active={t.key === selected.key} onSelect={() => select(t.key)} />
               ))}

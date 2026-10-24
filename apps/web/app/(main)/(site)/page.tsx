@@ -1,269 +1,302 @@
 import Link from 'next/link';
-import { ArrowRight, Clapperboard, MonitorPlay, Radio, Share2, Smartphone, Trophy, Users, Workflow } from 'lucide-react';
-import { GraphicsSample } from '@/components/site/graphics-sample';
-import { AvailabilityBadge, Badge, ButtonLink, Card, Container, Eyebrow, H1, H2, Lead, Rich, Section } from '@/components/site/ui';
-import { LooksReel } from '@/components/site/looks-reel';
+import { ArrowRight, Check, Clapperboard, MonitorPlay, Palette, Smartphone, Trophy, Users } from 'lucide-react';
 import { PRICE_PLANS } from '@bs/domain';
-import { CAPABILITIES, SPORTS, SPORT_STATUS_LABEL, VIDEOS } from '@/content/site';
+import { GraphicsSample } from '@/components/site/graphics-sample';
+import { PhoneFrame, SHOTS, ShotFrame } from '@/components/site/shots';
+import { ArrowLink, Badge, ButtonLink, Container, Eyebrow, H1, H3, Rich, Section, SectionHeading } from '@/components/site/ui';
 import { FAQS } from '@/content/faq';
+import { LOOK_COUNT, SPORTS, SPORT_STATUS_LABEL, SPORT_STATUS_TONE, countWord } from '@/content/site';
 import { siteMetadata } from '@/lib/site-meta';
 
 export const metadata = siteMetadata({
-  description: 'Give every game a broadcast worth watching. MatchFrame brings live scoring, broadcast graphics, automation and sponsor placements into one matchday workflow.',
+  description: 'Professional sports graphics, built for your matchday. Live scoring from a phone, branded broadcast graphics in OBS, automation and sponsor placements for clubs, competitions and small production teams.',
   path: '/',
 });
 
-const STAGES = [
-  {
-    icon: Trophy,
-    title: 'Prepare the match',
-    body: 'Set up the fixture, the teams and players, your look and colours, and any sponsor campaigns. Rehearse the automation against a made-up match.',
-    who: 'You do this once, ahead of time.',
-    href: '/docs/getting-started/first-match',
-    link: 'First match guide',
-  },
-  {
-    icon: Smartphone,
-    title: 'Run the broadcast',
-    body: 'The scorer taps the events on a phone. The scorebug, line-ups, goal graphics and half-time boards follow on their own, and the control room can take over at any moment.',
-    who: 'A scorer, plus someone at the streaming computer.',
-    href: '/docs/automation/football-flow',
-    link: 'What runs on its own',
-  },
-  {
-    icon: Share2,
-    title: 'Share the moments',
-    body: 'Export graphics as images for social posts. With cloud production, goal clips land in the media library while the match is still on, ready to trim and crop.',
-    who: 'After the whistle, or during it.',
-    href: '/features#highlights',
-    link: 'Recording and highlights',
-  },
+const FIT = [
+  { icon: MonitorPlay, title: 'Works with OBS', body: 'Add one link to OBS Studio as a Browser Source. The graphics arrive on a transparent background over your camera.' },
+  { icon: Smartphone, title: 'Score from your phone', body: 'The scorer app runs in a phone browser and keeps working through a dropped connection.' },
+  { icon: Palette, title: "Your club's colours", body: `${countWord(LOOK_COUNT, true)} broadcast looks, retinted with your logo, colours and each team's colours.` },
+];
+
+const STEPS = [
+  { title: 'Prepare your match', body: 'Set up the teams, line-ups, look and sponsors. Rehearse it against a made-up match before the day.', shot: SHOTS.prepare, link: { href: '/docs/getting-started/first-match', label: 'First match guide' } },
+  { title: 'Score as it happens', body: 'Record goals, cards and substitutions from a phone or tablet. The score and clock update everywhere at once.', shot: SHOTS.scorer, link: { href: '/docs/scoring/corrections', label: 'Scoring and corrections' } },
+  { title: 'Put the graphics on air', body: 'Bring the output into OBS and stream as usual. Graphics follow the scorer, and you can take over at any time.', shot: SHOTS.goalDetail, link: { href: '/docs/graphics/first-output', label: 'Connect your graphics to OBS' } },
+];
+
+const GALLERY = [
+  { shot: SHOTS.bugDetail, title: 'Scorebug', body: 'Score, clock and added time, always up. Close-up of the top corner.' },
+  { shot: SHOTS.lineup, title: 'Line-ups', body: 'Both teams as the players walk out.' },
+  { shot: SHOTS.goalDetail, title: 'Goals and cards', body: 'The moment, the player and the minute, inside the scorebug. Close-up.' },
+  { shot: SHOTS.stats, title: 'Match statistics', body: 'At half time and full time, from the scorer’s record.' },
+];
+
+const TOOLS = [
+  ['Keep the score current', 'One tap on the scorer’s phone updates the scorebug, the boards and the match record.'],
+  ['Prepare a graphic', 'Fill in a caption or pick a player in the preview before anyone sees it.'],
+  ['Send it to air', 'Press To air, or let automation do the routine graphics as the match unfolds.'],
+  ['Correct an event', 'Undo straight away, or fix a scorer or minute later; graphics and statistics follow.'],
+  ['Take manual control', 'Switch an output to Manual, or hold Emergency clear to take everything off at once.'],
 ];
 
 const AUDIENCES = [
-  { icon: Users, title: 'Clubs and volunteers', body: 'One scorer and one person at the streaming computer can run a broadcast that looks the part, with automation doing the routine graphics.' },
-  { icon: Trophy, title: 'Competitions', body: 'Set a look and an automation plan once for a competition. Every fixture gets its own scorer link, graphics output and control room, and the producer board shows them together.' },
-  { icon: Clapperboard, title: 'Production crews', body: 'Prepare graphics in a preview before they go to air, use keyboard shortcuts and Stream Deck buttons, and see who else is on the desk.' },
+  { icon: Users, title: 'Clubs and volunteers', body: 'One scorer and one person at the streaming computer can run a broadcast that looks the part.', href: '/docs/getting-started/first-match', link: 'Set up your first match' },
+  { icon: Trophy, title: 'Competitions', body: 'Set a look and an automation plan once; every fixture gets its own scorer link, output and control room.', href: '/features#automation', link: 'Competition-wide setup' },
+  { icon: Clapperboard, title: 'Production crews', body: 'Preview before air, keyboard shortcuts, Stream Deck buttons, and a producer board for every live match.', href: '/how-it-works', link: 'How a matchday runs' },
 ];
 
+/** A sample delivery report (fictional sponsors): what the real report lists, in seconds on air. */
+const REPORT = [
+  ['Bayside Bakery', 'Scorebug logo', '4,212', '3'],
+  ['Northgate Physio', 'Goal partner', '96', '3'],
+  ['Harbour Motors', 'Half-time board', '540', '3'],
+];
+
+const HOME_FAQ = ['what-is-matchframe', 'equipment', 'which-sports', 'offline', 'cost'];
+const money = (n: number) => `$${n.toLocaleString('en-AU')}`;
+
 export default function Home() {
-  const homeFaqs = FAQS.filter((f) => f.home);
+  const faqs = HOME_FAQ.map((id) => FAQS.find((f) => f.id === id)).filter((f): f is (typeof FAQS)[number] => !!f);
   return (
     <>
-      {/* hero */}
-      <div className="relative overflow-hidden border-b border-white/5">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,rgba(0,210,255,0.16),transparent_55%),radial-gradient(ellipse_at_90%_20%,rgba(43,92,255,0.22),transparent_55%)]" />
-        <Container className="relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1fr_1.15fr]">
+      {/* 1. hero */}
+      <div className="relative overflow-hidden border-b border-border">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_70%_at_75%_10%,color-mix(in_oklab,var(--color-primary)_16%,transparent),transparent_70%),radial-gradient(40%_60%_at_0%_100%,color-mix(in_oklab,#2b5cff_14%,transparent),transparent_70%)]" />
+        <Container className="relative grid grid-cols-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-14 lg:py-20">
           <div>
             <Eyebrow>Every game. Broadcast ready.</Eyebrow>
-            <H1 className="mt-4">Give every game a broadcast worth watching.</H1>
-            <Lead className="mt-5">Bring live scoring, on-screen graphics and sponsor placements into one matchday workflow. Prepare the game, run the broadcast from a phone and a laptop, and share the moments afterwards.</Lead>
+            <H1 className="mt-4 max-w-xl">Professional sports graphics. Built for your matchday.</H1>
+            <p className="mt-5 max-w-lg text-base leading-[1.65] text-muted sm:text-lg">Bring live scoring, branded graphics and sponsor placements into one connected matchday workflow. Built for clubs, competitions and small production teams.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/register">
+              <ButtonLink href="/register" size="lg">
                 Get started <ArrowRight className="size-4" aria-hidden />
               </ButtonLink>
-              <ButtonLink href="/how-it-works" variant="secondary">
-                See how it works
+              <ButtonLink href="/showcase" variant="secondary" size="lg">
+                Try the live demo
               </ButtonLink>
             </div>
-            <p className="mt-5 text-sm text-muted">The sample here is the real MatchFrame graphics engine, running in your browser with fictional teams. Press a button to send a graphic.</p>
+            <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+              {['Works with OBS', 'Score from your phone', "Use your club's colours"].map((t) => (
+                <li key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="size-4 text-primary" aria-hidden /> {t}
+                </li>
+              ))}
+            </ul>
           </div>
           <GraphicsSample />
         </Container>
       </div>
 
-      {/* fit strip */}
-      <div className="border-b border-white/5 bg-white/[0.02]">
-        <Container className="grid gap-6 py-8 sm:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Sports</p>
-            <p className="mt-1.5 text-sm text-white">Football and basketball, tested end to end. Netball, rugby league, AFL and hockey in beta. <Link href="/sports" className="text-brand-cyan hover:underline">All sports</Link></p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Your setup</p>
-            <p className="mt-1.5 text-sm text-white">Graphics over your camera in OBS, or cloud production from a camera feed with the media server. <Link href="/docs/production/choose-a-workflow" className="text-brand-cyan hover:underline">Compare</Link></p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Built for</p>
-            <p className="mt-1.5 text-sm text-white">Community and semi-professional clubs, competitions and small production crews.</p>
-          </div>
+      {/* 2. practical fit */}
+      <div className="border-b border-border bg-panel/60">
+        <Container className="grid grid-cols-1 gap-6 py-8 sm:grid-cols-3 sm:py-10">
+          {FIT.map((f) => (
+            <div key={f.title} className="flex gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><f.icon className="size-5" aria-hidden /></span>
+              <div>
+                <p className="font-semibold text-text">{f.title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{f.body}</p>
+              </div>
+            </div>
+          ))}
         </Container>
       </div>
 
-      {/* workflow */}
-      <Section>
-        <Eyebrow>How it works</Eyebrow>
-        <H2 className="mt-3">One matchday, three stages</H2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {STAGES.map((s, i) => (
-            <Card key={s.title} className="flex flex-col">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-lg bg-brand-blue/20 text-brand-cyan"><s.icon className="size-5" aria-hidden /></span>
-                <span className="text-xs font-semibold text-muted">Stage {i + 1}</span>
+      {/* 3. three-step workflow */}
+      <Section labelledBy="how-heading">
+        <SectionHeading eyebrow="How it works" title="From fixture to on air in three steps" id="how-heading" action={<ArrowLink href="/how-it-works">The full workflow</ArrowLink>} />
+        <ol className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-panel shadow-card">
+              <div className={`relative grid aspect-[4/3] place-items-center overflow-hidden border-b border-border ${i === 1 ? 'bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-primary)_22%,transparent),transparent_70%)] bg-elevated' : 'bg-[#0b1220]'}`}>
+                {i === 1 ? (
+                  <PhoneFrame shot={s.shot} className="mt-10 w-[46%]" />
+                ) : (
+                  <img src={s.shot.src} alt={s.shot.alt} width={s.shot.w} height={s.shot.h} loading="lazy" decoding="async" className={`h-full w-full ${i === 0 ? 'object-cover object-left-top' : 'object-cover'}`} />
+                )}
               </div>
-              <h3 className="mt-4 font-brand text-xl font-semibold text-white">{s.title}</h3>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{s.body}</p>
-              <p className="mt-4 text-xs text-white/70">{s.who}</p>
-              <Link href={s.href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">
-                {s.link} <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </Card>
+              <div className="flex flex-1 flex-col p-6">
+                <span className="font-brand text-sm font-bold text-primary">Step {i + 1}</span>
+                <H3 className="mt-1.5">{s.title}</H3>
+                <p className="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{s.body}</p>
+                <ArrowLink href={s.link.href} className="mt-3 self-start">{s.link.label}</ArrowLink>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      {/* 4. graphics gallery */}
+      <Section tone="raised" labelledBy="gallery-heading">
+        <SectionHeading eyebrow="Graphics" title="Graphics that look the part" id="gallery-heading" action={<ButtonLink href="/showcase" variant="secondary">Open the live showcase</ButtonLink>}>
+          <p>Drawn by the same engine that runs in OBS, in widescreen, vertical 9:16 and venue-screen layouts. Shown here in the Derby look with fictional teams.</p>
+        </SectionHeading>
+        <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+          {GALLERY.map((g) => (
+            <figure key={g.title}>
+              <div className="overflow-hidden rounded-2xl border border-border bg-[#0b1220] shadow-card">
+                <img src={g.shot.src} alt={g.shot.alt} width={g.shot.w} height={g.shot.h} loading="lazy" decoding="async" className="block h-auto w-full" />
+              </div>
+              <figcaption className="mt-3">
+                <span className="font-semibold text-text">{g.title}.</span> <span className="text-muted">{g.body}</span>
+              </figcaption>
+            </figure>
           ))}
         </div>
       </Section>
 
-      {/* capabilities */}
-      <Section tone="panel">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* 5. matchday tools */}
+      <Section labelledBy="tools-heading">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <div>
-            <Eyebrow>What it does</Eyebrow>
-            <H2 className="mt-3">Everything the broadcast needs, connected</H2>
+            <SectionHeading eyebrow="Matchday tools" title="The scorer’s phone and the control room, connected" id="tools-heading">
+              <p>Every tap on the phone reaches the control room and the graphics within a second. Automation handles the routine; people stay in charge.</p>
+            </SectionHeading>
+            <ul className="mt-8 space-y-4">
+              {TOOLS.map(([t, b]) => (
+                <li key={t} className="flex gap-3">
+                  <Check className="mt-1 size-5 shrink-0 text-primary" aria-hidden />
+                  <span><span className="font-semibold text-text">{t}.</span> <span className="text-muted">{b}</span></span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 inline-flex items-center gap-2 text-sm text-muted">
+              <Badge tone="neutral">Plan</Badge> Automation is on the Club plan and above; Starter has manual controls.
+            </p>
           </div>
-          <ButtonLink href="/features" variant="ghost">
-            All features <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-        </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CAPABILITIES.map((c) => (
-            <Card key={c.key} className="flex flex-col">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-brand text-lg font-semibold text-white">{c.name}</h3>
-                <AvailabilityBadge value={c.hosted === 'no' ? c.media : c.hosted} />
-              </div>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{c.benefit}</p>
-              <p className="mt-3 text-xs text-white/60">{c.evidence}</p>
-              <Link href={`/features#${c.key}`} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">
-                More about {c.name.toLowerCase()} <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </Card>
-          ))}
+          <div className="relative pb-10 sm:pb-0">
+            <ShotFrame shot={SHOTS.control} chrome sizes="(min-width: 1024px) 60vw, 100vw" />
+            <PhoneFrame shot={SHOTS.scorer} className="absolute -bottom-2 left-3 w-[24%] min-w-[96px] sm:-bottom-8 sm:-left-6" />
+          </div>
         </div>
       </Section>
 
-      {/* video and showcase */}
-      <Section>
-        <div className="grid items-center gap-10 lg:grid-cols-2">
-          <div>
-            <Eyebrow>See it moving</Eyebrow>
-            <H2 className="mt-3">Every graphic, in every look</H2>
-            <Lead className="mt-4">Twenty-nine graphics in eleven looks, in the styles of top-flight English, Spanish and German football, US network sport, North American streaming, an Australian league, Australian club football and European club nights, in widescreen, vertical and venue-screen layouts. The showcase draws each one live with the same engine that runs in OBS.</Lead>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <ButtonLink href="/showcase">Open the showcase</ButtonLink>
+      {/* 6. sponsors */}
+      <Section tone="raised" labelledBy="sponsors-heading">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="order-2 lg:order-1">
+            <div className="overflow-hidden rounded-2xl border border-border bg-[#0b1220] shadow-pop">
+              <img src={SHOTS.sponsor.src} alt={SHOTS.sponsor.alt} width={SHOTS.sponsor.w} height={SHOTS.sponsor.h} loading="lazy" decoding="async" className="block h-auto w-full" />
+            </div>
+            <div className="relative z-10 -mt-10 ml-auto w-[88%] rounded-2xl border border-border bg-panel p-5 shadow-pop sm:w-[78%]">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-text">Delivery report</p>
+                <Badge tone="neutral">Sample · fictional sponsors</Badge>
+              </div>
+              <table className="mt-3 w-full text-left text-sm">
+                <caption className="sr-only">Sample sponsor delivery report: seconds on air per placement</caption>
+                <thead className="text-xs text-muted"><tr><th scope="col" className="py-1.5 font-medium">Sponsor</th><th scope="col" className="py-1.5 font-medium">Placement</th><th scope="col" className="py-1.5 text-right font-medium">Seconds on air</th><th scope="col" className="hidden py-1.5 text-right font-medium sm:table-cell">Matches</th></tr></thead>
+                <tbody>
+                  {REPORT.map((r) => (
+                    <tr key={r[0]} className="border-t border-border">
+                      <th scope="row" className="py-2 font-medium text-text">{r[0]}</th>
+                      <td className="py-2 text-muted">{r[1]}</td>
+                      <td className="py-2 text-right tabular-nums text-text">{r[2]}</td>
+                      <td className="hidden py-2 text-right tabular-nums text-muted sm:table-cell">{r[3]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <LooksReel {...VIDEOS.looks} />
+          <div className="order-1 lg:order-2">
+            <SectionHeading eyebrow="Sponsors" title="Give sponsors a place in the action." id="sponsors-heading">
+              <p>Put your partners into scoreboards, event graphics and scheduled placements, with reports showing what appeared on air.</p>
+            </SectionHeading>
+            <ul className="mt-6 space-y-3 text-[15px] text-muted">
+              <li className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden /><span><span className="font-semibold text-text">Starter:</span> one static sponsor placement.</span></li>
+              <li className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden /><span><span className="font-semibold text-text">Club and above:</span> several placements with automatic rotation, and delivery reports you can export for partners.</span></li>
+            </ul>
+            <p className="mt-5 text-sm text-muted">Reports count confirmed seconds on air per output. They are not audience numbers or impressions.</p>
+            <ArrowLink href="/features#sponsors" className="mt-2">Sponsors and reports</ArrowLink>
+          </div>
         </div>
       </Section>
 
-      {/* setup */}
-      <Section tone="panel">
-        <Eyebrow>Setup</Eyebrow>
-        <H2 className="mt-3">Works with the camera and computer you have</H2>
-        <Lead className="mt-4">MatchFrame makes the graphics and keeps the match record; it does not film the game. Choose how the pictures and graphics come together.</Lead>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <Card>
-            <div className="flex items-center gap-3"><MonitorPlay className="size-5 text-brand-cyan" aria-hidden /><h3 className="font-brand text-lg font-semibold text-white">OBS on your computer</h3><Badge tone="available">Hosted edition</Badge></div>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>Your camera into OBS Studio on a computer.</li>
-              <li>The MatchFrame graphics link added as a transparent Browser Source.</li>
-              <li>A phone for the scorer.</li>
-              <li>OBS streams to YouTube, Facebook or another platform.</li>
-            </ul>
-            <Link href="/docs/graphics/first-output" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">Connect your graphics to OBS <ArrowRight className="size-3.5" aria-hidden /></Link>
-          </Card>
-          <Card>
-            <div className="flex items-center gap-3"><Radio className="size-5 text-brand-cyan" aria-hidden /><h3 className="font-brand text-lg font-semibold text-white">Cloud production</h3><Badge tone="media-server">Needs the media server</Badge></div>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li>Your camera or encoder sends an RTMP feed to MatchFrame.</li>
-              <li>Graphics are composited in the cloud, with a clean feed alongside.</li>
-              <li>Up to three destinations per output, recorded, with automatic highlights.</li>
-              <li>Runs on a self-hosted deployment with the media server.</li>
-            </ul>
-            <Link href="/docs/production/choose-a-workflow" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-cyan hover:text-white">Compare the workflows <ArrowRight className="size-3.5" aria-hidden /></Link>
-          </Card>
-        </div>
-      </Section>
-
-      {/* who it helps */}
-      <Section>
-        <Eyebrow>Who it helps</Eyebrow>
-        <H2 className="mt-3">From the volunteer with a camera to the competition office</H2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {AUDIENCES.map((a) => (
-            <Card key={a.title}>
-              <a.icon className="size-6 text-brand-cyan" aria-hidden />
-              <h3 className="mt-3 font-brand text-lg font-semibold text-white">{a.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{a.body}</p>
-            </Card>
-          ))}
-        </div>
-        <div className="mt-8 flex flex-wrap gap-2">
+      {/* 7. sports and audiences */}
+      <Section labelledBy="sports-heading">
+        <SectionHeading eyebrow="Sports" title="Seven sports, one workflow" id="sports-heading" action={<ArrowLink href="/sports">All sports</ArrowLink>}>
+          <p>Football and basketball have been played end to end. The others are in beta: built and checked, worth a rehearsal before you rely on them.</p>
+        </SectionHeading>
+        <ul className="mt-8 flex flex-wrap gap-2.5">
           {SPORTS.map((s) => (
-            <Link key={s.key} href={s.status === 'tested' ? `/sports/${s.key}` : '/sports'} className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-sm text-white hover:border-brand-cyan">
-              {s.name} <span className={`text-xs ${s.status === 'tested' ? 'text-healthy' : 'text-warning'}`}>{SPORT_STATUS_LABEL[s.status]}</span>
-            </Link>
+            <li key={s.key}>
+              <Link href={s.detail ? `/sports/${s.key}` : '/sports'} className="inline-flex min-h-11 items-center gap-2.5 rounded-xl border border-border bg-panel px-4 text-sm font-semibold text-text shadow-card transition hover:border-primary">
+                {s.name} <Badge tone={SPORT_STATUS_TONE[s.status]}>{SPORT_STATUS_LABEL[s.status]}</Badge>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {AUDIENCES.map((a) => (
+            <div key={a.title} className="rounded-2xl border border-border p-6">
+              <a.icon className="size-6 text-primary" aria-hidden />
+              <H3 className="mt-4">{a.title}</H3>
+              <p className="mt-2 text-[15px] leading-relaxed text-muted">{a.body}</p>
+              <ArrowLink href={a.href} className="mt-2">{a.link}</ArrowLink>
+            </div>
           ))}
         </div>
       </Section>
 
-      {/* pricing preview */}
-      <Section tone="panel">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Eyebrow>Pricing</Eyebrow>
-            <H2 className="mt-3">Plans from $29 a month</H2>
-            <Lead className="mt-3">Every plan includes all supported sports, unlimited rehearsals and watermark-free graphics. Pay yearly and get two months free.</Lead>
-          </div>
-          <ButtonLink href="/pricing" variant="ghost">
-            Compare plans <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-        </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 8. pricing preview */}
+      <Section tone="raised" labelledBy="pricing-heading">
+        <SectionHeading eyebrow="Pricing" title="Plans for every kind of broadcast" id="pricing-heading" action={<ButtonLink href="/pricing" variant="secondary">Compare plans</ButtonLink>}>
+          <p>Every plan includes all supported sports, unlimited rehearsals and watermark-free graphics. Pay yearly for two months free.</p>
+        </SectionHeading>
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PRICE_PLANS.map((p) => (
-            <Card key={p.key} className={p.popular ? 'border-brand-cyan' : ''}>
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-brand text-lg font-semibold text-white">{p.name}</h3>
-                {p.popular ? <Badge tone="media-server">Most popular</Badge> : null}
+            <div key={p.key} className={`flex flex-col rounded-2xl border bg-panel p-6 shadow-card ${p.popular ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
+              <div className="flex min-h-7 flex-wrap items-center justify-between gap-2">
+                <h3 className="font-brand text-xl font-bold text-text">{p.name}</h3>
+                {p.popular ? <Badge tone="accent">Recommended for clubs</Badge> : null}
               </div>
-              <p className="mt-2 font-brand text-2xl font-bold text-white">{p.monthly != null ? `$${p.monthly}` : `From $${p.fromMonthly}`}<span className="text-sm font-normal text-muted">/month</span></p>
-              <p className="mt-2 text-sm text-muted">{p.limits.liveMatches != null ? `${p.limits.liveMatches} simultaneous live ${p.limits.liveMatches === 1 ? 'match' : 'matches'}, ${p.limits.staffAccounts} staff accounts` : 'Allowances agreed in your quote'}</p>
-            </Card>
+              <p className="mt-3 font-brand text-3xl font-bold text-text">
+                {p.monthly != null ? money(p.monthly) : <><span className="text-base font-medium text-muted">From </span>{money(p.fromMonthly ?? 0)}</>}
+                <span className="text-sm font-normal text-muted"> /month</span>
+              </p>
+              <p className="mt-2 flex-1 text-sm text-muted">{p.limits.liveMatches != null ? `${p.limits.liveMatches} live ${p.limits.liveMatches === 1 ? 'match' : 'matches'} at once · ${p.limits.staffAccounts} staff accounts` : 'Allowances agreed in your quote'}</p>
+              <ButtonLink href={p.selfServe ? `/register?plan=${p.key}` : '/contact?topic=sales&plan=league'} variant={p.popular ? 'primary' : 'secondary'} className="mt-5 w-full">
+                {p.selfServe ? 'Get started' : 'Talk to us'}
+              </ButtonLink>
+            </div>
           ))}
         </div>
       </Section>
 
-      {/* questions */}
-      <Section>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* 9. short FAQ and final action */}
+      <Section labelledBy="faq-heading">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <div>
-            <Eyebrow>Questions</Eyebrow>
-            <H2 className="mt-3">Common questions</H2>
+            <SectionHeading eyebrow="Questions" title="Common questions" id="faq-heading" />
+            <p className="mt-4 text-muted">Equipment, sports, connectivity and pricing, answered plainly.</p>
+            <ArrowLink href="/faq" className="mt-3">All {FAQS.length} questions</ArrowLink>
           </div>
-          <ButtonLink href="/faq" variant="ghost">
-            All questions <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-        </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {homeFaqs.map((f) => (
-            <Card key={f.id}>
-              <h3 className="font-semibold text-white">
-                <Link href={`/faq#${f.id}`} className="hover:text-brand-cyan">{f.q}</Link>
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted"><Rich text={f.a[0]!} /></p>
-            </Card>
-          ))}
+          <div className="divide-y divide-border rounded-2xl border border-border bg-panel shadow-card">
+            {faqs.map((f) => (
+              <details key={f.id} className="group px-5 sm:px-6">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold text-text marker:hidden">
+                  {f.q}
+                  <span aria-hidden className="text-xl leading-none text-primary transition group-open:rotate-45">+</span>
+                </summary>
+                <div className="space-y-3 pb-5 text-[15px] leading-relaxed text-muted">
+                  {f.a.slice(0, 2).map((p, i) => <p key={i}><Rich text={p} /></p>)}
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       </Section>
 
-      {/* final CTA */}
-      <div className="border-t border-white/5 bg-[radial-gradient(ellipse_at_bottom,rgba(43,92,255,0.25),transparent_60%)]">
-        <Container className="py-16 text-center sm:py-24">
-          <Workflow className="mx-auto size-8 text-brand-cyan" aria-hidden />
-          <H2 className="mt-4">Ready for your next match?</H2>
-          <Lead className="mx-auto mt-4">Create an account, set up a fixture and rehearse it before match day.</Lead>
+      <div className="relative overflow-hidden border-t border-border">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_90%_at_50%_100%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent_70%)]" />
+        <Container className="relative py-16 text-center sm:py-24">
+          <h2 className="mx-auto max-w-2xl font-brand text-[30px] font-bold leading-tight tracking-tight text-text sm:text-5xl">Ready for your next match?</h2>
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted sm:text-lg">Create an account, set up a fixture and rehearse it before match day. Or tell us about your competition.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <ButtonLink href="/register">Get started</ButtonLink>
-            <ButtonLink href="/docs/getting-started/first-match" variant="secondary">Read the setup guide</ButtonLink>
+            <ButtonLink href="/register" size="lg">Get started <ArrowRight className="size-4" aria-hidden /></ButtonLink>
+            <ButtonLink href="/contact?topic=sales" variant="secondary" size="lg">Talk to us</ButtonLink>
           </div>
         </Container>
       </div>

@@ -13,6 +13,7 @@ import '@fontsource-variable/red-hat-display';
 import '../globals.css';
 import { Providers } from '@/lib/providers';
 import { publicBase } from '@/lib/site-meta';
+import { THEME_SCRIPT } from '@/lib/theme';
 
 const product = process.env.NEXT_PUBLIC_PRODUCT_NAME ?? 'MatchFrame';
 
@@ -24,11 +25,22 @@ export const metadata: Metadata = {
   robots: { index: false },
   icons: { icon: '/icon.svg' },
 };
-export const viewport: Viewport = { themeColor: '#0A1020', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0B1220' },
+    { media: '(prefers-color-scheme: light)', color: '#F4F7FB' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-AU">
+    // data-theme is set by the inline script before first paint, so the server markup cannot know it
+    <html lang="en-AU" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-screen antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -75,7 +75,7 @@ export default function MatchCentre({ params }: { params: Promise<{ token: strin
           {team('away')}
         </div>
       </section>
-      <nav className="my-3 flex gap-1 overflow-x-auto rounded-md border border-border p-1 text-sm" aria-label="Sections">
+      <nav className="my-3 flex gap-1 relative overflow-x-auto rounded-md border border-border p-1 text-sm" aria-label="Sections">
         {TABS.map((t) => <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t} className={cx('min-h-10 flex-1 rounded px-3', tab === t ? 'bg-elevated font-medium' : 'text-muted hover:text-text')}>{t}</button>)}
       </nav>
       {tab === 'Summary' ? (
@@ -94,7 +94,7 @@ export default function MatchCentre({ params }: { params: Promise<{ token: strin
           {m.officials.length || m.attendance != null ? <p className="mt-3 text-xs text-muted">{m.officials.map((o) => `${o.role.replace(/_/g, ' ')}: ${o.name}`).join(' · ')}{m.attendance != null ? ` · Attendance ${m.attendance.toLocaleString('en-AU')}` : ''}</p> : null}
         </section>
       ) : null}
-      {tab === 'Line-ups' ? <section aria-label="Line-ups" className="grid gap-4 sm:grid-cols-2">{playerList('home')}{playerList('away')}</section> : null}
+      {tab === 'Line-ups' ? <section aria-label="Line-ups" className="grid grid-cols-1 gap-4 sm:grid-cols-2">{playerList('home')}{playerList('away')}</section> : null}
       {tab === 'Stats' ? (
         <section aria-label="Statistics" className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
           {m.stats.length ? m.stats.map((s) => {

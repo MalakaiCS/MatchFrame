@@ -113,12 +113,26 @@ export const configSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:ops@example.com'),
-  /** Google / Microsoft sign-in */
+  /** Sign in with Google, Apple, Microsoft or Facebook: each button appears once its client id and secret are set */
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** Apple: the Services ID, and the client secret JWT signed with the Sign in with Apple key (valid up to 6 months) */
+  APPLE_CLIENT_ID: z.string().optional(),
+  APPLE_CLIENT_SECRET: z.string().optional(),
   MICROSOFT_CLIENT_ID: z.string().optional(),
   MICROSOFT_CLIENT_SECRET: z.string().optional(),
   MICROSOFT_TENANT_ID: z.string().default('common'),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
+  /** Text-message sign-in codes: 'twilio' (with the TWILIO_* settings) or 'mail' (development only: texts arrive as
+   *  emails to sms-<number>@sms.localhost in the local mail catcher). Unset: no text-message sign-in. */
+  SMS_PROVIDER: z.enum(['twilio', 'mail']).optional().or(z.literal('').transform(() => undefined)),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  /** a Twilio number in E.164 form (+61…) or a Messaging Service SID (MG…) */
+  TWILIO_FROM: z.string().optional(),
+  /** passkeys: the site's registrable domain (defaults to PUBLIC_WEB_URL's host name) */
+  PASSKEY_RP_ID: z.string().optional(),
   /** Stripe billing: secret key, webhook signing secret and the price IDs of the paid plans */
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),

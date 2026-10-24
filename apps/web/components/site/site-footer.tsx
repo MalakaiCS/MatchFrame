@@ -1,22 +1,29 @@
 import Link from 'next/link';
+import { ThemeChoices } from '@/components/theme-toggle';
 import { BRAND, MatchFrameLogo } from './brand';
 import { FOOTER } from './nav';
 
+// No privacy policy or terms of service links yet: none have been approved (docs/public-site.md lists them as owner
+// decisions). Add them to FOOTER's Account group once the pages exist.
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/5 bg-black/20">
-      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
+    <footer className="border-t border-border bg-panel/50">
+      <div className="mx-auto grid grid-cols-1 w-full max-w-[1248px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.5fr_repeat(4,1fr)] lg:px-12">
         <div>
-          <MatchFrameLogo size={22} />
-          <p className="mt-3 max-w-xs text-sm text-muted">{BRAND.tagline} Scoring, graphics, automation and sponsors for community and semi-professional sport.</p>
+          <Link href="/" aria-label="MatchFrame home" className="inline-block rounded-lg">
+            <MatchFrameLogo size={22} />
+          </Link>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
+            {BRAND.tagline} Live scoring, broadcast graphics, automation and sponsor placements for clubs, competitions and small production crews.
+          </p>
         </div>
         {FOOTER.map((g) => (
           <nav key={g.label} aria-label={g.label}>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{g.label}</p>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-1">
               {g.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-sm text-white/80 hover:text-brand-cyan">
+                  <Link href={l.href} className="inline-flex min-h-9 items-center text-sm text-text/85 hover:text-primary">
                     {l.label}
                   </Link>
                 </li>
@@ -25,10 +32,11 @@ export function SiteFooter() {
           </nav>
         ))}
       </div>
-      <div className="border-t border-white/5">
-        <p className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-muted sm:px-6">
-          © {new Date().getFullYear()} MatchFrame. Sample teams, players and sponsors shown on this site are fictional.
-        </p>
+      <div className="border-t border-border">
+        <div className="mx-auto flex w-full max-w-[1248px] flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-12">
+          <p className="text-xs text-muted">© {new Date().getFullYear()} MatchFrame. Teams, players and sponsors shown on this site are fictional samples.</p>
+          <ThemeChoices />
+        </div>
       </div>
     </footer>
   );

@@ -50,7 +50,7 @@ function MatchRules({ d, canEdit }: { d: MatchDetail; canEdit: boolean }) {
       <h2 className="mb-2 font-medium">Rules</h2>
       <ul className="list-disc pl-5 text-sm text-muted">{d.rules.description.map((x) => <li key={x}>{x}</li>)}</ul>
       {canEdit ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Stage" htmlFor="m-stage" hint={d.stage === 'finals' ? 'Never counts for the ladder.' : 'Counts for the ladder.'}>
             <NativeSelect id="m-stage" value={d.stage ?? 'regular'} disabled={save.isPending} onChange={(e) => save.mutate({ stage: e.target.value as 'regular' | 'finals' })}>
               <option value="regular">Regular season</option>
@@ -117,7 +117,7 @@ function Inner({ id }: { id: string }) {
           <Tab value="thumbnails">Thumbnails</Tab>
           {streaming ? <><Tab value="streams">Streams</Tab><Tab value="media">Recordings & highlights</Tab></> : null}
         </TabList>
-        <TabPanel value="overview" className="grid gap-4 lg:grid-cols-2">
+        <TabPanel value="overview" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <h2 className="mb-2 font-medium">Team stats</h2>
             <Table><thead><tr><th>{d.teams.home.abbreviation}</th><th className="text-center">Stat</th><th className="text-right">{d.teams.away.abbreviation}</th></tr></thead><tbody>

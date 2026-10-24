@@ -129,7 +129,7 @@ export function ScorerLinkDialog({ matchId, open, onClose, assigned }: { matchId
   }, [open, url]);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} title="Scorer link" description="Send this to the person scoring the match, or let them scan it. They sign in with their own account.">
-      <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-start">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-start">
         {qr ? <img src={qr} alt="QR code for the scorer link" className="mx-auto size-40 rounded-md bg-white p-1" /> : <div className="mx-auto grid size-40 place-items-center rounded-md border border-border text-muted"><QrCode className="size-8" /></div>}
         <div className="grid gap-2">
           <div className="flex gap-2"><Input readOnly value={url} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} aria-label="Scorer link" /><Button onClick={() => void copy(url, 'Scorer link')}><Copy className="size-4" /> Copy</Button></div>

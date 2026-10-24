@@ -64,7 +64,9 @@ const BASKETBALL_POSITIONS = ['Guard', 'Guard', 'Forward', 'Forward', 'Center', 
 const FUTSAL_POSITIONS = ['Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Goalkeeper', 'Defender', 'Winger', 'Winger', 'Pivot', 'Defender'];
 
 /** Synthetic preview data (fictional teams) for theme thumbnails and the designer. */
-export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; review?: boolean; timers?: boolean; format?: RenderData['format'] } = {}): RenderData {
+export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: { shootout?: boolean; review?: boolean; timers?: boolean; format?: RenderData['format']; now?: number } = {}): RenderData {
+  // kick-off is 15 minutes after the sample's own "now": a still frame drawn at a fixed time passes the same time
+  const now = opts.now ?? Date.now();
   const a = getAdapter(sport);
   const cfg = a.defaultConfig;
   const proj: MatchProjection = { ...a.initialProjection(cfg), phase: sport === 'football' ? 'second_half' : sport === 'rugby_league' || sport === 'futsal' ? 'p2' : 'p3', score: { home: 2, away: 1 }, ...(sport === 'futsal' ? { teamFouls: { home: 3, away: 5 } } : {}), shootout: opts.shootout && (sport === 'football' || sport === 'hockey' || sport === 'futsal') ? { home: 3, away: 2, kicks: [{ side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: false }, { side: 'away' as const, scored: false }, { side: 'home' as const, scored: true }, { side: 'away' as const, scored: true }, { side: 'home' as const, scored: true }] } : null, stats: sampleStats(sport) };
@@ -82,7 +84,7 @@ export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: 
   for (const s of ['home', 'away'] as const) for (const p of lineup[s]) players[p.playerId] = { playerId: p.playerId, displayName: p.displayName, number: p.number, photoUrl: null, side: s, position: (sport === 'football' ? FOOTBALL_POSITIONS : sport === 'futsal' ? FUTSAL_POSITIONS : BASKETBALL_POSITIONS)[(p.number - 1) % 11] };
   return {
     match: {
-      id: 'sample', sport, rulesConfig: cfg as Record<string, unknown>, competition: { name: 'Coastal Premier League', shortName: 'CPL', logoUrl: null }, venue: 'Bayside Oval', scheduledAt: new Date(Date.now() + 15 * 60_000).toISOString(), timezone: 'Australia/Brisbane',
+      id: 'sample', sport, rulesConfig: cfg as Record<string, unknown>, competition: { name: 'Coastal Premier League', shortName: 'CPL', logoUrl: null }, venue: 'Bayside Oval', scheduledAt: new Date(now + 15 * 60_000).toISOString(), timezone: 'Australia/Brisbane',
       teams: { home: { id: 'h', name: 'Harbour City FC', shortName: 'Harbour', abbreviation: 'HCF', primaryColor: '#1F6FEB', secondaryColor: '#FFFFFF', logoUrl: null }, away: { id: 'a', name: 'Saltmarsh Rovers Football & Sporting Club', shortName: 'Saltmarsh', abbreviation: 'SMR', primaryColor: '#E5484D', secondaryColor: '#111111', logoUrl: null } },
       lineup, projection: proj, clocks, stateVersion: 1, statRows: a.capabilities(cfg).statRows,
       round: '12', attendance: 1204, weather: { tempC: 24, condition: 'sunny', summary: 'Light breeze' }, officials: [{ role: sport === 'afl' || sport === 'netball' ? 'umpire' : 'referee', name: 'Sam Lee' }, { role: 'assistant_1', name: 'Priya Nair' }, { role: 'assistant_2', name: 'Tom Okafor' }],
@@ -90,7 +92,7 @@ export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: 
     },
     players, assets: { [SAMPLE_MEDIA]: SAMPLE_MEDIA_URL }, creatives: { [SAMPLE_SPONSOR]: { id: SAMPLE_SPONSOR, kind: 'image', url: SAMPLE_SPONSOR_URL, width: 600, height: 200, brandName: 'Your sponsor' } }, theme, customTemplates: [],
     format: opts.format ?? '16:9',
-    season: sampleSeason(sport),
+    season: sampleSeason(sport, now),
     preview: samplePreview(),
   };
 }
@@ -117,7 +119,7 @@ const SAMPLE_TEAMS = [
 const sampleTeam = (i: number) => ({ id: i === 0 ? 'h' : i === 1 ? 'a' : `t${i}`, name: SAMPLE_TEAMS[i]![0], shortName: SAMPLE_TEAMS[i]![1], abbreviation: SAMPLE_TEAMS[i]![2], primaryColor: SAMPLE_TEAMS[i]![3], logoUrl: null });
 
 /** A plausible mid-season table, fixtures list and top scorers, so tables and boards preview with content. */
-export function sampleSeason(sport: Sport): RenderData['season'] {
+export function sampleSeason(sport: Sport, now = Date.now()): RenderData['season'] {
   const unit = sport === 'basketball' || sport === 'rugby_league' || sport === 'afl' ? 'points' : 'goals';
   const base = sport === 'basketball' ? 80 : sport === 'afl' ? 90 : sport === 'rugby_league' ? 22 : sport === 'netball' ? 55 : 1.6;
   const rows = SAMPLE_TEAMS.map((_, i) => {
@@ -131,7 +133,7 @@ export function sampleSeason(sport: Sport): RenderData['season'] {
     const form = ['W', 'W', 'D', 'L', 'W', 'L', 'D', 'W'].slice(i % 3, (i % 3) + 5) as ('W' | 'D' | 'L')[];
     return { position: i + 1, team: sampleTeam(i), played, won, drawn, lost, for: f, against: ag, difference: f - ag, percentage: ag ? Math.round((f / ag) * 10000) / 100 : 0, points: pts, winPct: Math.round(((won + drawn / 2) / played) * 10000) / 10000, form };
   });
-  const day = Date.now();
+  const day = now;
   const fx = (i: number, h: number, a: number, score: [number, number] | null, live = false) => ({
     id: i === 0 ? 'sample' : `fx${i}`, round: i < 4 ? '12' : '13', scheduledAt: new Date(day + (i < 4 ? i * 3600_000 : 7 * 86_400_000 + (i - 4) * 3600_000)).toISOString(), status: score ? (live ? 'live' : 'completed') : 'scheduled', live,
     home: sampleTeam(h), away: sampleTeam(a), score: score ? { home: score[0], away: score[1] } : null,

@@ -46,7 +46,7 @@ export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz:
 
   if (view === 'cards')
     return (
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {rows.map((m) => (
           <Link key={m.id} href={`/app/matches/${m.id}`} className="rounded-[var(--radius-card)] border border-border bg-panel p-3 hover:border-primary">
             <div className="flex justify-between text-xs text-muted"><span>{fmtDate(m.scheduledAt, tz)}</span><StatusPill tone={phaseTone(m.status)}>{m.status === 'live' ? `LIVE · ${m.phase.replace(/_/g, ' ')}` : m.status}</StatusPill></div>
@@ -95,7 +95,7 @@ export function MatchTable({ rows, tz, view = 'table' }: { rows: MatchRow[]; tz:
               <tr>
                 <td />
                 <td colSpan={9} className="bg-bg/60">
-                  <div className="grid gap-3 py-2 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 py-2 md:grid-cols-2">
                     <div>
                       <h3 className="mb-1 text-xs font-medium text-muted">Graphics outputs</h3>
                       {m.overlays.length ? m.overlays.map((o) => (

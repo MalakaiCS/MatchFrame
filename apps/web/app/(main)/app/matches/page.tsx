@@ -52,7 +52,7 @@ function MatchesInner() {
     <>
       <PageHeader title="Matches" subtitle={`Kick-off times in ${tz}`} actions={full ? <>
         <Button onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), import: '1' })}`)}><Upload className="size-4" /> Import CSV</Button>
-        <Button variant="primary" onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), new: '1' })}`)}><Plus className="size-4" /> New fixture</Button>
+        <Button variant="primary" onClick={() => router.push(`/app/matches?${new URLSearchParams({ ...(f.competitionId ? { competitionId: f.competitionId } : {}), new: '1' })}`)}><Plus className="size-4" /> New match</Button>
       </> : null} />
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <Field label="From" htmlFor="ff"><Input id="ff" type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></Field>
@@ -94,8 +94,8 @@ function NewFixture({ comps, tz, initialCompetition, onClose }: { comps: Comp[];
   }, [comp.data, form.seasonId]);
   const fe = (k: string) => create.error?.fieldError(k);
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="New fixture" wide footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.seasonId || !form.homeTeamId || !form.awayTeamId || !form.kickoffLocal} onClick={() => create.mutate(form, { onSuccess: (m) => router.push(`/app/matches/${m.id}`) })}>Create fixture</Button></>}>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title="New match" wide footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!form.seasonId || !form.homeTeamId || !form.awayTeamId || !form.kickoffLocal} onClick={() => create.mutate(form, { onSuccess: (m) => router.push(`/app/matches/${m.id}`) })}>Create match</Button></>}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Competition" htmlFor="nc"><NativeSelect id="nc" value={form.competitionId} onChange={(e) => setForm({ ...form, competitionId: e.target.value, seasonId: '', homeTeamId: '', awayTeamId: '' })}><option value="">Choose…</option>{comps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</NativeSelect></Field>
         <Field label="Season" htmlFor="ns" error={fe('seasonId')}><NativeSelect id="ns" value={form.seasonId} onChange={(e) => setForm({ ...form, seasonId: e.target.value })}><option value="">Choose…</option>{comp.data?.seasons?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</NativeSelect></Field>
         <Field label="Home team" htmlFor="nh" error={fe('homeTeamId')}><NativeSelect id="nh" value={form.homeTeamId} onChange={(e) => setForm({ ...form, homeTeamId: e.target.value })}><option value="">Choose…</option>{teams.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect></Field>
@@ -199,7 +199,7 @@ function ImportFixtures({ comps, tz, onClose }: { comps: Comp[]; tz: string; onC
         </div>
       ) : (
         <div className="grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Source" htmlFor="isrc">
               <NativeSelect id="isrc" value={source} onChange={(e) => { setSource(e.target.value as typeof source); setPlan(null); setCsv(''); setFileName(''); setErr(null); }}>
                 <option value="csv">CSV file</option><option value="ical">Calendar file (.ics)</option><option value="sheet">Published Google Sheet or CSV link</option>
@@ -212,7 +212,7 @@ function ImportFixtures({ comps, tz, onClose }: { comps: Comp[]; tz: string; onC
             <Field label="Repeat import" htmlFor="imd"><NativeSelect id="imd" value={opts.mode} onChange={(e) => { setOpts({ ...opts, mode: e.target.value }); setPlan(null); }}><option value="skip_duplicates">Skip existing fixtures</option><option value="update_matched_future">Update matched future fixtures</option></NativeSelect></Field>
           </div>
           {source === 'ical' ? (
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
               <Field label="Competition" htmlFor="ic-c"><NativeSelect id="ic-c" value={ical.competition} onChange={(e) => { const c = comps.find((x) => x.name === e.target.value); setIcal({ ...ical, competition: e.target.value }); if (c) setOpts({ ...opts, sport: c.sport }); setPlan(null); }}>{comps.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect></Field>
               <Field label="Season" htmlFor="ic-s" hint="Must match a season name"><Input id="ic-s" value={ical.season} onChange={(e) => setIcal({ ...ical, season: e.target.value })} placeholder="2027" /></Field>
               <Field label="Timezone" htmlFor="ic-t" hint="For events without one"><Input id="ic-t" value={ical.timezone} onChange={(e) => setIcal({ ...ical, timezone: e.target.value })} /></Field>

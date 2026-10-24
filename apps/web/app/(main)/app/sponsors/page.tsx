@@ -44,7 +44,7 @@ export default function SponsorsPage() {
         <div className="space-y-4">
           {data.data.brands.map((b) => (
             <Card key={b.id} className="p-4">
-              <div className="mb-2 flex items-center gap-2"><h2 className="text-lg font-semibold">{b.name}</h2>{b.category ? <StatusPill tone="neutral">{b.category}</StatusPill> : null}
+              <div className="mb-2 flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold">{b.name}</h2>{b.category ? <StatusPill tone="neutral">{b.category}</StatusPill> : null}
                 {canManage ? <div className="ml-auto flex gap-2"><Button size="sm" onClick={() => setCrOpen(b.creativeSets[0]?.id ?? null)}>Add creative</Button><Button size="sm" variant="secondary" onClick={() => startCampaign(b)}>New campaign</Button></div> : null}
               </div>
               <div className="flex flex-wrap gap-3">
@@ -98,7 +98,7 @@ export default function SponsorsPage() {
 
       <Dialog wide open={!!camp} onOpenChange={(o) => !o && setCamp(null)} title={camp?.id ? 'Edit campaign' : 'New campaign'} footer={<Button variant="primary" onClick={async () => { await saveCamp.mutateAsync(camp!); setCamp(null); }}>Save</Button>}>
         {camp ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Name" htmlFor="cp-name"><Input id="cp-name" value={camp.name} onChange={(e) => setCamp({ ...camp, name: e.target.value })} /></Field>
             <Field label="Priority" htmlFor="cp-pri"><NativeSelect id="cp-pri" value={camp.priority} onChange={(e) => setCamp({ ...camp, priority: Number(e.target.value) })}>{[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} · {PRIORITIES[p]}</option>)}</NativeSelect></Field>
             <Field label="Starts" htmlFor="cp-s"><Input id="cp-s" type="date" value={camp.startsAt?.slice(0, 10)} onChange={(e) => setCamp({ ...camp, startsAt: new Date(e.target.value).toISOString() })} /></Field>

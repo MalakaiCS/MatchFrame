@@ -51,7 +51,7 @@ export function BulkRoundDialog({ competitionId, sport, seasons, timezone, onClo
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title="Create a round" description="Several fixtures at once. Each gets its graphics output straight away, and can copy the look and automation from an earlier match."
       footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={create.isPending} disabled={!seasonId || !valid.length} onClick={() => create.mutate(undefined, { onSuccess: onClose })}>Create {valid.length || ''} fixture{valid.length === 1 ? '' : 's'}</Button></>}>
       <div className="grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <Field label="Season" htmlFor="br-s"><NativeSelect id="br-s" value={seasonId} onChange={(e) => setSeasonId(e.target.value)}>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</NativeSelect></Field>
           <Field label="Round" htmlFor="br-r"><Input id="br-r" value={round} onChange={(e) => setRound(e.target.value)} placeholder="Round 7" /></Field>
           <Field label="Date for every game" htmlFor="br-d" hint="Adjust times per game below"><Input id="br-d" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
@@ -59,7 +59,7 @@ export function BulkRoundDialog({ competitionId, sport, seasons, timezone, onClo
         </div>
         <div className="grid gap-2">
           {rows.map((r, i) => (
-            <div key={i} className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_11rem_1fr_auto]">
+            <div key={i} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_11rem_1fr_auto]">
               <NativeSelect aria-label={`Home team ${i + 1}`} value={r.homeTeamId} onChange={(e) => set(i, { homeTeamId: e.target.value })}><option value="">Home team…</option>{teams.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect>
               <NativeSelect aria-label={`Away team ${i + 1}`} value={r.awayTeamId} onChange={(e) => set(i, { awayTeamId: e.target.value })}><option value="">Away team…</option>{teams.data?.filter((t) => t.id !== r.homeTeamId).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</NativeSelect>
               <Input aria-label={`Kick-off ${i + 1}`} type="datetime-local" value={r.kickoffLocal} onChange={(e) => set(i, { kickoffLocal: e.target.value })} />
@@ -99,13 +99,13 @@ export function StandingsRulesCard({ competitionId, sport, rules, canEdit }: { c
       <h2 className="mb-1 font-medium">Table rules</h2>
       <p className="mb-3 text-xs text-muted">Points per result and how ties are broken. Defaults follow the sport; change them for a competition that does things its own way.</p>
       <div className="grid grid-cols-4 gap-2">{(['win', 'draw', 'loss', 'bye'] as const).map(num)}</div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Rank teams by" htmlFor="sr-rank"><NativeSelect id="sr-rank" disabled={!canEdit} value={r.rankBy} onChange={(e) => setR({ ...r, rankBy: e.target.value as 'points' | 'win_pct', order: [e.target.value, ...r.order.filter((o) => o !== 'points' && o !== 'win_pct')] })}><option value="points">Points</option><option value="win_pct">Win percentage</option></NativeSelect></Field>
         <Field label="Scoring unit" htmlFor="sr-unit"><NativeSelect id="sr-unit" disabled={!canEdit} value={r.unit} onChange={(e) => setR({ ...r, unit: e.target.value as 'goals' | 'points' })}><option value="goals">Goals</option><option value="points">Points</option></NativeSelect></Field>
       </div>
       <fieldset className="mt-3">
         <legend className="mb-1 text-xs font-medium text-muted">Then separate teams by</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[1, 2, 3].map((n) => (
             <NativeSelect key={n} aria-label={`Tiebreaker ${n}`} disabled={!canEdit} value={r.order[n] ?? ''} onChange={(e) => { const next = [...r.order]; next[n] = e.target.value; setR({ ...r, order: next.filter(Boolean) }); }}>
               <option value="">—</option>

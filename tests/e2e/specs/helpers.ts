@@ -25,7 +25,7 @@ export async function login(browser: Browser, opts: Parameters<Browser['newConte
       // the saved session is no longer valid: sign in again below
     }
   }
-  await page.goto('/login');
+  await page.goto('/login?method=password');
   await page.waitForLoadState('networkidle'); // hydrated: the submit is handled by the app, not the native form
   await page.fill('#email', EMAIL);
   await page.fill('#password', PASSWORD);

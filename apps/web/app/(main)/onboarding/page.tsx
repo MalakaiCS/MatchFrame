@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { Button, ErrorNotice, Field, Input, NativeSelect, Spinner, cx } from '@bs/ui';
 import { AuthCard } from '@/components/auth-card';
-import { ApiError, get, patch, post } from '@/lib/api';
+import { ApiError, api, get, patch, post } from '@/lib/api';
 import { useMe } from '@/lib/session';
 
 const STEPS = ['Organisation', 'Competition', 'Teams', 'Theme', 'First match'] as const;
@@ -63,6 +63,9 @@ function Onboarding() {
 
   // ------------------------------------------------ step forms
   const [orgForm, setOrgForm] = useState({ name: '', timezone: 'Australia/Brisbane' });
+  // an account made with an email code (or a provider without a name) is asked for the person's name first
+  const [personName, setPersonName] = useState('');
+  const needsName = !!me.data && !me.data.user.name?.trim();
   const [comp, setComp] = useState({ name: '', shortName: '', sport: 'football' as Sport, season: String(new Date().getFullYear()) });
   const [teams, setTeams] = useState([
     { name: '', shortName: '', abbreviation: '', primaryColor: '#1F6FEB' },
@@ -78,10 +81,11 @@ function Onboarding() {
     switch (step) {
       case 0:
         return (
-          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); run(async () => { await post('organisations', orgForm); await qc.invalidateQueries({ queryKey: ['me'] }); await qc.invalidateQueries({ queryKey: ['org'] }); await save({ step: 1 }); router.replace('/onboarding'); }); }}>
+          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); run(async () => { if (needsName) await api('/api/auth/update-user', { method: 'POST', json: { name: personName.trim() } }); await post('organisations', orgForm); await qc.invalidateQueries({ queryKey: ['me'] }); await qc.invalidateQueries({ queryKey: ['org'] }); await save({ step: 1 }); router.replace('/onboarding'); }); }}>
+            {needsName ? <Field label="Your name" htmlFor="pn" hint="Shown to your team, for example on the scorer and in the activity log."><Input id="pn" autoComplete="name" value={personName} onChange={(e) => setPersonName(e.target.value)} /></Field> : null}
             <Field label="Organisation name" htmlFor="on"><Input id="on" value={orgForm.name} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="e.g. Coastal Sports Media" /></Field>
             <Field label="Timezone" htmlFor="otz" hint="Dates are stored in UTC and shown in this zone."><NativeSelect id="otz" value={orgForm.timezone} onChange={(e) => setOrgForm({ ...orgForm, timezone: e.target.value })}>{TZS.map((z) => <option key={z}>{z}</option>)}</NativeSelect></Field>
-            <Button variant="primary" type="submit" loading={busy} disabled={orgForm.name.trim().length < 2}>Create organisation</Button>
+            <Button variant="primary" type="submit" loading={busy} disabled={orgForm.name.trim().length < 2 || (needsName && !personName.trim())}>Create organisation</Button>
           </form>
         );
       case 1:
@@ -154,7 +158,7 @@ function Onboarding() {
   })();
 
   return (
-    <AuthCard title={step < 5 ? `Set up: ${STEPS[step]}` : 'All set'} subtitle={<span>Step {Math.min(step + 1, 5)} of 5 · progress is saved</span>}
+    <AuthCard wide title={step < 5 ? `Set up: ${STEPS[step]}` : 'All set'} subtitle={<span>Step {Math.min(step + 1, 5)} of 5 · progress is saved</span>}
       footer={hasOrg ? <button className="text-muted underline" onClick={() => router.push('/app')}>Skip for now</button> : null}>
       <ol className="mb-5 flex gap-1" aria-label="Progress">
         {STEPS.map((s, i) => <li key={s} title={s} className={cx('h-1.5 flex-1 rounded', i < step ? 'bg-primary' : i === step ? 'bg-primary/50' : 'bg-elevated')} />)}

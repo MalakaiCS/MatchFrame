@@ -13,11 +13,11 @@ export const cx = clsx;
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'live';
 const btn: Record<BtnVariant, string> = {
-  primary: 'bg-primary text-bg hover:bg-primary-strong font-semibold',
-  secondary: 'bg-elevated text-text border border-border hover:border-primary',
-  ghost: 'text-muted hover:text-text hover:bg-elevated',
-  danger: 'bg-live/15 text-live border border-live/60 hover:bg-live/25 font-semibold',
-  live: 'bg-live text-white hover:brightness-110 font-semibold',
+  primary: 'bg-primary text-on-primary hover:bg-primary-strong font-semibold shadow-sm',
+  secondary: 'bg-panel text-text border border-border hover:border-border-strong hover:bg-elevated font-medium',
+  ghost: 'text-muted hover:text-text hover:bg-elevated font-medium',
+  danger: 'bg-live/10 text-live border border-live/50 hover:bg-live/20 font-semibold',
+  live: 'bg-live text-white hover:brightness-110 font-semibold shadow-sm',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -30,8 +30,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   { variant = 'secondary', size = 'md', loading, asChild, className, children, disabled, ...rest },
   ref,
 ) {
-  const sz = { sm: 'h-8 px-3 text-sm', md: 'h-9 px-4 text-sm', lg: 'h-11 px-5', touch: 'min-h-14 px-4 text-lg' }[size];
-  const cls = cx('inline-flex items-center justify-center gap-2 rounded-md transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-primary', btn[variant], sz, className);
+  const sz = { sm: 'h-8 px-3 text-sm', md: 'h-10 px-4 text-sm', lg: 'h-11 px-5 text-[15px]', touch: 'min-h-14 px-4 text-lg' }[size];
+  const cls = cx('inline-flex items-center justify-center gap-2 rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', btn[variant], sz, className);
   if (asChild) {
     // Slot needs exactly one child element (e.g. a Link); no spinner sibling.
     return (
@@ -54,24 +54,27 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   );
 });
 
+/** Text fields and selects: a clear edge, a stronger one on hover, the accent and a soft ring on focus. */
+const FIELD = 'w-full rounded-lg bg-bg border text-sm text-text placeholder:text-muted/70 transition-colors hover:border-border-strong focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-60';
+
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }>(function Input({ className, invalid, ...rest }, ref) {
   return (
     <input
       ref={ref}
       aria-invalid={invalid || undefined}
-      className={cx('h-9 w-full rounded-md bg-bg border px-3 text-sm text-text placeholder:text-muted/70 focus:outline-none focus:border-primary', invalid ? 'border-live' : 'border-border', className)}
+      className={cx(FIELD, 'h-10 px-3', invalid ? 'border-live' : 'border-border', className)}
       {...rest}
     />
   );
 });
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea({ className, ...rest }, ref) {
-  return <textarea ref={ref} className={cx('w-full rounded-md bg-bg border border-border px-3 py-2 text-sm text-text focus:outline-none focus:border-primary', className)} {...rest} />;
+  return <textarea ref={ref} className={cx(FIELD, 'border-border px-3 py-2', className)} {...rest} />;
 });
 
 export const NativeSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(function NativeSelect({ className, children, ...rest }, ref) {
   return (
-    <select ref={ref} className={cx('h-9 w-full rounded-md bg-bg border border-border px-2 text-sm text-text focus:outline-none focus:border-primary', className)} {...rest}>
+    <select ref={ref} className={cx(FIELD, 'h-10 border-border px-2.5', className)} {...rest}>
       {children}
     </select>
   );
@@ -80,7 +83,7 @@ export const NativeSelect = React.forwardRef<HTMLSelectElement, React.SelectHTML
 export function Field({ label, error, hint, children, htmlFor, className }: { label: string; error?: string | null; hint?: string; children: React.ReactNode; htmlFor?: string; className?: string }) {
   return (
     <div className={cx('flex flex-col gap-1', className)}>
-      <label htmlFor={htmlFor} className="text-xs font-medium text-muted">
+      <label htmlFor={htmlFor} className="text-[13px] font-medium text-muted">
         {label}
       </label>
       {children}
@@ -97,7 +100,7 @@ export function Field({ label, error, hint, children, htmlFor, className }: { la
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cx('rounded-[var(--radius-card)] bg-panel border border-border', className)} {...rest}>
+    <div className={cx('rounded-[var(--radius-card)] bg-panel border border-border shadow-card', className)} {...rest}>
       {children}
     </div>
   );
@@ -105,11 +108,11 @@ export function Card({ className, children, ...rest }: React.HTMLAttributes<HTML
 
 export function PageHeader({ title, subtitle, actions, crumbs }: { title: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; crumbs?: React.ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        {crumbs ? <div className="mb-1 text-xs text-muted">{crumbs}</div> : null}
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        {crumbs ? <div className="mb-1.5 text-xs text-muted">{crumbs}</div> : null}
+        <h1 className="font-brand text-2xl font-semibold tracking-tight">{title}</h1>
+        {subtitle ? <p className="mt-1 max-w-3xl text-sm text-muted">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -155,7 +158,7 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
 
 export function EmptyState({ title, body, action, icon }: { title: string; body?: React.ReactNode; action?: React.ReactNode; icon?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-border p-10 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed border-border-strong/60 p-10 text-center">
       {icon}
       <p className="font-medium">{title}</p>
       {body ? <p className="max-w-md text-sm text-muted">{body}</p> : null}
@@ -167,7 +170,7 @@ export function EmptyState({ title, body, action, icon }: { title: string; body?
 export function ErrorNotice({ error, onRetry }: { error: { message?: string; code?: string; requestId?: string } | null | undefined; onRetry?: () => void }) {
   if (!error) return null;
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-live/50 bg-live/10 px-3 py-2 text-sm text-live">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-live/50 bg-live/10 px-3 py-2 text-sm text-live">
       <AlertTriangle className="size-4" aria-hidden />
       <span>{error.message ?? 'The request failed.'}</span>
       {error.requestId ? <span className="text-xs text-muted">Ref {error.requestId}</span> : null}
@@ -184,14 +187,14 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <DialogP.Root open={open} onOpenChange={onOpenChange}>
       <DialogP.Portal>
-        <DialogP.Overlay className="fixed inset-0 z-40 bg-black/60" />
-        <DialogP.Content className={cx('fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-[var(--radius-card)] border border-border bg-panel p-5 shadow-2xl', size === 'xl' ? 'max-w-6xl' : wide || size === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
+        <DialogP.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" />
+        <DialogP.Content className={cx('fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl border border-border bg-panel p-5 shadow-pop sm:p-6', size === 'xl' ? 'max-w-6xl' : wide || size === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
               <DialogP.Title className="text-lg font-semibold">{title}</DialogP.Title>
               {description ? <DialogP.Description className="mt-1 text-sm text-muted">{description}</DialogP.Description> : <DialogP.Description className="sr-only">{title}</DialogP.Description>}
             </div>
-            <DialogP.Close className="rounded p-1 text-muted hover:text-text" aria-label="Close">
+            <DialogP.Close className="rounded-lg p-1.5 text-muted hover:bg-elevated hover:text-text" aria-label="Close">
               <X className="size-4" />
             </DialogP.Close>
           </div>
@@ -205,11 +208,11 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
 
 export const Tabs = TabsP.Root;
 export function TabList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <TabsP.List className={cx('flex gap-1 border-b border-border', className)}>{children}</TabsP.List>;
+  return <TabsP.List className={cx('flex gap-1 relative overflow-x-auto border-b border-border', className)}>{children}</TabsP.List>;
 }
 export function Tab({ value, children }: { value: string; children: React.ReactNode }) {
   return (
-    <TabsP.Trigger value={value} className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted data-[state=active]:border-primary data-[state=active]:text-text hover:text-text">
+    <TabsP.Trigger value={value} className="-mb-px whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-muted data-[state=active]:border-primary data-[state=active]:text-text hover:text-text">
       {children}
     </TabsP.Trigger>
   );
@@ -219,8 +222,8 @@ export const TabPanel = TabsP.Content;
 export function Switch({ checked, onCheckedChange, label, disabled }: { checked: boolean; onCheckedChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
     <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-      <SwitchP.Root checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} className="relative h-5 w-9 rounded-full bg-elevated border border-border data-[state=checked]:bg-primary">
-        <SwitchP.Thumb className="block size-4 translate-x-0.5 rounded-full bg-text transition-transform data-[state=checked]:translate-x-4" />
+      <SwitchP.Root checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} className="relative h-6 w-10 shrink-0 rounded-full border border-border-strong bg-elevated transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary disabled:opacity-50">
+        <SwitchP.Thumb className="block size-[18px] translate-x-0.5 rounded-full bg-muted shadow transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-on-primary" />
       </SwitchP.Root>
       {label}
     </label>
@@ -229,8 +232,8 @@ export function Switch({ checked, onCheckedChange, label, disabled }: { checked:
 
 export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cx('overflow-x-auto rounded-[var(--radius-card)] border border-border', className)}>
-      <table className="w-full text-sm [&_th]:bg-elevated [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted [&_td]:border-t [&_td]:border-border [&_td]:px-3 [&_td]:py-2">{children}</table>
+    <div className={cx('relative overflow-x-auto rounded-[var(--radius-card)] border border-border', className)}>
+      <table className="w-full text-sm [&_th]:bg-elevated/70 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted [&_td]:border-t [&_td]:border-border [&_td]:px-3 [&_td]:py-2">{children}</table>
     </div>
   );
 }
@@ -267,7 +270,7 @@ export function Toaster() {
       {items.map((t) => {
         const I = t.kind === 'error' ? AlertTriangle : t.kind === 'info' ? CircleDot : CheckCircle2;
         return (
-          <div key={t.id} className={cx('pointer-events-auto flex items-start gap-2 rounded-md border bg-panel px-3 py-2 text-sm shadow-xl', t.kind === 'error' ? 'border-live/60 text-live' : t.kind === 'info' ? 'border-border text-text' : 'border-healthy/60 text-text')}>
+          <div key={t.id} className={cx('pointer-events-auto flex items-start gap-2 rounded-xl border bg-panel px-3.5 py-2.5 text-sm shadow-pop', t.kind === 'error' ? 'border-live/60 text-live' : t.kind === 'info' ? 'border-border text-text' : 'border-healthy/60 text-text')}>
             <I className={cx('mt-0.5 size-4 shrink-0', t.kind === 'success' && 'text-healthy')} aria-hidden />
             <span>{t.message}</span>
           </div>
@@ -285,7 +288,7 @@ export function InfoTip({ text, label = 'What does this mean?' }: { text: React.
         <button type="button" aria-label={label} className="inline-grid size-5 shrink-0 place-items-center rounded-full border border-border text-[11px] font-semibold text-muted hover:border-primary hover:text-text">?</button>
       </TooltipP.Trigger>
       <TooltipP.Portal>
-        <TooltipP.Content sideOffset={6} className="z-[70] max-w-xs rounded-md border border-border bg-panel px-3 py-2 text-xs leading-relaxed text-text shadow-xl">
+        <TooltipP.Content sideOffset={6} className="z-[70] max-w-xs rounded-lg border border-border bg-panel px-3 py-2 text-xs leading-relaxed text-text shadow-pop">
           {text}
           <TooltipP.Arrow className="fill-border" />
         </TooltipP.Content>

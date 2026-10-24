@@ -119,13 +119,13 @@ export function ThemeProfileEditor({ profile, onClose }: { profile: EditableProf
     <Dialog open onOpenChange={(o) => !o && onClose()} size="xl" title={`Edit ${profile.name}`} description="Changes here are a draft. Publishing makes a new version; matches switch to it when you choose to."
       footer={<><Button variant="ghost" onClick={onClose}>Close</Button><Button loading={save.isPending} onClick={() => save.mutate(undefined)}>Save draft</Button><Button variant="primary" loading={publish.isPending} onClick={() => publish.mutate(undefined, { onSuccess: onClose })}>Publish v{profile.currentVersion + 1}</Button></>}>
       <Keyframes />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
         <div>
           <div className="mb-2 flex items-center gap-2">
             <NativeSelect aria-label="Preview sport" className="w-auto" value={sport} onChange={(e) => setSport(e.target.value as Sport)}><SportOptions /></NativeSelect>
             <span className="text-xs text-muted">Sample teams and players; your own logos and names appear on real matches.</span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {PREVIEWS.map((p, i) => (
               <figure key={p.title}>
                 <div className="relative aspect-video overflow-hidden rounded-md border border-border">

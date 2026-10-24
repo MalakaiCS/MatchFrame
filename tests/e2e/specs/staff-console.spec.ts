@@ -80,6 +80,7 @@ test('staff console: find an organisation, suspend and reactivate it, disable an
   await pp.goto('/app');
   await pp.waitForURL('**/login**');
   await pp.waitForLoadState('networkidle');
+  await pp.getByRole('tab', { name: 'Password' }).click();
   await pp.fill('#email', email);
   await pp.fill('#password', password);
   await pp.click('button[type=submit]');

@@ -8,6 +8,7 @@ import { Button, Card, Dialog, ErrorNotice, Field, Input, Spinner, StatusPill, S
 import { ApiError, api, patch } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
 import { useMe } from '@/lib/session';
+import { SignInMethods, useHasPassword } from './sign-in-methods';
 
 interface Session { id: string; token: string; userAgent: string | null; ipAddress: string | null; createdAt: string; updatedAt: string; expiresAt: string }
 const auth = <T,>(path: string, json: unknown) => api<T>(`/api/auth/${path}`, { method: 'POST', json });
@@ -15,6 +16,7 @@ const auth = <T,>(path: string, json: unknown) => api<T>(`/api/auth/${path}`, { 
 /** Enrol an authenticator app: password → QR code and backup codes → first code confirms it. */
 export function TwoFactorEnrol({ onDone, compact = false }: { onDone?: () => void; compact?: boolean }) {
   const qc = useQueryClient();
+  const { hasPassword, accounts } = useHasPassword();
   const [step, setStep] = useState<'password' | 'scan' | 'done'>('password');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -30,7 +32,7 @@ export function TwoFactorEnrol({ onDone, compact = false }: { onDone?: () => voi
     setBusy(true);
     setErr(null);
     try {
-      const r = await auth<{ totpURI: string; backupCodes: string[] }>('two-factor/enable', { password });
+      const r = await auth<{ totpURI: string; backupCodes: string[] }>('two-factor/enable', hasPassword ? { password } : {});
       setUri(r.totpURI);
       setCodes(r.backupCodes ?? []);
       setStep('scan');
@@ -59,10 +61,10 @@ export function TwoFactorEnrol({ onDone, compact = false }: { onDone?: () => voi
   if (step === 'password')
     return (
       <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); void start(); }}>
-        {!compact ? <p className="text-sm text-muted">You will need an authenticator app (Google Authenticator, Authy, 1Password…). Confirm your password to begin.</p> : null}
-        <Field label="Your password" htmlFor="tf-pw"><Input id="tf-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        {!compact ? <p className="text-sm text-muted">You will need an authenticator app (Google Authenticator, Authy, 1Password…).{hasPassword ? ' Confirm your password to begin.' : ''}</p> : null}
+        {hasPassword ? <Field label="Your password" htmlFor="tf-pw"><Input id="tf-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field> : null}
         <ErrorNotice error={err} />
-        <Button type="submit" variant="primary" loading={busy} disabled={!password}>Set up two-step sign-in</Button>
+        <Button type="submit" variant="primary" loading={busy} disabled={accounts.isLoading || (hasPassword && !password)}>Set up two-step sign-in</Button>
       </form>
     );
   return (
@@ -87,6 +89,7 @@ export function TwoFactorEnrol({ onDone, compact = false }: { onDone?: () => voi
 export function SecurityPanel({ owner, tz }: { owner: boolean; tz: string }) {
   const me = useMe();
   const qc = useQueryClient();
+  const { hasPassword } = useHasPassword();
   const org = useGet<{ requireTwoFactor: boolean }>(['org'], 'organisations/current');
   const [list, setList] = useState<Session[] | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
@@ -121,7 +124,7 @@ export function SecurityPanel({ owner, tz }: { owner: boolean; tz: string }) {
   const disable = async () => {
     setErr(null);
     try {
-      await auth('two-factor/disable', { password });
+      await auth('two-factor/disable', hasPassword ? { password } : {});
       await qc.invalidateQueries({ queryKey: ['me'] });
       setDisableOpen(false);
       setPassword('');
@@ -143,7 +146,8 @@ export function SecurityPanel({ owner, tz }: { owner: boolean; tz: string }) {
   };
   const tfOn = !!me.data?.user.twoFactorEnabled;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <SignInMethods tz={tz} />
       <Card className="p-4">
         <h2 className="mb-1 flex items-center gap-2 font-medium">Two-step sign-in <StatusPill tone={tfOn ? 'healthy' : 'neutral'}>{tfOn ? 'on' : 'off'}</StatusPill></h2>
         <p className="mb-3 text-xs text-muted">A code from an authenticator app is asked for when you sign in, so a stolen password alone is not enough.</p>
@@ -153,14 +157,14 @@ export function SecurityPanel({ owner, tz }: { owner: boolean; tz: string }) {
         <p className="mt-1 text-xs text-muted">Members who have not turned it on are asked to set it up before they can do anything else. Owners only.{!tfOn && owner ? ' Turn it on for your own account first.' : ''}</p>
         <ErrorNotice error={requireTf.error} />
       </Card>
-      <Card className="p-4">
+      {hasPassword ? <Card className="p-4">
         <h2 className="mb-1 font-medium">Change password</h2>
         <form className="grid gap-2" onSubmit={(e) => { e.preventDefault(); void changePassword(); }}>
           <Field label="Current password" htmlFor="pw-c"><Input id="pw-c" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} /></Field>
           <Field label="New password" htmlFor="pw-n" hint="At least 12 characters"><Input id="pw-n" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} /></Field>
           <Button type="submit" size="sm" disabled={!pw.current || pw.next.length < 12}>Change password</Button>
         </form>
-      </Card>
+      </Card> : null}
       <Card className="p-4 lg:col-span-2">
         <div className="mb-2 flex flex-wrap items-center gap-2"><h2 className="font-medium">Where you are signed in</h2><Button size="sm" variant="ghost" className="ml-auto" onClick={revokeOthers}>Sign out everywhere else</Button></div>
         {msg ? <p className="mb-2 text-sm text-healthy">{msg}</p> : null}
@@ -183,8 +187,8 @@ export function SecurityPanel({ owner, tz }: { owner: boolean; tz: string }) {
         <TwoFactorEnrol onDone={() => setTimeout(() => setEnrolOpen(false), 1500)} />
       </Dialog>
       <Dialog open={disableOpen} onOpenChange={setDisableOpen} title="Turn off two-step sign-in" description="Your password alone will sign you in again."
-        footer={<><Button variant="ghost" onClick={() => setDisableOpen(false)}>Keep it on</Button><Button variant="danger" disabled={!password} onClick={disable}>Turn off</Button></>}>
-        <Field label="Your password" htmlFor="tf-off"><Input id="tf-off" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        footer={<><Button variant="ghost" onClick={() => setDisableOpen(false)}>Keep it on</Button><Button variant="danger" disabled={hasPassword && !password} onClick={disable}>Turn off</Button></>}>
+        {hasPassword ? <Field label="Your password" htmlFor="tf-off"><Input id="tf-off" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field> : null}
         <ErrorNotice error={err} />
       </Dialog>
     </div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Building2, Link2, LogOut, ShieldCheck, Users, UserCog } from 'lucide-react';
+import { Activity, Building2, Inbox, Link2, LogOut, ShieldCheck, Users, UserCog } from 'lucide-react';
 import { cx, ErrorNotice, Spinner, StatusPill, Toaster } from '@bs/ui';
 import { api } from '@/lib/api';
 import { useGet } from '@/lib/hooks';
@@ -31,6 +31,7 @@ export const useStaff = () => useContext(StaffContext)!;
 const NAV = [
   { href: '/staff', label: 'Organisations', icon: Building2, can: 'directory.read' },
   { href: '/staff/users', label: 'Accounts', icon: Users, can: 'directory.read' },
+  { href: '/staff/enquiries', label: 'Enquiries', icon: Inbox, can: 'enquiries.read' },
   { href: '/staff/links', label: 'Public links', icon: Link2, can: 'content.takedown' },
   { href: '/staff/team', label: 'Staff team', icon: UserCog, can: 'directory.read' },
   { href: '/staff/activity', label: 'Staff log', icon: Activity, can: 'activity.read' },
@@ -99,7 +100,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
               <button onClick={() => void signOut()} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted hover:text-text"><LogOut className="size-4" /> Sign out</button>
             </div>
           </header>
-          <nav className="flex gap-1 overflow-x-auto border-b border-border px-2 py-1 lg:hidden" aria-label="Staff (compact)">
+          <nav className="flex gap-1 relative overflow-x-auto border-b border-border px-2 py-1 lg:hidden" aria-label="Staff (compact)">
             {nav.map((n) => <Link key={n.href} href={n.href} className={cx('whitespace-nowrap rounded px-2.5 py-1.5 text-xs', path === n.href ? 'bg-elevated' : 'text-muted')}>{n.label}</Link>)}
           </nav>
           {me.data.user.twoFactorEnabled ? null : (

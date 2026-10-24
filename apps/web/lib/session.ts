@@ -4,7 +4,7 @@ import { ApiError, get } from './api';
 
 export type Role = 'owner' | 'admin' | 'producer' | 'operator' | 'scorer' | 'club_manager' | 'viewer';
 export interface Me {
-  user: { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean };
+  user: { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean; phoneNumber?: string | null };
   organisations: { id: string; name: string; role: Role; timezone: string; locale: string; status?: 'active' | 'suspended' }[];
   activeOrganisation: { id: string; name: string; timezone: string; locale: string; requireTwoFactor?: boolean; status?: 'active' | 'suspended' } | null;
   role: Role | null;

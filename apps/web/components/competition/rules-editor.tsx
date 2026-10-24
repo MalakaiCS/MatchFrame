@@ -56,7 +56,7 @@ export function RulesEditor({ competitionId, sport, current, open, onOpenChange,
             <optgroup label="Built-in">{builtIn.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</optgroup>
           </NativeSelect>
         </Field>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {fields.map((f) => {
             if (f.dependsOn && !getRulesValue(cfg, f.dependsOn)) return null;
             const v = getRulesValue(cfg, f.path);

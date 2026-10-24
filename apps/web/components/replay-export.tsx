@@ -116,7 +116,7 @@ export function ReplayExportDialog({ open, onOpenChange, data, teams, fileBase, 
         <div className="relative aspect-video overflow-hidden rounded-md border border-border bg-[repeating-conic-gradient(#222b3a_0%_25%,#171e2a_0%_50%)] bg-[length:20px_20px]" data-testid="replay-preview">
           {open ? <Stage format="16:9"><Renderer state={preview} data={exportData} themes={THEMES} serverNow={Date.now} /></Stage> : null}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {teams ? (
             <Field label="Version" htmlFor="rx-version">
               <NativeSelect id="rx-version" value={withTeams ? 'teams' : 'plain'} onChange={(e) => setWithTeams(e.target.value === 'teams')} disabled={busy}>

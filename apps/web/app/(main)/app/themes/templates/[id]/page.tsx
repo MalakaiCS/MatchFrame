@@ -220,7 +220,7 @@ export default function Designer({ params }: { params: Promise<{ id: string }> }
       {status ? <p className="mb-2 text-sm text-muted" role="status">{status}</p> : null}
       {issues.length ? <ul className="mb-2 rounded-md border border-live/50 bg-live/10 p-2 text-sm text-live">{issues.map((i, k) => <li key={k}>{i.path}: {i.message}</li>)}</ul> : null}
       {warnings.length ? <ul className="mb-2 rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">{warnings.map((i, k) => <li key={k}>{i.message}</li>)}</ul> : null}
-      <div className="grid gap-3 xl:grid-cols-[220px_minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[220px_minmax(0,1fr)_300px]">
         <aside className="rounded-[var(--radius-card)] border border-border bg-panel p-3">
           <h3 className="mb-2 text-xs font-medium text-muted">Add</h3>
           <div className="mb-3 grid grid-cols-2 gap-1">{(['text', 'rect', 'image', 'sponsor_slot'] as const).map((t) => <Button key={t} size="sm" onClick={() => add(t)}>{t.replace('_', ' ')}</Button>)}</div>
@@ -256,7 +256,7 @@ export default function Designer({ params }: { params: Promise<{ id: string }> }
             </Stage>
           </div>
           <p className="mt-1 text-xs text-muted">Dashed box: 5% title-safe area. Drag to move (snaps to {SNAP}px grid, safe edges, centre and other elements); arrows nudge, Shift+arrows ×10, Ctrl+Z / Ctrl+Shift+Z.</p>
-          <div className="mt-3 grid gap-3 rounded-[var(--radius-card)] border border-border bg-panel p-3 md:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-3 rounded-[var(--radius-card)] border border-border bg-panel p-3 md:grid-cols-4">
             <Field label="Name" htmlFor="sn"><Input id="sn" value={name} onChange={(e) => setName(e.target.value)} /></Field>
             <Field label="Category" htmlFor="sc"><NativeSelect id="sc" value={scene.category} onChange={(e) => setScene({ category: e.target.value as Scene['category'] })}>{['Scorebug', 'Match', 'Teams', 'Events', 'Stats', 'People', 'Sponsors', 'Media'].map((c) => <option key={c}>{c}</option>)}</NativeSelect></Field>
             <Field label="Layer" htmlFor="sl"><NativeSelect id="sl" value={scene.layer} onChange={(e) => setScene({ layer: e.target.value as Scene['layer'] })}>{LAYERS.map((l) => <option key={l}>{l}</option>)}</NativeSelect></Field>

@@ -1,6 +1,8 @@
 // Documentation articles for the public help centre. Labels in **bold** are the product's own button, tab and
 // field names, checked against the interface on the `verified` date. Each procedural guide states its outcome,
 // prerequisites, steps with expected results, and limits. Inline markup: [label](/href), **bold**, `code`.
+import { LOOK_COUNT, countWord } from './site';
+
 export type DocSection = 'getting-started' | 'sports' | 'scoring' | 'graphics' | 'automation' | 'production' | 'sponsors' | 'troubleshooting' | 'support';
 
 export const DOC_SECTIONS: { key: DocSection; label: string; blurb: string }[] = [
@@ -124,7 +126,7 @@ export const DOCS: DocArticle[] = [
       ] },
       { h: '4. Choose a look and turn on automation' },
       { steps: [
-        { do: 'In the match-day checklist, choose a **Look** (one of yours or any of the ten built-in looks) and press **Apply**. To give every match in a competition the same look, set it once under the competition\'s **Graphics & production** tab → **Tournament look**.' },
+        { do: `In the match-day checklist, choose a **Look** (one of yours or any of the ${countWord(LOOK_COUNT)} built-in looks) and press **Apply**. To give every match in a competition the same look, set it once under the competition's **Graphics & production** tab → **Tournament look**.` },
         { do: 'If your organisation has no automation plan yet: open **Automation**, press **New plan**, keep **Start from the football starter plan** ticked (or your sport\'s), press **Create**, then **Publish**.', expect: 'A message confirms the published version.' },
         { do: 'Back on the match, choose the plan under **Automation plan** and press **Apply** (new matches take your latest published plan for their sport on their own).', expect: 'The checklist shows "Automation: <plan name>".' },
       ] },
@@ -332,13 +334,13 @@ export const DOCS: DocArticle[] = [
     outcome: 'Put your logo and colours on the graphics.',
     body: [
       { steps: [
-        { do: 'Open **Themes** and choose one of the eleven looks, such as Broadcast, Premier, Liga, Primetime or Derby.', expect: 'Every graphic previews in that look with sample teams.' },
+        { do: `Open **Themes** and choose one of the ${countWord(LOOK_COUNT)} looks, such as Broadcast, Premier, Liga, Primetime or Derby.`, expect: 'Every graphic previews in that look with sample teams.' },
         { do: 'Set your colours, logo and team colours, and the scorebug variant and position, the clock style and any wording changes.' },
         { do: 'Publish the look, then choose it on the match (match-day checklist → **Look** → **Apply**), or for a whole competition (**Graphics & production** → **Tournament look** → **Apply**).' },
       ] },
       { h: 'Tournament look and match look' },
       { list: [
-        'Both pickers list your own looks and all ten built-in looks. A built-in look chosen there is saved as one of your looks, named after it, so you can add your logo and colours to it here later.',
+        `Both pickers list your own looks and all ${countWord(LOOK_COUNT)} built-in looks. A built-in look chosen there is saved as one of your looks, named after it, so you can add your logo and colours to it here later.`,
         'Every match in a competition uses the **Tournament look** unless it has a look of its own. Changing it changes the upcoming matches that showed the previous one; matches under way keep theirs.',
         'On a match, **Same as the tournament** puts it back on the tournament look.',
       ] },
@@ -484,14 +486,15 @@ export const DOCS: DocArticle[] = [
     title: 'Get help',
     outcome: 'Reach the MatchFrame team with the information that gets you a useful answer.',
     body: [
-      { p: 'Use the [contact form](/contact) and choose **Setup help**. Include:' },
+      { p: 'Use the [contact form](/contact) and choose **Product or setup question**, or **Help with an account or a match** for a problem with a match. Include:' },
       { list: [
         'Which match (its name or date) and which output.',
         'What you expected to happen, and what you saw instead.',
         'A screenshot of the control room or OBS, if you can.',
       ] },
       { note: 'Never send passwords, stream keys or graphics links. We will never ask for them.', tone: 'warning' },
-      { p: 'We do not offer live matchday phone support. For problems during a match, the [troubleshooting guides](/docs#troubleshooting) go through what to check first.' },
+      { p: 'We do not offer live matchday support. For problems during a match, the [troubleshooting guides](/docs#troubleshooting) go through what to check first.' },
+      { p: 'Your message is stored so the team can read and answer it (and emailed to the team inbox when one is set up), and deleted 12 months after it arrives. We reply by email; no response time is promised.' },
     ],
     related: ['troubleshooting/graphics-not-visible'],
     verified: V,

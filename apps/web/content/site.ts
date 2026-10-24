@@ -1,13 +1,26 @@
 // Public website content: one source for capabilities, availability and sports, so the homepage, features,
 // sport pages and FAQ never disagree. Every "available" claim points at a check in ACCEPTANCE_RESULTS.md or a
-// test in the repository; anything not yet run end to end is labelled beta or "needs the media server".
+// test in the repository (kept in `evidence`, for the team, not shown on the site); anything not yet run end to
+// end is labelled Beta, Coming soon or Requires media server.
+import { BUILTIN_TEMPLATES, LOOKS } from '@bs/graphics';
 
 export type Availability = 'available' | 'beta' | 'media-server' | 'planned';
+/** The site's whole status vocabulary. */
 export const AVAILABILITY_LABEL: Record<Availability, string> = {
   available: 'Available',
   beta: 'Beta',
-  'media-server': 'Needs the media server',
+  'media-server': 'Requires media server',
   planned: 'Coming soon',
+};
+
+/** Counts quoted on the site, from the registries the product itself uses. */
+export const GRAPHIC_COUNT = BUILTIN_TEMPLATES.length;
+export const LOOK_COUNT = LOOKS.length;
+const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen'];
+/** "eleven" (or "Eleven" to start a sentence); the numeral past fifteen. */
+export const countWord = (n: number, capital = false) => {
+  const w = words[n] ?? String(n);
+  return capital ? w[0]!.toUpperCase() + w.slice(1) : w;
 };
 
 /** The hosted service runs the graphics edition; cloud video needs a deployment with the media server. */
@@ -33,7 +46,9 @@ export interface Capability {
   media: Availability;
   /** which hosted plans include it */
   plans: string;
+  /** how the claim was checked (for the team; not shown on the site) */
   evidence: string;
+  image?: { src: string; alt: string; w: number; h: number };
   guide: { label: string; href: string };
 }
 
@@ -52,6 +67,7 @@ export const CAPABILITIES: Capability[] = [
     hosted: 'available',
     media: 'available',
     evidence: 'Offline scoring, refreshes and takeovers are covered by browser tests (A13–A16); corrections by A12.',
+    image: { src: '/site/product-scorer.jpg', alt: "The MatchFrame scorer on a phone: both teams' scores, the clock and the event buttons for a fictional football match", w: 780, h: 1560 },
     guide: { label: 'Scoring and corrections', href: '/docs/scoring/corrections' },
   },
   {
@@ -59,15 +75,16 @@ export const CAPABILITIES: Capability[] = [
     name: 'Broadcast graphics',
     benefit: 'Give viewers the score, the clock, the line-ups and the moments that matter, in your club or league colours.',
     points: [
-      'Twenty-nine built-in graphics: the scorebug (the on-screen score and clock), line-ups, goals and cards, lower thirds (name captions near the bottom of the picture), statistics, tables and more.',
-      'Ten original looks, from Premier, Liga and Meister football styles to Primetime, Major, Southern and Continental, retinted with your logo, colours and team colours.',
+      `${GRAPHIC_COUNT} built-in graphics: the scorebug (the on-screen score and clock), line-ups, goals and cards, lower thirds (name captions near the bottom of the picture), statistics, tables and more.`,
+      `${LOOK_COUNT} original looks, from clean network panels to European, American and Australian football styles, retinted with your logo, colours and team colours.`,
       'Widescreen 16:9, vertical 9:16 for social streams, and a large-type venue screen layout.',
       'A transparent graphics page you add to OBS as a Browser Source, controlled live from the control room.',
     ],
     plans: 'All plans. Starter has the scoreboard, clock and basic match graphics; Club and above have the full graphics package',
     hosted: 'available',
     media: 'available',
-    evidence: 'Every graphic in every look is compared against 158 reference images on each test run; the transparent OBS page is checked pixel by pixel (A36).',
+    evidence: 'Every graphic in every look is compared against reference images on each test run (visual.spec.ts); the transparent OBS page is checked pixel by pixel (A36).',
+    image: { src: '/site/graphic-lineup.jpg', alt: 'A MatchFrame line-up board for a fictional football team over a stadium scene', w: 1600, h: 900 },
     guide: { label: 'Connect your graphics to OBS', href: '/docs/graphics/first-output' },
   },
   {
@@ -84,6 +101,7 @@ export const CAPABILITIES: Capability[] = [
     hosted: 'available',
     media: 'available',
     evidence: 'Priorities, duplicates, manual mode, emergency clear and worker restarts are covered by A23–A29; the football flow is checked in real time on a live output.',
+    image: { src: '/site/product-control.jpg', alt: 'The MatchFrame control room: the programme and preview monitors, the graphics catalogue and the automation panel', w: 1600, h: 1000 },
     guide: { label: 'How the football automation runs', href: '/docs/automation/football-flow' },
   },
   {
@@ -100,6 +118,7 @@ export const CAPABILITIES: Capability[] = [
     hosted: 'available',
     media: 'available',
     evidence: 'Expiry, caps, priority, disconnections and CSV safety are covered by A30–A34.',
+    image: { src: '/site/graphic-sponsor.jpg', alt: 'A MatchFrame scorebug with a sample sponsor placement over a stadium scene', w: 1600, h: 900 },
     guide: { label: 'Sponsors and reports', href: '/docs/sponsors/reports' },
   },
   {
@@ -157,13 +176,15 @@ export const SPORTS: SportInfo[] = [
 ];
 
 export const SPORT_STATUS_LABEL = {
-  tested: 'Tested end to end',
+  tested: 'Available',
   beta: 'Beta',
 } as const;
+/** Badge tone for each sport status (the site's one status vocabulary). */
+export const SPORT_STATUS_TONE = { tested: 'available', beta: 'beta' } as const;
 
 export const SPORT_STATUS_NOTE = {
-  tested: 'A full match, including the unusual cases, has been played through the scorer, graphics and automation in the acceptance tests.',
-  beta: 'The rules, events and graphics are built and covered by automated checks, but a full match has not yet been run end to end. Rehearse before relying on it.',
+  tested: 'A full match, including the unusual cases, has been played through the scorer, the graphics and the automation.',
+  beta: 'The rules, events and graphics are built and checked automatically, but a full match has not yet been played end to end. Rehearse before you rely on it.',
 } as const;
 
 /** Videos on the public site. The looks reel is recorded from MatchFrame's own renderer: re-record it with

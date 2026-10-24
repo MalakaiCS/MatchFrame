@@ -3,11 +3,12 @@
 // a plan is bought through Stripe Checkout (monthly or yearly, where a price is set up) and changed in the
 // customer portal; without it, the owner sets the plan by hand (self-hosted installations, invoices).
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button, Card, ErrorNotice, Spinner, StatusPill, cx } from '@bs/ui';
 import { post } from '@/lib/api';
 import { fmtDate, useAction, useGet } from '@/lib/hooks';
+import { forgetPlan } from '@/lib/sign-in';
 
 type Interval = 'monthly' | 'yearly';
 interface Plan { key: string; name: string; priceLabel: string; audience: string; popular: boolean; selfServe: boolean; limits: { liveMatches: number | null; members: number | null }; features: string[] }
@@ -15,8 +16,15 @@ interface Billing { configured: boolean; plan: Plan; status: string; currentPeri
 
 export function BillingPanel({ owner, tz }: { owner: boolean; tz: string }) {
   const b = useGet<Billing>(['billing'], 'billing');
-  const flag = useSearchParams().get('billing');
+  const qs = useSearchParams();
+  const flag = qs.get('billing');
+  // a plan chosen on the pricing page arrives as ?plan=club&interval=yearly
+  const chosen = qs.get('plan');
   const [interval, setInterval] = useState<Interval>('monthly');
+  useEffect(() => {
+    const i = qs.get('interval');
+    if (i === 'yearly' || i === 'monthly') setInterval(i);
+  }, [qs]);
   const checkout = useAction((x: { plan: string; interval: Interval }) => post<{ url: string }>('billing/checkout', x), []);
   const portal = useAction(() => post<{ url: string }>('billing/portal'), []);
   const manual = useAction((plan: string) => post('billing/plan', { plan }), [['billing'], ['org']], { success: 'Plan updated' });
@@ -46,15 +54,15 @@ export function BillingPanel({ owner, tz }: { owner: boolean; tz: string }) {
         </div>
         <ErrorNotice error={checkout.error ?? portal.error ?? manual.error} />
       </Card>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {d.plans.map((p) => {
           const current = p.key === d.plan.key;
           const canBuy = d.configured && p.selfServe && d.checkout[p.key]?.[interval];
           return (
-            <Card key={p.key} className={cx('flex flex-col p-4', current && 'border-primary')}>
+            <Card key={p.key} className={cx('flex flex-col p-4', (current || (chosen === p.key && !current)) && 'border-primary ring-1 ring-primary')}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium">{p.name}</h3>
-                {current ? <StatusPill tone="primary">current</StatusPill> : p.popular ? <StatusPill tone="healthy">most popular</StatusPill> : null}
+                {current ? <StatusPill tone="primary">current</StatusPill> : chosen === p.key ? <StatusPill tone="primary">your choice</StatusPill> : p.popular ? <StatusPill tone="healthy">recommended for clubs</StatusPill> : null}
               </div>
               <p className="text-sm text-muted">{p.priceLabel}</p>
               <p className="mt-1 text-xs text-muted">{p.audience}</p>
@@ -63,11 +71,11 @@ export function BillingPanel({ owner, tz }: { owner: boolean; tz: string }) {
                 !p.selfServe ? (
                   <Button asChild className="mt-3"><Link href="/contact">Contact us</Link></Button>
                 ) : canBuy ? (
-                  <Button className="mt-3" variant="primary" loading={checkout.isPending} onClick={() => checkout.mutate({ plan: p.key, interval }, { onSuccess: (r) => go(r.url) })}>Choose {p.name} ({interval})</Button>
+                  <Button className="mt-3" variant="primary" loading={checkout.isPending} onClick={() => checkout.mutate({ plan: p.key, interval }, { onSuccess: (r) => { forgetPlan(); go(r.url); } })}>Choose {p.name} ({interval})</Button>
                 ) : d.configured ? (
                   <p className="mt-3 text-xs text-muted">{p.name} is not available {interval} online yet.</p>
                 ) : (
-                  <Button className="mt-3" loading={manual.isPending} onClick={() => confirm(`Set the plan to ${p.name}?`) && manual.mutate(p.key)}>Set plan to {p.name}</Button>
+                  <Button className="mt-3" loading={manual.isPending} onClick={() => confirm(`Set the plan to ${p.name}?`) && manual.mutate(p.key, { onSuccess: () => forgetPlan() })}>Set plan to {p.name}</Button>
                 )
               ) : null}
             </Card>

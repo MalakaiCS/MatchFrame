@@ -24,6 +24,7 @@ import {
   type Tx,
 } from '@bs/db';
 import { canActOnAccount, canManageStaff, isStaffRole, staffCan, STAFF_LABELS, STAFF_ROLES, type StaffAction, type StaffRole } from '@bs/domain';
+import * as contact from './contact';
 import { z } from 'zod';
 import { safeSnapshot } from './audit';
 import { applyManualPlan, PLAN_KEYS, type PlanKey } from './billing';
@@ -473,4 +474,27 @@ export async function listActivity(ctx: StaffCtx, q: { before?: number; limit?: 
     .where(q.before ? lt(platformAuditLogs.id, Number(q.before)) : undefined)
     .orderBy(desc(platformAuditLogs.id))
     .limit(limit);
+}
+
+// ------------------------------------------------------------------ contact-form enquiries
+
+/** Messages from the public contact form, newest first, with counts by status. */
+export async function listEnquiries(ctx: StaffCtx, q: { status?: string; page?: number } = {}) {
+  need(ctx, 'enquiries.read');
+  return { ...(await contact.listEnquiries(ctx.db, q)), emailConfigured: !!ctx.config.CONTACT_EMAIL, retentionDays: contact.CONTACT_RETENTION_DAYS };
+}
+
+export async function setEnquiryStatus(ctx: StaffCtx, id: string, input: { status: string }) {
+  need(ctx, 'enquiries.manage');
+  const row = await contact.setEnquiryStatus(ctx.db, id, String(input.status ?? ''), ctx.staff.userId);
+  await log(ctx.db, ctx, 'enquiry.status', 'contact_enquiry', row.id, { detail: { reference: row.reference, status: row.status } });
+  return row;
+}
+
+export async function deleteEnquiry(ctx: StaffCtx, id: string) {
+  need(ctx, 'enquiries.delete');
+  const r = await contact.deleteEnquiries(ctx.db, [id]);
+  if (!r.removed) throw notFound('Message');
+  await log(ctx.db, ctx, 'enquiry.delete', 'contact_enquiry', id, { detail: { reference: r.references?.[0] } });
+  return { removed: r.removed };
 }

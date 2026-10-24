@@ -60,7 +60,7 @@ function CreateRound({ seasonId, competitionId, timezone, format, fixtures, titl
     <div className="grid gap-3">
       <ul className="grid gap-2" aria-label={title}>
         {fixtures.map((f, i) => (
-          <li key={`${f.home.id}-${f.away.id}`} className="grid items-end gap-2 rounded-md border border-border p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <li key={`${f.home.id}-${f.away.id}`} className="grid grid-cols-1 items-end gap-2 rounded-md border border-border p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div className="min-w-0 text-sm"><span className="block text-xs text-muted">{f.round} {fixtures.length > 1 ? f.slot : ''}</span><Pairing f={f} /></div>
             <Field label="Kick-off" htmlFor={`fk-${i}`}><Input id={`fk-${i}`} type="datetime-local" value={kickoffs[i] ?? ''} onChange={(e) => setKickoffs((k) => k.map((x, j) => (j === i ? e.target.value : x)))} /></Field>
             <Field label="Venue" htmlFor={`fv-${i}`}>
@@ -108,7 +108,7 @@ export function FinalsPanel({ competition, canEdit }: { competition: { id: strin
       <SeasonSelect seasons={competition.seasons} value={seasonId} onChange={setSeasonId} />
       <ErrorNotice error={q.error} />
       {q.isLoading || !d ? <Spinner /> : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="grid min-w-0 content-start gap-4 [&>*]:min-w-0">
             <Card className="p-4" role="region" aria-label="Next in the finals">
               {d.next.kind === 'start' ? (
@@ -147,7 +147,7 @@ export function FinalsPanel({ competition, canEdit }: { competition: { id: strin
 
             <Card className="p-4">
               <h2 className="mb-2 font-medium">Finals matches</h2>
-              {!d.matches.length ? <p className="text-sm text-muted">None yet. A finals match can also be added by hand: New fixture, Stage “Finals”.</p> : (
+              {!d.matches.length ? <p className="text-sm text-muted">None yet. A finals match can also be added by hand: New match, Stage “Finals”.</p> : (
                 <div className="grid gap-3">
                   {[...rounds.entries()].map(([round, ms]) => (
                     <div key={round}>

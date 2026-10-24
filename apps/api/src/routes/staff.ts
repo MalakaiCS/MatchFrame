@@ -69,4 +69,9 @@ export function registerStaffRoutes(b: AppBundle) {
 
   // the staff log
   app.get('/api/v1/staff/activity', async (req) => staffSvc.listActivity(await staffFor(req), req.query as never));
+
+  // messages from the public contact form
+  app.get('/api/v1/staff/enquiries', async (req) => staffSvc.listEnquiries(await staffFor(req), req.query as never));
+  app.patch('/api/v1/staff/enquiries/:id', async (req) => staffSvc.setEnquiryStatus(await staffFor(req), P(id, req.params).id, body(req.body) as never));
+  app.delete('/api/v1/staff/enquiries/:id', async (req) => staffSvc.deleteEnquiry(await staffFor(req), P(id, req.params).id));
 }

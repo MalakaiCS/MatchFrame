@@ -94,7 +94,7 @@ export function ExportDialog({ sources, data, custom, serverNow, onClose, fileBa
     <Dialog open onOpenChange={(o) => !o && onClose()} wide title="Export for social" description={`Rendered at ${dims.width}×${dims.height} in the output's look with a transparent background. The still shows the settled graphic; the clip records the animation in.`}
       footer={<><Button variant="ghost" onClick={onClose}>Close</Button>{kind === 'png' ? <Button variant="primary" loading={busy === 'png'} disabled={!!busy} onClick={exportPng}>Download PNG</Button> : <Button variant="primary" loading={busy === 'webm'} disabled={!!busy} onClick={exportWebm}>Record {seconds} s clip</Button>}</>}>
       <div className="grid gap-3">
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Field label="Which graphics" htmlFor="esrc"><NativeSelect id="esrc" value={source} onChange={(e) => setSource(e.target.value)}>{sources.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</NativeSelect></Field>
           <Field label="Export" htmlFor="ek"><NativeSelect id="ek" value={kind} onChange={(e) => setKind(e.target.value as 'png' | 'webm')}><option value="png">Still image (PNG)</option><option value="webm">Short clip (WebM)</option></NativeSelect></Field>
           {kind === 'webm' ? <Field label="Length" htmlFor="es"><NativeSelect id="es" value={String(seconds)} onChange={(e) => setSeconds(Number(e.target.value))}>{[3, 4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} seconds</option>)}</NativeSelect></Field> : null}

@@ -40,7 +40,7 @@ export default function ControlRooms() {
       )}
       <h2 className="mb-2 mt-8 font-medium">Section layouts</h2>
       <p className="mb-3 text-sm text-muted">Reusable catalogue sections and favourites, assignable through a theme profile.</p>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {layouts.data?.map((l) => <Card key={l.id} className="p-3"><div className="flex justify-between"><span className="font-medium">{l.name}</span>{isFull(me.data?.role) ? <Button size="sm" variant="ghost" onClick={() => remove.mutate(l.id)}>Delete {l.name}</Button> : null}</div><p className="text-xs text-muted">{l.config.favourites.length} favourites</p></Card>)}
         {isFull(me.data?.role) ? (
           <Card className="p-3">

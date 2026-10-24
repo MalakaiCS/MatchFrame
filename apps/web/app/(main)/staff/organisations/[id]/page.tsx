@@ -86,7 +86,7 @@ export default function StaffOrganisationPage({ params }: { params: Promise<{ id
       />
       {o.status === 'suspended' ? <p className="mb-4 rounded-md border border-live/40 bg-live/10 px-3 py-2 text-sm">Suspended {fmtDate(o.suspendedAt, tz)}: {o.suspendedReason}</p> : null}
       <ErrorNotice error={act.error} />
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4">
           <h2 className="mb-2 font-medium">Usage</h2>
           <dl className="grid grid-cols-2 gap-y-1 text-sm">

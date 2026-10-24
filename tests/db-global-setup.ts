@@ -1,4 +1,6 @@
-// Creates and migrates a dedicated test database, then points the db test project at it.
+// Creates a fresh, migrated test database for every run, then points the db test project at it. Starting empty
+// keeps the run independent of earlier ones: leftovers from previous runs (live outputs with their scorebug up, for
+// one) would otherwise pile up and slow the automation sweeps under test until their leases expire.
 import { execFileSync } from 'node:child_process';
 import pg from 'pg';
 import { loadDotEnv } from '@bs/config';
@@ -10,8 +12,8 @@ export default async function setup() {
   const u = new URL(admin);
   const c = new pg.Client({ connectionString: admin });
   await c.connect();
-  const exists = await c.query('select 1 from pg_database where datname = $1', [testDb]);
-  if (!exists.rowCount) await c.query(`CREATE DATABASE ${testDb}`);
+  await c.query(`DROP DATABASE IF EXISTS ${testDb} WITH (FORCE)`);
+  await c.query(`CREATE DATABASE ${testDb}`);
   await c.end();
   const swap = (url: string) => {
     const x = new URL(url);

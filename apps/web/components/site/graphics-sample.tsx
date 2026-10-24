@@ -1,146 +1,199 @@
 'use client';
-// Interactive sample on the public homepage: the real MatchFrame renderer and overlay rules running in the
-// browser on fictional teams. Nothing here talks to the server, a match or a stream. Until the page has loaded
-// (or without JavaScript) a screenshot of the same graphics stands in.
+// The homepage's broadcast preview: the real MatchFrame renderer and overlay rules running in the browser on
+// fictional teams over an illustrated stadium (labelled Sample). Nothing here talks to the server, a match or a
+// stream. It opens with the scorebug on air and plays a short sample sequence (goal, line-up, statistics, sponsor)
+// that the visitor can pause and replay; pressing any control hands it over to them. No sequence for visitors
+// who prefer reduced motion, and none while the preview is off screen. Until the page has loaded (or without
+// JavaScript) a still of the same graphics stands in.
 import type { Sport } from '@bs/domain';
-import { DEFAULT_THEMES, LOOKS as ALL_LOOKS, emptyState, reduceOverlay, type OverlayCommand, type OverlayPublicState, type ThemeKey } from '@bs/graphics';
+import { DEFAULT_THEMES, emptyState, reduceOverlay, type OverlayCommand, type OverlayPublicState, type ThemeKey } from '@bs/graphics';
 import { Renderer, Stage, THEMES } from '@bs/graphics/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BarChart3, Goal, Megaphone, Pause, Play, RotateCcw, Users } from 'lucide-react';
 import { SAMPLE_SLOTS, samplePlayerId, sampleData, sampleVariables } from '@/components/theme-preview';
 
-type Look = ThemeKey;
-const LOOKS = ALL_LOOKS.map((l) => ({ key: l.key, label: l.name }));
-const BACKGROUND: Record<string, string> = {
-  football: 'radial-gradient(ellipse at 50% 120%, #3c8a4b 0%, #24613a 35%, #173d2a 60%, #0f1f2c 100%)',
-  basketball: 'radial-gradient(ellipse at 50% 120%, #b9773d 0%, #8c5428 35%, #4d2f1a 62%, #131722 100%)',
-};
+const SPORT: Sport = 'football';
+const LOOK: ThemeKey = 'derby';
+export const SCENE = { football: "url('/site/scene-pitch.svg') center / cover no-repeat #1d4f2a", basketball: "url('/site/scene-court.svg') center / cover no-repeat #6b4626" } as const;
+const START = { home: 2, away: 1 };
 
-interface Action {
-  label: string;
-  run: (s: { score: { home: number; away: number } }) => { cmd?: OverlayCommand; score?: { home: number; away: number }; say: string };
+type Key = 'goal' | 'lineup' | 'stats' | 'sponsor';
+const ACTIONS: { key: Key; label: string; icon: typeof Goal; say: string }[] = [
+  { key: 'goal', label: 'Goal Harbour', icon: Goal, say: 'Goal for Harbour City: the score changes and the goal graphic goes to air' },
+  { key: 'lineup', label: 'Line-up', icon: Users, say: 'Home line-up board on air' },
+  { key: 'stats', label: 'Stats', icon: BarChart3, say: 'Match statistics board on air' },
+  { key: 'sponsor', label: 'Sponsor', icon: Megaphone, say: 'Sponsor placement on air' },
+];
+/** The sample sequence: seconds from the start of each loop. */
+const SEQUENCE: { at: number; key: Key }[] = [
+  { at: 2, key: 'goal' },
+  { at: 11, key: 'sponsor' },
+  { at: 17, key: 'lineup' },
+  { at: 28, key: 'stats' },
+];
+const LOOP_S = 40;
+
+function command(key: Key, minute: number): OverlayCommand {
+  switch (key) {
+    case 'goal':
+      return { type: 'TAKE_IN', templateKey: 'builtin:goal', variables: { team: 'home', player: samplePlayerId('home', 9), minute: String(minute), eventType: 'goal' }, durationMs: 7000, force: true };
+    case 'lineup':
+      return { type: 'TAKE_IN', templateKey: 'builtin:lineup', variables: sampleVariables('builtin:lineup', SPORT), durationMs: 9000, force: true };
+    case 'stats':
+      return { type: 'TAKE_IN', templateKey: 'builtin:stats', variables: sampleVariables('builtin:stats', SPORT), durationMs: 9000, force: true };
+    case 'sponsor':
+      return { type: 'TAKE_IN', templateKey: 'builtin:lower_third', variables: { heading: 'Live from Bayside Oval', subtitle: 'Round 12 · Coastal Premier League' }, durationMs: 5500, force: true };
+  }
 }
 
-function actionsFor(sport: Sport): Action[] {
-  const board = (key: string, say: string, extra: Record<string, unknown> = {}): Action['run'] => () => ({ cmd: { type: 'TAKE_IN', templateKey: key, variables: { ...sampleVariables(key, sport), ...extra }, durationMs: 9000, force: true }, say });
-  if (sport === 'basketball')
-    return [
-      { label: '+3 Harbour', run: ({ score }) => ({ score: { ...score, home: score.home + 3 }, cmd: { type: 'TAKE_IN', templateKey: 'builtin:score', variables: { team: 'home', player: samplePlayerId('home', 4), points: 3 }, durationMs: 6000, force: true }, say: 'Three points for Harbour City' }) },
-      { label: '+2 Saltmarsh', run: ({ score }) => ({ score: { ...score, away: score.away + 2 }, cmd: { type: 'TAKE_IN', templateKey: 'builtin:score', variables: { team: 'away', player: samplePlayerId('away', 6), points: 2 }, durationMs: 6000, force: true }, say: 'Two points for Saltmarsh' }) },
-      { label: 'Timeout', run: () => ({ cmd: { type: 'TAKE_IN', templateKey: 'builtin:timeout', variables: { team: 'away' }, durationMs: 6000, force: true }, say: 'Timeout graphic' }) },
-      { label: 'Line-up', run: board('builtin:lineup', 'Home line-up board') },
-      { label: 'Match header', run: board('builtin:ident', 'Match header with the score', { show: 'auto' }) },
-      { label: 'Stats board', run: board('builtin:stats', 'Match statistics board') },
-      { label: 'Lower third', run: () => ({ cmd: { type: 'TAKE_IN', templateKey: 'builtin:lower_third', variables: { heading: 'Sam Patel', subtitle: 'Head coach, Harbour City' }, durationMs: 6000, force: true }, say: 'Lower third caption' }) },
-    ];
-  return [
-    { label: 'Goal Harbour', run: ({ score }) => ({ score: { ...score, home: score.home + 1 }, cmd: { type: 'TAKE_IN', templateKey: 'builtin:goal', variables: { team: 'home', player: samplePlayerId('home', 9), minute: '64', eventType: 'goal' }, durationMs: 6500, force: true }, say: 'Goal for Harbour City' }) },
-    { label: 'Goal Saltmarsh', run: ({ score }) => ({ score: { ...score, away: score.away + 1 }, cmd: { type: 'TAKE_IN', templateKey: 'builtin:goal', variables: { team: 'away', player: samplePlayerId('away', 10), minute: '66', eventType: 'goal' }, durationMs: 6500, force: true }, say: 'Goal for Saltmarsh' }) },
-    { label: 'Yellow card', run: () => ({ cmd: { type: 'TAKE_IN', templateKey: 'builtin:card', variables: sampleVariables('builtin:card', sport), durationMs: 6000, force: true }, say: 'Yellow card graphic' }) },
-    { label: 'Line-up', run: board('builtin:lineup', 'Home line-up board') },
-    { label: 'Match header', run: board('builtin:ident', 'Match header with the score', { show: 'auto' }) },
-    { label: 'Stats board', run: board('builtin:stats', 'Match statistics board') },
-    { label: 'Lower third', run: () => ({ cmd: { type: 'TAKE_IN', templateKey: 'builtin:lower_third', variables: sampleVariables('builtin:lower_third', sport), durationMs: 6000, force: true }, say: 'Lower third caption' }) },
-  ];
+function startState(now: number): OverlayPublicState {
+  return reduceOverlay(emptyState(), { type: 'TAKE_IN', templateKey: 'builtin:scorebug', variables: sampleVariables('builtin:scorebug', SPORT) }, { now: now - 5000, source: 'operator', cueId: 'bug' }).state;
 }
 
-function startState(sport: Sport): OverlayPublicState {
-  let s = emptyState();
-  s = reduceOverlay(s, { type: 'TAKE_IN', templateKey: 'builtin:scorebug', variables: sampleVariables('builtin:scorebug', sport) }, { now: Date.now() - 5000, source: 'operator', cueId: 'bug' }).state;
-  return s;
-}
-
-export function GraphicsSample({ compact = false }: { compact?: boolean }) {
+export function GraphicsSample() {
   const [mounted, setMounted] = useState(false);
-  const [look, setLook] = useState<Look>('broadcast');
-  const [sport, setSport] = useState<Sport>('football');
-  const [score, setScore] = useState({ home: 2, away: 1 });
+  const [score, setScore] = useState(START);
   const [state, setState] = useState<OverlayPublicState>(() => emptyState());
   const [said, setSaid] = useState('Scorebug on air');
+  const [last, setLast] = useState<Key | null>(null);
+  // 'playing' the sample sequence, 'paused' by the visitor, 'manual' once they press a control
+  const [mode, setMode] = useState<'playing' | 'paused' | 'manual'>('paused');
+  const [visible, setVisible] = useState(true);
   const t0 = useRef(Date.now());
   const n = useRef(0);
+  const frame = useRef<HTMLDivElement>(null);
+  const loopStart = useRef(0);
+
+  const reset = useCallback(() => {
+    const now = Date.now();
+    t0.current = now;
+    loopStart.current = now;
+    setScore(START);
+    setState(startState(now));
+    setSaid('Scorebug on air, score reset to 2–1');
+    setLast(null);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    reset();
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setMode('playing');
+  }, [reset]);
+
   useEffect(() => {
-    t0.current = Date.now();
-    setScore(sport === 'basketball' ? { home: 64, away: 58 } : { home: 2, away: 1 });
-    setState(startState(sport));
-    setSaid('Scorebug on air');
-  }, [sport]);
+    const el = frame.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setVisible(!!e?.isIntersecting), { threshold: 0.25 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const data = useMemo(() => {
-    const d = sampleData(DEFAULT_THEMES[look], sport);
+    const d = sampleData(DEFAULT_THEMES[LOOK], SPORT);
     d.match.projection = { ...d.match.projection, score };
     const main = d.match.clocks.main!;
     d.match.clocks = { ...d.match.clocks, main: { ...main, running: true, anchorAt: t0.current } };
     return d;
-  }, [look, sport, score]);
+  }, [score]);
 
-  const run = (a: Action) => {
-    const r = a.run({ score });
-    if (r.score) setScore(r.score);
-    if (r.cmd) {
-      const cmd = r.cmd;
-      setState((s) => {
-        try {
-          return reduceOverlay(s, cmd, { now: Date.now(), source: 'operator', cueId: `sample-${++n.current}` }).state;
-        } catch {
-          return s;
+  const run = useCallback((key: Key) => {
+    const minute = 63 + Math.floor((Date.now() - t0.current) / 60_000);
+    if (key === 'goal') setScore((s) => ({ ...s, home: s.home + 1 }));
+    const cmd = command(key, minute);
+    setState((s) => {
+      try {
+        return reduceOverlay(s, cmd, { now: Date.now(), source: 'operator', cueId: `sample-${++n.current}` }).state;
+      } catch {
+        return s;
+      }
+    });
+    setSaid(ACTIONS.find((a) => a.key === key)!.say);
+    setLast(key);
+  }, []);
+
+  // the sample sequence, while playing and on screen (a loop restarts from the opening score)
+  useEffect(() => {
+    if (mode !== 'playing' || !visible || !mounted) return;
+    const fired = new Set<number>();
+    const elapsed0 = (Date.now() - loopStart.current) / 1000;
+    SEQUENCE.forEach((s, i) => s.at <= elapsed0 && fired.add(i));
+    const id = window.setInterval(() => {
+      const elapsed = (Date.now() - loopStart.current) / 1000;
+      if (elapsed >= LOOP_S) {
+        reset();
+        fired.clear();
+        return;
+      }
+      SEQUENCE.forEach((s, i) => {
+        if (!fired.has(i) && elapsed >= s.at) {
+          fired.add(i);
+          run(s.key);
         }
       });
-    }
-    setSaid(r.say);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [mode, visible, mounted, reset, run]);
+
+  const press = (key: Key) => {
+    setMode('manual');
+    run(key);
   };
-  const clear = () => {
-    setState((s) => {
-      let x = s;
-      for (const layer of ['fullframe', 'event', 'lower'] as const) {
-        if (x.layers[layer] && !x.layers[layer]!.outAt) x = reduceOverlay(x, { type: 'TAKE_OUT', layer }, { now: Date.now(), source: 'operator', cueId: `sample-${++n.current}` }).state;
-      }
-      return x;
-    });
-    setSaid('Back to the scorebug');
+  const replay = () => {
+    reset();
+    setMode('playing');
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-panel/60 p-3 shadow-[0_30px_120px_-40px_rgba(0,210,255,0.45)] sm:p-4">
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
-        {mounted ? (
-          <Stage background={BACKGROUND[sport]}>
-            <Renderer state={state} data={data} themes={THEMES} serverNow={() => Date.now()} slots={SAMPLE_SLOTS} />
-          </Stage>
-        ) : (
-          <img src="/site/sample-goal.png" alt="A MatchFrame scorebug and goal graphic for a fictional football match" className="size-full object-cover" />
-        )}
-        <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur">Interactive sample · fictional teams</span>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Sport" className="flex rounded-lg border border-white/10 p-0.5">
-          {(['football', 'basketball'] as const).map((s) => (
-            <button key={s} type="button" aria-pressed={sport === s} onClick={() => setSport(s)} className={`min-h-9 rounded-md px-3 text-xs font-medium capitalize ${sport === s ? 'bg-white/10 text-white' : 'text-muted hover:text-white'}`}>
-              {s}
-            </button>
-          ))}
+    <div className="relative">
+      <div aria-hidden className="pointer-events-none absolute -inset-8 -z-10 rounded-[2.5rem] bg-[radial-gradient(60%_60%_at_60%_40%,color-mix(in_oklab,var(--color-primary)_30%,transparent),transparent_75%)] opacity-70 blur-2xl" />
+      <div className="overflow-hidden rounded-2xl border border-border bg-[#05080d] shadow-pop ring-1 ring-black/5">
+        <div ref={frame} className="relative aspect-video">
+          {mounted ? (
+            <Stage background={SCENE.football}>
+              <Renderer state={state} data={data} themes={THEMES} serverNow={() => Date.now()} slots={SAMPLE_SLOTS} />
+            </Stage>
+          ) : (
+            <img src="/site/hero-poster.jpg" alt="A MatchFrame scorebug for a fictional football match over an illustrated stadium" width={1600} height={900} className="size-full object-cover" />
+          )}
+          <span data-sample-chip className="pointer-events-none absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-md bg-black/65 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-white backdrop-blur">
+            <span className="size-1.5 rounded-full bg-[#ff5263]" aria-hidden /> Sample
+          </span>
         </div>
-        <div role="group" aria-label="Look" className="flex flex-wrap rounded-lg border border-white/10 p-0.5">
-          {LOOKS.map((l) => (
-            <button key={l.key} type="button" aria-pressed={look === l.key} onClick={() => setLook(l.key)} className={`min-h-9 rounded-md px-3 text-xs font-medium ${look === l.key ? 'bg-white/10 text-white' : 'text-muted hover:text-white'}`}>
-              {l.label}
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-[#0b1220] px-3 py-2.5 sm:px-4">
+          <div role="group" aria-label="Send a graphic" className="flex flex-1 flex-wrap gap-1.5">
+            {ACTIONS.map((a) => (
+              <button
+                key={a.key}
+                type="button"
+                onClick={() => press(a.key)}
+                disabled={!mounted}
+                aria-pressed={mode === 'manual' && last === a.key}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold transition disabled:opacity-50 ${last === a.key ? 'border-[#00c8f0] bg-[#00c8f0]/15 text-white' : 'border-white/15 bg-white/[0.04] text-white/90 hover:border-[#00c8f0] hover:text-white'}`}
+              >
+                <a.icon className="size-4 text-[#00c8f0]" aria-hidden />
+                {a.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {mode === 'playing' ? (
+              <button type="button" onClick={() => setMode('paused')} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-white/80 hover:bg-white/10 hover:text-white">
+                <Pause className="size-4" aria-hidden /> Pause sample
+              </button>
+            ) : (
+              <button type="button" onClick={replay} disabled={!mounted} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-50">
+                <Play className="size-4" aria-hidden /> Play sample
+              </button>
+            )}
+            <button type="button" onClick={() => { setMode('manual'); reset(); }} disabled={!mounted} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-50">
+              <RotateCcw className="size-4" aria-hidden /> Reset
             </button>
-          ))}
+          </div>
         </div>
       </div>
-      <div role="group" aria-label="Send a graphic" className={`mt-2 grid gap-2 ${compact ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-4'}`}>
-        {actionsFor(sport).map((a) => (
-          <button key={a.label} type="button" onClick={() => run(a)} disabled={!mounted} className="min-h-10 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-sm text-white transition hover:border-brand-cyan hover:text-brand-cyan disabled:opacity-50">
-            {a.label}
-          </button>
-        ))}
-        <button type="button" onClick={clear} disabled={!mounted} className="min-h-10 rounded-lg border border-white/10 px-3 text-sm text-muted transition hover:text-white disabled:opacity-50">
-          Clear
-        </button>
-      </div>
+      <p className="mt-3 text-xs text-muted">
+        {mode === 'playing' ? 'Playing a sample sequence. Press a button to take over.' : 'The real MatchFrame graphics engine, running in your browser with fictional teams.'}
+      </p>
       <p className="sr-only" aria-live="polite">
         {said}
       </p>

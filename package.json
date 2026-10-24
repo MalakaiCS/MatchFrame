@@ -28,7 +28,8 @@
     "services:down": "docker compose -f infra/docker-compose.yml --env-file .env --profile streaming --profile media-test down",
     "start": "node scripts/start-hosted.mjs",
     "start:hosted": "node scripts/start-hosted.mjs",
-    "db:reset": "node scripts/db-reset.mjs"
+    "db:reset": "node scripts/db-reset.mjs",
+    "capture:site": "node tests/e2e/capture-site-media.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
