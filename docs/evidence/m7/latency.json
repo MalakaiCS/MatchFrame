@@ -1,0 +1,24 @@
+{
+  "host": "4 vCPU / 15 GiB cloud container; client, API, DB and renderer on the same host (no WAN)",
+  "scoringCommandRoundTripMs": {
+    "n": 600,
+    "p50": 27.2,
+    "p95": 36.5,
+    "max": 58,
+    "ratePerSecond": 10,
+    "matches": 5
+  },
+  "operatorTakeToRendererAckMs": {
+    "n": 60,
+    "p50": 72,
+    "p95": 93,
+    "max": 95
+  },
+  "commitToOverlayDisplayMs": {
+    "n": 20,
+    "p50": 25,
+    "p95": 40,
+    "max": 40
+  },
+  "outboxLagAfter": "0"
+}

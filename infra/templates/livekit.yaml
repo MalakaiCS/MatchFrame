@@ -1,0 +1,24 @@
+port: 7880
+bind_addresses: ["0.0.0.0"]
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50200
+  use_external_ip: false
+  node_ip: ${LIVEKIT_NODE_IP}
+redis:
+  address: 127.0.0.1:${REDIS_PORT}
+  password: ${REDIS_PASSWORD}
+  db: 1
+keys:
+  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+logging:
+  level: info
+room:
+  auto_create: false
+ingress:
+  rtmp_base_url: ${PUBLIC_RTMP_URL}
+webhook:
+  api_key: ${LIVEKIT_API_KEY}
+  urls:
+    - ${LIVEKIT_WEBHOOK_URL}

@@ -1,0 +1,39 @@
+{
+  "name": "@bs/services",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
+    "@better-auth/core": "1.7.7",
+    "@better-auth/passkey": "1.7.7",
+    "@better-auth/utils": "0.4.2",
+    "@bs/config": "workspace:*",
+    "@bs/contracts": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "@bs/graphics": "workspace:*",
+    "@bs/media": "workspace:*",
+    "better-auth": "1.7.7",
+    "bullmq": "6.3.11",
+    "drizzle-orm": "0.45.3",
+    "ioredis": "5.11.1",
+    "nodemailer": "7.0.13",
+    "pg": "8.23.1",
+    "pino": "10.4.0",
+    "web-push": "3.6.7",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "7.0.12",
+    "@types/pg": "8.23.1",
+    "@types/web-push": "3.6.4"
+  }
+}

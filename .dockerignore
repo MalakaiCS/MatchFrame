@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+.data
+.env
+**/.next
+**/dist
+docs/evidence/**/*.mp4
+tests/media/fixtures/*.mp4
+infra/media-spike/out
+.git

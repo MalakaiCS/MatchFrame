@@ -1,0 +1,25 @@
+{
+  "name": "@bs/media-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "start": "node dist/main.js",
+    "build": "node ../../scripts/bundle.mjs src/main.ts dist/main.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bs/config": "workspace:*",
+    "@bs/db": "workspace:*",
+    "@bs/domain": "workspace:*",
+    "@bs/media": "workspace:*",
+    "@bs/services": "workspace:*",
+    "bullmq": "6.3.11",
+    "drizzle-orm": "0.45.3",
+    "ioredis": "5.11.1",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

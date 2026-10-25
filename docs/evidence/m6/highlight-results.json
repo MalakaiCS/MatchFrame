@@ -1,0 +1,36 @@
+{
+  "goalToClipReadySeconds": 25.4,
+  "sessionStateWhenClipReady": "LIVE",
+  "clip": {
+    "durationS": 20,
+    "streams": [
+      "video:h264:1280x720",
+      "audio:aac"
+    ],
+    "inMs": 9629,
+    "outMs": 29629
+  },
+  "export": {
+    "durationS": 14,
+    "streams": [
+      "video:h264:1080x1920",
+      "audio:aac"
+    ]
+  },
+  "share": {
+    "meta": 200,
+    "rangeBytes": 206,
+    "wrongToken": 404,
+    "watchPage": 200,
+    "revokedMeta": 410,
+    "revokedBytes": 410
+  },
+  "checks": {
+    "clipWhileLive": true,
+    "clipDuration": true,
+    "clipAv": true,
+    "vertical": true,
+    "shareWorks": true,
+    "shareDenied": true
+  }
+}

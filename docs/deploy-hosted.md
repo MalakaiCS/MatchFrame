@@ -1,0 +1,177 @@
+# Deploying as a website (graphics-only, no server to manage)
+
+This puts MatchFrame on the internet at a normal web address. Scorers, operators and producers just open
+the link in a browser. Nobody installs anything.
+
+**Graphics-only** means everything except cloud video: scoring (including the offline scorer app), the control
+room, overlays, themes, automation, sponsors, reports and the media library (uploads, exports). You stream with
+**OBS on your own computer**: add an overlay's *Production URL* as a Browser Source, put it over your camera and
+stream to YouTube/Facebook/Twitch from OBS. Cloud streaming, recordings and automatic live highlights are turned
+off in this mode (they need a media server; see `docs/operations.md`).
+
+The guide uses **Railway** (one app service plus its Postgres and Redis), **Cloudflare R2** for files and
+**Resend** (or any SMTP provider) for email. Any platform that runs a Dockerfile works the same way.
+
+## What it costs (roughly)
+
+| Part | Provider | Monthly |
+| --- | --- | --- |
+| App (web, API, workers in one container) | Railway | ~$5–20, usage based |
+| PostgreSQL + Redis | Railway | included in the usage above, ~$5–10 |
+| File storage | Cloudflare R2 | free up to 10 GB |
+| Email | Resend | free up to 3,000 emails |
+
+## 1. File storage (Cloudflare R2)
+
+1. Cloudflare dashboard → **R2** → *Create bucket*, e.g. `broadcast-studio`. Leave public access **off**.
+2. R2 → *Manage API tokens* → *Create API token* with **Object Read & Write** on that bucket.
+3. Note the **Access Key ID**, **Secret Access Key** and the **S3 endpoint**
+   (`https://<account-id>.r2.cloudflarestorage.com`).
+
+## 2. Email (Resend or another SMTP provider)
+
+Sign-up verification and password resets are sent by email, so this is required.
+Resend → *Domains* → add and verify your domain → *API keys* → create one. SMTP settings: host `smtp.resend.com`,
+port `465`, secure `true`, user `resend`, password = the API key.
+
+With Resend the app sends over Resend's HTTPS API (using that key), not SMTP: Railway blocks outbound SMTP below
+the Pro plan. `MAIL_FROM` must use the domain you verified in Resend (an unverified domain or a Gmail address is
+rejected). A failed send is logged as `[auth] verify email to … failed: Resend rejected the email (HTTP …): <reason>`.
+
+## 3. Railway
+
+1. Sign in to Railway with GitHub → **New project** → **Deploy from GitHub repo** → choose this repository.
+   It finds `railway.json` and builds the `Dockerfile` at the repository root (the build log says it is using
+   the Dockerfile). If the log shows **Railpack** instead, see *If Railway builds with Railpack* below.
+2. In the same project: **+ Create** → **Database** → **PostgreSQL**, then again for **Redis**.
+3. Open the app service → **Settings → Networking → Generate domain** (or add your own domain).
+4. Generate the secrets. On any computer with Node 22: `node scripts/gen-secrets.mjs` prints the three lines
+   (`BETTER_AUTH_SECRET`, `MEDIA_TOKEN_SECRET`, `ENCRYPTION_KEY`). Any long random strings work for the first two, and `ENCRYPTION_KEY` must be 32 random bytes, base64-encoded (`openssl rand -base64 32`).
+5. App service → **Variables** → **Raw editor**, paste and fill in:
+
+```env
+NODE_ENV=production
+STREAMING_ENABLED=false
+MIGRATE_ON_START=true
+
+# from scripts/gen-secrets.mjs
+BETTER_AUTH_SECRET=...
+MEDIA_TOKEN_SECRET=...
+ENCRYPTION_KEY=...
+
+# database: Railway fills in the ${{...}} references
+DATABASE_ADMIN_URL=${{Postgres.DATABASE_URL}}
+REDIS_URL=${{Redis.REDIS_URL}}
+
+# Cloudflare R2
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_BUCKET=broadcast-studio
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_FORCE_PATH_STYLE=true
+
+# email
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=resend
+SMTP_PASSWORD=...
+MAIL_FROM="Your Studio <no-reply@yourdomain.com>"
+
+# site staff: your own account(s), Owners of the staff console at /staff (sign up with this email first)
+PLATFORM_OWNER_EMAILS=you@yourdomain.com
+
+# optional: branding and defaults
+PRODUCT_NAME=MatchFrame
+# the team inbox the public contact form emails (every message is also kept in the staff console, /staff →
+# Enquiries; with neither this nor any site staff the form says it is not connected)
+CONTACT_EMAIL=
+# let search engines index the public website (leave unset on a staging address); read when the image is built
+# SITE_INDEXING=true
+DEFAULT_TIMEZONE=Australia/Brisbane
+```
+
+Uploads from the app (images, logos, fonts, videos) go through the API on the app's own address and from there to
+the bucket, so the bucket needs no CORS rules and stays private. Images and logos are checked by the API itself and
+are ready at once (the media worker only makes a smaller copy later, if it runs). If the bucket is missing,
+misconfigured or unreachable, images, logos and fonts up to 25 MB are kept in the database (`media_blobs`) and
+served from there, so logos still upload; video, clips and recordings need the bucket. `POST /api/v1/assets/uploads` still returns a
+presigned `uploadUrl` for API clients that want to send large files straight to storage; that needs CORS on the
+bucket for the caller's origin.
+
+If an earlier deployment set `PRODUCT_NAME=Broadcast Studio`, change it to `MatchFrame` or remove it. The public
+website (homepage, features, FAQ, documentation, contact) always says MatchFrame; see `docs/public-site.md`.
+
+The app connects as two restricted database users (`bs_app` with row-level security, `bs_worker` for the
+background jobs). The migration creates them, and their passwords are derived from the Postgres admin password,
+so there is nothing to set. To choose them yourself, set `DB_APP_PASSWORD` and `DB_WORKER_PASSWORD` (or full
+`DATABASE_URL` / `DATABASE_WORKER_URL`). Do not import `.env.example`: its values are for local development.
+
+The public address is picked up from Railway's generated domain automatically. **If you use your own domain**,
+also set `PUBLIC_WEB_URL=https://studio.yourdomain.com`. Do not set `PUBLIC_REALTIME_URL`: left empty, live
+updates use the site's own address.
+
+6. **Deploy.** On start the container applies database migrations (`MIGRATE_ON_START=true`), then runs the web
+   app, API and workers behind one port. Railway waits for `/api/v1/health/ready` before sending traffic; it
+   reports `"media": "disabled"` in this mode.
+
+### If Railway builds with Railpack
+
+The build log should say it is building the Dockerfile. If it starts with **Railpack** instead (and ends with "No start
+command detected", or the app is missing video checks and backups), the service is not using the Dockerfile:
+
+1. App service → **Settings → Build** → **Builder: Dockerfile**, **Dockerfile path: `Dockerfile`**.
+2. If the project canvas shows a banner with staged changes, **Apply** (or **Deploy**) them: staged settings are not
+   used until they are applied.
+3. **Deployments → Redeploy** the latest commit and check the log says it is building the Dockerfile.
+
+The repository also has a `start` script (`node scripts/start-hosted.mjs`), so a Railpack build can still start the
+app; but that image has no FFmpeg or `pg_dump`, so uploaded videos cannot be checked and scheduled backups fail.
+Switch back to the Dockerfile.
+
+## 4. First sign-in
+
+Open your address → **Create account** → confirm the email → name your organisation. You are its owner.
+Invite your team from **Settings → Members** (each person gets an email link).
+
+## Updating
+
+Push to the branch Railway deploys from. It rebuilds, migrates and restarts by itself.
+
+## Backups
+
+Railway Postgres → *Backups* (enable scheduled backups). R2 keeps files durably; for a second copy, see
+`docs/operations.md#backups-and-restore`. Keep a copy of `ENCRYPTION_KEY` somewhere safe: without it, encrypted
+values in the database cannot be read.
+
+## Other platforms
+
+Any host that builds a Dockerfile and gives you one port works: build the root `Dockerfile` (its default command is
+`node scripts/start-hosted.mjs`, which listens on `$PORT`), add Postgres and Redis, and set the variables above
+with that platform's connection strings. On Render, `RENDER_EXTERNAL_URL` is picked up the way Railway's domain is.
+The Postgres user in `DATABASE_ADMIN_URL` must be allowed to create roles (migrations create `bs_app` and
+`bs_worker`).
+
+## Optional integrations
+
+Each of these is off until its variables are set; the matching screen says so until then.
+
+| Feature | Variables | Where to get them |
+| --- | --- | --- |
+| Sign in with Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth client (Web application). Authorised JavaScript origin `https://<your address>`; redirect URI `https://<your address>/api/auth/callback/google`. Publish the OAuth consent screen. |
+| Sign in with Apple | `APPLE_CLIENT_ID` (the Services ID), `APPLE_CLIENT_SECRET` (a client secret JWT) | Apple Developer → Identifiers: an App ID with Sign in with Apple, then a Services ID with the domain `<your address>` and return URL `https://<your address>/api/auth/callback/apple`; a Sign in with Apple key signs the client secret JWT, which lasts at most 6 months, so diarise its renewal. |
+| Sign in with Microsoft | `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID` | Microsoft Entra → App registrations; redirect URI (Web) `https://<your address>/api/auth/callback/microsoft`. `common` accepts work and personal accounts. |
+| Sign in with Facebook | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Meta for Developers → an app with Facebook Login; valid OAuth redirect URI `https://<your address>/api/auth/callback/facebook`. A Facebook sign-up with an email that already has an account is not joined to it automatically: the person signs in another way and connects Facebook under Settings → Account. |
+| Sign-in codes by text message | `SMS_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | Twilio console: the account SID and auth token, and a number or Messaging Service SID allowed to send to your users' countries. Codes go only to a mobile number already verified on an account (added under Settings → Account). |
+| Passkeys | none (optional `PASSKEY_RP_ID`) | Work on the site's own address over HTTPS. Set `PASSKEY_RP_ID` only to share passkeys across subdomains (e.g. `matchframe.tv` for `app.matchframe.tv`). |
+| Push notifications for reminders | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`; subject is `mailto:` your ops address |
+| Card payments | `STRIPE_SECRET_KEY` (optional `STRIPE_WEBHOOK_SECRET`, `STRIPE_CURRENCY`, `STRIPE_PRICE_*`) | Stripe dashboard → Developers → API keys: the secret key (`sk_live_…`; `sk_test_…` to try it with test cards first). Nothing else is needed: the Starter, Club and Studio prices are created in the Stripe account the first time someone checks out (lookup keys `matchframe_<plan>_<monthly\|yearly>`, the account's default currency unless `STRIPE_CURRENCY` is set), the plan is confirmed when the owner comes back from Checkout, and the worker re-reads every subscription every 15 minutes. For changes the moment they happen, add a webhook to `https://<your address>/api/v1/webhooks/stripe` for `checkout.session.completed` and `customer.subscription.created`, `.updated`, `.deleted`, and set its signing secret as `STRIPE_WEBHOOK_SECRET`. *Manage billing* opens the Stripe customer portal; if the account has never saved a portal setup, one is created (cancel at period end, card, invoices). |
+| Scheduled database dumps to R2 | `BACKUP_ENABLED=true`, `BACKUP_EVERY_HOURS`, `BACKUP_KEEP` | uses the media bucket; see Settings → Backups |
+| Monitoring | `METRICS_TOKEN`, `ERROR_REPORT_URL` | scrape `/metrics` with the bearer token; point error reports at your alerting webhook |
+| Custom domain for an organisation | — | Settings → Branding (owner): add the host, point its CNAME at the Railway domain and add the domain to the Railway service so it gets a certificate |
+
+## Turning streaming on later
+
+Move to a server with dedicated CPU (see `docs/operations.md`), run LiveKit (`pnpm services:up`), set
+`STREAMING_ENABLED=true` with the `LIVEKIT_*` and `PUBLIC_*` media settings, and the Streams pages reappear.

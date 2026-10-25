@@ -1,0 +1,10 @@
+{
+  "live": true,
+  "hlsAuthorised": true,
+  "hlsDenied": true,
+  "programmeGraphicsChangedPixels": true,
+  "cleanHasNoGraphics": true,
+  "audioInBoth": true,
+  "recordingsReady": true,
+  "sourceLossDegradedThenRecovered": true
+}

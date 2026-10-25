@@ -1,0 +1,23 @@
+api_key: devkey
+api_secret: devsecret_devsecret_devsecret_devsecret
+ws_url: ws://127.0.0.1:7880
+redis:
+  address: 127.0.0.1:6379
+rtmp_port: 1935
+whip_port: 8085
+http_relay_port: 9190
+health_port: 9191
+prometheus_port: 9192
+rtc_config:
+  port_range_start: 51000
+  port_range_end: 51200
+  use_external_ip: false
+  node_ip: 172.17.0.1
+logging:
+  level: info
+cpu_cost:
+  rtmp_cpu_cost: 1.0
+  whip_cpu_cost: 1.0
+  whip_bypass_transcoding_cpu_cost: 0.1
+  url_cpu_cost: 1.0
+  min_idle_ratio: 0.1

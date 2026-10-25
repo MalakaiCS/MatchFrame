@@ -1,0 +1,15 @@
+node_modules/
+.next/
+dist/
+.env
+.env.local
+*.log
+infra/media-spike/out/
+.data/
+coverage/
+test-results/
+playwright-report/
+.turbo/
+*.tsbuildinfo
+tests/media/fixtures/*.mp4
+docs/evidence/**/*.mp4

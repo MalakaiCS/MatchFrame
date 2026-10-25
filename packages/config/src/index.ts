@@ -1,0 +1,253 @@
+// Server-side configuration. Loads the repository .env (with ${VAR} interpolation) without overriding
+// variables already present in the process environment, then validates with zod.
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
+
+function findRoot(start: string): string {
+  let dir = start;
+  for (let i = 0; i < 8; i++) {
+    if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir;
+    dir = path.dirname(dir);
+  }
+  return start;
+}
+
+export function parseEnvText(text: string, base: Record<string, string | undefined> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const i = line.indexOf('=');
+    if (i < 0) continue;
+    const key = line.slice(0, i).trim();
+    let val = line.slice(i + 1).trim();
+    if (!/^["']/.test(val)) val = val.replace(/\s+#.*$/, '');
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    out[key] = val.replace(/\$\{([A-Z0-9_]+)\}/g, (_, k: string) => base[k] ?? out[k] ?? '');
+  }
+  return out;
+}
+
+let loaded = false;
+export function loadDotEnv(): void {
+  if (loaded) return;
+  loaded = true;
+  const root = findRoot(process.cwd());
+  const file = process.env.BS_ENV_FILE ?? path.join(root, '.env');
+  if (!fs.existsSync(file)) return;
+  const parsed = parseEnvText(fs.readFileSync(file, 'utf8'), process.env);
+  for (const [k, v] of Object.entries(parsed)) if (process.env[k] === undefined) process.env[k] = v;
+}
+
+const bool = z.union([z.boolean(), z.string()]).transform((v) => v === true || v === 'true' || v === '1');
+const int = (d: number) => z.coerce.number().int().default(d);
+
+export const configSchema = z.object({
+  NODE_ENV: z.string().default('development'),
+  PRODUCT_NAME: z.string().default('MatchFrame'),
+  PRODUCT_SHORT_NAME: z.string().default('MatchFrame'),
+  DEFAULT_LOCALE: z.string().default('en-AU'),
+  DEFAULT_TIMEZONE: z.string().default('Australia/Brisbane'),
+  PUBLIC_WEB_URL: z.string().url(),
+  PUBLIC_API_URL: z.string().url(),
+  PUBLIC_REALTIME_URL: z.string().url(),
+  PUBLIC_LIVEKIT_URL: z.string().default(''),
+  PUBLIC_RTMP_URL: z.string().default(''),
+  INTERNAL_API_URL: z.string().url().default('http://127.0.0.1:4000'),
+  INTERNAL_RENDER_BASE_URL: z.string().url().default('http://127.0.0.1:3000'),
+  INTERNAL_LIVEKIT_HTTP: z.string().url().default('http://127.0.0.1:7880'),
+  INTERNAL_LIVEKIT_WS: z.string().default('ws://127.0.0.1:7880'),
+  API_PORT: int(4000),
+  TRUSTED_ORIGINS: z.string().default(''),
+  DATABASE_URL: z.string(),
+  DATABASE_WORKER_URL: z.string(),
+  DATABASE_ADMIN_URL: z.string().optional(),
+  DB_APP_PASSWORD: z.string().optional(),
+  DB_WORKER_PASSWORD: z.string().optional(),
+  REDIS_URL: z.string(),
+  BETTER_AUTH_SECRET: z.string().min(16),
+  SESSION_MAX_AGE_DAYS: int(14),
+  AUTH_LOG_EMAIL_LINKS: bool.default(false),
+  SMTP_HOST: z.string().default('127.0.0.1'),
+  SMTP_PORT: int(1025),
+  SMTP_SECURE: bool.default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default('MatchFrame <no-reply@studio.localhost>'),
+  // where the public contact form sends enquiries; unset = the form says it is not connected yet
+  CONTACT_EMAIL: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+  // Resend's HTTPS API (hosts such as Railway block outbound SMTP on lower plans). Defaults to SMTP_PASSWORD with smtp.resend.com.
+  RESEND_API_KEY: z.string().optional(),
+  S3_ENDPOINT: z.string().url(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_BUCKET: z.string(),
+  S3_ACCESS_KEY: z.string(),
+  S3_SECRET_KEY: z.string(),
+  S3_FORCE_PATH_STYLE: bool.default(true),
+  ENCRYPTION_KEY: z.string().min(40),
+  MEDIA_TOKEN_SECRET: z.string().min(16),
+  // false = graphics-only deployment: no LiveKit, no stream inputs/outputs, recordings or live highlights.
+  STREAMING_ENABLED: bool.default(true),
+  LIVEKIT_API_KEY: z.string().default(''),
+  LIVEKIT_API_SECRET: z.string().default(''),
+  MEDIA_PROVIDER: z.enum(['livekit', 'fake']).default('livekit'),
+  MAX_CONCURRENT_PROGRAMMES: int(1),
+  MAX_DESTINATIONS_PER_OUTPUT: int(3),
+  ENABLE_1080P_PRESETS: bool.default(false),
+  INPUT_WAIT_TIMEOUT_SECONDS: int(120),
+  UPLOAD_MAX_BYTES: int(524_288_000),
+  UPLOAD_MAX_IMAGE_PIXELS: int(25_000_000),
+  UPLOAD_MAX_VIDEO_SECONDS: int(600),
+  RECORDING_RETENTION_DAYS: int(90),
+  EXPORT_RETENTION_DAYS: int(30),
+  LIVE_EVENT_FRESHNESS_MS: int(10_000),
+  DEV_DESTINATION_ALLOWLIST: z.string().default(''),
+  RTMP_SINK_PASSWORD: z.string().optional(),
+  MEDIA_TMP_DIR: z.string().optional(),
+  /** Site staff: verified accounts with these emails (comma-separated) are Owners of the staff console. */
+  PLATFORM_OWNER_EMAILS: z.string().default(''),
+  // ---- platform features (all optional; a feature stays off until its keys are set)
+  /** Web Push (reminders to scorers' phones): generate with `npx web-push generate-vapid-keys` */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:ops@example.com'),
+  /** Sign in with Google, Apple, Microsoft or Facebook: each button appears once its client id and secret are set */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** Apple: the Services ID, and the client secret JWT signed with the Sign in with Apple key (valid up to 6 months) */
+  APPLE_CLIENT_ID: z.string().optional(),
+  APPLE_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_TENANT_ID: z.string().default('common'),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
+  /** Text-message sign-in codes: 'twilio' (with the TWILIO_* settings) or 'mail' (development only: texts arrive as
+   *  emails to sms-<number>@sms.localhost in the local mail catcher). Unset: no text-message sign-in. */
+  SMS_PROVIDER: z.enum(['twilio', 'mail']).optional().or(z.literal('').transform(() => undefined)),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  /** a Twilio number in E.164 form (+61…) or a Messaging Service SID (MG…) */
+  TWILIO_FROM: z.string().optional(),
+  /** passkeys: the site's registrable domain (defaults to PUBLIC_WEB_URL's host name) */
+  PASSKEY_RP_ID: z.string().optional(),
+  /** Stripe billing: secret key, webhook signing secret and the price IDs of the paid plans */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  /** optional: changes reach plans as they happen (without it, on return from checkout and from the worker's sync) */
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /** three-letter currency for the prices created in Stripe; unset = the Stripe account's default currency */
+  STRIPE_CURRENCY: z.string().regex(/^[A-Za-z]{3}$/, 'a three-letter currency code, for example aud').optional(),
+  // optional: a Stripe price pinned per plan and billing period, instead of the ones found or created by lookup key
+  // (STRIPE_PRICE_CLUB is the older name for Club monthly)
+  STRIPE_PRICE_STARTER_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_STARTER_YEARLY: z.string().optional(),
+  STRIPE_PRICE_CLUB_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_CLUB_YEARLY: z.string().optional(),
+  STRIPE_PRICE_STUDIO_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_STUDIO_YEARLY: z.string().optional(),
+  STRIPE_PRICE_CLUB: z.string().optional(),
+  STRIPE_PRICE_LEAGUE: z.string().optional(),
+  /** scheduled database backups to object storage (pg_dump, custom format) */
+  BACKUP_ENABLED: bool.default(false),
+  BACKUP_EVERY_HOURS: int(24),
+  BACKUP_KEEP: int(14),
+  /** /metrics bearer token (unset = metrics served to anyone who can reach the API: fine behind a private network only) */
+  METRICS_TOKEN: z.string().optional(),
+  /** generic error-report webhook (JSON POST per batch of unhandled errors) */
+  ERROR_REPORT_URL: z.string().url().optional(),
+}).superRefine((c, ctx) => {
+  if (c.STREAMING_ENABLED && c.MEDIA_PROVIDER === 'livekit' && !c.LIVEKIT_API_SECRET)
+    ctx.addIssue({ code: 'custom', path: ['LIVEKIT_API_SECRET'], message: 'required while STREAMING_ENABLED=true' });
+});
+
+export type AppConfig = z.infer<typeof configSchema>;
+
+let cached: AppConfig | null = null;
+export function getConfig(): AppConfig {
+  if (cached) return cached;
+  loadDotEnv();
+  const r = configSchema.safeParse(withDerivedDefaults(process.env));
+  if (!r.success) {
+    const missing = r.error.issues.filter((i) => process.env[i.path.join('.')] === undefined).map((i) => i.path.join('.'));
+    const invalid = r.error.issues
+      .filter((i) => !missing.includes(i.path.join('.')))
+      .map((i) => {
+        const v = process.env[i.path.join('.')] ?? '';
+        const why = i.code === 'too_small' ? `${v.length} characters, needs at least ${String(i.minimum)}` : i.message;
+        return `${i.path.join('.')} (${/^(\.\.\.|__GENERATE__)$/.test(v) ? 'still a placeholder' : why})`;
+      });
+    const parts = [missing.length && `missing: ${missing.join(', ')}`, invalid.length && `invalid: ${invalid.join(', ')}`];
+    const hint = missing.includes('PUBLIC_WEB_URL')
+      ? ' PUBLIC_WEB_URL comes from the platform domain (Railway: Settings → Networking → Generate domain) or set it.'
+      : '';
+    throw new Error(
+      `Invalid configuration (${parts.filter(Boolean).join('; ')}).${hint} Locally run \`pnpm setup\`; ` +
+        'on a hosting platform set these as service variables (docs/deploy-hosted.md).',
+    );
+  }
+  // the web origin is always trusted (auth CSRF checks and Socket.IO CORS)
+  const origins = new Set(r.data.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean));
+  origins.add(new URL(r.data.PUBLIC_WEB_URL).origin);
+  cached = { ...r.data, TRUSTED_ORIGINS: [...origins].join(',') };
+  return cached;
+}
+
+/**
+ * Single-origin deployments (hosted platforms) only need PUBLIC_WEB_URL: the API and realtime endpoints default
+ * to the same origin. Railway and Render expose the service's public address, which seeds PUBLIC_WEB_URL.
+ */
+export function withDerivedDefaults(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const out = { ...env };
+  const platformUrl = env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : env.RENDER_EXTERNAL_URL;
+  out.PUBLIC_WEB_URL ||= platformUrl;
+  out.PUBLIC_API_URL ||= out.PUBLIC_WEB_URL;
+  out.PUBLIC_REALTIME_URL ||= out.PUBLIC_WEB_URL;
+  const roles = roleDatabaseUrls(env);
+  if (roles) {
+    out.DATABASE_URL = roles.app.url;
+    out.DATABASE_WORKER_URL = roles.worker.url;
+  }
+  return out;
+}
+
+/**
+ * Connection URLs and passwords for the least-privilege roles bs_app and bs_worker, as created by the migration.
+ * Each role's password is DB_*_PASSWORD, else the one inside its connection URL, else derived from the admin
+ * password (HMAC), so a hosted deploy needs only DATABASE_ADMIN_URL. A missing URL is the admin URL with the
+ * role's user. Null without DATABASE_ADMIN_URL (the app processes then use their URLs as given).
+ */
+export function roleDatabaseUrls(env: Record<string, string | undefined>) {
+  if (!env.DATABASE_ADMIN_URL) return null;
+  let admin: URL;
+  try {
+    admin = new URL(env.DATABASE_ADMIN_URL);
+  } catch {
+    return null;
+  }
+  const role = (user: string, urlVar: string, pwVar: string) => {
+    let url: URL;
+    try {
+      url = new URL(env[urlVar] || admin.href);
+    } catch {
+      url = new URL(admin.href);
+    }
+    if (!env[urlVar] || url.href === admin.href) {
+      url.username = user;
+      url.password = '';
+    }
+    const password =
+      env[pwVar] ||
+      decodeURIComponent(url.password) ||
+      crypto.createHmac('sha256', decodeURIComponent(admin.password)).update(`broadcast-studio:${user}`).digest('base64url');
+    url.password = encodeURIComponent(password);
+    return { url: url.href, password };
+  };
+  return {
+    app: role('bs_app', 'DATABASE_URL', 'DB_APP_PASSWORD'),
+    worker: role('bs_worker', 'DATABASE_WORKER_URL', 'DB_WORKER_PASSWORD'),
+  };
+}
+
+export const isProduction = () => process.env.NODE_ENV === 'production';
