@@ -209,7 +209,7 @@ describe('futsal', () => {
   });
 
   it('the futsal starter flow follows football’s match flow, puts goals, cards and timeouts on air and nothing for a rolling substitution', () => {
-    const layers = { 'builtin:backdrop': 'background', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:stats': 'fullframe', 'builtin:goal': 'event', 'builtin:card': 'event', 'builtin:timeout': 'event', 'builtin:period_banner': 'lower', 'builtin:shootout': 'lower', 'builtin:matches_today': 'fullframe' };
+    const layers = { 'builtin:backdrop': 'background', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:stats': 'fullframe', 'builtin:goal': 'event', 'builtin:card': 'event', 'builtin:timeout': 'event', 'builtin:period_banner': 'lower', 'builtin:shootout': 'lower' };
     const eventTypes = futsalAdapter.eventTypes(STANDARD).map((e) => e.type);
     const v = validateGamePlan(FUTSAL_STARTER, { templateKeys: Object.keys(layers), templateLayers: layers, eventTypes });
     expect(v.ok).toBe(true);

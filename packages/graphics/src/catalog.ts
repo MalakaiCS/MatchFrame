@@ -221,6 +221,16 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: [], entranceMs: 350, holdMs: 20000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.14, y: 0.1, w: 0.72, h: 0.8 },
   },
   {
+    // the screen between back-to-back matches (a stream link shows it by itself): the next match with its kick-off
+    // countdown, an optional message, and today's results, live scores and kick-off times; over the animated background
+    key: 'builtin:intermission', name: 'Intermission', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [
+      { key: 'title', label: 'Title', type: 'text', required: false, maxLength: 40 },
+      { key: 'message', label: 'Message', type: 'text', required: false, maxLength: 60 },
+    ],
+    requiredData: [], entranceMs: 400, holdMs: null, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.14, y: 0.06, w: 0.72, h: 0.88 },
+  },
+  {
     key: 'builtin:formation', name: 'Formation', category: 'Teams', sports: both, layer: 'fullframe',
     variables: [{ key: 'team', label: 'Team', type: 'team', required: true, default: 'home' }],
     requiredData: ['teams', 'lineup'], entranceMs: 400, holdMs: 10000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.08, w: 0.6, h: 0.84 },

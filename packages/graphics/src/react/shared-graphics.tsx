@@ -1,14 +1,14 @@
 'use client';
-// Graphics every look shares: league table, fixtures, today's matches, formation, match summary, head-to-head, match information,
+// Graphics every look shares: league table, fixtures, today's matches, the intermission, formation, match summary, head-to-head, match information,
 // shoot-out tracker, live statistic, top scorers, player of the match, timeout, added time, video review, the
 // highlights title and the stinger wipe. Each look
 // supplies its "chrome" (how it frames a full-frame board, a lower strip and a team event) so these read as part
 // of that look without three copies of the content.
 import type { CSSProperties, ReactNode } from 'react';
 import { animStyle, changeStyle, stagger, type GraphicProps, type ThemeComponents } from './stage';
-import { Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, clockLabel, eventWord, inkOn, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
+import { Fitted, Logo, Photo, SponsorMark, ThemeBadge, badgeUrl, clockLabel, eventWord, inkOn, kickoffCountdown, matchInfoItems, player, presentedBy, scoreText, side, t, team, withAlpha } from './common';
 import { reviewHeadline, reviewWords, shootoutLine, shootoutStatus } from '@bs/domain';
-import { COLOUR_CLASH_THRESHOLD, colourDistance, type RenderFixture, type RenderStandingRow } from '../data';
+import { COLOUR_CLASH_THRESHOLD, colourDistance, type RenderFixture, type RenderStandingRow, type RenderTodayRow } from '../data';
 import { fitLabel } from '../fit';
 import { ReplayTransition } from './replay';
 
@@ -246,52 +246,108 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     );
   };
 
+  const todayTime = (p: GraphicProps, iso: string) => {
+    try {
+      return new Intl.DateTimeFormat('en-AU', { timeZone: p.data.match.timezone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+    } catch {
+      return '';
+    }
+  };
+
+  /** One of today's matches: FT, LIVE with the period, or the kick-off time; the teams; the score; the competition. */
+  const todayRow = (p: GraphicProps, r: RenderTodayRow, i: number, delayMs = 220) => {
+    const off = TODAY_OFF[r.status];
+    const score = r.score ? `${r.scoreDetail?.home ?? r.score.home} – ${r.scoreDetail?.away ?? r.score.away}` : null;
+    return (
+      <div key={r.id} data-today-row={r.live ? 'live' : r.status} data-current={r.current ? 'true' : undefined} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 170px 1fr 210px', alignItems: 'center', gap: 16, padding: '10px 14px', borderRadius: 8, background: r.current ? `${p.data.theme.accent}22` : 'transparent', borderBottom: `1px solid ${C.rule(p)}`, ...stagger(p, i, 'rise', delayMs, 55) }}>
+        <span style={cell(p, { fontWeight: 800, fontSize: 22, letterSpacing: 1 })}>
+          {r.live ? (
+            <>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#E5484D', fontSize: 18, letterSpacing: 2 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E5484D' }} />{t(p, 'LIVE')}</span>
+              {r.phaseLabel ? <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.muted(p) }}>{t(p, r.phaseLabel)}</span> : null}
+            </>
+          ) : r.status === 'completed' ? t(p, 'FT') : off ? <span style={{ fontSize: 15, letterSpacing: 2, color: C.muted(p) }}>{t(p, off)}</span> : todayTime(p, r.scheduledAt)}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, ...cell(p) }}>
+          <Fitted full={r.home.name} short={r.home.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
+          <Logo url={r.home.logoUrl} label={r.home.abbreviation} size={36} color={r.home.primaryColor} radius={4} />
+        </span>
+        <span style={{ textAlign: 'center', ...cell(p, { fontWeight: 900, fontSize: score ? 32 : 22, color: score ? C.text(p) : C.muted(p) }) }}>{score ?? 'v'}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 12, ...cell(p) }}>
+          <Logo url={r.away.logoUrl} label={r.away.abbreviation} size={36} color={r.away.primaryColor} radius={4} />
+          <Fitted full={r.away.name} short={r.away.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
+        </span>
+        <span style={{ textAlign: 'right', fontSize: 16, lineHeight: 1.25, color: C.muted(p), overflow: 'hidden' }}>
+          {r.competition}
+          {r.round ? <span style={{ display: 'block' }}>{/^\d+$/.test(r.round) ? `${t(p, 'Round')} ${r.round}` : r.round}</span> : null}
+        </span>
+      </div>
+    );
+  };
+
   const MatchesToday = (p: GraphicProps) => {
     const today = p.data.today;
     const all = today?.rows ?? [];
     const rows = todayRowsShown(all);
     const title = String(p.cue.variables.title ?? '') || today?.title || t(p, 'MATCHES TODAY');
-    const time = (iso: string) => {
-      try {
-        return new Intl.DateTimeFormat('en-AU', { timeZone: p.data.match.timezone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-      } catch {
-        return '';
-      }
-    };
     return C.frame(
       p,
       title.toUpperCase(),
       <div data-today-board="true">
-        {rows.map((r, i) => {
-          const off = TODAY_OFF[r.status];
-          const score = r.score ? `${r.scoreDetail?.home ?? r.score.home} – ${r.scoreDetail?.away ?? r.score.away}` : null;
-          return (
-            <div key={r.id} data-today-row={r.live ? 'live' : r.status} data-current={r.current ? 'true' : undefined} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 170px 1fr 210px', alignItems: 'center', gap: 16, padding: '10px 14px', borderRadius: 8, background: r.current ? `${p.data.theme.accent}22` : 'transparent', borderBottom: `1px solid ${C.rule(p)}`, ...stagger(p, i, 'rise', 220, 55) }}>
-              <span style={cell(p, { fontWeight: 800, fontSize: 22, letterSpacing: 1 })}>
-                {r.live ? (
-                  <>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#E5484D', fontSize: 18, letterSpacing: 2 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E5484D' }} />{t(p, 'LIVE')}</span>
-                    {r.phaseLabel ? <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.muted(p) }}>{t(p, r.phaseLabel)}</span> : null}
-                  </>
-                ) : r.status === 'completed' ? t(p, 'FT') : off ? <span style={{ fontSize: 15, letterSpacing: 2, color: C.muted(p) }}>{t(p, off)}</span> : time(r.scheduledAt)}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, ...cell(p) }}>
-                <Fitted full={r.home.name} short={r.home.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
-                <Logo url={r.home.logoUrl} label={r.home.abbreviation} size={36} color={r.home.primaryColor} radius={4} />
-              </span>
-              <span style={{ textAlign: 'center', ...cell(p, { fontWeight: 900, fontSize: score ? 32 : 22, color: score ? C.text(p) : C.muted(p) }) }}>{score ?? 'v'}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 12, ...cell(p) }}>
-                <Logo url={r.away.logoUrl} label={r.away.abbreviation} size={36} color={r.away.primaryColor} radius={4} />
-                <Fitted full={r.away.name} short={r.away.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
-              </span>
-              <span style={{ textAlign: 'right', fontSize: 16, lineHeight: 1.25, color: C.muted(p), overflow: 'hidden' }}>
-                {r.competition}
-                {r.round ? <span style={{ display: 'block' }}>{/^\d+$/.test(r.round) ? `${t(p, 'Round')} ${r.round}` : r.round}</span> : null}
-              </span>
-            </div>
-          );
-        })}
+        {rows.map((r, i) => todayRow(p, r, i))}
         {!all.some((r) => !r.current) ? <div style={{ color: C.muted(p), fontSize: 24, padding: '16px 14px' }}>{t(p, 'No other matches today')}</div> : null}
+      </div>,
+      1400,
+    );
+  };
+
+  /**
+   * The intermission between back-to-back matches (a stream link puts it on its own screen, over the animated
+   * background): the next match large with its kick-off time and the countdown, an optional message, then today's
+   * results, live scores and what is still to come. The next match is this output's own while it is still to come
+   * (a stream link draws the intermission with the next match's output, in its look), else the day's next kick-off.
+   */
+  const Intermission = (p: GraphicProps) => {
+    const today = p.data.today;
+    const all = today?.rows ?? [];
+    const toCome = (r: RenderTodayRow) => r.status === 'scheduled' && !r.live;
+    const next = all.find((r) => r.current && toCome(r)) ?? all.find(toCome) ?? null;
+    const rows = todayRowsShown(all, next ? 6 : 8);
+    const title = String(p.cue.variables.title ?? '') || today?.title || t(p, 'MATCHES TODAY');
+    const message = typeof p.cue.variables.message === 'string' ? p.cue.variables.message.trim() : '';
+    const cd = next ? kickoffCountdown(p, next.scheduledAt) : null;
+    const teamBlock = (x: RenderTodayRow['home'], i: number) => (
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, ...animStyle(p, 'zoom', 200 + i * 80, 320) }}>
+        <Logo url={x.logoUrl} label={x.abbreviation} size={112} color={x.primaryColor} radius={10} />
+        <Fitted full={x.name} short={x.shortName} width={420} fontPx={36} measure={p.measure} style={{ color: C.text(p), fontWeight: 800 }} />
+      </span>
+    );
+    return C.frame(
+      p,
+      title.toUpperCase(),
+      <div data-intermission="true">
+        {next ? (
+          <div data-next-match={next.id} style={{ display: 'grid', gridTemplateColumns: '1fr 360px 1fr', alignItems: 'center', gap: 24, padding: '8px 14px 22px', borderBottom: `1px solid ${C.rule(p)}`, ...animStyle(p, 'rise', 120, 320) }}>
+            {teamBlock(next.home, 0)}
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center' }}>
+              <span style={{ fontSize: 18, letterSpacing: 4, fontWeight: 800, color: p.data.theme.accent }}>{t(p, 'NEXT MATCH')}</span>
+              <span style={cell(p, { fontSize: 54, fontWeight: 900, lineHeight: 1 })}>{todayTime(p, next.scheduledAt)}</span>
+              {cd ? (
+                <span data-countdown="true" style={cell(p, { fontSize: 22, fontWeight: 700, letterSpacing: 1 })}>
+                  <span style={{ color: C.muted(p), fontSize: 15, letterSpacing: 2, marginRight: 8 }}>{t(p, 'KICK-OFF IN')}</span>
+                  {cd}
+                </span>
+              ) : null}
+              <span style={{ fontSize: 16, color: C.muted(p) }}>{[next.competition, next.round ? (/^\d+$/.test(next.round) ? `${t(p, 'Round')} ${next.round}` : next.round) : null].filter(Boolean).join(' · ')}</span>
+            </span>
+            {teamBlock(next.away, 1)}
+          </div>
+        ) : null}
+        {message ? <div style={{ textAlign: 'center', fontSize: 26, fontWeight: 700, padding: '14px 14px 4px', ...cell(p) }}>{t(p, message)}</div> : null}
+        <div data-today-board="true" style={{ marginTop: 10 }}>
+          {rows.map((r, i) => todayRow(p, r, i, 420))}
+          {!all.length ? <div style={{ color: C.muted(p), fontSize: 24, padding: '16px 14px' }}>{t(p, 'No other matches today')}</div> : null}
+        </div>
       </div>,
       1400,
     );
@@ -793,6 +849,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     league_table: LeagueTable,
     fixtures: Fixtures,
     matches_today: MatchesToday,
+    intermission: Intermission,
     formation: Formation,
     match_summary: MatchSummary,
     head_to_head: HeadToHead,

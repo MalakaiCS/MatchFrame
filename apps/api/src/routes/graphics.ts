@@ -85,14 +85,16 @@ export function registerGraphicsRoutes(b: AppBundle) {
   app.get('/api/v1/stream-links/:id/url', async (req) => channelsSvc.channelLink(await ctxFor(req), P(id, req.params).id));
   app.post('/api/v1/stream-links/:id/rotate', async (req) => channelsSvc.rotateChannel(await ctxFor(req), P(id, req.params).id));
   app.get('/api/v1/matches/:id/stream-link', async (req) => channelsSvc.matchStreamLink(await ctxFor(req), P(id, req.params).id));
-  app.post('/api/v1/stream-links/:id/pin', async (req) => channelsSvc.pinChannel(await ctxFor(req), P(id, req.params).id, P(z.object({ matchId: z.string().uuid().nullable() }), req.body ?? {}).matchId));
+  app.post('/api/v1/stream-links/:id/pin', async (req) => channelsSvc.pinChannel(await ctxFor(req), P(id, req.params).id, P(z.object({ matchId: z.union([z.string().uuid(), z.literal('intermission')]).nullable() }), req.body ?? {}).matchId));
 
-  // the stream link's OBS page: which match is on now, and that match's output to show
+  // the stream link's OBS page: which match is on now, and that match's output to show (`?screen=intermission`: the
+  // intermission link's page, always the intermission screen)
   app.get('/api/v1/public/channel/:publicId/current', async (req, reply) => {
     const { publicId } = P(z.object({ publicId: z.string().max(40) }), req.params);
+    const { screen } = P(z.object({ screen: z.enum(['match', 'intermission']).optional() }), req.query ?? {});
     const token = String(req.headers['x-channel-token'] ?? '');
     const scope = await channelsSvc.resolveChannelToken(deps.db, token);
-    const cur = scope ? await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicId) : null;
+    const cur = scope ? await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicId, { intermission: screen === 'intermission' }) : null;
     if (!cur) throw new AppError('INVALID_CAPABILITY', 401, 'This stream link is not valid. Ask the operator for the current OBS link.');
     reply.header('cache-control', 'no-store').header('referrer-policy', 'no-referrer');
     return cur;

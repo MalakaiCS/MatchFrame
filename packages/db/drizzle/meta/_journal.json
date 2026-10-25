@@ -155,6 +155,13 @@
       "when": 1792930000000,
       "tag": "0021_stream_channels",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792940000000,
+      "tag": "0022_stream_link_intermission",
+      "breakpoints": true
     }
   ]
 }

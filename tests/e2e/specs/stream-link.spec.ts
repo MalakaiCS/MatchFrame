@@ -1,7 +1,9 @@
-// Back-to-back matches on one stream: a stream link made on the Live page is one OBS link for the day at a ground.
-// It shows the match just finished (its thank-you, then the "Matches today" board in turn, from the full-time
-// automation, because more matches are on today), a match put on by hand, and back to automatic. Futsal, so no
-// football teams are added.
+// Back-to-back matches on one stream: a stream link made on the Live page is one OBS link for the day at a ground,
+// and its intermission link is a second browser source for an OBS scene of its own between matches (the next match
+// with its countdown, today's results and what is to come). The stream link stays on the match just finished, takes
+// a match put on by hand, switches to the intermission by itself only when asked, and moves on when the next
+// match's scorer starts the run-down; the intermission link moves on to the match after. Futsal, so no football
+// teams are added.
 import { expect, test, type Page } from '@playwright/test';
 import { api, login } from './helpers';
 
@@ -26,7 +28,7 @@ async function send(page: Page, matchId: string, type: string, payload: unknown)
   );
 }
 
-test('stream link: one OBS link for the day, the matches today board after full time, a match put on by hand', async ({ browser }) => {
+test('stream link and intermission link: the day at a ground, a separate intermission screen, a match put on by hand', async ({ browser }) => {
   test.setTimeout(240_000);
   const { ctx, page } = await login(browser, { viewport: { width: 1440, height: 1000 } });
   const tag = crypto.randomUUID().slice(0, 4);
@@ -38,29 +40,48 @@ test('stream link: one OBS link for the day, the matches today board after full 
   const at = (time: string, h: number, a: number) => api<{ id: string }>(page, '/api/v1/matches', { competitionId: comp.id, seasonId: season.id, homeTeamId: teams[h]!.id, awayTeamId: teams[a]!.id, venueId: venue.id, kickoffLocal: `${today} ${time}`, timezone: TZ });
   const day = [await at('09:00', 0, 1), await at('13:30', 2, 3), await at('16:00', 4, 5)];
 
-  // the morning match is played and finished (2–1); its full-time automation starts now
+  // the morning match is played and finished (2–1)
   for (const to of ['p1', 'half_time', 'p2']) expect(await send(page, day[0]!.id, 'SET_PHASE', { to }), to).toBe(200);
   for (const side of ['home', 'home', 'away']) expect(await send(page, day[0]!.id, 'ADD_FACT', { type: 'goal', side, occurredAt: Date.now(), payload: {} })).toBe(200);
   expect(await send(page, day[0]!.id, 'SET_PHASE', { to: 'full_time' })).toBe(200);
 
-  // Live → New stream link, for this ground
+  // Live → New stream link, for this ground: the stream link and the intermission link
   await page.goto('/app/live');
   await page.getByRole('button', { name: 'New stream link' }).click();
   const dlg = page.getByRole('dialog', { name: 'New stream link' });
   await dlg.getByLabel('Name').fill(`Court ${tag}`);
   await dlg.getByLabel('Ground').selectOption(venue.id);
+  await expect(dlg.getByRole('switch', { name: 'Also switch the stream link to the intermission by itself' })).not.toBeChecked();
   await dlg.getByRole('button', { name: 'Save' }).click();
   const shown = page.getByRole('dialog', { name: 'Your stream link' });
   const url = await shown.getByLabel('Stream link').inputValue();
+  const intermissionUrl = await shown.getByLabel('Intermission link').inputValue();
   expect(url).toMatch(/\/channel\/sl_[A-Za-z0-9_-]+\?t=/);
+  expect(intermissionUrl).toBe(url.replace('?t=', '/intermission?t='));
   await shown.getByRole('button', { name: 'Done' }).click();
 
-  // OBS: one browser source for the day
+  // OBS: the stream link over the camera, the intermission link in a scene of its own
   const obsCtx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const obs = await obsCtx.newPage();
   await obs.goto(url);
   const link = obs.locator('[data-stream-link]');
   await expect(link).toHaveAttribute('data-on-match', day[0]!.id, { timeout: 20_000 });
+  await expect(link).toHaveAttribute('data-on-screen', 'match');
+  const scene = await obsCtx.newPage();
+  await scene.goto(intermissionUrl);
+  const im = scene.locator('[data-stream-link]');
+  await expect(im).toHaveAttribute('data-on-screen', 'intermission', { timeout: 20_000 });
+  await expect(im).toHaveAttribute('data-on-match', day[1]!.id);
+  const screen = scene.locator('[data-intermission]');
+  await expect(screen).toBeVisible();
+  await expect(screen.locator('[data-next-match]')).toHaveAttribute('data-next-match', day[1]!.id);
+  await expect(screen.locator('[data-countdown]')).toContainText(/\d+:\d\d/);
+  await expect(screen.locator('[data-today-row]')).toHaveCount(3);
+  await expect(screen.locator('[data-today-row="completed"]')).toContainText('2 – 1');
+  await expect(screen.locator('[data-current="true"]')).toHaveAttribute('data-today-row', 'scheduled');
+  await expect(scene.locator('[data-graphic="backdrop"]')).toBeVisible();
+  await scene.waitForTimeout(1500); // entrance settles
+  await scene.screenshot({ path: `${EVIDENCE}/stream-link-intermission.png` });
 
   const card = page.locator(`[data-stream-link-card="Court ${tag}"]`);
   await expect(card).toContainText('OBS has it open', { timeout: 20_000 });
@@ -70,14 +91,6 @@ test('stream link: one OBS link for the day, the matches today board after full 
   await expect(rows.nth(0)).toContainText('FT · 2–1');
   await expect(rows.nth(0)).toContainText('on now');
 
-  // after the thank-you (30 s after the whistle, then 30 s on air), the matches today board takes its turn
-  const board = obs.locator('[data-today-board]');
-  await expect(board).toBeVisible({ timeout: 90_000 });
-  await expect(board.locator('[data-today-row]')).toHaveCount(3);
-  await expect(board.locator('[data-current="true"]')).toHaveCount(1);
-  await expect(board).toContainText('2');
-  await obs.screenshot({ path: `${EVIDENCE}/stream-link-matches-today.png` });
-
   // a match put on by hand, then back to automatic
   await rows.nth(1).getByRole('button', { name: 'Put on now' }).click();
   await expect(link).toHaveAttribute('data-on-match', day[1]!.id, { timeout: 20_000 });
@@ -85,7 +98,32 @@ test('stream link: one OBS link for the day, the matches today board after full 
   await card.getByRole('button', { name: 'Back to automatic' }).click();
   await expect(link).toHaveAttribute('data-on-match', day[0]!.id, { timeout: 20_000 });
 
-  // the next match's checklist knows OBS has the stream link open
+  // asked to, the stream link switches to the intermission by itself (here at once after full time), and back
+  const edit = async (on: boolean) => {
+    await card.getByRole('button', { name: `More for Court ${tag}` }).click();
+    await page.getByRole('menuitem', { name: 'Edit' }).click();
+    const e = page.getByRole('dialog', { name: `Edit Court ${tag}` });
+    const sw = e.getByRole('switch', { name: 'Also switch the stream link to the intermission by itself' });
+    if ((await sw.isChecked()) !== on) await sw.click();
+    if (on) await e.getByLabel('Switch to the intermission (minutes after full time)').fill('0');
+    await e.getByRole('button', { name: 'Save' }).click();
+    await expect(e).toBeHidden();
+  };
+  await edit(true);
+  await expect(link).toHaveAttribute('data-on-screen', 'intermission', { timeout: 20_000 });
+  await expect(obs.locator('[data-intermission] [data-next-match]')).toHaveAttribute('data-next-match', day[1]!.id);
+  await expect(card).toContainText('Intermission');
+  await edit(false);
+  await expect(link).toHaveAttribute('data-on-screen', 'match', { timeout: 20_000 });
+  await expect(link).toHaveAttribute('data-on-match', day[0]!.id);
+
+  // the next match's scorer starts the run-down: the stream link moves to it, the intermission to the match after
+  expect(await send(page, day[1]!.id, 'SET_PHASE', { to: 'pre_match' })).toBe(200);
+  await expect(link).toHaveAttribute('data-on-match', day[1]!.id, { timeout: 20_000 });
+  await expect(im).toHaveAttribute('data-on-match', day[2]!.id, { timeout: 20_000 });
+  await expect(scene.locator('[data-next-match]')).toHaveAttribute('data-next-match', day[2]!.id); // the swapped-out screen is gone
+
+  // the last match's checklist knows OBS has the stream link open
   await page.goto(`/app/matches/${day[2]!.id}`);
   await expect(page.getByText(`OBS has the stream link “Court ${tag}” open`)).toBeVisible({ timeout: 20_000 });
 

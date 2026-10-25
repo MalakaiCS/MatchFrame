@@ -669,6 +669,11 @@ export const streamChannels = pgTable(
     pinnedMatchId: uuid('pinned_match_id').references((): AnyPgColumn => matches.id, { onDelete: 'set null' }),
     /** how many minutes before the next kick-off the link moves on from a finished match */
     switchBeforeMinutes: integer('switch_before_minutes').notNull().default(10),
+    /** the stream link itself switches to the intermission this many minutes after full time (null: it does not; the
+     * intermission link, in an OBS scene of its own, is how most people show it) */
+    intermissionAfterMinutes: integer('intermission_after_minutes'),
+    /** the intermission put on the stream link by hand (until back to automatic) */
+    pinnedIntermission: boolean('pinned_intermission').notNull().default(false),
     /** last time an OBS page asked which match is on */
     lastSeenAt: ts('last_seen_at'),
     createdBy: text('created_by'),

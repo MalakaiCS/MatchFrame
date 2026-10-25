@@ -1,6 +1,8 @@
 // Stream links against real PostgreSQL as bs_app: one OBS link for a day of back-to-back matches at a ground. Which
-// match it is on (just finished, then the next when its kick-off is close, a match put on by hand), the output token
-// it hands the page, rotation, the "Matches today" board data and the "matches today" count, and tenant isolation.
+// match it is on (just finished, then the next when its kick-off is close, a match put on by hand), its intermission
+// link (always the intermission, with the next match's output), the stream link switching to the intermission by
+// itself only when asked, the output token it hands the page, rotation, the "Matches today" data and count, and
+// tenant isolation.
 import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
@@ -31,7 +33,7 @@ async function finish(ctx: Ctx, matchId: string) {
 
 let ground: { id: string; name: string };
 let day: { id: string }[];
-let link: { id: string; url: string };
+let link: { id: string; url: string; intermissionUrl: string };
 
 beforeAll(async () => {
   A = await makeOrg(deps, 'Links Club');
@@ -68,13 +70,37 @@ describe('stream links', () => {
     await channelsSvc.updateChannel(A.ctx, link.id, { switchBeforeMinutes: 10 });
   });
 
+  it('the intermission link: always the intermission, drawn with the next match’s output; the stream link stays on the thank-you', async () => {
+    expect(link.intermissionUrl).toBe(link.url.replace('?t=', '/intermission?t='));
+    const scope = (await channelsSvc.resolveChannelToken(deps.db, tokenOf(link.intermissionUrl)))!;
+    const im = (await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicIdOf(link.url), { intermission: true }))!;
+    expect(im).toMatchObject({ matchId: day[1]!.id, reason: 'pinned_intermission', screen: 'intermission' });
+    const [next] = await withTenant(deps.db, { organisationId: A.org.id }, (t) => t.select().from(overlays).where(eq(overlays.matchId, day[1]!.id)));
+    expect(im.overlay!.publicId).toBe(next!.publicId);
+    // the stream link itself does not switch unless asked to
+    expect(await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicIdOf(link.url))).toMatchObject({ matchId: day[0]!.id, reason: 'just_finished', screen: 'match' });
+  });
+
+  it('asked to, the stream link switches to the intermission after full time; or by hand until back to automatic', async () => {
+    const scope = (await channelsSvc.resolveChannelToken(deps.db, tokenOf(link.url)))!;
+    await channelsSvc.updateChannel(A.ctx, link.id, { intermissionAfterMinutes: 0 });
+    expect(await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicIdOf(link.url))).toMatchObject({ matchId: day[1]!.id, reason: 'intermission', screen: 'intermission' });
+    expect((await channelsSvc.matchStreamLink(A.ctx, day[1]!.id)).link).toMatchObject({ onNow: false, intermission: true });
+    await channelsSvc.updateChannel(A.ctx, link.id, { intermissionAfterMinutes: null });
+    await channelsSvc.pinChannel(A.ctx, link.id, 'intermission');
+    expect(await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicIdOf(link.url))).toMatchObject({ matchId: day[1]!.id, reason: 'pinned_intermission', screen: 'intermission' });
+    expect((await channelsSvc.listChannels(A.ctx))[0]).toMatchObject({ pinnedIntermission: true, pinnedMatchId: null, intermissionAfterMinutes: null });
+    await channelsSvc.pinChannel(A.ctx, link.id, null);
+    expect(await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicIdOf(link.url))).toMatchObject({ reason: 'just_finished', screen: 'match' });
+  });
+
   it('lists today in order with the one on now, and OBS counts as connected once the page has asked', async () => {
     const [l] = await channelsSvc.listChannels(A.ctx);
     expect(l!.matches.map((m) => m.id)).toEqual(day.map((m) => m.id));
     expect(l!.current).toEqual({ id: day[0]!.id, reason: 'just_finished' });
     expect(l!.matches[0]).toMatchObject({ status: 'completed', home: 'Harbour FC', away: 'Ridge FC' });
     expect(l!.connected).toBe(true);
-    expect(JSON.stringify(l)).not.toContain(tokenOf(link.url)); // the list never carries the link
+    expect(JSON.stringify(l)).not.toContain(tokenOf(link.url)); // the list never carries the links
     const ms = await channelsSvc.matchStreamLink(A.ctx, day[2]!.id);
     expect(ms.link).toMatchObject({ id: link.id, name: 'Northgate stream', today: true, onNow: false, connected: true });
   });
@@ -103,11 +129,11 @@ describe('stream links', () => {
 
   it('a new OBS link stops the old one at once', async () => {
     const old = tokenOf(link.url);
-    const { url } = await channelsSvc.rotateChannel(A.ctx, link.id);
+    const { url, intermissionUrl } = await channelsSvc.rotateChannel(A.ctx, link.id);
     expect(await channelsSvc.resolveChannelToken(deps.db, old)).toBeNull();
     expect(await channelsSvc.resolveChannelToken(deps.db, tokenOf(url))).toMatchObject({ channelId: link.id });
-    expect((await channelsSvc.channelLink(A.ctx, link.id)).url).toBe(url);
-    link = { ...link, url };
+    expect(await channelsSvc.channelLink(A.ctx, link.id)).toMatchObject({ url, intermissionUrl });
+    link = { ...link, url, intermissionUrl };
   });
 
   it("another organisation sees nothing of it and cannot use its ground", async () => {

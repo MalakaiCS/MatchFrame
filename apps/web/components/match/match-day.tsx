@@ -21,7 +21,7 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
   const plans = useGet<Plan[]>(['game-plans'], 'game-plans');
   const members = useGet<Member[]>(['members'], 'members', { enabled: canEdit });
   // on a stream link (one OBS link for the day's matches here), OBS is ready once it has the link open
-  const streamLink = useGet<{ link: { id: string; name: string; connected: boolean; today: boolean; onNow: boolean } | null }>(['stream-link', d.id], `matches/${d.id}/stream-link`, { refetchInterval: 15_000 });
+  const streamLink = useGet<{ link: { id: string; name: string; connected: boolean; today: boolean; onNow: boolean; intermission?: boolean } | null }>(['stream-link', d.id], `matches/${d.id}/stream-link`, { refetchInterval: 15_000 });
   const sl = streamLink.data?.link?.today ? streamLink.data.link : null;
   const copy = useCopy();
   const [scorerLink, setScorerLink] = useState(false);
@@ -127,7 +127,7 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
           ) : null} />
         {sl ? (
           <CheckRow done={sl.connected || !!obs?.connected} label={sl.connected ? `OBS has the stream link “${sl.name}” open${sl.onNow ? ': this match is on now' : ''}` : `On the stream link “${sl.name}”`}
-            detail={sl.connected ? (sl.onNow ? undefined : 'It shows this match when its turn comes.') : 'Add the stream link to OBS once for the whole day (Live → Stream links); it shows this match when its turn comes.'}
+            detail={sl.connected ? (sl.onNow ? undefined : sl.intermission ? 'The intermission is on now; it shows this match when its turn comes.' : 'It shows this match when its turn comes.') : 'Add the stream link to OBS once for the whole day (Live → Stream links); it shows this match when its turn comes.'}
             action={<Button asChild size="sm" variant={sl.connected ? 'ghost' : 'secondary'}><Link href="/app/live#stream-links">Stream links</Link></Button>} />
         ) : (
           <CheckRow done={!!obs?.connected} label={obs?.connected ? obs.text : 'Add the OBS link to OBS'}

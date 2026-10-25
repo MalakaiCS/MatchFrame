@@ -18,8 +18,7 @@ import type { GamePlan } from './automation';
  * - Players entering (2nd half): the board animates out, then the background; the scorebug returns 7 s later.
  * - Penalty shoot-out: the shoot-out tracker (kicks, where it stands, the winner), on air until full time.
  * - Full time: 30 s after the whistle, the animated background with the final score on the match header and
- *   "Thank you for watching". When more matches are on today in the same place (back-to-back on one stream), the
- *   "Matches today" board and the thank-you then take turns, 30 s each, until the stream moves on.
+ *   "Thank you for watching".
  * The animated background and the boards on it sit above every graphic except the stinger transition.
  */
 /** The shoot-out: its tracker comes up and stays (kicks, where it stands, the winner) until full time. */
@@ -30,12 +29,6 @@ const SHOOTOUT_PLAYLIST: GamePlan['playlists'][number] = {
   repeat: { mode: 'once', gapMs: 0, maxIterations: 1 },
   items: [{ id: 'so_tracker', action: 'show', templateKey: 'builtin:shootout', offsetMs: 800, durationMs: null }],
 };
-
-/** Another match today in the same place (on the stream link, at the ground, else in the competition). */
-const MORE_TODAY: GamePlan['playlists'][number]['guards'] = [{ type: 'condition', metric: 'matches_today', op: '>=', value: 2 }];
-const ONLY_TODAY: GamePlan['playlists'][number]['guards'] = [{ type: 'condition', metric: 'matches_today', op: '<=', value: 1 }];
-/** The "Matches today" board: results so far, the live scores and what is still to come. */
-const TODAY_BOARD = (id: string, offsetMs: number, durationMs: number): GamePlan['playlists'][number]['items'][number] => ({ id, action: 'show', templateKey: 'builtin:matches_today', offsetMs, durationMs });
 
 export const FOOTBALL_STARTER: GamePlan = {
   version: 1,
@@ -163,18 +156,6 @@ export const FOOTBALL_STARTER: GamePlan = {
         { id: 'ft_header', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: false, message: 'Thank you for watching' }, offsetMs: 30_600, durationMs: null },
       ],
     },
-    {
-      id: 'full_time_today', name: 'Full time, more matches today: matches today and the thank-you, 30 s each', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_ft_today', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
-      guards: MORE_TODAY,
-      // after the thank-you has had its 30 s
-      startDelayMs: 61_200,
-      repeat: { mode: 'loop', gapMs: 600, maxIterations: 60 },
-      items: [
-        TODAY_BOARD('ftt_board', 0, 30_000),
-        { id: 'ftt_thanks', action: 'show', templateKey: 'builtin:ident', variables: { showCountdown: false, message: 'Thank you for watching' }, offsetMs: 30_600, durationMs: 30_000 },
-      ],
-    },
   ],
 };
 
@@ -240,17 +221,6 @@ export const BASKETBALL_STARTER: GamePlan = {
       items: [
         { id: 'ft_bug_off', action: 'scorebug_hide', offsetMs: 0 },
         { id: 'ft_score', action: 'show', templateKey: 'builtin:break_score', variables: { label: 'FINAL' }, offsetMs: 300, durationMs: 15_000 },
-      ],
-    },
-    {
-      id: 'full_time_today', name: 'Final, more games today: games today and the final score in turn', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_ft_today', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
-      guards: MORE_TODAY,
-      startDelayMs: 15_900,
-      repeat: { mode: 'loop', gapMs: 600, maxIterations: 60 },
-      items: [
-        TODAY_BOARD('ftt_board', 0, 30_000),
-        { id: 'ftt_score', action: 'show', templateKey: 'builtin:break_score', variables: { label: 'FINAL' }, offsetMs: 30_600, durationMs: 15_000 },
       ],
     },
   ],
@@ -368,27 +338,13 @@ export function periodStarter(sport: Sport, o: { startWord: string; scoreEvents:
     {
       id: 'full_time', name: 'Full time: final score, stats and sponsor', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
       triggers: [{ id: 't_ft', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
-      guards: ONLY_TODAY,
+      guards: [],
       repeat: { mode: 'loop', gapMs: 2000, maxIterations: 10 },
       items: [
         { id: 'ft_bug_off', action: 'scorebug_hide', offsetMs: 0 },
         { id: 'ft_score', action: 'show', templateKey: 'builtin:break_score', variables: { label: o.finalLabel ?? 'FULL TIME' }, offsetMs: 400, durationMs: 12_000 },
         { id: 'ft_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 13_200, durationMs: 12_000 },
         { id: 'ft_sponsor', action: 'sponsor', placement: 'full_frame_image', offsetMs: 26_000, durationMs: 8000 },
-      ],
-    },
-    {
-      // the same, with the matches today board in the turn, when more matches are on today in the same place
-      id: 'full_time_today', name: 'Full time, more matches today: score, stats, matches today, sponsor', kind: 'post', priority: 2, promotional: false, cooldownMs: 0,
-      triggers: [{ id: 't_ft_today', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }],
-      guards: MORE_TODAY,
-      repeat: { mode: 'loop', gapMs: 2000, maxIterations: 30 },
-      items: [
-        { id: 'ftt_bug_off', action: 'scorebug_hide', offsetMs: 0 },
-        { id: 'ftt_score', action: 'show', templateKey: 'builtin:break_score', variables: { label: o.finalLabel ?? 'FULL TIME' }, offsetMs: 400, durationMs: 12_000 },
-        { id: 'ftt_stats', action: 'show', templateKey: 'builtin:stats', offsetMs: 13_200, durationMs: 12_000 },
-        TODAY_BOARD('ftt_board', 26_000, 20_000),
-        { id: 'ftt_sponsor', action: 'sponsor', placement: 'full_frame_image', offsetMs: 46_800, durationMs: 8000 },
       ],
     },
   );

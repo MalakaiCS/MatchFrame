@@ -9,9 +9,9 @@ test('theme page previews every graphic and plays entrance and exit', async ({ b
 
   const stage = page.getByTestId('theme-preview-stage');
   const cards = page.locator('button[aria-pressed]');
-  await expect(cards).toHaveCount(31); // football: every built-in except basketball's score update and timeout and rugby league's video review (the highlights title is in)
+  await expect(cards).toHaveCount(32); // football: every built-in except basketball's score update and timeout and rugby league's video review (the highlights title is in)
   await page.getByLabel('Sport').selectOption('basketball');
-  await expect(cards).toHaveCount(28); // basketball: no goal, card or shoot-out graphics
+  await expect(cards).toHaveCount(29); // basketball: no goal, card or shoot-out graphics
   await page.getByLabel('Sport').selectOption('football');
 
   await page.getByRole('switch').first().click(); // loop off: real timing, stays on until taken out

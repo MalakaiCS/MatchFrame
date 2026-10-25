@@ -92,3 +92,40 @@ describe('the "Matches today" board', () => {
     expect(todayRowsShown(DAY.rows)).toHaveLength(4);
   });
 });
+
+describe('the intermission screen', () => {
+  // between matches: r1 finished, r2 live elsewhere at the ground, r3 is next (this output's match)
+  const NEXT: RenderToday = { title: DAY.title, rows: DAY.rows.map((r) => ({ ...r, current: r.id === 'r3' })) };
+  const im = (key: ThemeConfig['themeKey'], today: RenderToday | null, now: number, variables: Record<string, unknown> = {}) => {
+    const p = props(key, today, variables);
+    return { ...p, cue: { ...p.cue, templateKey: 'builtin:intermission' }, t: findTemplate('builtin:intermission')!, now } as GraphicProps;
+  };
+  const drawIm = (key: ThemeConfig['themeKey'], p: GraphicProps) => renderToStaticMarkup(createElement(() => THEMES[key]!.intermission!(p) as never));
+
+  it('is in the catalogue as a full-frame screen with no set time on air', () => {
+    expect(findTemplate('builtin:intermission')).toMatchObject({ name: 'Intermission', layer: 'fullframe', holdMs: null, requiredData: [] });
+  });
+
+  it('in every look: the next match with its kick-off time and the countdown, then today with the next match highlighted', () => {
+    const now = Date.parse('2026-10-25T04:47:30Z'); // 12:30 before a 3:00 pm kick-off
+    for (const key of THEME_KEYS) {
+      const html = drawIm(key, im(key, NEXT, now, { message: 'Back for the next match soon' }));
+      expect(html, key).toMatch(/data-intermission="true"[^]*data-next-match="r3"[^]*Home r3[^]*NEXT MATCH[^]*3:00 pm[^]*KICK-OFF IN[^]*12:30[^]*CPL · Round 4[^]*Away r3/);
+      expect(html, key).toContain('Back for the next match soon');
+      expect(html, key).toMatch(/data-today-row="completed"[^]*2 – 1[^]*data-today-row="live"[^]*0 – 3[^]*data-today-row="scheduled" data-current="true"/);
+      expect(html, key).toContain('TODAY AT BAYSIDE OVAL');
+    }
+  });
+
+  it("put on from another match's output: the day's next kick-off; once it has passed the countdown goes; with nothing to come, no panel", () => {
+    for (const key of THEME_KEYS) {
+      // drawn with the finished r1's output: the next is still r3
+      const fromR1 = drawIm(key, im(key, { title: DAY.title, rows: DAY.rows.map((r) => ({ ...r, current: r.id === 'r1' })) }, Date.parse('2026-10-25T05:01:00Z')));
+      expect(fromR1, key).toContain('data-next-match="r3"');
+      expect(fromR1, key).not.toContain('data-countdown');
+      const done = drawIm(key, im(key, { title: DAY.title, rows: [DAY.rows[0]!, { ...DAY.rows[1]!, current: false }, DAY.rows[3]!] }, 0));
+      expect(done, key).not.toContain('data-next-match');
+      expect(done, key).toMatch(/data-intermission="true"[^]*data-today-row="completed"/);
+    }
+  });
+});

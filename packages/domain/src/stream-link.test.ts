@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localDayBounds, pickCurrentMatch, type DayMatch } from './index';
+import { isIntermission, localDayBounds, pickCurrentMatch, type DayMatch } from './index';
 
 const H = 3600_000;
 const M = 60_000;
@@ -20,11 +20,38 @@ describe('stream link: which match is on', () => {
     expect(pickCurrentMatch(list, opts(base + 81 * M))).toEqual({ id: 'm1', reason: 'under_way' });
   });
 
-  it('between matches: the one just finished (thank-you, matches today) until 10 minutes before the next kick-off', () => {
+  it('between matches with no intermission: the one just finished until 10 minutes before the next kick-off', () => {
     const list = day([{ status: 'completed', phase: 'full_time', stateUpdatedAt: base + 100 * M }, {}, {}]);
     expect(pickCurrentMatch(list, opts(base + 101 * M))).toEqual({ id: 'm1', reason: 'just_finished' });
     expect(pickCurrentMatch(list, opts(base + 2 * H - 11 * M))).toEqual({ id: 'm1', reason: 'just_finished' });
     expect(pickCurrentMatch(list, opts(base + 2 * H - 10 * M))).toEqual({ id: 'm2', reason: 'next' });
+  });
+
+  it('with the intermission on: the thank-you for its minutes after full time, then the intermission, then the next match', () => {
+    const list = day([{ status: 'completed', phase: 'full_time', stateUpdatedAt: base + 100 * M }, {}, {}]);
+    const o = (now: number) => ({ ...opts(now), intermissionAfterMs: 2 * M });
+    expect(pickCurrentMatch(list, o(base + 101 * M))).toEqual({ id: 'm1', reason: 'just_finished' });
+    // drawn with the next match's output: its look, and today's matches with it highlighted
+    expect(pickCurrentMatch(list, o(base + 102 * M))).toEqual({ id: 'm2', reason: 'intermission' });
+    expect(pickCurrentMatch(list, o(base + 2 * H - 11 * M))).toEqual({ id: 'm2', reason: 'intermission' });
+    expect(pickCurrentMatch(list, o(base + 2 * H - 10 * M))).toEqual({ id: 'm2', reason: 'next' });
+    // its scorer starting the run-down ends the intermission at once
+    list[1] = { ...list[1]!, phase: 'pre_match', stateUpdatedAt: base + 105 * M };
+    expect(pickCurrentMatch(list, o(base + 106 * M))).toEqual({ id: 'm2', reason: 'under_way' });
+    expect(isIntermission('intermission') && isIntermission('pinned_intermission') && !isIntermission('next')).toBe(true);
+  });
+
+  it('no intermission after the last match of the day: its thank-you stays', () => {
+    const list = day([{ status: 'completed', phase: 'full_time', stateUpdatedAt: base + 100 * M }]);
+    expect(pickCurrentMatch(list, { ...opts(base + 3 * H), intermissionAfterMs: 2 * M })).toEqual({ id: 'm1', reason: 'last' });
+  });
+
+  it('the intermission put on by hand wins over a match under way, until back to automatic', () => {
+    const list = day([{ status: 'live', phase: 'first_half', stateUpdatedAt: base + 10 * M }, {}]);
+    expect(pickCurrentMatch(list, { ...opts(base + 11 * M), pinnedIntermission: true })).toEqual({ id: 'm2', reason: 'pinned_intermission' });
+    const last = day([{ status: 'completed', phase: 'full_time', stateUpdatedAt: base + 100 * M }]);
+    expect(pickCurrentMatch(last, { ...opts(base + 3 * H), pinnedIntermission: true })).toEqual({ id: 'm1', reason: 'pinned_intermission' });
+    expect(pickCurrentMatch([], { ...opts(base), pinnedIntermission: true })).toEqual({ id: null, reason: 'none' });
   });
 
   it('the next match as soon as its scorer starts the run-down, even early', () => {

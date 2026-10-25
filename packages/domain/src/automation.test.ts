@@ -250,22 +250,21 @@ describe('phase steps and break timing', () => {
   });
 });
 
-describe('full time with more matches today (back-to-back on one stream)', () => {
+describe('the "matches today" condition', () => {
   const ft = { kind: 'phase' as const, phaseId: 'full_time', phaseTags: ['full_time'], phaseKind: 'final', at: 0, occurredAt: 0, seq: 9 };
-  const fired = (plan: GamePlan, matchesToday: number | null) => matchTriggers(plan, ft, { ...guard, matchesToday }).matches.map((m) => m.playlist.id);
+  const plan: GamePlan = {
+    ...structuredClone(NETBALL_STARTER),
+    playlists: [{ id: 'today', name: 'Full time, more matches today', kind: 'post', priority: 2, promotional: false, cooldownMs: 0, repeat: { mode: 'once', gapMs: 0, maxIterations: 1 }, triggers: [{ id: 't', type: 'phase', phaseTags: ['full_time'], phaseIds: [] }], guards: [{ type: 'condition', metric: 'matches_today', op: '>=', value: 2 }], items: [{ id: 'b', action: 'show', templateKey: 'builtin:matches_today', offsetMs: 0, durationMs: 20_000 }] }],
+  };
+  const fired = (matchesToday: number | null) => matchTriggers(plan, ft, { ...guard, matchesToday }).matches.map((m) => m.playlist.id);
 
-  it('football: the thank-you always; the matches today board and the thank-you in turn only when another match is on', () => {
-    expect(fired(FOOTBALL_STARTER, 1)).toEqual(['full_time']);
-    expect(fired(FOOTBALL_STARTER, 3)).toEqual(['full_time', 'full_time_today']);
-    const loop = FOOTBALL_STARTER.playlists.find((p) => p.id === 'full_time_today')!;
-    expect(loop.startDelayMs).toBeGreaterThan(60_000); // the thank-you has its 30 s first
-    expect(loop.items.map((i) => i.templateKey)).toEqual(['builtin:matches_today', 'builtin:ident']);
+  it('a playlist can run only when other matches are on today in the same place; not worked out counts as this match alone', () => {
+    expect(fired(1)).toEqual([]);
+    expect(fired(3)).toEqual(['today']);
+    expect(fired(null)).toEqual([]);
   });
 
-  it('the period sports: the usual final board loop, or the same with the matches today board in its turn', () => {
-    expect(fired(NETBALL_STARTER, 1)).toEqual(['full_time']);
-    expect(fired(NETBALL_STARTER, 2)).toEqual(['full_time_today']);
-    // not worked out (a rehearsal): just this match, the usual final board
-    expect(fired(NETBALL_STARTER, null)).toEqual(['full_time']);
+  it('the starter flows keep full time to the match itself: the matches today board is the stream link intermission', () => {
+    for (const p of [FOOTBALL_STARTER, BASKETBALL_STARTER, NETBALL_STARTER]) expect(JSON.stringify(p)).not.toContain('matches_today');
   });
 });

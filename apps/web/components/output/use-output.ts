@@ -14,7 +14,7 @@ export interface Snapshot {
   slots?: Record<string, { creativeId: string; decisionId: string } | undefined>;
 }
 
-export function useOutput(publicId: string, token: string | null, opts: { apiBase?: string; realtimeUrl?: string } = {}) {
+export function useOutput(publicId: string, token: string | null, opts: { apiBase?: string; realtimeUrl?: string; refreshBoards?: boolean } = {}) {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -108,12 +108,14 @@ export function useOutput(publicId: string, token: string | null, opts: { apiBas
   }, [token, load, opts.realtimeUrl]);
 
   // Boards about other matches (today's matches, the ticker's scores) only change with a fresh snapshot, since the
-  // socket carries this output's own match: while one is on air, take a new snapshot every 20 s.
+  // socket carries this output's own match: while one is on air (or the page draws the intermission), take a new
+  // snapshot every 20 s.
   const boardOnAir =
-    !!snap &&
+    !!opts.refreshBoards ||
+    (!!snap &&
     Object.values(snap.state.layers).some(
-      (c) => !!c && !c.outAt && (c.templateKey === 'builtin:matches_today' || (c.templateKey === 'builtin:ticker' && c.variables?.mode === 'scores')) && (c.durationMs == null || serverNow() < c.startedAt + c.durationMs),
-    );
+      (c) => !!c && !c.outAt && (c.templateKey === 'builtin:matches_today' || c.templateKey === 'builtin:intermission' || (c.templateKey === 'builtin:ticker' && c.variables?.mode === 'scores')) && (c.durationMs == null || serverNow() < c.startedAt + c.durationMs),
+    ));
   useEffect(() => {
     if (!boardOnAir) return;
     const t = setInterval(() => void load(), 20_000);

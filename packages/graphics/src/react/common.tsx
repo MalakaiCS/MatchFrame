@@ -123,9 +123,9 @@ export function slateMessage(p: GraphicProps): string {
   }
 }
 
-/** Time to kick-off however far away: "14:58", "2:14:58", or "3d 02:14:58" more than a day out. */
-export function kickoffCountdown(p: GraphicProps): string | null {
-  const ms = new Date(p.data.match.scheduledAt).getTime() - p.now;
+/** Time to kick-off however far away: "14:58", "2:14:58", or "3d 02:14:58" more than a day out (`at`: another match's kick-off). */
+export function kickoffCountdown(p: GraphicProps, at: string = p.data.match.scheduledAt): string | null {
+  const ms = new Date(at).getTime() - p.now;
   if (!(ms > 0)) return null;
   const total = Math.floor(ms / 1000);
   const d = Math.floor(total / 86400);

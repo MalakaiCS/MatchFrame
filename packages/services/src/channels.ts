@@ -1,12 +1,15 @@
 // Stream links: one OBS link for a day of back-to-back matches at one place (a ground, a competition, or both). The
 // OBS page asks every few seconds which match is on (pickCurrentMatch in the domain) and shows that match's own
-// graphics output, so its automation, the desk and the reports work exactly as for a single match. Also here: what
+// graphics output, so its automation, the desk and the reports work exactly as for a single match. Each link also has
+// an intermission link, for an OBS scene of its own to transition to between matches: it always shows the
+// intermission screen (the next match and today's matches, drawn with the next match's output in its look), and the
+// stream link itself can switch to it after full time if asked to. Also here: what
 // "today in the same place" is for a match (the stream link it is on, else its ground, else its competition), which
 // the "Matches today" board and the full-time automation use.
 import crypto from 'node:crypto';
 import { and, asc, eq, gte, inArray, isNull, lt, ne, sql } from 'drizzle-orm';
 import { competitions, matchState, matches, organisations, overlayCredentials, overlays, streamChannels, teams, venues, withTenant, type Db, type Tx } from '@bs/db';
-import { getAdapter, localDayBounds, pickCurrentMatch, type CurrentReason, type MatchProjection, type Sport } from '@bs/domain';
+import { getAdapter, isIntermission, localDayBounds, pickCurrentMatch, type CurrentReason, type MatchProjection, type Sport } from '@bs/domain';
 import type { RenderToday } from '@bs/graphics';
 import type { AppConfig } from '@bs/config';
 import { z } from 'zod';
@@ -27,6 +30,8 @@ export const channelInput = z.object({
   venueId: z.string().uuid().nullable().optional(),
   competitionId: z.string().uuid().nullable().optional(),
   switchBeforeMinutes: z.number().int().min(0).max(120).optional(),
+  /** the intermission screen this many minutes after a match finishes (null: none, the finished match stays on) */
+  intermissionAfterMinutes: z.number().int().min(0).max(60).nullable().optional(),
 });
 
 /** Capability token: HMAC over (link, version), re-derivable for an authorised reveal; rotation bumps the version. */
@@ -36,6 +41,11 @@ export function channelToken(secret: string, channelId: string, version: number)
 
 export function channelUrl(cfg: AppConfig, publicIdStr: string, token: string) {
   return `${cfg.PUBLIC_WEB_URL}/channel/${publicIdStr}?t=${token}`;
+}
+
+/** The stream link and its intermission link (same capability: both only draw the day's graphics). */
+export function channelUrls(cfg: AppConfig, publicIdStr: string, token: string) {
+  return { url: channelUrl(cfg, publicIdStr, token), intermissionUrl: `${cfg.PUBLIC_WEB_URL}/channel/${publicIdStr}/intermission?t=${token}` };
 }
 
 interface Scope {
@@ -154,12 +164,12 @@ async function mainOutputsTx(t: Tx, organisationId: string, matchIds: string[]) 
   return out;
 }
 
-async function scheduleTx(t: Tx, c: typeof streamChannels.$inferSelect, now: number) {
+async function scheduleTx(t: Tx, c: typeof streamChannels.$inferSelect, now: number, o: { intermission?: boolean } = {}) {
   const rows = await dayMatchesTx(t, c.organisationId, { venueId: c.venueId, competitionId: c.competitionId }, await linkDayTx(t, c, now), false);
   const outputs = await mainOutputsTx(t, c.organisationId, rows.map((r) => r.m.id));
   const current = pickCurrentMatch(
     rows.map((r) => ({ id: r.m.id, scheduledAt: r.m.scheduledAt.getTime(), status: r.m.status, phase: r.phase, stateUpdatedAt: r.stateUpdatedAt.getTime(), hasOutput: outputs.has(r.m.id) })),
-    { now, pinnedId: c.pinnedMatchId, switchBeforeMs: c.switchBeforeMinutes * 60_000, staleMs: STALE_MS },
+    { now, pinnedId: c.pinnedMatchId, pinnedIntermission: c.pinnedIntermission || !!o.intermission, switchBeforeMs: c.switchBeforeMinutes * 60_000, staleMs: STALE_MS, intermissionAfterMs: c.intermissionAfterMinutes == null ? null : c.intermissionAfterMinutes * 60_000 },
   );
   return { rows, outputs, current };
 }
@@ -196,7 +206,9 @@ export async function listChannels(ctx: Ctx) {
         venue: l.venue ? { id: l.c.venueId!, name: l.venue } : null,
         competition: l.competition ? { id: l.c.competitionId!, name: l.competition } : null,
         switchBeforeMinutes: l.c.switchBeforeMinutes,
+        intermissionAfterMinutes: l.c.intermissionAfterMinutes,
         pinnedMatchId: l.c.pinnedMatchId,
+        pinnedIntermission: l.c.pinnedIntermission,
         connected: !!l.c.lastSeenAt && now - l.c.lastSeenAt.getTime() < CONNECTED_MS,
         lastSeenAt: l.c.lastSeenAt,
         current,
@@ -241,10 +253,10 @@ export async function createChannel(ctx: Ctx, input: z.input<typeof channelInput
     const token = channelToken(ctx.config.MEDIA_TOKEN_SECRET, id, 1);
     const [c] = await t
       .insert(streamChannels)
-      .values({ id, organisationId: ctx.actor.organisationId, name: d.name, venueId: d.venueId ?? null, competitionId: d.competitionId ?? null, switchBeforeMinutes: d.switchBeforeMinutes ?? 10, publicId: publicId('sl', 12), tokenHash: sha256(token), tokenVersion: 1, createdBy: ctx.actor.userId })
+      .values({ id, organisationId: ctx.actor.organisationId, name: d.name, venueId: d.venueId ?? null, competitionId: d.competitionId ?? null, switchBeforeMinutes: d.switchBeforeMinutes ?? 10, intermissionAfterMinutes: d.intermissionAfterMinutes ?? null, publicId: publicId('sl', 12), tokenHash: sha256(token), tokenVersion: 1, createdBy: ctx.actor.userId })
       .returning();
     await audit(t, ctx.actor, 'stream_link.create', 'stream_link', id, { after: { name: d.name, venueId: d.venueId ?? null, competitionId: d.competitionId ?? null } });
-    return { id, name: c!.name, url: channelUrl(ctx.config, c!.publicId, token) };
+    return { id, name: c!.name, ...channelUrls(ctx.config, c!.publicId, token) };
   });
 }
 
@@ -255,9 +267,9 @@ export async function updateChannel(ctx: Ctx, id: string, input: Partial<z.input
     const before = await loadChannel(ctx, t, id);
     await checkScope(t, ctx.actor.organisationId, d);
     const set: Partial<typeof streamChannels.$inferInsert> = { updatedAt: new Date() };
-    for (const k of ['name', 'venueId', 'competitionId', 'switchBeforeMinutes'] as const) if (d[k] !== undefined) (set as Record<string, unknown>)[k] = d[k];
+    for (const k of ['name', 'venueId', 'competitionId', 'switchBeforeMinutes', 'intermissionAfterMinutes'] as const) if (d[k] !== undefined) (set as Record<string, unknown>)[k] = d[k];
     await t.update(streamChannels).set(set).where(and(eq(streamChannels.id, id), eq(streamChannels.organisationId, ctx.actor.organisationId)));
-    await audit(t, ctx.actor, 'stream_link.update', 'stream_link', id, { before: { name: before.name, venueId: before.venueId, competitionId: before.competitionId, switchBeforeMinutes: before.switchBeforeMinutes }, after: d });
+    await audit(t, ctx.actor, 'stream_link.update', 'stream_link', id, { before: { name: before.name, venueId: before.venueId, competitionId: before.competitionId, switchBeforeMinutes: before.switchBeforeMinutes, intermissionAfterMinutes: before.intermissionAfterMinutes }, after: d });
     return { ok: true };
   });
 }
@@ -272,16 +284,16 @@ export async function deleteChannel(ctx: Ctx, id: string) {
   });
 }
 
-/** Authorised reveal of the OBS link (never in the list). */
+/** Authorised reveal of the OBS links (never in the list). */
 export async function channelLink(ctx: Ctx, id: string) {
   assertCan(ctx.actor, 'overlay.operate');
   return tx(ctx, async (t) => {
     const c = await loadChannel(ctx, t, id);
-    return { url: channelUrl(ctx.config, c.publicId, channelToken(ctx.config.MEDIA_TOKEN_SECRET, c.id, c.tokenVersion)), width: 1920, height: 1080 };
+    return { ...channelUrls(ctx.config, c.publicId, channelToken(ctx.config.MEDIA_TOKEN_SECRET, c.id, c.tokenVersion)), width: 1920, height: 1080 };
   });
 }
 
-/** A new OBS link if the old one leaked; the old one stops at once. */
+/** New OBS links if the old ones leaked (the stream link and its intermission link); the old ones stop at once. */
 export async function rotateChannel(ctx: Ctx, id: string) {
   assertCan(ctx.actor, 'overlay.operate');
   return tx(ctx, async (t) => {
@@ -290,21 +302,23 @@ export async function rotateChannel(ctx: Ctx, id: string) {
     const token = channelToken(ctx.config.MEDIA_TOKEN_SECRET, c.id, version);
     await t.update(streamChannels).set({ tokenVersion: version, tokenHash: sha256(token), updatedAt: new Date() }).where(and(eq(streamChannels.id, id), eq(streamChannels.organisationId, ctx.actor.organisationId)));
     await audit(t, ctx.actor, 'stream_link.rotate', 'stream_link', id, { after: { version } });
-    return { url: channelUrl(ctx.config, c.publicId, token) };
+    return channelUrls(ctx.config, c.publicId, token);
   });
 }
 
-/** Put a match on by hand (null: follow the day automatically again). */
-export async function pinChannel(ctx: Ctx, id: string, matchId: string | null) {
+/** Put a match or the intermission on by hand (null: follow the day automatically again). */
+export async function pinChannel(ctx: Ctx, id: string, target: string | 'intermission' | null) {
   assertCan(ctx.actor, 'overlay.operate');
   return tx(ctx, async (t) => {
     const c = await loadChannel(ctx, t, id);
+    const intermission = target === 'intermission';
+    const matchId = intermission ? null : target;
     if (matchId) {
       const [m] = await t.select({ id: matches.id }).from(matches).where(and(eq(matches.id, matchId), eq(matches.organisationId, ctx.actor.organisationId)));
       if (!m) throw notFound('Match');
     }
-    await t.update(streamChannels).set({ pinnedMatchId: matchId, updatedAt: new Date() }).where(and(eq(streamChannels.id, id), eq(streamChannels.organisationId, ctx.actor.organisationId)));
-    await audit(t, ctx.actor, matchId ? 'stream_link.pin' : 'stream_link.unpin', 'stream_link', id, { before: { matchId: c.pinnedMatchId }, after: { matchId } });
+    await t.update(streamChannels).set({ pinnedMatchId: matchId, pinnedIntermission: intermission, updatedAt: new Date() }).where(and(eq(streamChannels.id, id), eq(streamChannels.organisationId, ctx.actor.organisationId)));
+    await audit(t, ctx.actor, intermission ? 'stream_link.pin_intermission' : matchId ? 'stream_link.pin' : 'stream_link.unpin', 'stream_link', id, { before: { matchId: c.pinnedMatchId, intermission: c.pinnedIntermission }, after: { matchId, intermission } });
     return { ok: true };
   });
 }
@@ -321,8 +335,8 @@ export async function matchStreamLink(ctx: Ctx, matchId: string) {
     const now = Date.now();
     const day = await linkDayTx(t, c, now);
     const today = m.scheduledAt >= day.from && m.scheduledAt < day.to;
-    const { current } = today ? await scheduleTx(t, c, now) : { current: { id: null } };
-    return { link: { id: c.id, name: c.name, connected: !!c.lastSeenAt && now - c.lastSeenAt.getTime() < CONNECTED_MS, today, onNow: current.id === m.id } };
+    const { current } = today ? await scheduleTx(t, c, now) : { current: { id: null, reason: 'none' as CurrentReason } };
+    return { link: { id: c.id, name: c.name, connected: !!c.lastSeenAt && now - c.lastSeenAt.getTime() < CONNECTED_MS, today, onNow: current.id === m.id && !isIntermission(current.reason), intermission: isIntermission(current.reason) } };
   });
 }
 
@@ -344,22 +358,25 @@ export async function resolveChannelToken(db: Db, token: string): Promise<Channe
 /**
  * Which match the link is on now, and the production token of that match's output for the page to show (an
  * authorised reveal: the link's capability covers the outputs of its matches; render-only, like the link itself).
+ * The intermission link (`intermission`) always asks for the intermission: drawn with the next match's output.
  */
-export async function channelCurrent(db: Db, cfg: AppConfig, scope: ChannelScope, publicIdStr: string, now = Date.now()) {
+export async function channelCurrent(db: Db, cfg: AppConfig, scope: ChannelScope, publicIdStr: string, o: { intermission?: boolean } = {}, now = Date.now()) {
   return withTenant(db, { organisationId: scope.organisationId }, async (t) => {
     const [c] = await t.select().from(streamChannels).where(and(eq(streamChannels.id, scope.channelId), eq(streamChannels.organisationId, scope.organisationId)));
     if (!c || c.publicId !== publicIdStr) return null;
     if (!c.lastSeenAt || now - c.lastSeenAt.getTime() > 10_000) await t.update(streamChannels).set({ lastSeenAt: new Date(now) }).where(and(eq(streamChannels.id, c.id), eq(streamChannels.organisationId, scope.organisationId)));
-    const { outputs, current } = await scheduleTx(t, c, now);
-    const o = current.id ? outputs.get(current.id) : undefined;
-    if (!o) return { matchId: null, reason: 'none' as CurrentReason, overlay: null };
+    const { outputs, current } = await scheduleTx(t, c, now, o);
+    const out = current.id ? outputs.get(current.id) : undefined;
+    // the intermission is its own screen, drawn with the next match's output (its look and today's matches)
+    const screen = isIntermission(current.reason) ? ('intermission' as const) : ('match' as const);
+    if (!out) return { matchId: null, reason: 'none' as CurrentReason, screen: 'match' as const, overlay: null };
     const [cred] = await t
       .select({ version: overlayCredentials.tokenVersion })
       .from(overlayCredentials)
-      .where(and(eq(overlayCredentials.organisationId, scope.organisationId), eq(overlayCredentials.overlayId, o.id), eq(overlayCredentials.purpose, 'production'), isNull(overlayCredentials.revokedAt)))
+      .where(and(eq(overlayCredentials.organisationId, scope.organisationId), eq(overlayCredentials.overlayId, out.id), eq(overlayCredentials.purpose, 'production'), isNull(overlayCredentials.revokedAt)))
       .orderBy(sql`${overlayCredentials.tokenVersion} desc`)
       .limit(1);
-    if (!cred) return { matchId: current.id, reason: current.reason, overlay: null };
-    return { matchId: current.id, reason: current.reason, overlay: { publicId: o.publicId, token: overlayToken(cfg.MEDIA_TOKEN_SECRET, o.id, 'production', cred.version) } };
+    if (!cred) return { matchId: current.id, reason: current.reason, screen, overlay: null };
+    return { matchId: current.id, reason: current.reason, screen, overlay: { publicId: out.publicId, token: overlayToken(cfg.MEDIA_TOKEN_SECRET, out.id, 'production', cred.version) } };
   });
 }
