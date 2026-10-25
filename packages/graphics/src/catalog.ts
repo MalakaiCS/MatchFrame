@@ -214,6 +214,13 @@ export const BUILTIN_TEMPLATES: TemplateDef[] = [
     requiredData: ['teams'], entranceMs: 350, holdMs: 12000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.1, w: 0.6, h: 0.8 },
   },
   {
+    // today's matches in the same place (the stream link's, the ground's or the competition's): results, live scores
+    // and kick-off times, refreshed on the output while it is on air; shown between back-to-back matches
+    key: 'builtin:matches_today', name: 'Matches today', category: 'Match', sports: both, layer: 'fullframe',
+    variables: [{ key: 'title', label: 'Title', type: 'text', required: false, maxLength: 40 }],
+    requiredData: [], entranceMs: 350, holdMs: 20000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.14, y: 0.1, w: 0.72, h: 0.8 },
+  },
+  {
     key: 'builtin:formation', name: 'Formation', category: 'Teams', sports: both, layer: 'fullframe',
     variables: [{ key: 'team', label: 'Team', type: 'team', required: true, default: 'home' }],
     requiredData: ['teams', 'lineup'], entranceMs: 400, holdMs: 10000, exitMs: 300, sponsorSlots: ['detached_logo'], bounds: { x: 0.2, y: 0.08, w: 0.6, h: 0.84 },

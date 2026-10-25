@@ -32,10 +32,13 @@ export const guardSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('min_data'), require: z.array(z.enum(['lineup', 'player'])) }),
   z.object({ type: z.literal('freshness'), maxAgeMs: z.number().int().min(1000).max(600_000) }),
   z.object({ type: z.literal('sponsor_available'), placement: z.string() }),
-  /** fire only when a match condition holds: "score gap >= 3", "home shots_on_target >= 5", "minute > 80", "quiet for 120 s" */
+  /**
+   * fire only when a match condition holds: "score gap >= 3", "home shots_on_target >= 5", "minute > 80", "quiet for
+   * 120 s", "2 or more matches today" (in the same place: the stream link's, the ground's or the competition's)
+   */
   z.object({
     type: z.literal('condition'),
-    metric: z.enum(['score_gap', 'total_score', 'stat', 'minute', 'since_last_graphic_s']),
+    metric: z.enum(['score_gap', 'total_score', 'stat', 'minute', 'since_last_graphic_s', 'matches_today']),
     stat: z.string().max(40).optional(),
     side: z.enum(['home', 'away', 'either', 'leader']).optional(),
     op: z.enum(['>=', '<=', '==', '>', '<']),
@@ -171,6 +174,8 @@ export interface GuardContext {
   clockMs?: number | null;
   /** when the last graphic went to air on this output (ms), for the "quiet for" condition */
   lastGraphicAt?: number | null;
+  /** this match's day in the same place, this match included, for the "matches today" condition */
+  matchesToday?: number | null;
 }
 
 const compare = (a: number, op: string, b: number) => (op === '>=' ? a >= b : op === '<=' ? a <= b : op === '==' ? a === b : op === '>' ? a > b : a < b);
@@ -201,6 +206,10 @@ export function evaluateCondition(g: Extract<Guard, { type: 'condition' }>, inpu
     }
     case 'since_last_graphic_s':
       value = c.lastGraphicAt == null ? Number.POSITIVE_INFINITY : (c.now - c.lastGraphicAt) / 1000;
+      break;
+    case 'matches_today':
+      // not worked out (an older worker, a rehearsal): just this match
+      value = c.matchesToday ?? 1;
       break;
   }
   if (value == null) return `condition: ${g.metric} not available`;

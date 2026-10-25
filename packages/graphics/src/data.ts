@@ -104,6 +104,26 @@ export interface RenderFixture {
   scoreDetail: { home: string; away: string } | null;
 }
 
+/** One of today's matches on the "Matches today" board: a fixture with its competition and where it stands. */
+export interface RenderTodayRow extends RenderFixture {
+  /** the competition's short name, else its name */
+  competition: string;
+  /** a live match's phase ("2nd Half", "Half Time"), else null */
+  phaseLabel: string | null;
+  /** the match this output belongs to */
+  current: boolean;
+}
+
+/**
+ * Today's matches in the same place, for the "Matches today" board: the stream link's matches when this match is on
+ * one, else the matches at the same ground, else those of the same competition (the match's own local day).
+ */
+export interface RenderToday {
+  /** "TODAY AT NORTHGATE ARENA", "TODAY · COASTAL PREMIER LEAGUE" */
+  title: string;
+  rows: RenderTodayRow[];
+}
+
 export interface RenderTopScorer {
   playerId: string;
   displayName: string;
@@ -188,6 +208,8 @@ export interface RenderData {
   format?: OutputFormat;
   season?: RenderSeason | null;
   preview?: RenderPreview | null;
+  /** today's matches in the same place (results, live scores, kick-off times) */
+  today?: RenderToday | null;
 }
 
 const hexRgb = (hex: string): [number, number, number] | null => {

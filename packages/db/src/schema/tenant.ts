@@ -647,6 +647,37 @@ export const overlayCredentials = pgTable(
   ],
 );
 
+/**
+ * A stream link: one OBS link for a day of back-to-back matches at one place (a ground, a competition, or both).
+ * The link shows the graphics output of whichever of today's matches is on, so OBS keeps one browser source all day
+ * (packages/services/src/channels.ts decides which). The token is stored hashed, like an overlay credential.
+ */
+export const streamChannels = pgTable(
+  'stream_channels',
+  {
+    id: pk(),
+    organisationId: org(),
+    name: text('name').notNull(),
+    /** today's matches at this ground (null: any ground) */
+    venueId: uuid('venue_id').references((): AnyPgColumn => venues.id, { onDelete: 'set null' }),
+    /** today's matches of this competition (null: any competition) */
+    competitionId: uuid('competition_id').references((): AnyPgColumn => competitions.id, { onDelete: 'set null' }),
+    publicId: text('public_id').notNull().unique(),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenVersion: integer('token_version').notNull().default(1),
+    /** a match put on by hand; null = follow the day automatically */
+    pinnedMatchId: uuid('pinned_match_id').references((): AnyPgColumn => matches.id, { onDelete: 'set null' }),
+    /** how many minutes before the next kick-off the link moves on from a finished match */
+    switchBeforeMinutes: integer('switch_before_minutes').notNull().default(10),
+    /** last time an OBS page asked which match is on */
+    lastSeenAt: ts('last_seen_at'),
+    createdBy: text('created_by'),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [index('stream_channels_org_idx').on(t.organisationId)],
+);
+
 export const overlayCommands = pgTable(
   'overlay_commands',
   {

@@ -2,7 +2,7 @@ import type { Sport } from './types';
 import { describe, expect, it } from 'vitest';
 import { clockCrossings, decidePriority, matchTriggers, phaseStepCancellations, planRun, resolveVariables, validateGamePlan, type ActiveRun, type GamePlan, type TriggerInput } from './automation';
 import { applyCommand, replay } from './engine';
-import { FOOTBALL_STARTER, BASKETBALL_STARTER } from './starter-plans';
+import { FOOTBALL_STARTER, BASKETBALL_STARTER, NETBALL_STARTER } from './starter-plans';
 import { selectCreative, type SelectionInput } from './sponsors';
 import { simulateRehearsal, syntheticTimeline } from './rehearsal';
 import { footballAdapter } from './sports/football';
@@ -11,7 +11,7 @@ import { basketballAdapter } from './sports/basketball';
 const LAYERS: Record<string, string> = {
   'builtin:scorebug': 'scoreboard', 'builtin:ident': 'fullframe', 'builtin:lineup': 'fullframe', 'builtin:goal': 'event', 'builtin:score': 'event', 'builtin:card': 'event', 'builtin:substitution': 'event',
   'builtin:period_banner': 'lower', 'builtin:lower_third': 'lower', 'builtin:shootout': 'lower', 'builtin:player_card': 'event', 'builtin:stats': 'fullframe', 'builtin:break_score': 'fullframe', 'builtin:sponsor': 'sponsor', 'builtin:full_frame_media': 'fullframe', 'builtin:ticker': 'ticker', 'builtin:slate': 'background', 'builtin:backdrop': 'background',
-  'builtin:added_time': 'event', 'builtin:review': 'lower',
+  'builtin:added_time': 'event', 'builtin:review': 'lower', 'builtin:matches_today': 'fullframe',
 };
 const opts = (sport: Sport) => ({ templateKeys: Object.keys(LAYERS), templateLayers: LAYERS, eventTypes: (sport === 'football' ? footballAdapter.eventTypes(footballAdapter.defaultConfig) : basketballAdapter.eventTypes(basketballAdapter.defaultConfig)).map((e) => e.type) });
 const guard = { hasLineup: true, sponsorAvailable: () => true, now: 0 };
@@ -247,5 +247,25 @@ describe('phase steps and break timing', () => {
     expect(step('second_half', 960_000)).toMatchObject({ phaseStartedAt: 960_000, breakStartedAt: null, breakPhase: null });
     const rebuilt = replay(footballAdapter, cfg, log.slice(0, 5).map((f) => ({ ...f })));
     expect(rebuilt).toMatchObject({ phase: 'half_time', breakStartedAt: 50_000, breakPhase: 'half_time' });
+  });
+});
+
+describe('full time with more matches today (back-to-back on one stream)', () => {
+  const ft = { kind: 'phase' as const, phaseId: 'full_time', phaseTags: ['full_time'], phaseKind: 'final', at: 0, occurredAt: 0, seq: 9 };
+  const fired = (plan: GamePlan, matchesToday: number | null) => matchTriggers(plan, ft, { ...guard, matchesToday }).matches.map((m) => m.playlist.id);
+
+  it('football: the thank-you always; the matches today board and the thank-you in turn only when another match is on', () => {
+    expect(fired(FOOTBALL_STARTER, 1)).toEqual(['full_time']);
+    expect(fired(FOOTBALL_STARTER, 3)).toEqual(['full_time', 'full_time_today']);
+    const loop = FOOTBALL_STARTER.playlists.find((p) => p.id === 'full_time_today')!;
+    expect(loop.startDelayMs).toBeGreaterThan(60_000); // the thank-you has its 30 s first
+    expect(loop.items.map((i) => i.templateKey)).toEqual(['builtin:matches_today', 'builtin:ident']);
+  });
+
+  it('the period sports: the usual final board loop, or the same with the matches today board in its turn', () => {
+    expect(fired(NETBALL_STARTER, 1)).toEqual(['full_time']);
+    expect(fired(NETBALL_STARTER, 2)).toEqual(['full_time_today']);
+    // not worked out (a rehearsal): just this match, the usual final board
+    expect(fired(NETBALL_STARTER, null)).toEqual(['full_time']);
   });
 });

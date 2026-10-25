@@ -71,3 +71,16 @@ export function resolveLocalTime(local: string, tz: string): LocalResolution {
 export function formatInZone(d: Date | number, tz: string, locale = 'en-AU', opts: Intl.DateTimeFormatOptions = {}): string {
   return new Intl.DateTimeFormat(locale, { timeZone: tz, dateStyle: 'medium', timeStyle: 'short', ...opts }).format(new Date(d));
 }
+
+/** Midnight at the start of a calendar day in an IANA zone (the first instant of that day, also across DST). */
+function zonedMidnight(y: number, m: number, d: number, tz: string): number {
+  const naive = Date.UTC(y, m - 1, d);
+  const guess = naive - tzOffsetMs(naive, tz);
+  return naive - tzOffsetMs(guess, tz);
+}
+
+/** The local calendar day containing `at` in `tz`, as [from, to) instants: "today" for a ground in its own zone. */
+export function localDayBounds(at: Date | number, tz: string): { from: Date; to: Date } {
+  const p = partsAt(new Date(at).getTime(), tz);
+  return { from: new Date(zonedMidnight(p.year, p.month, p.day, tz)), to: new Date(zonedMidnight(p.year, p.month, p.day + 1, tz)) };
+}

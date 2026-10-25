@@ -79,15 +79,17 @@ code.
    custom CSS). The status turns green once OBS is showing the page. *Download OBS scene collection* gives OBS a
    ready-made scene per output. *Advanced → create a new link* if the link leaks; the old one stops at once.
    A second output (a clean feed, a vertical social stream, a venue screen) is under *More outputs*.
+   Streaming several matches back to back from one ground? Use one **stream link** for the whole day instead
+   (*Live → Stream links*, below): OBS keeps the same browser source and the graphics move from match to match.
 6. **Output format** — each output is 16:9 broadcast, 9:16 vertical (scorebug at the top, events at the bottom,
    boards scaled to the width) or venue screen (large type, no ticker). The same graphics render in all three.
 7. **Automation** — choose a published plan on the match (checklist) or as the competition default. Plans are
    edited in plain language under Automation (when it runs, which steps, how long). Each playlist can carry
    **conditions** (*Only when… the score gap is at least 3*, a statistic threshold, the match minute, quiet time
-   since the last graphic) and **Ask the producer before sending**, which parks its cues on the desk until someone
-   presses *Send now*. A plan opens with *What this plan does*, one plain line per playlist; priority, repeats,
-   delays, conditions and approval sit under each playlist's *Fine-tune*, and the JSON view is for owners and
-   admins. *Rehearse* plays the draft through the real graphics against a made-up match, with nothing sent to any
+   since the last graphic, the number of matches today in the same place) and **Ask the producer before
+   sending**, which parks its cues on the desk until someone presses *Send now*. A plan opens with *What this
+   plan does*, one plain line per playlist; priority, repeats, delays, conditions and approval sit under each
+   playlist's *Fine-tune*, and the JSON view is for owners and admins. *Rehearse* plays the draft through the real graphics against a made-up match, with nothing sent to any
    output. Starter plans exist for all six sports; *Reset to the starter flow* puts a plan back to it.
 8. **Streaming (optional)** — Streams → *New input*; give the encoder the RTMP URL and key (reveal is audited;
    the transport is labelled unencrypted). On the match *Streams* tab add a **Programme** output (with graphics)
@@ -206,7 +208,8 @@ countdown before the match; the score, the break and a countdown to the restart 
 an optional closing message such as "Thank you for watching"), animated background, team line-up, formation, goal /
 score event, score update, card, substitution, kick-off and period banners, lower third, player card (with
 headshots from the asset library), match statistics, live statistic comparison, break and final score, match
-summary, head to head and form, league table, fixtures and results, top scorers, player of the match, match
+summary, head to head and form, league table, fixtures and results, matches today (the day's matches at the
+ground: results, live scores and kick-off times), top scorers, player of the match, match
 information strap, shoot-out tracker, timeout, added time (football), video review (rugby league), sponsor
 graphic, stinger wipe, replay transition, the highlights title panel, holding slate, full-frame media and the ticker (which can carry the other
 live scores of the round). Goal, card and substitution
@@ -309,6 +312,7 @@ The scorer's phase buttons drive the graphics. The output must be in *Auto*:
 | *Penalty Shootout* | the shoot-out tracker comes up under the scorebug and stays, updating with every kick, until full time (also in the futsal and hockey starter flows) |
 | *Added time* (under the clock) | the fourth official's board for 8 s; the scorebug keeps *ADDED +N* until the end of the half |
 | *Full Time* | the scorebug stays for 30 s, then the animated background, scorebug out, and the match header with the final score, FULL TIME and "Thank you for watching" |
+| *Full Time*, with more matches today at the same ground | as above; after the thank-you has had its 30 s, the **Matches today** board and the thank-you take turns, 30 s each, for about an hour (a stream link moves on to the next match before then) |
 
 A line-up board only goes to air for a team whose line-up has been entered (at least one starter). If a side has
 no line-up its board is skipped, and the automation history says why; there is no empty "to be confirmed" board.
@@ -342,6 +346,11 @@ half-time and full-time stats board, not as graphics of their own. Every graphic
 out; the scorebug's score, period and added-time indicators animate when they change. Automation only acts in
 *Auto* mode. The other sports' starter plans keep their earlier shape with their own words (centre pass, first
 bounce, push back, final siren); the animated background and match header can be added to them in the editor.
+When two or more matches are on today in the same place (as for the Matches today board below), their full-time
+cycle also shows the Matches today board: basketball alternates it with the final score (30 s and 15 s), and netball, rugby league, AFL and hockey add it to their final score, statistics and sponsor
+cycle. With one match that day the full time is as before. Plans that are untouched copies of the earlier starter
+flows get this when the worker next starts; an edited plan can add it with a *Full time* playlist that shows
+*Matches today* and the condition *the number of matches today in the same place is at least 2*.
 
 ## Live and companion views
 
@@ -350,6 +359,29 @@ bounce, push back, final siren); the animated background and match header can be
   match, OBS not showing an output, manual mode, cues waiting for approval). Matches still marked live but quiet
   for hours are under *Needs closing*; *Desk layouts* (favourite graphics shown first on the desk) are at the
   bottom. The old Control rooms and Producer board addresses open Live.
+* **Stream links** (Live → *Stream links*) — for several matches streamed back to back from one ground: one OBS
+  link for the whole day instead of a new browser source for each match. *New stream link*, give it a name (Court 1),
+  choose the ground (and a competition if the ground is shared), and add the link to OBS once as a Browser Source
+  (1920×1080). It stays the same every day. The link shows, by itself:
+  1. a match put on by hand (*Put on now* beside it, until *Back to automatic*);
+  2. otherwise the match under way;
+  3. otherwise the match just finished (its full time, the thank-you and the Matches today board in turn) until
+     10 minutes before the next kick-off (*Move to the next match*, 0–120 minutes) or until the next match's scorer
+     starts the run-down, whichever is first;
+  4. otherwise the next match to come, or else the last one of the day.
+
+  Each match's own graphics follow its own scorer and automation; the link swaps between them without a gap or a
+  flash (the next match's graphics are drawn out of sight first). The card shows whether OBS has the link open,
+  which match is on and why, and today's matches in order with their score or kick-off time. The match-day
+  checklist counts OBS as connected for every match on a stream link OBS has open. *Make a new OBS link* stops the
+  old one at once; *?mode=monitor* on the link adds a small label for checking it off air. The link only ever shows
+  graphics, so it needs no streaming set-up.
+* **Matches today** (a graphic in every look) — the day's matches in the same place in kick-off order: FT with
+  the final score, the live score with the period, or the kick-off time, the match on this output highlighted, the
+  competition at the end of the row. *The same place* is the stream link the match is on (its ground and
+  competition), otherwise the match's ground, or its competition when it has no ground; the heading says which
+  (*TODAY AT NORTHGATE ARENA*, *TODAY · NPL*), or type a title of your own. It updates while it is on air (every
+  20 s). Up to eight matches show, centred on the one live or next.
 * **Commentator view** (match page → *Commentator view*) — a read-only, large-type page for the commentary
   position: line-ups with what each player has done, key events, statistics, head-to-head, form, the table
   around both teams, officials and the run sheet. Text size and full screen are one tap away.

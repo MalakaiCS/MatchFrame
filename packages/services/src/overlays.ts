@@ -25,6 +25,7 @@ import { AppError, conflict, invalid, notFound } from './errors';
 import { nowMs, tx, type Ctx } from './context';
 import { enqueueOutbox } from './outbox';
 import { renderSeasonTx } from './season-data';
+import { renderTodayTx } from './channels';
 import { effectiveTheme, lookChoice, publishedCustomTemplates, resolveLook } from './themes';
 
 export type Purpose = 'production' | 'monitor' | 'rehearsal';
@@ -503,6 +504,9 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
     for (const x of otherTeams) if (x.logoAssetId) assetIds.add(x.logoAssetId);
     for (const p of [...lineup.home, ...lineup.away]) if (p.photoAssetId) assetIds.add(p.photoAssetId);
     for (const c of custom) for (const a of c.assetIds) assetIds.add(a);
+    // today's matches in the same place, for the "Matches today" board (their teams may play another sport)
+    const today = await renderTodayTx(t, scope.organisationId, m!);
+    for (const a of today.logoAssetIds) assetIds.add(a);
     const ready = assetIds.size ? await t.select({ id: mediaAssets.id }).from(mediaAssets).where(and(inArray(mediaAssets.id, [...assetIds]), eq(mediaAssets.state, 'READY'))) : [];
     const assets: Record<string, string> = {};
     for (const a of ready) assets[a.id] = signedAssetUrl(cfg, scope.organisationId, a.id);
@@ -561,6 +565,7 @@ export async function rendererSnapshot(db: Db, cfg: AppConfig, scope: RendererSc
       format: (o!.format as RenderData['format']) ?? '16:9',
       season: season.season,
       preview: season.preview,
+      today: today.finish(url),
     };
     if (extra) await extra(t, data, pruned.state, scope);
     return { overlay: { id: o!.id, name: o!.name, purpose: scope.purpose, matchId: m!.id }, state: pruned.state, data, serverNow: now };

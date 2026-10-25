@@ -189,6 +189,15 @@ export const FAQS: Faq[] = [
     basis: 'Transparent output check A36; OBS scene collection download.',
   },
   {
+    id: 'back-to-back',
+    category: 'production',
+    q: 'Can I stream several matches back to back without changing the link in OBS?',
+    a: [
+      'Yes. A **stream link** (Live → Stream links) is one OBS link for a day of matches at a ground. It shows the match under way, then the one just finished with its thank-you and a **Matches today** board (results, live scores and kick-off times) until shortly before the next kick-off, then the next match. You can also put a match on by hand. See [Stream several matches on one OBS link](/docs/graphics/stream-links).',
+    ],
+    basis: 'Stream links: domain rule tests, DB test of the link against row-level security, stream-link browser spec (2026-10-25).',
+  },
+  {
     id: 'vmix-and-others',
     category: 'production',
     q: 'Does it work with vMix or other production tools?',

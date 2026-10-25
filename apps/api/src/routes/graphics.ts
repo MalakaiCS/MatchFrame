@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { assetDerivatives, mediaAssets, withTenant } from '@bs/db';
 import type { Readable } from 'node:stream';
-import { AppError, gamePlansSvc, layoutsSvc, overlaysSvc, themesSvc, transitionsSvc } from '@bs/services';
+import { AppError, channelsSvc, gamePlansSvc, layoutsSvc, overlaysSvc, themesSvc, transitionsSvc } from '@bs/services';
 import { findTemplate } from '@bs/graphics';
 import type { AppBundle } from '../app';
 import * as presence from '../presence';
@@ -77,6 +77,27 @@ export function registerGraphicsRoutes(b: AppBundle) {
   });
 
   // ------------------------------------------------------------ public capability endpoints (read-only)
+  // stream links: one OBS link for a day of back-to-back matches
+  app.get('/api/v1/stream-links', async (req) => channelsSvc.listChannels(await ctxFor(req)));
+  app.post('/api/v1/stream-links', async (req, reply) => reply.code(201).send(await channelsSvc.createChannel(await ctxFor(req), req.body as never)));
+  app.patch('/api/v1/stream-links/:id', async (req) => channelsSvc.updateChannel(await ctxFor(req), P(id, req.params).id, req.body as never));
+  app.delete('/api/v1/stream-links/:id', async (req) => channelsSvc.deleteChannel(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/stream-links/:id/url', async (req) => channelsSvc.channelLink(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/stream-links/:id/rotate', async (req) => channelsSvc.rotateChannel(await ctxFor(req), P(id, req.params).id));
+  app.get('/api/v1/matches/:id/stream-link', async (req) => channelsSvc.matchStreamLink(await ctxFor(req), P(id, req.params).id));
+  app.post('/api/v1/stream-links/:id/pin', async (req) => channelsSvc.pinChannel(await ctxFor(req), P(id, req.params).id, P(z.object({ matchId: z.string().uuid().nullable() }), req.body ?? {}).matchId));
+
+  // the stream link's OBS page: which match is on now, and that match's output to show
+  app.get('/api/v1/public/channel/:publicId/current', async (req, reply) => {
+    const { publicId } = P(z.object({ publicId: z.string().max(40) }), req.params);
+    const token = String(req.headers['x-channel-token'] ?? '');
+    const scope = await channelsSvc.resolveChannelToken(deps.db, token);
+    const cur = scope ? await channelsSvc.channelCurrent(deps.db, deps.config, scope, publicId) : null;
+    if (!cur) throw new AppError('INVALID_CAPABILITY', 401, 'This stream link is not valid. Ask the operator for the current OBS link.');
+    reply.header('cache-control', 'no-store').header('referrer-policy', 'no-referrer');
+    return cur;
+  });
+
   app.get('/api/v1/public/overlay/:publicId/snapshot', async (req, reply) => {
     const { publicId } = P(z.object({ publicId: z.string().max(40) }), req.params);
     const token = String((req.query as { t?: string }).t ?? req.headers['x-overlay-token'] ?? '');

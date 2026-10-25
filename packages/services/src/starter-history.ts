@@ -16,16 +16,18 @@ export const STARTER_FINGERPRINTS: Partial<Record<Sport, string[]>> = {
     'e40aabd9b1f0b452a9bb61e47dc37302', // the shoot-out tracker during a penalty shoot-out
     '7a94eda00f2898d86d3a784ed31f60d1', // the fourth official's board when added time is entered
     'db5e49d9c94e64acd4081188ae7d2986', // the half-time banner for the first 10 s of half time
+    'a125f7c46a6076a03114f785f380bbc9', // full time with more matches today: the matches today board and the thank-you in turn
   ],
-  basketball: ['2a72efc1183f22c928818f24e5c8a135'],
-  netball: ['cf62a84825b609243d794e2884bc75ba'],
-  rugby_league: ['3c33e86754195214e7d6e227630f86ba', '6f9b9e93e562e82926df65f711f8befe'], // + the video review graphic and its decision
-  afl: ['f9139044bd932f100515c999d6798186'],
-  hockey: ['3d6975e875876a18ac1f94fa33dd9439', 'c2cc3d729cb7584110f5759a53537858'], // + the shoot-out tracker during a shoot-out
+  basketball: ['2a72efc1183f22c928818f24e5c8a135', '6b7502c79b9d6729f1e0d1cd7126e688'], // + the games today board after the final
+  netball: ['cf62a84825b609243d794e2884bc75ba', 'e91b86a4d9bd0218d55f2218de5c7254'], // + the matches today board at full time
+  rugby_league: ['3c33e86754195214e7d6e227630f86ba', '6f9b9e93e562e82926df65f711f8befe', 'cf71e45841815fc974350926106796fa'], // + the video review graphic and its decision; + the matches today board
+  afl: ['f9139044bd932f100515c999d6798186', 'b057995bd16635fdd4492a38d2044996'], // + the matches today board at full time
+  hockey: ['3d6975e875876a18ac1f94fa33dd9439', 'c2cc3d729cb7584110f5759a53537858', '439a0ef6f2e94dc5a6da9af18b97cfd3'], // + the shoot-out tracker during a shoot-out; + the matches today board
   futsal: [
     '6e70168bff2b85bc0ae977c920d55720', // the football flow with 10 m kicks and timeouts, no substitution graphic
     '31094f4a8e3377c0f3fdd399fbbe74e7', // + the shoot-out tracker during kicks from the penalty mark
     '55b0e4797e97d5e124ebeffa8bce3c5c', // + the half-time banner for the first 10 s of half time
+    '6532e4952f839387018a022931735be9', // + the matches today board and the thank-you in turn at full time
   ],
 };
 

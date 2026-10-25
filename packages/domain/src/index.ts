@@ -31,3 +31,4 @@ export * from './possession';
 export * from './scorer-board';
 export * from './shootout';
 export * from './review';
+export * from './stream-link';

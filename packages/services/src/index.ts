@@ -33,6 +33,7 @@ export * as usageSvc from './usage';
 export * as seasonData from './season-data';
 export * as webhooksSvc from './webhooks';
 export * as airtime from './airtime';
+export * as channelsSvc from './channels';
 export * as reminders from './reminders';
 export * as demo from './demo';
 export * as backups from './backups';

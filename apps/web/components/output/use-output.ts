@@ -107,6 +107,19 @@ export function useOutput(publicId: string, token: string | null, opts: { apiBas
     };
   }, [token, load, opts.realtimeUrl]);
 
+  // Boards about other matches (today's matches, the ticker's scores) only change with a fresh snapshot, since the
+  // socket carries this output's own match: while one is on air, take a new snapshot every 20 s.
+  const boardOnAir =
+    !!snap &&
+    Object.values(snap.state.layers).some(
+      (c) => !!c && !c.outAt && (c.templateKey === 'builtin:matches_today' || (c.templateKey === 'builtin:ticker' && c.variables?.mode === 'scores')) && (c.durationMs == null || serverNow() < c.startedAt + c.durationMs),
+    );
+  useEffect(() => {
+    if (!boardOnAir) return;
+    const t = setInterval(() => void load(), 20_000);
+    return () => clearInterval(t);
+  }, [boardOnAir, load]);
+
   /** Acknowledge the revision actually displayed (after fonts are ready). */
   const ackRef = useRef(-1);
   useEffect(() => {

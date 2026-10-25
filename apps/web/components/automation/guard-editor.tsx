@@ -14,6 +14,7 @@ const METRICS: { id: Condition['metric']; label: string; hint: string }[] = [
   { id: 'stat', label: 'A team statistic', hint: 'shots, corners, fouls… as the scorer counts them' },
   { id: 'minute', label: 'The match minute', hint: 'from the match clock' },
   { id: 'since_last_graphic_s', label: 'Seconds since the last graphic', hint: 'keeps a sponsor loop out of busy spells' },
+  { id: 'matches_today', label: 'Matches today in the same place', hint: 'this one included: on its stream link, else at its ground, else in its competition' },
 ];
 const SIDES: { id: NonNullable<Condition['side']>; label: string }[] = [
   { id: 'either', label: 'either team' },
@@ -31,7 +32,7 @@ export function guardText(g: Guard, sport: Sport): string {
     case 'condition': {
       const side = g.side && g.side !== 'either' ? (g.side === 'leader' ? 'the leading team’s ' : `the ${g.side} team’s `) : '';
       const what =
-        g.metric === 'stat' ? `${side}${statRows(sport).find((s) => s.key === g.stat)?.label.toLowerCase() ?? g.stat ?? 'statistic'}` : g.metric === 'score_gap' ? 'the score gap' : g.metric === 'total_score' ? 'the total score' : g.metric === 'minute' ? 'the match minute' : 'the quiet time since the last graphic (s)';
+        g.metric === 'stat' ? `${side}${statRows(sport).find((s) => s.key === g.stat)?.label.toLowerCase() ?? g.stat ?? 'statistic'}` : g.metric === 'score_gap' ? 'the score gap' : g.metric === 'total_score' ? 'the total score' : g.metric === 'minute' ? 'the match minute' : g.metric === 'matches_today' ? 'the number of matches today in the same place' : 'the quiet time since the last graphic (s)';
       return `${what} ${OPS[g.op]} ${g.value}`;
     }
     case 'phase': {

@@ -962,6 +962,50 @@ Not done, on purpose: a *Close all at full time* button for matches left live (e
 scorer's phases, which would put half-time and full-time graphics on air for each; *Needs closing* lists them with
 their scorer instead). Not claimed: the automation-flow line-up timing failure, which predates this change.
 
+## Back-to-back matches: stream links and the Matches today board (2026-10-25)
+
+Requested: "instead of getting out and restarting streams 5 times. if i stream multiple games back to back after the
+Full Time Thank you for watching, have a display for matches today. and have it sync to the matches played currently
+and what scheduled."
+
+* **Matches today board** (`builtin:matches_today`, full screen, in every look through the shared graphics): the
+  day's matches in the same place in kick-off order, each with FT and the final score, the live score with the
+  period, or the kick-off time (postponed and cancelled say so). The match on the output is highlighted, and up to
+  eight rows show, centred on the one live or next. *The same place* is the stream link the match is on, otherwise
+  its ground, or its competition when it has no ground; the heading says which, or a title can be typed. The data
+  comes with each output's snapshot (`renderTodayTx`, tenant-scoped with explicit `organisation_id`), and an output
+  reloads it every 20 s while the board (or the scores ticker) is on air, so results and live scores keep up.
+* **Full time with more matches today**: a new automation condition, *the number of matches today in the same
+  place* (`matches_today`; unknown counts as one). The football and futsal starter flows keep the thank-you, then
+  alternate the board and the thank-you, 30 s each, when two or more matches are on that day; basketball alternates
+  the board and the final score; netball, rugby league, AFL and hockey add the board to their final-score cycle and
+  keep their old full time when the match is the only one. Untouched copies of the earlier starter flows are
+  upgraded on worker start (new fingerprints in `starter-history.ts`).
+* **Stream links** (Live → *Stream links*): one OBS link for a day of matches at a ground (and optionally a
+  competition). Table `stream_channels` (migration `0021`, row-level security with `FORCE`, token stored as a SHA-256
+  hash and resolved through the `SECURITY DEFINER` function `resolve_stream_channel`, like output links). The page
+  `/channel/{id}` asks every 5 s which match is on (`pickCurrentMatch` in the domain: put on by hand, else under way,
+  else just finished until *N* minutes (default 10) before the next kick-off or the next run-down starts, else next,
+  else last) and shows that match's own output; the next output is drawn hidden and swapped in once drawn. The card
+  on Live shows whether OBS has it open, which match is on and why, today's order with scores and kick-off times,
+  *Put on now* / *Back to automatic*, *Copy OBS link*, *Make a new OBS link* (old one stops at once), Edit and
+  Remove; every change is audited (`stream_link.*`). The link is never in list responses. The match-day checklist
+  and the matches list count OBS as connected for today's matches on an open stream link.
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck`, `pnpm lint` | clean |
+| `pnpm test` (adds `stream-link.test.ts`: the current-match rule and day bounds incl. a 23-hour DST day; `matches-today.test.ts`: rows shown; automation and futsal tests for the full-time playlists with and without more matches) | 248 tests, 43 files, all pass |
+| `pnpm test:db` (adds `channels.test.ts` as `bs_app`: just finished then next, listing and connected, put on by hand and back, the board's rows and the count, rotation, delete, and another organisation seeing nothing, unable to use the ground, a token only good with its own page) | 111 tests, 16 files, all pass |
+| `stream-link.spec.ts` (new; futsal teams): three matches at a new ground today, the first finished 2–1; *New stream link* on Live; the OBS page on that match (*just finished*); *OBS has it open*; the full-time flow puts the board on air on the link's page with three rows and the finished match highlighted; *Put on now* on the second match moves the page, *Back to automatic* moves it back; the third match's checklist says OBS has the stream link open | Passed (2.6 min) on the build before the two fixes below (explicit `organisation_id` filters, fixed sample times); the re-run on the final build is still to do at this commit |
+| Related specs on the rebuilt app: `features`, `futsal`, `graphics-only`, `graphics`, `look-choice`, `obs-link` (the OBS page now drawn by the shared output view), `themes` (graphic counts 31 football, 28 basketball) | all passed, except `features` › live page … status page: *All systems working* not shown within 5 s on the status page (the Live page part passed); passed on a re-run with no change, and the status endpoint reported `ok` |
+| `automation-flow.spec.ts` | Failed twice: first on the first OBS check right after the stack restarted (background not drawn within 5 s, while the output state had it on air), then, on a re-run, at the older line-up timing check (*home line-up off after 8 s*). Not claimed |
+| `visual.spec.ts`: a new *Matches today* baseline per look (the theme page's sample now uses fixed times of day, so the baseline does not depend on when it is drawn) | Running at this commit (pass 1 writes the missing baselines, pass 2 compares every graphic); no visual result is claimed yet and the new baselines are not committed yet |
+
+Found and fixed on the way: a few queries in the new service relied on row-level security alone (the venue's time
+zone, the link's last-seen update, the output credential lookup, joins); they now filter `organisation_id`
+explicitly as everywhere else.
+
 ## A51 and measured capacity
 
 | Configuration (4 vCPU / 15 GiB, all services on one host) | Result |

@@ -1,5 +1,5 @@
 'use client';
-// Graphics every look shares: league table, fixtures, formation, match summary, head-to-head, match information,
+// Graphics every look shares: league table, fixtures, today's matches, formation, match summary, head-to-head, match information,
 // shoot-out tracker, live statistic, top scorers, player of the match, timeout, added time, video review, the
 // highlights title and the stinger wipe. Each look
 // supplies its "chrome" (how it frames a full-frame board, a lower strip and a team event) so these read as part
@@ -128,6 +128,30 @@ export function Backdrop(p: GraphicProps) {
   );
 }
 
+/** Matches that are not happening today, in the board's status column instead of a time. */
+const TODAY_OFF: Record<string, string> = { postponed: 'POSTPONED', cancelled: 'CANCELLED', abandoned: 'ABANDONED' };
+
+/**
+ * The "Matches today" board shows at most `max` rows. With more matches than that it keeps the ones around now:
+ * every live match and this output's own, then alternately the next fixtures and the latest results outward from
+ * the first live (else the next upcoming) match, back in kick-off order.
+ */
+export function todayRowsShown<T extends { live: boolean; status: string; current: boolean }>(rows: T[], max = 8): T[] {
+  if (rows.length <= max) return rows;
+  const firstLive = rows.findIndex((r) => r.live);
+  const firstUpcoming = rows.findIndex((r) => r.status === 'scheduled');
+  const pivot = firstLive >= 0 ? firstLive : firstUpcoming >= 0 ? firstUpcoming : rows.length;
+  const keep = new Set<number>();
+  rows.forEach((r, i) => {
+    if (r.live || r.current) keep.add(i);
+  });
+  for (let d = 0; keep.size < max && (pivot + d < rows.length || pivot - 1 - d >= 0); d++) {
+    if (pivot + d < rows.length && keep.size < max) keep.add(pivot + d);
+    if (pivot - 1 - d >= 0 && keep.size < max) keep.add(pivot - 1 - d);
+  }
+  return [...keep].sort((a, b) => a - b).slice(0, max).map((i) => rows[i]!);
+}
+
 export function sharedGraphics(C: Chrome): ThemeComponents {
   const cell = (p: GraphicProps, extra?: CSSProperties): CSSProperties => ({ color: C.text(p), fontVariantNumeric: 'tabular-nums', ...extra });
 
@@ -219,6 +243,57 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
         {!list.length ? <div style={{ color: C.muted(p), fontSize: 26, padding: 20 }}>{t(p, 'No fixtures to show')}</div> : null}
       </div>,
       1200,
+    );
+  };
+
+  const MatchesToday = (p: GraphicProps) => {
+    const today = p.data.today;
+    const all = today?.rows ?? [];
+    const rows = todayRowsShown(all);
+    const title = String(p.cue.variables.title ?? '') || today?.title || t(p, 'MATCHES TODAY');
+    const time = (iso: string) => {
+      try {
+        return new Intl.DateTimeFormat('en-AU', { timeZone: p.data.match.timezone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+      } catch {
+        return '';
+      }
+    };
+    return C.frame(
+      p,
+      title.toUpperCase(),
+      <div data-today-board="true">
+        {rows.map((r, i) => {
+          const off = TODAY_OFF[r.status];
+          const score = r.score ? `${r.scoreDetail?.home ?? r.score.home} – ${r.scoreDetail?.away ?? r.score.away}` : null;
+          return (
+            <div key={r.id} data-today-row={r.live ? 'live' : r.status} data-current={r.current ? 'true' : undefined} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 170px 1fr 210px', alignItems: 'center', gap: 16, padding: '10px 14px', borderRadius: 8, background: r.current ? `${p.data.theme.accent}22` : 'transparent', borderBottom: `1px solid ${C.rule(p)}`, ...stagger(p, i, 'rise', 220, 55) }}>
+              <span style={cell(p, { fontWeight: 800, fontSize: 22, letterSpacing: 1 })}>
+                {r.live ? (
+                  <>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#E5484D', fontSize: 18, letterSpacing: 2 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E5484D' }} />{t(p, 'LIVE')}</span>
+                    {r.phaseLabel ? <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.muted(p) }}>{t(p, r.phaseLabel)}</span> : null}
+                  </>
+                ) : r.status === 'completed' ? t(p, 'FT') : off ? <span style={{ fontSize: 15, letterSpacing: 2, color: C.muted(p) }}>{t(p, off)}</span> : time(r.scheduledAt)}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, ...cell(p) }}>
+                <Fitted full={r.home.name} short={r.home.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
+                <Logo url={r.home.logoUrl} label={r.home.abbreviation} size={36} color={r.home.primaryColor} radius={4} />
+              </span>
+              <span style={{ textAlign: 'center', ...cell(p, { fontWeight: 900, fontSize: score ? 32 : 22, color: score ? C.text(p) : C.muted(p) }) }}>{score ?? 'v'}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12, ...cell(p) }}>
+                <Logo url={r.away.logoUrl} label={r.away.abbreviation} size={36} color={r.away.primaryColor} radius={4} />
+                <Fitted full={r.away.name} short={r.away.shortName} width={280} fontPx={26} measure={p.measure} style={{ color: C.text(p) }} />
+              </span>
+              <span style={{ textAlign: 'right', fontSize: 16, lineHeight: 1.25, color: C.muted(p), overflow: 'hidden' }}>
+                {r.competition}
+                {r.round ? <span style={{ display: 'block' }}>{/^\d+$/.test(r.round) ? `${t(p, 'Round')} ${r.round}` : r.round}</span> : null}
+              </span>
+            </div>
+          );
+        })}
+        {!all.some((r) => !r.current) ? <div style={{ color: C.muted(p), fontSize: 24, padding: '16px 14px' }}>{t(p, 'No other matches today')}</div> : null}
+      </div>,
+      1400,
     );
   };
 
@@ -717,6 +792,7 @@ export function sharedGraphics(C: Chrome): ThemeComponents {
     backdrop: Backdrop,
     league_table: LeagueTable,
     fixtures: Fixtures,
+    matches_today: MatchesToday,
     formation: Formation,
     match_summary: MatchSummary,
     head_to_head: HeadToHead,

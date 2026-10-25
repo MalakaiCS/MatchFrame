@@ -17,10 +17,11 @@ import {
   memberships,
   permissionGrants,
   rendererSessions,
+  streamChannels,
   users,
   type Tx,
 } from '@bs/db';
-import { getAdapter, isValidTimeZone, resolveLocalTime, type FinalsBracket, type LineupPlayer, type LineupSnapshot, type Sport } from '@bs/domain';
+import { getAdapter, isValidTimeZone, localDayBounds, resolveLocalTime, type FinalsBracket, type LineupPlayer, type LineupSnapshot, type Sport } from '@bs/domain';
 import { z } from 'zod';
 import { assertCan, assignedScopes, can, hasWideRead } from './authz';
 import { audit } from './audit';
@@ -218,8 +219,15 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
       ? await t.select({ overlayId: rendererSessions.overlayId }).from(rendererSessions)
           .where(and(eq(rendererSessions.organisationId, orgId), inArray(rendererSessions.overlayId, [...mainOverlay.values()]), inArray(rendererSessions.purpose, ['production', 'compositor']), isNull(rendererSessions.disconnectedAt)))
       : [];
+    // a stream link open in OBS covers today's matches in its place (it shows each when its turn comes)
+    const openLinks = ids.length ? await t.select().from(streamChannels).where(and(eq(streamChannels.organisationId, orgId), gte(streamChannels.lastSeenAt, new Date(Date.now() - 30_000)))) : [];
+    const onOpenLink = (m: typeof matches.$inferSelect) => {
+      if (!openLinks.length) return false;
+      const day = localDayBounds(Date.now(), m.timezone);
+      return m.scheduledAt >= day.from && m.scheduledAt < day.to && openLinks.some((c) => (!c.venueId || c.venueId === m.venueId) && (!c.competitionId || c.competitionId === m.competitionId));
+    };
     // the match page's match-day checklist, in short: what is still to do before the match can go out
-    const readiness = (matchId: string) => {
+    const readiness = (matchId: string, m: typeof matches.$inferSelect) => {
       const main = ovs.find((o) => o.o.id === mainOverlay.get(matchId))?.o;
       const snap = lineups.find((l) => l.matchId === matchId)?.snapshot as LineupSnapshot | undefined;
       const starters = (side: 'home' | 'away') => (snap?.[side] ?? []).filter((p) => p.starter).length;
@@ -228,7 +236,7 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
         ...(main?.themeProfileVersionId ? [] : ['a look']),
         ...(main?.gamePlanVersionId ? [] : ['automation']),
         ...(assigned.some((a) => a.matchId === matchId) ? [] : ['a scorer']),
-        ...(main && watching.some((w) => w.overlayId === main.id) ? [] : ['OBS']),
+        ...((main && watching.some((w) => w.overlayId === main.id)) || onOpenLink(m) ? [] : ['OBS']),
       ];
       return { done: 5 - todo.length, total: 5, todo };
     };
@@ -254,7 +262,7 @@ export async function listMatches(ctx: Ctx, query: z.input<typeof matchListQuery
           overlays: ovs.filter((o) => o.o.matchId === r.m.id).map((o) => ({ id: o.o.id, name: o.o.name, kind: o.o.kind, publicId: o.o.publicId, mode: o.st?.mode, inhibited: o.st?.inhibited, revision: o.st?.revision, displayedRevision: o.st?.displayedRevision })),
           outputs: outs.filter((o) => o.matchId === r.m.id).map((o) => ({ id: o.id, name: o.name, mode: o.mode })),
           stream: session ? { id: session.id, state: session.state, error: session.error } : null,
-          ready: readiness(r.m.id),
+          ready: readiness(r.m.id, r.m),
         };
       })
       .filter((x) => !search || [x.home?.name, x.away?.name, x.competition.name, x.round, x.externalId].some((s) => s?.toLowerCase().includes(search)));

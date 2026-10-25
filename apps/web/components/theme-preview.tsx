@@ -97,6 +97,31 @@ export function sampleData(theme: ThemeConfig, sport: Sport = 'football', opts: 
     format: opts.format ?? '16:9',
     season: sampleSeason(sport, now),
     preview: samplePreview(),
+    today: sampleToday(sport, now, proj.score, a.phase(cfg as never, proj.phase)?.label ?? null),
+  };
+}
+
+/** A day at the ground for the "Matches today" board: two results, this match and one more live, the next kick-off, one postponed. */
+export function sampleToday(sport: Sport, now: number, score: { home: number; away: number }, phaseLabel: string | null): NonNullable<RenderData['today']> {
+  const a = getAdapter(sport);
+  const firstHalf = a.phases(a.defaultConfig).find((x) => x.kind === 'play')?.label ?? null;
+  const sc = (g: number) => (sport === 'basketball' ? 70 + g * 7 : sport === 'afl' ? 60 + g * 9 : sport === 'rugby_league' ? 12 + g * 6 : sport === 'netball' ? 40 + g * 5 : g);
+  // fixed times of day in the sample's zone (Brisbane, UTC+10 all year), so the board looks the same whenever it is drawn
+  const day = Math.floor((now + 10 * 3600_000) / 86_400_000) * 86_400_000 - 10 * 3600_000;
+  const row = (id: string, h: number, aw: number, hour: number, status: string, s: [number, number] | null, phase: string | null = null) => ({
+    id, round: '12', scheduledAt: new Date(day + hour * 3600_000).toISOString(), status, live: status === 'live', home: sampleTeam(h), away: sampleTeam(aw),
+    score: s ? { home: s[0], away: s[1] } : null, scoreDetail: null, competition: 'CPL', phaseLabel: phase, current: id === 'sample',
+  });
+  return {
+    title: 'TODAY AT BAYSIDE OVAL',
+    rows: [
+      row('td1', 2, 3, 12, 'completed', [sc(1), sc(1)]),
+      row('td2', 4, 5, 14, 'completed', [sc(0), sc(3)]),
+      row('sample', 0, 1, 16, 'live', [score.home, score.away], phaseLabel),
+      row('td3', 6, 7, 16.5, 'live', [sc(0), sc(0)], firstHalf),
+      row('td4', 1, 2, 19.5, 'scheduled', null),
+      row('td5', 3, 4, 21, 'postponed', null),
+    ],
   };
 }
 

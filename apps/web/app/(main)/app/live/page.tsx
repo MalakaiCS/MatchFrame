@@ -3,6 +3,7 @@
 // board). One card per match with its desk for each graphics output, the scorer and the commentator view, and only
 // the state worth acting on: no scorer on a live match, OBS not showing the output, cues waiting for approval.
 // Matches still marked live but quiet for hours sit apart under "Needs closing"; desk layouts are at the bottom.
+// Stream links (one OBS link for back-to-back matches) are at the top.
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Clapperboard, Mic, Smartphone } from 'lucide-react';
@@ -15,6 +16,7 @@ import { isStale } from '@/lib/live';
 import { isFull, useMe } from '@/lib/session';
 import { phaseTone, type MatchRow } from '@/components/match-table';
 import { useAwaiting } from '@/components/control/approvals';
+import { StreamLinks } from '@/components/live/stream-links';
 
 type Output = MatchRow['overlays'][number] & { onAir?: string[] };
 interface Layout { id: string; name: string; config: { sections: { title: string; templateKeys: string[] }[]; favourites: string[] } }
@@ -132,6 +134,7 @@ export default function LivePage() {
         {noScorer ? <StatusPill tone="warning">{noScorer} live without a scorer</StatusPill> : null}
         {disconnected ? <StatusPill tone="warning">{disconnected} output{disconnected > 1 ? 's' : ''} not in OBS yet</StatusPill> : outputs.length ? <StatusPill tone="healthy">Every output is in OBS</StatusPill> : null}
       </div>
+      <StreamLinks tz={tz} canSetUp={isFull(me.data?.role)} />
       <ErrorNotice error={live.error ?? today.error} />
       {live.isLoading || today.isLoading ? <Spinner /> : !liveRows.length && !later.length && !stale.length ? (
         <EmptyState title="Nothing on today" body="Live matches and today’s fixtures appear here, each with its desk." action={<Button asChild><Link href="/app/matches">Go to matches</Link></Button>} />

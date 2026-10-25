@@ -49,6 +49,7 @@ import { audit } from './audit';
 import { applyOverlayCommandTx, customDefs, mutateOverlayStateTx, type CommandOpts } from './overlays';
 import { loadPlanVersion, templateLayerMap } from './gameplans';
 import { availablePlacements, closeStaleExposures, decide, fixedDecision } from './sponsors';
+import { matchesTodayCountTx } from './channels';
 
 export const LEASE_RESOURCE = 'automation';
 export const SLOT_ROTATION_MS = 30_000;
@@ -198,6 +199,9 @@ async function triggerForOverlay(t: Tx, d: AutomationDeps, ov: typeof overlays.$
   const liveLayers = Object.entries((st.layers ?? {}) as Record<string, { startedAt?: number; outAt?: number | null } | null>).filter(([layer, c]) => c && layer !== 'scoreboard' && !c.outAt);
   const lastGraphicAt = liveLayers.length ? Math.max(...liveLayers.map(([, c]) => Number(c!.startedAt ?? 0))) : null;
   const mainClock = (ms?.clocks as Record<string, ClockState> | undefined)?.main;
+  // "2 or more matches today in the same place" (full time on a back-to-back stream), worked out only when asked
+  const wantsToday = plan.playlists.some((p) => p.guards.some((g) => g.type === 'condition' && g.metric === 'matches_today'));
+  const [mrow] = wantsToday ? await t.select().from(matches).where(and(eq(matches.id, ov.matchId), eq(matches.organisationId, ov.organisationId))) : [];
   const guard = {
     hasLineup: !!snap && snap.home.length > 0 && snap.away.length > 0,
     sponsorAvailable: (p: string) => avail.has(p),
@@ -205,6 +209,7 @@ async function triggerForOverlay(t: Tx, d: AutomationDeps, ov: typeof overlays.$
     projection: (ms?.projection as unknown as MatchProjection) ?? null,
     clockMs: mainClock ? clockDisplayMs(mainClock, at) : null,
     lastGraphicAt,
+    matchesToday: mrow ? await matchesTodayCountTx(t, ov.organisationId, mrow) : null,
   };
 
   if (input.kind === 'phase') {

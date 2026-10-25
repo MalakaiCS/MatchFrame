@@ -1,6 +1,7 @@
 'use client';
 // Match-day checklist: the five things that make a match broadcast-ready, each with its action in place (a choice
 // applies as soon as it is made), and the scorer link to hand around. Folds to one line once all five are done.
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Copy, QrCode, Smartphone } from 'lucide-react';
 import { toDataURL } from 'qrcode';
@@ -19,6 +20,9 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
   const profiles = useGet<LookProfile[]>(['theme-profiles'], 'theme-profiles');
   const plans = useGet<Plan[]>(['game-plans'], 'game-plans');
   const members = useGet<Member[]>(['members'], 'members', { enabled: canEdit });
+  // on a stream link (one OBS link for the day's matches here), OBS is ready once it has the link open
+  const streamLink = useGet<{ link: { id: string; name: string; connected: boolean; today: boolean; onNow: boolean } | null }>(['stream-link', d.id], `matches/${d.id}/stream-link`, { refetchInterval: 15_000 });
+  const sl = streamLink.data?.link?.today ? streamLink.data.link : null;
   const copy = useCopy();
   const [scorerLink, setScorerLink] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -57,7 +61,7 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
     { done: !!primary?.theme, key: 'look' },
     { done: !!primary?.gamePlanVersionId, key: 'plan' },
     { done: d.scorers.length > 0, key: 'scorer' },
-    { done: !!obs?.connected, key: 'obs' },
+    { done: !!obs?.connected || !!sl?.connected, key: 'obs' },
   ];
   const doneCount = rows.filter((r) => r.done).length;
   const allDone = doneCount === rows.length;
@@ -121,9 +125,15 @@ export function MatchDayChecklist({ d, canEdit, onGoTo }: { d: MatchDetail; canE
               {members.data?.filter((x) => x.status === 'active' && !d.scorers.some((s) => s.membershipId === x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} ({x.role})</option>)}
             </NativeSelect>
           ) : null} />
-        <CheckRow done={!!obs?.connected} label={obs?.connected ? obs.text : 'Add the OBS link to OBS'}
-          detail={obs?.connected ? undefined : 'Paste the link into OBS as a Browser Source at 1920×1080. This turns green once OBS is showing it.'}
-          action={<><Button size="sm" variant={obs?.connected ? 'ghost' : 'secondary'} onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button><Button size="sm" variant="ghost" onClick={() => onGoTo('graphics')}>Show me how</Button></>} />
+        {sl ? (
+          <CheckRow done={sl.connected || !!obs?.connected} label={sl.connected ? `OBS has the stream link “${sl.name}” open${sl.onNow ? ': this match is on now' : ''}` : `On the stream link “${sl.name}”`}
+            detail={sl.connected ? (sl.onNow ? undefined : 'It shows this match when its turn comes.') : 'Add the stream link to OBS once for the whole day (Live → Stream links); it shows this match when its turn comes.'}
+            action={<Button asChild size="sm" variant={sl.connected ? 'ghost' : 'secondary'}><Link href="/app/live#stream-links">Stream links</Link></Button>} />
+        ) : (
+          <CheckRow done={!!obs?.connected} label={obs?.connected ? obs.text : 'Add the OBS link to OBS'}
+            detail={obs?.connected ? undefined : 'Paste the link into OBS as a Browser Source at 1920×1080. This turns green once OBS is showing it.'}
+            action={<><Button size="sm" variant={obs?.connected ? 'ghost' : 'secondary'} onClick={() => void copyObs()}><Copy className="size-4" /> Copy OBS link</Button><Button size="sm" variant="ghost" onClick={() => onGoTo('graphics')}>Show me how</Button></>} />
+        )}
       </ul>
       <ErrorNotice error={setLookAction.error ?? setPlanAction.error ?? starterAction.error ?? assign.error} />
       <ScorerLinkDialog matchId={d.id} open={scorerLink} onClose={() => setScorerLink(false)} assigned={d.scorers.map((s) => s.name)} />
